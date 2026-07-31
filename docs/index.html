@@ -1,25 +1,74 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>HERITG</title>
-    <meta name="description" content="HERITG is a private, local-first family tree app.">
-    <style>
-      body { max-width: 48rem; margin: 4rem auto; padding: 0 1.25rem; color: #29261f; background: #f7f3eb; font: 18px/1.6 system-ui, sans-serif; }
-      h1 { font-size: clamp(2.5rem, 8vw, 5rem); letter-spacing: -0.05em; margin-bottom: 0; }
-      a { color: #355f45; }
-      nav { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: 2rem; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>HERITG</h1>
-      <p>A private, local-first family tree app. No account is required, and core family data stays on your device.</p>
-      <nav>
-        <a href="privacy/">Privacy Policy</a>
-        <a href="https://github.com/Hamanto-Studio/heritg">Source Code</a>
-      </nav>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="HERITG is a private, local-first family archive for preserving the people, relationships, and stories that make a family.">
+  <meta name="theme-color" content="#f7f3ec">
+  <title>HERITG | Keep your family close</title>
+  <link rel="icon" href="appicon.png" type="image/png">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="HERITG home"><img class="brand-mark" src="appicon.png" alt=""><span>heritg</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+      <a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
+      <a class="nav-button" href="https://github.com/Hamanto-Studio/heritg" target="_blank" rel="noopener">Follow the build <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero page-width">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> A family archive, made personal</p>
+        <h1>Keep your<br><em>family close.</em></h1>
+        <p class="hero-lede">Build a living family tree, preserve the stories behind it, and pass it on with confidence. HERITG is private by default and calm by design.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#features">Explore HERITG <span aria-hidden="true">↓</span></a><a class="text-link" href="#privacy">Private by default <span aria-hidden="true">→</span></a></div>
+        <p class="hero-note"><span class="lock-icon" aria-hidden="true">⌑</span> No account required. No internet required for your core archive.</p>
+      </div>
+      <div class="hero-art" aria-label="A visual family tree with connected people" role="img">
+        <div class="art-stamp">YOUR<br>PEOPLE<br><span>YOUR STORY</span></div>
+        <div class="tree-lines" aria-hidden="true"><i class="line line-a"></i><i class="line line-b"></i><i class="line line-c"></i><i class="line line-d"></i></div>
+        <div class="person person-main"><span class="avatar avatar-blue">M</span><strong>Maya</strong><small>You · 1988</small></div>
+        <div class="person person-one"><span class="avatar avatar-yellow">R</span><strong>Rina</strong><small>Mother</small></div>
+        <div class="person person-two"><span class="avatar avatar-green">S</span><strong>Sari</strong><small>Sister</small></div>
+        <div class="person person-three"><span class="avatar avatar-pink">N</span><strong>Nadia</strong><small>Daughter</small></div>
+        <div class="person person-four"><span class="avatar avatar-purple">L</span><strong>Laras</strong><small>Grandmother</small></div>
+        <div class="art-label">A tree that<br>grows with you <span>✦</span></div>
+      </div>
+    </section>
+
+    <section class="proof-band" aria-label="Product principles"><div class="page-width proof-grid"><p><span>01</span> Private by default</p><p><span>02</span> Offline by default</p><p><span>03</span> Portable by design</p></div></section>
+
+    <section class="intro page-width section-space">
+      <div class="section-kicker">The HERITG way</div>
+      <div class="intro-grid"><h2>Family history<br>should feel <em>human.</em></h2><div><p class="large-copy">Not a database to fill in. Not a public profile. HERITG is a warm, private place to collect the names, relationships, photos, and memories your family wants to keep.</p><a class="text-link" href="#how-it-works">Start with one name <span aria-hidden="true">→</span></a></div></div>
+    </section>
+
+    <section id="features" class="features-section section-space"><div class="page-width">
+      <div class="section-heading"><div><div class="section-kicker">Made for real families</div><h2>Everything you need<br>to remember <em>together.</em></h2></div><p>Start small. Add context over time. Keep every branch of your family story in one place.</p></div>
+      <div class="feature-grid">
+        <article class="feature-card feature-card-wide feature-tree"><div class="feature-card-copy"><span class="feature-number">01</span><h3>See the whole picture</h3><p>Move through a clear visual tree and focus on one person or the full family network.</p></div><div class="mini-tree" aria-hidden="true"><span class="mini-node mini-a">M</span><span class="mini-node mini-b">R</span><span class="mini-node mini-c">S</span><span class="mini-node mini-d">N</span><i></i><i></i><i></i></div></article>
+        <article class="feature-card feature-privacy"><span class="feature-number">02</span><div class="feature-icon">⌑</div><h3>Your family is yours.</h3><p>Local-first storage means your archive stays on your device unless you choose to export it.</p><span class="card-tag">No tracking</span></article>
+        <article class="feature-card feature-export"><span class="feature-number">03</span><div class="archive-icon" aria-hidden="true"><span></span><span></span><span></span></div><h3>Take it with you.</h3><p>Back up and restore complete <code>.heritg</code> archives. Interoperate with GEDCOM when you need to.</p><span class="card-tag">Portable by design</span></article>
+        <article class="feature-card feature-card-wide feature-people"><div class="feature-card-copy"><span class="feature-number">04</span><h3>Names that fit your family</h3><p>Record a display name without forcing a first-name or last-name model. Add the relationships that make sense for your family.</p></div><div class="name-stack" aria-hidden="true"><span>Nur Aisyah</span><span>Raden Bagus</span><span>Made Surya</span><span>João &amp; Ana</span></div></article>
+      </div>
+    </div></section>
+
+    <section id="privacy" class="privacy-section section-space"><div class="page-width privacy-grid"><div class="privacy-seal" aria-hidden="true"><span>PRIVATE</span><strong>✦</strong><span>BY DEFAULT</span></div><div class="privacy-copy"><div class="section-kicker">A quieter kind of technology</div><h2>Your memories<br>aren't <em>content.</em></h2><p>HERITG does not require an account, advertising SDK, behavioral tracking, or a network connection for its core family-tree experience. You decide when your archive leaves your device.</p><a class="button button-light" href="../README.md">Read the project notes <span aria-hidden="true">↗</span></a></div></div></section>
+
+    <section id="how-it-works" class="steps page-width section-space"><div class="section-kicker">A simple beginning</div><h2>Start with one name.<br><em>Go from there.</em></h2><div class="step-grid"><div class="step"><span>01</span><h3>Start your tree</h3><p>Add yourself, an elder, or anyone at the heart of your story.</p></div><div class="step"><span>02</span><h3>Build the branches</h3><p>Add parents, partners, children, siblings, and the people connected to them.</p></div><div class="step"><span>03</span><h3>Keep the archive</h3><p>Export a complete backup whenever you want. Your tree remains yours.</p></div></div></section>
+
+    <section id="pricing" class="pricing-section section-space"><div class="page-width"><div class="section-heading"><div><div class="section-kicker">Simple, honest pricing</div><h2>Start free.<br><em>Keep forever.</em></h2></div><p>HERITG is open source and under active development. There is no subscription gate around your family history.</p></div><div class="price-card"><div><span class="feature-number">The archive</span><h3>Free forever</h3><p>All core family-tree features, local storage, and portable exports.</p></div><strong>Rp 0</strong><a class="button button-primary" href="https://github.com/Hamanto-Studio/heritg" target="_blank" rel="noopener">See the project <span aria-hidden="true">↗</span></a></div></div></section>
+
+    <section id="faq" class="faq-section section-space"><div class="page-width faq-grid"><div><div class="section-kicker">Questions, answered</div><h2>Good to<br><em>know.</em></h2></div><div class="faq-list"><details open><summary>Is my family data private?</summary><p>Yes. The core app is local-first. Your data stays on your device unless you explicitly export or share it.</p></details><details><summary>Can I use HERITG without an account?</summary><p>Yes. The core family-tree experience does not require an account or an internet connection.</p></details><details><summary>Can I bring data from another app?</summary><p>HERITG supports GEDCOM import and export, as well as its own complete <code>.heritg</code> backup archive.</p></details><details><summary>What platforms are supported?</summary><p>The native iOS app is available in active development today. Android support and more archive tools are planned.</p></details></div></div></section>
+
+    <section class="availability page-width"><div><span class="status-dot"></span><strong>HERITG is in active development.</strong><p>Native iOS app today, with Android support and more archive tools on the way.</p></div><a class="button button-primary" href="https://github.com/Hamanto-Studio/heritg" target="_blank" rel="noopener">Follow the build <span aria-hidden="true">↗</span></a></section>
+  </main>
+
+  <footer class="site-footer"><div class="page-width footer-inner"><a class="brand" href="#top"><img class="brand-mark" src="appicon.png" alt=""><span>heritg</span></a><p>Made for the stories we inherit.</p><p>© <span id="year"></span> Hamanto Studio</p></div></footer>
+  <script src="site.js"></script>
+</body>
 </html>
