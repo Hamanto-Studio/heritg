@@ -112,6 +112,30 @@ h1, h2, h3, p { margin-top: 0; }
 .demo-parent { top: 45px; left: calc(50% - 115px); }
 .demo-one { left: 7%; bottom: 55px; }.demo-two { left: calc(50% - 115px); bottom: 55px; }.demo-three { right: 7%; bottom: 55px; }
 .demo-credit { margin-top: 15px; font-size: .7rem; }
+.interactive-tree { margin-top: 35px; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: #f3f1ed; text-align: left; box-shadow: 0 18px 40px #2d282214; }
+.tree-demo-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 70px; padding: 13px 18px; border-bottom: 1px solid var(--line); background: #fffdf9; }
+.tree-demo-toolbar > div:first-child { display: flex; flex-direction: column; }
+.tree-demo-toolbar strong { font-size: .9rem; }
+.tree-demo-toolbar span { color: #676561; font-size: .68rem; }
+.tree-demo-controls { display: flex; overflow: hidden; border: 1px solid var(--line); border-radius: 11px; background: white; }
+.tree-demo-controls button { width: 42px; height: 42px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--ink); font-size: 1rem; font-weight: 750; cursor: pointer; }
+.tree-demo-controls button:last-child { border-right: 0; }
+.tree-demo-controls button:hover { background: var(--cream); }
+.tree-demo-viewport { position: relative; height: 620px; overflow: hidden; outline: none; touch-action: pan-y; cursor: grab; background-color: #f5f4f1; background-image: radial-gradient(#d7d3cd 1px, transparent 1px); background-size: 20px 20px; }
+.tree-demo-viewport:active { cursor: grabbing; }
+.tree-demo-viewport:focus-visible { box-shadow: inset 0 0 0 3px var(--brand); }
+.tree-demo-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+.tree-demo-stage svg { position: absolute; top: 0; left: 0; overflow: visible; }
+.tree-demo-stage line { vector-effect: non-scaling-stroke; stroke: #9d8a70; stroke-width: 1.5; stroke-linecap: round; }
+.tree-demo-stage .partner-label { fill: #756957; font: 600 11px var(--sans); text-anchor: middle; }
+.web-tree-node { position: absolute; z-index: 2; display: flex; flex-direction: column; align-items: center; width: 190px; min-height: 122px; padding: 0; border: 0; background: transparent; color: var(--ink); text-align: center; transform: translate(-50%, -32px); cursor: pointer; }
+.web-tree-node .node-avatar { display: grid; place-items: center; width: 64px; height: 64px; overflow: hidden; border: 3px solid white; border-radius: 50%; background: var(--cream); color: #6f5533; font-size: 1rem; font-weight: 850; box-shadow: 0 5px 14px #2d28221c; }
+.web-tree-node img.node-avatar { object-fit: cover; filter: sepia(.15); }
+.web-tree-node strong { max-width: 190px; margin-top: 9px; overflow: hidden; font-size: .78rem; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+.web-tree-node small { margin-top: 3px; color: #676561; font-size: .65rem; }
+.web-tree-node.selected .node-avatar { border-color: var(--brand); box-shadow: 0 0 0 4px #a8875b24, 0 5px 14px #2d28221c; }
+.web-tree-node:hover .node-avatar { transform: translateY(-2px); }
+.tree-demo-hint { margin: 0; padding: 12px 18px; border-top: 1px solid var(--line); background: #fffdf9; color: #676561; font-size: .7rem; text-align: center; }
 .visual-lock { background: #eee1ca; }
 .lock-body { position: absolute; top: 70px; left: calc(50% - 55px); width: 110px; height: 100px; border-radius: 25px; background: var(--brand); transform: rotate(5deg); }
 .lock-body:before { content: ''; position: absolute; top: -50px; left: 25px; width: 52px; height: 60px; border: 10px solid var(--brand); border-bottom: 0; border-radius: 32px 32px 0 0; }
@@ -180,7 +204,7 @@ summary { position: relative; padding-right: 40px; cursor: pointer; list-style: 
   .desktop-cta { display: none; }
   .menu-toggle { display: block; }
   .hero { padding-top: 0; }
-  .hero > .family-fan:first-child { display: block; height: 305px; margin: 0 -24px 50px; overflow: hidden; }
+  .hero > .family-fan:first-child { display: block; height: 305px; margin: 0 calc((100vw - 100%) / -2) 50px; overflow: hidden; }
   .family-fan-desktop { display: none; }
   .family-card { width: 190px; height: 230px; border-width: 5px; border-radius: 22px; gap: 10px; }
   .family-card .portrait { width: 62px; height: 62px; font-size: 1.3rem; }.family-card strong { font-size: 1rem; }.family-card small { font-size: .7rem; }
@@ -215,6 +239,9 @@ summary { position: relative; padding-right: 40px; cursor: pointer; list-style: 
   .visual-tree i:nth-child(1) { width: 50%; left: 25%; top: 42%; }
   .visual-tree i:nth-child(2) { width: 320px; left: 50%; top: 17%; }
   .visual-tree i:nth-child(3) { display: block; width: 210px; left: 50%; top: 42%; transform: rotate(90deg); }
+  .tree-demo-viewport { height: 590px; }
+  .tree-demo-toolbar { align-items: flex-start; }
+  .tree-demo-toolbar > div:first-child { max-width: 190px; }
   .more-features { min-height: auto; }.more-grid { grid-template-columns: 1fr 1fr; gap: 30px; padding: 40px 28px; }
   .no-surveillance { display: block; }.no-card { min-height: 340px; }.no-surveillance > p { margin-top: 35px; font-size: 1.05rem; }
   .open-pills { font-size: .75rem; }.open-source h2 { font-size: 3.2rem; }
