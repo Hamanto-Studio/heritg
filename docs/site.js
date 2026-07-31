@@ -15,6 +15,15 @@ siteNav?.querySelectorAll('a').forEach((link) => {
 
 document.querySelector('#year').textContent = new Date().getFullYear();
 
+fetch('https://api.github.com/repos/Hamanto-Studio/heritg')
+  .then((response) => response.ok ? response.json() : Promise.reject())
+  .then((repository) => {
+    document.querySelectorAll('[data-github-stars]').forEach((element) => {
+      element.textContent = repository.stargazers_count.toLocaleString();
+    });
+  })
+  .catch(() => {});
+
 document.querySelectorAll('details').forEach((item) => {
   item.addEventListener('toggle', () => {
     if (!item.open) return;
