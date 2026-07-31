@@ -1,12 +1,14 @@
-# HERITG for Android
+# HERITG Android
 
-The Android application has not been implemented yet. This directory reserves
-the platform boundary for a future native application using Kotlin, Jetpack
-Compose, Room, and Android platform APIs.
+Native Android implementation of HERITG. The project uses a single Compose activity,
+Room for family data, DataStore for preferences, and a platform-neutral Kotlin
+archive codec.
 
-The Android app must conform to the shared product, archive, privacy, analytics,
-and design documents in [`../docs`](../docs) while remaining independently
-implemented from the iOS UI and persistence layers.
+Build with Java 17:
 
-Do not add production Firebase configuration, service-account credentials,
-keystores, or signing properties to this directory.
+```sh
+./gradlew test assembleDebug
+```
+
+The Android application is intentionally offline. Its manifest does not request
+network, analytics, advertising, or broad storage capabilities.

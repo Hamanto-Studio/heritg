@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">HERITG</string>
+    <string name="app_tagline">Private family archive</string>
+    <plurals name="tree_count">
+        <item quantity="one">%1$d family tree stored locally</item>
+        <item quantity="other">%1$d family trees stored locally</item>
+    </plurals>
+    <string name="empty_state">Your family history stays on this device.</string>
+    <string name="create_tree">Create sample tree</string>
+    <string name="sample_tree_name">My Family</string>
+</resources>

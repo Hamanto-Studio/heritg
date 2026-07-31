@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">HERITG</string>
+    <string name="app_tagline">Arsip keluarga pribadi</string>
+    <plurals name="tree_count">
+        <item quantity="other">%1$d silsilah keluarga tersimpan secara lokal</item>
+    </plurals>
+    <string name="empty_state">Riwayat keluarga Anda tetap berada di perangkat ini.</string>
+    <string name="create_tree">Buat silsilah contoh</string>
+    <string name="sample_tree_name">Keluarga Saya</string>
+</resources>
