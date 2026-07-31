@@ -68,8 +68,8 @@ object FamilyGraph {
         relationships: Collection<FamilyRelationship>,
     ) {
         validatedName(tree.title)
-        val personIds = people.map { it.id }
-        if (personIds.toSet().size != personIds.size || people.any { it.treeId != tree.id }) {
+        val personIds = people.mapTo(HashSet(people.size)) { it.id }
+        if (personIds.size != people.size || people.any { it.treeId != tree.id }) {
             throw FamilyGraphException.InvalidGraph
         }
         if (tree.lastSelectedPersonId != null && tree.lastSelectedPersonId !in personIds) {
@@ -81,7 +81,7 @@ object FamilyGraph {
                 throw FamilyGraphException.DeathBeforeBirth
             }
         }
-        val signatures = mutableSetOf<String>()
+        val signatures = mutableSetOf<Triple<RelationshipKind, String, String>>()
         val relationshipIds = mutableSetOf<String>()
         relationships.forEach { relationship ->
             if (!relationshipIds.add(relationship.id) || relationship.treeId != tree.id ||
@@ -94,7 +94,7 @@ object FamilyGraph {
                 relationship.fromPersonId,
                 relationship.toPersonId,
             )
-            val signature = "${relationship.kind.wireName}|${endpoints.first}|${endpoints.second}"
+            val signature = Triple(relationship.kind, endpoints.first, endpoints.second)
             if (!signatures.add(signature)) throw FamilyGraphException.DuplicateRelationship
         }
     }

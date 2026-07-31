@@ -30,12 +30,49 @@ data class FamilyConnection(
     val junctions: List<Point>,
 )
 
+data class DrawingBounds(val minX: Double, val minY: Double, val width: Double, val height: Double) {
+    val maxX: Double get() = minX + width
+    val maxY: Double get() = minY + height
+}
+
 data class TreeConnectionPlan(
     val families: List<FamilyConnection>,
     val nonParentEdges: List<TreeEdgeLayout>,
     val crossings: List<Point>,
     val showsRelationshipLabels: Boolean,
 ) {
+    fun drawingBounds(nodes: List<TreeNodeLayout>): DrawingBounds {
+        val xValues = mutableListOf<Double>()
+        val yValues = mutableListOf<Double>()
+        families.flatMap { it.segments }.forEach {
+            xValues += listOf(it.start.x, it.end.x)
+            yValues += listOf(it.start.y, it.end.y)
+        }
+        nonParentEdges.forEach {
+            xValues += listOf(it.from.x, it.to.x)
+            yValues += listOf(it.from.y, it.to.y)
+        }
+        nodes.forEach { node ->
+            xValues += listOf(
+                node.position.x - TreeVisualMetrics.NodeLabelWidth / 2,
+                node.position.x + TreeVisualMetrics.NodeLabelWidth / 2,
+            )
+            yValues += listOf(
+                node.position.y - TreeVisualMetrics.AvatarRadius,
+                node.position.y + TreeVisualMetrics.nodeLabelBottomOffset(
+                    showsRelationshipLabels,
+                    node.person.lifeSummary != null,
+                ),
+            )
+        }
+        if (xValues.isEmpty()) return DrawingBounds(-100.0, -100.0, 200.0, 200.0)
+        val minX = xValues.min() - 100
+        val maxX = xValues.max() + 100
+        val minY = yValues.min() - 100
+        val maxY = yValues.max() + 100
+        return DrawingBounds(minX, minY, maxX - minX, maxY - minY)
+    }
+
     companion object {
         fun make(layout: TreeLayoutResult, showsRelationshipLabels: Boolean = true): TreeConnectionPlan {
             val positions = layout.nodes.associate { it.id to it.position }

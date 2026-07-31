@@ -70,8 +70,8 @@ internal object ArchiveValidation {
         ArchiveDates.parseInstant(tree.createdAt)
         ArchiveDates.parseInstant(tree.updatedAt)
 
-        val personIds = people.map { it.id }
-        if (personIds.toSet().size != personIds.size ||
+        val personIds = people.mapTo(HashSet(people.size)) { it.id }
+        if (personIds.size != people.size ||
             tree.lastSelectedPersonId != null && tree.lastSelectedPersonId !in personIds
         ) throw ArchiveException.InvalidArchive()
         val referencedMedia = mutableSetOf<String>()
@@ -105,7 +105,7 @@ internal object ArchiveValidation {
         if (referencedMedia != media.keys) throw ArchiveException.InvalidArchive()
 
         val ids = mutableSetOf<String>()
-        val signatures = mutableSetOf<String>()
+        val signatures = mutableSetOf<Triple<RelationshipKind, String, String>>()
         relationships.forEach { relationship ->
             if (relationship.schemaVersion != ArchiveConstants.SchemaVersion) throw ArchiveException.UnsupportedVersion()
             val kind = RelationshipKind.fromWire(relationship.kind) ?: throw ArchiveException.InvalidArchive()
@@ -121,7 +121,7 @@ internal object ArchiveValidation {
             val endpoints = if (kind == RelationshipKind.PARENT) {
                 listOf(relationship.fromPersonId, relationship.toPersonId)
             } else listOf(relationship.fromPersonId, relationship.toPersonId).sorted()
-            if (!signatures.add("${kind.wireName}|${endpoints[0]}|${endpoints[1]}")) {
+            if (!signatures.add(Triple(kind, endpoints[0], endpoints[1]))) {
                 throw ArchiveException.InvalidArchive()
             }
         }

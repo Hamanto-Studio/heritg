@@ -2,7 +2,9 @@ package tech.robihamanto.heritg.android.core.interop
 
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatterBuilder
 import java.time.format.ResolverStyle
 import java.time.temporal.ChronoField
@@ -38,11 +40,14 @@ internal object ArchiveDates {
     }
 
     fun calendarDate(value: Instant?, zoneId: ZoneId = ZoneId.systemDefault()): String? =
-        value?.atZone(zoneId)?.toLocalDate()?.format(calendarFormatter)?.also {
+        value?.let { instant ->
+            val utc = instant.atZone(ZoneOffset.UTC)
+            if (utc.toLocalTime() == LocalTime.MIDNIGHT) utc.toLocalDate() else instant.atZone(zoneId).toLocalDate()
+        }?.format(calendarFormatter)?.also {
             if (!calendarRegex.matches(it)) throw ArchiveException.InvalidArchive()
         }
 
-    fun parseCalendarDate(value: String?, zoneId: ZoneId = ZoneId.systemDefault()): Instant? {
+    fun parseCalendarDate(value: String?, zoneId: ZoneId = ZoneOffset.UTC): Instant? {
         value ?: return null
         if (!calendarRegex.matches(value)) throw ArchiveException.InvalidArchive()
         return try {

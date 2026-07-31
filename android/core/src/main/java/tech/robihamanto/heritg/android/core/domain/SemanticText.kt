@@ -4,6 +4,7 @@ import tech.robihamanto.heritg.android.core.model.Person
 import tech.robihamanto.heritg.android.core.model.PersonGender
 import tech.robihamanto.heritg.android.core.model.RelationshipKind
 import tech.robihamanto.heritg.android.core.model.RelationshipSubtype
+import tech.robihamanto.heritg.android.core.model.GenealogyDates
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Locale
@@ -11,6 +12,8 @@ import java.util.Locale
 fun interface SemanticFormatter {
     fun text(key: String, vararg arguments: Any): String
 }
+
+typealias SemanticTextHook = (locale: Locale, key: String, arguments: List<Any>) -> String?
 
 object EnglishSemanticFormatter : SemanticFormatter {
     override fun text(key: String, vararg arguments: Any): String = when (key) {
@@ -66,6 +69,7 @@ object IndonesianSemanticFormatter : SemanticFormatter {
         "twiceRemoved" -> "${arguments[0]} beda dua generasi"
         "timesRemoved" -> "${arguments[0]} beda ${arguments[1]} generasi"
         "byMarriage" -> "${arguments[0]} karena perkawinan"
+        "Married" -> "Menikah"
         "born" -> "Lahir ${arguments[0]}"
         "bornAge" -> "Lahir ${arguments[0]} · usia ${arguments[1]}"
         "yearsAge" -> "${arguments[0]}-${arguments[1]} · usia ${arguments[2]}"
@@ -73,8 +77,14 @@ object IndonesianSemanticFormatter : SemanticFormatter {
     }
 }
 
-fun semanticFormatter(locale: Locale): SemanticFormatter =
-    if (locale.language == "id") IndonesianSemanticFormatter else EnglishSemanticFormatter
+fun semanticFormatter(locale: Locale, hook: SemanticTextHook? = null): SemanticFormatter {
+    val fallback = if (locale.language == "id") IndonesianSemanticFormatter else EnglishSemanticFormatter
+    return hook?.let { localized ->
+        SemanticFormatter { key, arguments ->
+            localized(locale, key, arguments.asList()) ?: fallback.text(key, *arguments)
+        }
+    } ?: fallback
+}
 
 object LifeSummary {
     fun displayNameWithAge(
@@ -83,8 +93,11 @@ object LifeSummary {
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): String {
         val age = person.age(at, zoneId) ?: return person.displayName
-        val birthYear = person.birthDate?.atZone(zoneId)?.year ?: return person.displayName
-        val deathYear = person.deathDate?.atZone(zoneId)?.year
+        val birthYear = person.birthDate?.let { GenealogyDates.toCalendarDate(it, zoneId).year }
+            ?: return person.displayName
+        val deathYear = person.deathDate?.let {
+            GenealogyDates.toCalendarDate(it, zoneId).year
+        }
         return if (deathYear == null) "${person.displayName} ($age)"
         else "${person.displayName} ($age) ($birthYear-$deathYear)"
     }
@@ -95,9 +108,13 @@ object LifeSummary {
         at: Instant = Instant.now(),
         zoneId: ZoneId = ZoneId.systemDefault(),
     ): String? {
-        val birthYear = person.birthDate?.atZone(zoneId)?.year ?: return null
+        val birthYear = person.birthDate?.let {
+            GenealogyDates.toCalendarDate(it, zoneId).year
+        } ?: return null
         val age = person.age(at, zoneId)
-        val deathYear = person.deathDate?.atZone(zoneId)?.year
+        val deathYear = person.deathDate?.let {
+            GenealogyDates.toCalendarDate(it, zoneId).year
+        }
         return when {
             deathYear != null && age != null -> formatter.text("yearsAge", birthYear, deathYear, age)
             deathYear != null -> "$birthYear-$deathYear"

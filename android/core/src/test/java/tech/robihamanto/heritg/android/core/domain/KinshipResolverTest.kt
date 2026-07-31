@@ -6,6 +6,7 @@ import org.junit.Test
 import tech.robihamanto.heritg.android.core.model.PersonGender
 import tech.robihamanto.heritg.android.core.model.RelationshipKind
 import tech.robihamanto.heritg.android.core.model.RelationshipSubtype
+import java.util.Locale
 
 class KinshipResolverTest {
     @Test fun resolvesCareSiblingAndInLawLabels() {
@@ -45,6 +46,31 @@ class KinshipResolverTest {
         )
         assertEquals("Second cousin", label("cousin", people, relationships))
         assertEquals("Second cousin once removed", label("child", people, relationships))
+    }
+
+    @Test fun indonesianFormatterCoversDirectLineageAndInLaws() {
+        val people = listOf(
+            person("focus"), person("spouse"), person("mother", PersonGender.FEMALE),
+            person("parent"), person("grand", PersonGender.MALE),
+        )
+        val relationships = listOf(
+            relation("focus", "spouse", RelationshipKind.PARTNER, RelationshipSubtype.SPOUSE),
+            parent("mother", "spouse"), parent("grand", "parent"), parent("parent", "focus"),
+        )
+        val formatter = semanticFormatter(Locale.forLanguageTag("id-ID"))
+
+        assertEquals("Ibu mertua", KinshipResolver.label("mother", "focus", people, relationships, formatter))
+        assertEquals("Kakek", KinshipResolver.label("grand", "focus", people, relationships, formatter))
+    }
+
+    @Test fun semanticHookReceivesLocaleAndFallsBackToAppFormatter() {
+        val locale = Locale.forLanguageTag("id-ID")
+        val formatter = semanticFormatter(locale) { received, key, _ ->
+            if (key == "Mother") "Custom ${received.toLanguageTag()}" else null
+        }
+
+        assertEquals("Custom id-ID", formatter.text("Mother"))
+        assertEquals("Ayah", formatter.text("Father"))
     }
 
     private fun person(id: String, gender: PersonGender = PersonGender.UNSPECIFIED) = PersonSnapshot(id, id, gender)

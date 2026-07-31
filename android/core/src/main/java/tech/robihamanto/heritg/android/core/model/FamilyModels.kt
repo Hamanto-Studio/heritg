@@ -4,6 +4,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.Period
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.UUID
 
 enum class RelationshipKind(val wireName: String) {
@@ -100,8 +101,9 @@ data class Person(
     val profilePhotoData: ByteArray? = null,
 ) {
     fun age(at: Instant = Instant.now(), zoneId: ZoneId = ZoneId.systemDefault()): Int? {
-        val birth = birthDate?.atZone(zoneId)?.toLocalDate() ?: return null
-        val reference = (deathDate ?: at).atZone(zoneId).toLocalDate()
+        val birth = birthDate?.let { GenealogyDates.toCalendarDate(it, zoneId) } ?: return null
+        val reference = deathDate?.let { GenealogyDates.toCalendarDate(it, zoneId) }
+            ?: at.atZone(zoneId).toLocalDate()
         if (reference < birth) return null
         return Period.between(birth, reference).years
     }
@@ -132,7 +134,22 @@ data class FamilyRelationship(
 ) {
     val marriageYear: String?
         get() = marriageDate?.takeIf { kind == RelationshipKind.PARTNER }
-            ?.atZone(ZoneId.systemDefault())?.year?.toString()
+            ?.let { GenealogyDates.toCalendarDate(it).year.toString() }
+}
+
+object GenealogyDates {
+    val zoneId: ZoneId = ZoneOffset.UTC
+
+    fun fromCalendarDate(value: LocalDate): Instant = value.atStartOfDay(zoneId).toInstant()
+
+    fun toCalendarDate(value: Instant, deviceZoneId: ZoneId = ZoneId.systemDefault()): LocalDate {
+        val utc = value.atZone(ZoneOffset.UTC)
+        return if (utc.toLocalTime() == java.time.LocalTime.MIDNIGHT) {
+            utc.toLocalDate()
+        } else {
+            value.atZone(deviceZoneId).toLocalDate()
+        }
+    }
 }
 
 data class PersonDetails(

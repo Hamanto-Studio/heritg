@@ -29,7 +29,7 @@ same format and becomes the final commit subject on `main`.
 ## Repository Layout
 
 - `ios/`: SwiftUI and SwiftData application, unit tests, and UI tests
-- `android/`: future Kotlin and Jetpack Compose application boundary
+- `android/`: Kotlin and Jetpack Compose application, core modules, and tests
 - `docs/`: specifications shared by all platforms
 
 Platform implementations follow shared behavior and data contracts while using
@@ -53,9 +53,18 @@ Include before-and-after screenshots for visible UI changes.
 
 ## Android Development
 
-Android has not started. Coordinate foundational Gradle, package, persistence,
-and archive-format decisions in an issue before creating the project. Future
-Android code belongs under `android/` and must conform to the shared documents.
+Use Java 17 and Android SDK 37. Before opening a pull request, run:
+
+```sh
+./android/gradlew \
+  -p android \
+  test assembleDebug lintDebug assembleDebugAndroidTest assembleRelease \
+  --no-configuration-cache
+```
+
+Run `connectedDebugAndroidTest` when a device or emulator is available. Android
+changes must preserve the shared domain, archive, encryption, layout, privacy,
+and localization contracts used by iOS.
 
 ## Privacy and Security
 

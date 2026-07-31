@@ -78,9 +78,10 @@ object GenerationFilter {
     ): Map<String, Int>? {
         val selected = selectedPersonId?.takeIf { it in validPersonIds } ?: return null
         val selectedDepth = depths[selected] ?: return null
-        val connected = connectedIds(selected, validPersonIds, relationships)
-        val ancestors = parentDistances(selected, validPersonIds, relationships, true)
-        val descendants = parentDistances(selected, validPersonIds, relationships, false)
+        val adjacency = adjacency(validPersonIds, relationships)
+        val connected = connectedIds(selected, adjacency.all)
+        val ancestors = parentDistances(selected, adjacency.parents)
+        val descendants = parentDistances(selected, adjacency.children)
         return connected.associateWith { id ->
             val fallback = (depths[id] ?: selectedDepth) - selectedDepth
             val up = ancestors[id]
@@ -98,23 +99,17 @@ object GenerationFilter {
 
     private fun parentDistances(
         start: String,
-        validIds: Set<String>,
-        relationships: Collection<RelationshipSnapshot>,
-        followsParents: Boolean,
+        adjacent: Map<String, List<String>>,
     ): Map<String, Int> {
         val result = mutableMapOf<String, Int>()
         val queue = ArrayDeque<Pair<String, Int>>().apply { add(start to 0) }
         while (queue.isNotEmpty()) {
             val (id, distance) = queue.removeFirst()
-            relationships.asSequence().filter { it.kind == RelationshipKind.PARENT }.mapNotNull {
-                when {
-                    followsParents && it.toPersonId == id -> it.fromPersonId
-                    !followsParents && it.fromPersonId == id -> it.toPersonId
-                    else -> null
+            adjacent[id].orEmpty().forEach { next ->
+                if (next != start && next !in result) {
+                    result[next] = distance + 1
+                    queue.add(next to distance + 1)
                 }
-            }.filter { it in validIds && it != start && it !in result }.forEach {
-                result[it] = distance + 1
-                queue.add(it to distance + 1)
             }
         }
         return result
@@ -122,21 +117,41 @@ object GenerationFilter {
 
     private fun connectedIds(
         start: String,
-        validIds: Set<String>,
-        relationships: Collection<RelationshipSnapshot>,
+        adjacent: Map<String, List<String>>,
     ): Set<String> {
-        val adjacent = mutableMapOf<String, MutableSet<String>>()
-        relationships.forEach {
-            if (it.fromPersonId in validIds && it.toPersonId in validIds && it.fromPersonId != it.toPersonId) {
-                adjacent.getOrPut(it.fromPersonId, ::mutableSetOf).add(it.toPersonId)
-                adjacent.getOrPut(it.toPersonId, ::mutableSetOf).add(it.fromPersonId)
-            }
-        }
         val result = mutableSetOf(start)
         val queue = ArrayDeque<String>().apply { add(start) }
-        while (queue.isNotEmpty()) adjacent[queue.removeFirst()].orEmpty().sorted().forEach {
+        while (queue.isNotEmpty()) adjacent[queue.removeFirst()].orEmpty().forEach {
             if (result.add(it)) queue.add(it)
         }
         return result
     }
+
+    private fun adjacency(
+        validIds: Set<String>,
+        relationships: Collection<RelationshipSnapshot>,
+    ): Adjacency {
+        val all = mutableMapOf<String, MutableSet<String>>()
+        val parents = mutableMapOf<String, MutableSet<String>>()
+        val children = mutableMapOf<String, MutableSet<String>>()
+        relationships.forEach { relationship ->
+            val from = relationship.fromPersonId
+            val to = relationship.toPersonId
+            if (from !in validIds || to !in validIds || from == to) return@forEach
+            all.getOrPut(from, ::mutableSetOf).add(to)
+            all.getOrPut(to, ::mutableSetOf).add(from)
+            if (relationship.kind == RelationshipKind.PARENT) {
+                parents.getOrPut(to, ::mutableSetOf).add(from)
+                children.getOrPut(from, ::mutableSetOf).add(to)
+            }
+        }
+        fun sorted(values: Map<String, Set<String>>) = values.mapValues { it.value.sorted() }
+        return Adjacency(sorted(all), sorted(parents), sorted(children))
+    }
+
+    private data class Adjacency(
+        val all: Map<String, List<String>>,
+        val parents: Map<String, List<String>>,
+        val children: Map<String, List<String>>,
+    )
 }
