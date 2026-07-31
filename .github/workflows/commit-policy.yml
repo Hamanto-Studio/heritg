@@ -1,0 +1,41 @@
+name: Commit Policy
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: Commit Title
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - name: Validate squash commit title
+        shell: bash
+        run: |
+          if (( ${#PR_TITLE} > 72 )); then
+            echo "Title must be 72 characters or fewer."
+            exit 1
+          fi
+
+          if [[ ! "$PR_TITLE" =~ ^[A-Z][A-Za-z0-9\ .\&/-]{1,23}:\ [A-Z0-9].{4,}$ ]]; then
+            echo "Use: <Area>: <Imperative outcome>"
+            echo "Example: iOS: Preserve the viewport after selection changes"
+            exit 1
+          fi
+
+          if [[ "$PR_TITLE" == *. ]]; then
+            echo "Do not end the title with a period."
+            exit 1
+          fi
+
+          normalized=$(printf '%s' "$PR_TITLE" | tr '[:upper:]' '[:lower:]')
+          if [[ "$normalized" =~ ^(fix|feat|feature|chore|docs|refactor|test|ci|build|perf|style|revert)(\(.+\))?: ]]; then
+            echo "Use a product area instead of a Conventional Commit type."
+            exit 1
+          fi

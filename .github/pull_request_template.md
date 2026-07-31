@@ -2,6 +2,9 @@
 
 Describe what changed and why.
 
+The pull-request title becomes the squash commit subject and must use
+`<Area>: <Imperative outcome>`. See `docs/COMMITS.md`.
+
 ## Verification
 
 - [ ] Relevant tests pass locally.

@@ -11,6 +11,21 @@ License in this repository.
 - Never use real family data in code, tests, fixtures, screenshots, logs, or
   issue reports.
 
+## Commit Messages
+
+Use the intent-first format documented in [`docs/COMMITS.md`](docs/COMMITS.md):
+
+```text
+<Area>: <Imperative outcome>
+```
+
+Examples include `iOS: Preserve the viewport after selection changes` and
+`Privacy: Document optional diagnostic reporting`. Do not prefix messages with
+Conventional Commit types such as `fix`, `feat`, or `chore`.
+
+Because pull requests are squash merged, the pull-request title must follow the
+same format and becomes the final commit subject on `main`.
+
 ## Repository Layout
 
 - `ios/`: SwiftUI and SwiftData application, unit tests, and UI tests
