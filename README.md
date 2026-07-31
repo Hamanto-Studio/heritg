@@ -45,6 +45,7 @@ The current iOS app supports:
 - People and family relationship editing
 - An interactive visual family tree
 - GEDCOM family-data import and export
+- Optional password encryption for `.heritg` backup and restore
 - Image and SVG tree export
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
@@ -71,6 +72,25 @@ The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
 network service, permission, or third-party SDK must be documented before
 release.
+
+### Encrypted Backup and Restore
+
+When exporting a `.heritg` backup, users can optionally protect the family-data
+payload with a password. HERITG encrypts and authenticates protected archives
+with AES-256-GCM. The encryption key is derived from the password using
+PBKDF2-HMAC-SHA256 with 600,000 iterations and a new random salt for every
+archive.
+
+During import, HERITG detects whether a `.heritg` archive is encrypted. An
+encrypted archive must be unlocked with the same password before its contents
+are decoded, validated, or restored. An incorrect password or modified archive
+is rejected without importing partial family data.
+
+Password protection is optional. An unencrypted `.heritg` backup can be read by
+anyone who obtains the file. HERITG does not store or recover archive passwords,
+so a protected backup cannot be restored if its password is lost. This
+protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports are
+not encrypted by this option.
 
 ## Project Status
 
