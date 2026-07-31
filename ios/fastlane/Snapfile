@@ -1,0 +1,25 @@
+project "Heritg.xcodeproj"
+scheme "HERITG"
+only_testing(["HERITGUITests/HeritgUITests/testAppStoreScreenshots"])
+xcargs "-parallel-testing-enabled NO"
+
+devices([
+  "iPhone 17 Pro",
+  "iPhone 15 Pro"
+])
+
+languages([
+  "en-US",
+  "id"
+])
+
+output_directory "./fastlane/screenshots"
+clear_previous_screenshots true
+reinstall_app true
+# Preserve any simulator that is already running. Snapshot can boot the
+# configured destination without erasing it first.
+erase_simulator false
+concurrent_simulators false
+stop_after_first_error true
+number_of_retries 1
+skip_open_summary true

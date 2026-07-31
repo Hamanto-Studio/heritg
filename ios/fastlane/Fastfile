@@ -1,0 +1,8 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Capture localized App Store screenshots"
+  lane :screenshots do
+    snapshot
+  end
+end

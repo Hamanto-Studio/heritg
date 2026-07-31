@@ -1,0 +1,51 @@
+name: Bug report
+description: Report a reproducible problem without including private family data.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: checkboxes
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed family data, exports, credentials, and personal information from this report.
+          required: true
+        - label: I searched existing issues for this problem.
+          required: true
+  - type: dropdown
+    attributes:
+      label: Platform
+      options: [iOS, "Android (planned)"]
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: App version and build
+      placeholder: 1.0 (12)
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: OS and device
+      placeholder: iOS 26.1, iPhone 17 Pro
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      description: Use synthetic example data only.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Do not upload archives, GEDCOM files, logs, or screenshots containing family information.

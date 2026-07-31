@@ -1,0 +1,44 @@
+name: Feature request
+description: Propose an improvement and describe its privacy impact.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: checkboxes
+    attributes:
+      label: Safety check
+      options:
+        - label: I did not include real family data or personal information.
+          required: true
+        - label: I searched existing issues for this request.
+          required: true
+  - type: textarea
+    attributes:
+      label: Problem
+      description: What user need should be addressed?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Platform scope
+      multiple: true
+      options:
+        - Shared product behavior
+        - iOS
+        - Android (planned)
+        - Data format
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Privacy and data-processing impact
+      description: Describe networking, accounts, permissions, SDKs, analytics, or storage implications.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Alternatives considered
