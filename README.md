@@ -32,9 +32,6 @@
   <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/ios-ci.yml">
     <img alt="iOS build and test status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/ios-ci.yml/badge.svg" />
   </a>
-  <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/android-ci.yml">
-    <img alt="Android build and test status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/android-ci.yml/badge.svg" />
-  </a>
   <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/secret-scan.yml">
     <img alt="Secret scanning status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/secret-scan.yml/badge.svg" />
   </a>
@@ -69,7 +66,7 @@ backed by inspectable policies and automated checks:
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), [manual Android CI](.github/workflows/android-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), local Android verification, [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
