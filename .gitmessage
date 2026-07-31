@@ -1,0 +1,16 @@
+<Area>: <Imperative outcome, 72 characters maximum>
+
+# Context:
+# Why is this change needed? Remove this section if the subject is sufficient.
+
+# Decision:
+# Record non-obvious behavior, constraints, or tradeoffs.
+
+# Validation:
+# - List only tests and checks that actually ran.
+
+# Privacy:
+# - State data, network, permission, or SDK impact when relevant.
+
+# Refs: #123
+# Assisted-by: Tool name

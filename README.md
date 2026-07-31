@@ -69,6 +69,8 @@ third-party crash-reporting SDK.
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before submitting a pull request.
 Never include real family data, credentials, signing material, or production
 configuration.
+Commit and pull-request titles follow the intent-first
+[`commit message guide`](docs/COMMITS.md).
 
 ## Trademark
 
