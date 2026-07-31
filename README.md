@@ -65,7 +65,7 @@ backed by inspectable policies and automated checks:
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Reviewed, tested changes | [iOS CI](.github/workflows/ios-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
