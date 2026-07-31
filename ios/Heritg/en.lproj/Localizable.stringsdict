@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>%lld warnings</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@warnings@</string>
+        <key>warnings</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>lld</string>
+            <key>one</key>
+            <string>%lld warning</string>
+            <key>other</key>
+            <string>%lld warnings</string>
+        </dict>
+    </dict>
+    <key>%lld levels</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@levels@</string>
+        <key>levels</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>lld</string>
+            <key>one</key>
+            <string>%lld level</string>
+            <key>other</key>
+            <string>%lld levels</string>
+        </dict>
+    </dict>
+    <key>%lld people</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>%#@people@</string>
+        <key>people</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>lld</string>
+            <key>one</key>
+            <string>%lld person</string>
+            <key>other</key>
+            <string>%lld people</string>
+        </dict>
+    </dict>
+    <key>This permanently deletes %lld people and %lld relationships from this device. This can’t be undone.</key>
+    <dict>
+        <key>NSStringLocalizedFormatKey</key>
+        <string>This permanently deletes %#@people@ and %#@relationships@ from this device. This can’t be undone.</string>
+        <key>people</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>lld</string>
+            <key>one</key>
+            <string>%lld person</string>
+            <key>other</key>
+            <string>%lld people</string>
+        </dict>
+        <key>relationships</key>
+        <dict>
+            <key>NSStringFormatSpecTypeKey</key>
+            <string>NSStringPluralRuleType</string>
+            <key>NSStringFormatValueTypeKey</key>
+            <string>lld</string>
+            <key>one</key>
+            <string>%lld relationship</string>
+            <key>other</key>
+            <string>%lld relationships</string>
+        </dict>
+    </dict>
+</dict>
+</plist>

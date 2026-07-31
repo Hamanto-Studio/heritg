@@ -1,0 +1,76 @@
+# Data Processing Register
+
+Last reviewed: July 31, 2026
+
+This register identifies data flows in the official HERITG application. It is
+intended to keep the privacy policy, implementation, and App Store disclosures
+consistent.
+
+## Current Processing
+
+| Component | Status | Purpose | Data | Destination | User control |
+| --- | --- | --- | --- | --- | --- |
+| SwiftData and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
+| File import | Active | Import genealogy records | User-selected file contents | Processed on-device | User explicitly selects a file |
+| Image and document export | Active | Create user-requested exports | User-selected family-tree content | User-selected system share destination | User initiates and chooses destination |
+| External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
+| App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
+| App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
+
+## Not Currently Active
+
+| Service | Status | Policy |
+| --- | --- | --- |
+| Product analytics | Not integrated | May be introduced only as optional collection under `ANALYTICS.md` |
+| Firebase Analytics / Google Analytics | Not used | Not approved for HERITG under the current policy |
+| Firebase infrastructure | Not integrated | A selected service requires a documented purpose and register update |
+| Sentry | Not integrated | Optional diagnostics would require separate consent and sanitization |
+| Firebase Crashlytics | Not integrated | Optional diagnostics would require separate consent and sanitization |
+| Advertising and attribution SDKs | Not integrated | Cross-app tracking and advertising profiles are prohibited |
+| Session replay and heatmaps | Not integrated | Prohibited by the analytics policy |
+| HERITG account or hosted family database | Not available | Core functionality remains account-free and local |
+
+## Provider Approval Requirements
+
+Before adding a provider, the implementing pull request must document:
+
+1. The exact SDK products and modules included.
+2. The purpose and legal basis for processing.
+3. Every collected field, automatic field, identifier, and event.
+4. Data destinations, subprocessors, regions, retention, and deletion behavior.
+5. Whether collection occurs before consent or when the app is offline.
+6. How users enable, disable, reset, export, or delete associated data.
+7. How development, test, preview, and community builds remain no-op.
+8. Required App Store privacy-label and privacy-policy updates.
+
+Approval applies to specific modules, not an entire vendor. For example, using
+Firebase Storage does not approve Firebase Analytics, Crashlytics, Performance
+Monitoring, Remote Config, or Cloud Messaging.
+
+## Data Classification
+
+| Classification | Examples | Analytics | Diagnostics | Local app storage |
+| --- | --- | --- | --- | --- |
+| Family content | Names, dates, relationships, notes, photos, tree titles | Prohibited | Prohibited | Allowed |
+| User-selected files | GEDCOM, HERITG archives, exported images and documents | Prohibited | Prohibited | Allowed when required by the feature |
+| Product events | Approved events in `ANALYTICS.md` | Optional with consent | Not applicable | Temporary queue only if implemented |
+| Technical diagnostics | Error code, stack trace, app version, OS version | Not applicable | Optional with separate consent | Temporary queue only if implemented |
+| Direct identifiers | Email, phone number, account ID, advertising ID | Prohibited | Prohibited | Not required by current app |
+| Credentials | API secrets, private keys, service accounts, signing passwords | Prohibited | Prohibited | Never bundled with the app |
+
+## Review Triggers
+
+Review and update this register when any of the following changes:
+
+- A dependency, SDK module, backend, or network endpoint is added
+- An entitlement or background mode is enabled
+- Analytics or diagnostic events change
+- Sync, backup, collaboration, accounts, notifications, or purchases are added
+- Data retention, processing region, provider terms, or subprocessors change
+- App Store privacy questions receive a different answer
+
+## Related Documents
+
+- [Privacy Policy](../PRIVACY.md)
+- [Analytics Policy](ANALYTICS.md)
+- [Security Policy](../SECURITY.md)
