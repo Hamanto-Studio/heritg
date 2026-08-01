@@ -31,6 +31,9 @@ class AppFlowTest {
 
     @Test
     fun creationNavigationLanguageEncryptionAndSemantics() {
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNodeWithTag("trees.create.empty", true).assertIsDisplayed(); true }.getOrDefault(false)
+        }
         compose.onNodeWithTag("trees.create.empty", useUnmergedTree = true).performClick()
         compose.onNodeWithTag("trees.create.confirm", useUnmergedTree = true).assertIsEnabled().performClick()
         compose.waitUntil(5_000) {

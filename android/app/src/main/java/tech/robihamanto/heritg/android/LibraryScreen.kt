@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -75,7 +74,6 @@ internal fun LibraryScreen(
     var error by uiState.state<String?>("library:error") { null }
     val baseName = stringResource(R.string.my_family_tree)
     val addTreeDescription = stringResource(R.string.add_family_tree)
-    val createTreeDescription = stringResource(R.string.create_family_tree)
     val suggested = remember(trees, baseName) {
         if (trees.none { it.title == baseName }) baseName else generateSequence(2) { it + 1 }
             .map { "$baseName $it" }.first { candidate -> trees.none { it.title == candidate } }
@@ -91,30 +89,26 @@ internal fun LibraryScreen(
             navigationIcon = { onClose?.let { close -> TextButton(onClick = close,
                 modifier = Modifier.testTag("trees.close")) { Text(stringResource(R.string.done)) } } },
             actions = {
-                TextButton(
-                    onClick = { addMenu = true },
-                    modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .semantics { contentDescription = addTreeDescription }.testTag("trees.add"),
-                ) { Text("+") }
-                DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.new_family_tree)) }, onClick = {
-                        addMenu = false; createName = suggested
-                    }, modifier = Modifier.testTag("trees.create.menu"))
-                    DropdownMenuItem(text = { Text(stringResource(R.string.import_gedcom)) }, onClick = {
-                        addMenu = false; onImportGedcom()
-                    }, modifier = Modifier.testTag("trees.import"))
-                    DropdownMenuItem(text = { Text(stringResource(R.string.restore_backup)) }, onClick = {
-                        addMenu = false; onImportArchive()
-                    }, modifier = Modifier.testTag("trees.importHeritg"))
+                if (trees.isNotEmpty()) {
+                    TextButton(
+                        onClick = { addMenu = true },
+                        modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                            .semantics { contentDescription = addTreeDescription }.testTag("trees.add"),
+                    ) { Text("+") }
+                    DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.new_family_tree)) }, onClick = {
+                            addMenu = false; createName = suggested
+                        }, modifier = Modifier.testTag("trees.create.menu"))
+                        DropdownMenuItem(text = { Text(stringResource(R.string.import_gedcom)) }, onClick = {
+                            addMenu = false; onImportGedcom()
+                        }, modifier = Modifier.testTag("trees.import"))
+                        DropdownMenuItem(text = { Text(stringResource(R.string.restore_backup)) }, onClick = {
+                            addMenu = false; onImportArchive()
+                        }, modifier = Modifier.testTag("trees.importHeritg"))
+                    }
                 }
             },
         ) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { createName = suggested }, modifier = Modifier
-                .semantics { contentDescription = createTreeDescription }.testTag("trees.create.fab")) {
-                Text("+")
-            }
-        },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(Modifier.padding(padding).padding(horizontal = 16.dp)) {
@@ -152,7 +146,7 @@ internal fun LibraryScreen(
                         onExport = { onExport(tree) }, onDelete = { deleting = tree },
                     )
                 }
-                item { Spacer(Modifier.height(80.dp)) }
+                item { Spacer(Modifier.height(16.dp)) }
             }
         }
     }
