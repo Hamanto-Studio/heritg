@@ -4,6 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertCountEquals
@@ -11,11 +12,16 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
+import androidx.test.espresso.Espresso.pressBack
 import org.junit.Rule
 import org.junit.Test
 
@@ -38,9 +44,12 @@ class AppFlowTest {
         }
         val selectedRole = compose.activity.getString(R.string.you)
         val personNode = hasContentDescription("Rina") and hasStateDescription(selectedRole) and hasClickAction()
+        compose.waitUntil(5_000) {
+            runCatching { compose.onNode(personNode, true).assertIsDisplayed(); true }.getOrDefault(false)
+        }
         compose.onNode(personNode, useUnmergedTree = true).assertIsSelected().assertHasClickAction()
         compose.onAllNodes(personNode, useUnmergedTree = true).assertCountEquals(1)
-        compose.onAllNodesWithText("Rina", useUnmergedTree = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Rina").assertCountEquals(0)
 
         compose.onNodeWithContentDescription(
             compose.activity.getString(R.string.edit_person_named, "Rina"), useUnmergedTree = true,
@@ -61,26 +70,29 @@ class AppFlowTest {
         compose.waitForIdle()
         compose.onNodeWithTag("settings.language.id", true).assertIsSelected()
 
-        compose.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        pressBack()
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithTag("tree.settings", true).assertIsDisplayed(); true }.getOrDefault(false)
         }
         compose.onNodeWithTag("tree.settings", true).performClick()
         compose.onNodeWithTag("settings.export", true).performClick()
         compose.onNodeWithTag("settings.encryptArchive", true).performClick()
-        compose.onNodeWithTag("settings.archivePassword", true).assertIsDisplayed()
-        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).assertIsDisplayed()
+        compose.onNodeWithTag("settings.archivePassword", true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("first")
         compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("second")
-        compose.onNodeWithTag("settings.passwordMismatch", true).assertIsDisplayed()
+        compose.onNodeWithTag("settings.passwordMismatch", true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("rotation-secret")
         compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("rotation-secret")
         compose.activityRule.scenario.recreate()
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithTag("settings.archivePassword", true).assertIsDisplayed(); true }.getOrDefault(false)
         }
-        compose.onNodeWithTag("settings.archivePassword", true).assertTextEquals("rotation-secret")
-        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).assertTextEquals("rotation-secret")
+        val retainedSecret = SemanticsMatcher.expectValue(
+            SemanticsProperties.InputText, AnnotatedString("rotation-secret"),
+        )
+        compose.onNodeWithTag("settings.archivePassword", true).assert(retainedSecret)
+        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).assert(retainedSecret)
         compose.onNodeWithTag("settings.exportHeritg", true).assertIsDisplayed()
     }
 }

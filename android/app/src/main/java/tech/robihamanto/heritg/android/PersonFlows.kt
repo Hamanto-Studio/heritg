@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,7 +114,8 @@ internal fun AppOverlay(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Sheet(onClose: () -> Unit, content: @Composable () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onClose, modifier = Modifier.fillMaxHeight(.94f)) { content() }
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = state, modifier = Modifier.fillMaxHeight(.94f)) { content() }
 }
 
 @Composable
