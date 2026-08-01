@@ -49,11 +49,15 @@ val Danger = Color(0xFF9B3D34)
 fun HeritgTheme(content: @Composable () -> Unit) {
     val colors = if (isSystemInDarkTheme()) darkColorScheme(
         primary = Color(0xFF9BC7AC), onPrimary = Color(0xFF163426),
+        secondary = Color(0xFFA9C28A), onSecondary = Color.White,
+        tertiary = Color(0xFFD0B486), onTertiary = Color.White,
         background = Color(0xFF111814), surface = Color(0xFF1A241E),
         surfaceVariant = Color(0xFF27332C), onBackground = Color(0xFFE1EAE3),
         onSurface = Color(0xFFE1EAE3), error = Color(0xFFFFB4AB),
     ) else lightColorScheme(
         primary = Moss, onPrimary = Color.White, background = Paper, surface = Card,
+        secondary = Color(0xFF7E9B63), onSecondary = Color.White,
+        tertiary = Color(0xFFA8875B), onTertiary = Color.White,
         surfaceVariant = Recessed, onBackground = Ink, onSurface = Ink, error = Danger,
     )
     MaterialTheme(

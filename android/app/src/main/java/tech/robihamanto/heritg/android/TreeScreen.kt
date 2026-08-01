@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -72,6 +73,7 @@ import tech.robihamanto.heritg.android.core.tree.TreeConnectionPlan
 import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
 import tech.robihamanto.heritg.android.core.tree.TreeLayout
 import tech.robihamanto.heritg.android.core.tree.TreeLayoutResult
+import tech.robihamanto.heritg.android.core.tree.TreeNodeLayout
 import tech.robihamanto.heritg.android.core.tree.TreeVisualMetrics
 import kotlin.math.roundToInt
 
@@ -214,6 +216,11 @@ private fun TreeCanvas(
                 val addDescription = stringResource(R.string.add_relative_to, person.name)
                 val editDescription = stringResource(R.string.edit_person_named, person.name)
                 val selectDescription = stringResource(R.string.select_person_named, person.name)
+                val addSide = addControlSide(
+                    occupiedSides(layout, node),
+                    if (node.position.x <= 0) NodeSide.Left else NodeSide.Right,
+                )
+                val addOffset = controlOffset(addSide)
                 Column(
                     Modifier.align(Alignment.TopStart).width(190.dp)
                         .offsetPx(
@@ -250,24 +257,29 @@ private fun TreeCanvas(
                     person.lifeSummary?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1) }
                 }
                 if (showControls) {
-                    TextButton(
+                    NodeControl(
+                        symbol = "+",
+                        description = addDescription,
+                        color = MaterialTheme.colorScheme.secondary,
                         onClick = { onAdd(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + with(density) { 22.dp.toPx() },
-                            nodeCenter.y - with(density) { 40.dp.toPx() },
-                        ).sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                            .semantics { contentDescription = addDescription }.testTag("person.add.${node.id}"),
-                    ) { Text("+") }
+                            nodeCenter.x + with(density) { (addOffset.x - 24).dp.toPx() },
+                            nodeCenter.y + with(density) { (addOffset.y - 24).dp.toPx() },
+                        ).testTag("person.add.${node.id}"),
+                    )
                 }
                 if (showControls && node.id == selectedId) {
-                    TextButton(
+                    val editOffset = adjacentControlOffset(addOffset, addSide)
+                    NodeControl(
+                        symbol = "✎",
+                        description = editDescription,
+                        color = MaterialTheme.colorScheme.tertiary,
                         onClick = { onEdit(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + with(density) { 58.dp.toPx() },
-                            nodeCenter.y - with(density) { 40.dp.toPx() },
-                        ).sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                            .semantics { contentDescription = editDescription }.testTag("person.edit.${node.id}"),
-                    ) { Text("✎") }
+                            nodeCenter.x + with(density) { (editOffset.x - 24).dp.toPx() },
+                            nodeCenter.y + with(density) { (editOffset.y - 24).dp.toPx() },
+                        ).testTag("person.edit.${node.id}"),
+                    )
                 }
             }
         }
@@ -282,6 +294,64 @@ private fun TreeCanvas(
 }
 
 private fun Modifier.offsetPx(x: Float, y: Float) = offset { IntOffset(x.roundToInt(), y.roundToInt()) }
+private enum class NodeSide { Left, Right, Top, Bottom, TopLeft, TopRight }
+private fun occupiedSides(layout: TreeLayoutResult, node: TreeNodeLayout): Set<NodeSide> = buildSet {
+    layout.edges.forEach { edge ->
+        val other = when (node.id) {
+            edge.fromPersonId -> edge.to
+            edge.toPersonId -> edge.from
+            else -> return@forEach
+        }
+        when (edge.kind) {
+            RelationshipKind.PARENT -> add(if (other.y < node.position.y) NodeSide.Top else NodeSide.Bottom)
+            RelationshipKind.PARTNER, RelationshipKind.SIBLING ->
+                add(if (other.x < node.position.x) NodeSide.Left else NodeSide.Right)
+        }
+    }
+}
+private fun addControlSide(occupied: Set<NodeSide>, preferred: NodeSide): NodeSide = run {
+    val opposite = if (preferred == NodeSide.Left) NodeSide.Right else NodeSide.Left
+    val diagonal = if (preferred == NodeSide.Left) NodeSide.TopLeft else NodeSide.TopRight
+    listOf(preferred, opposite, NodeSide.Top, NodeSide.Bottom, diagonal).firstOrNull { it !in occupied } ?: preferred
+}
+private fun controlOffset(side: NodeSide): Offset {
+    val offset = TreeVisualMetrics.AvatarRadius + 34
+    val bottomOffset = TreeVisualMetrics.LabelOffset + TreeVisualMetrics.LabelHeight / 2 + 34
+    return when (side) {
+        NodeSide.Left -> Offset(-offset.toFloat(), 0f)
+        NodeSide.Right -> Offset(offset.toFloat(), 0f)
+        NodeSide.Top -> Offset(0f, -offset.toFloat())
+        NodeSide.Bottom -> Offset(0f, bottomOffset.toFloat())
+        NodeSide.TopLeft -> Offset(-offset.toFloat(), -offset.toFloat())
+        NodeSide.TopRight -> Offset(offset.toFloat(), -offset.toFloat())
+    }
+}
+private fun adjacentControlOffset(offset: Offset, side: NodeSide): Offset {
+    val spacing = 34f
+    return when (side) {
+        NodeSide.Left -> offset + Offset(-spacing, 0f)
+        NodeSide.Right -> offset + Offset(spacing, 0f)
+        NodeSide.Top -> offset + Offset(0f, -spacing)
+        NodeSide.Bottom -> offset + Offset(0f, spacing)
+        NodeSide.TopLeft -> offset + Offset(-spacing, -spacing)
+        NodeSide.TopRight -> offset + Offset(spacing, -spacing)
+    }
+}
+@Composable
+private fun NodeControl(symbol: String, description: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier.size(48.dp).clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics {
+            contentDescription = description
+            role = Role.Button
+            onClick(description) { onClick(); true }
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(24.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
+            Text(symbol, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
 
 @Composable
 private fun Connections(
