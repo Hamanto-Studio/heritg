@@ -2,6 +2,12 @@ const menuToggle = document.querySelector('.menu-toggle');
 const siteNav = document.querySelector('#site-nav');
 const isIndonesian = document.documentElement.lang === 'id';
 
+document.querySelectorAll('[data-language]').forEach((link) => {
+  link.addEventListener('click', () => {
+    try { localStorage.setItem('heritg-language', link.dataset.language); } catch (_) {}
+  });
+});
+
 function closeMenu(returnFocus = false) {
   siteNav?.classList.remove('is-open');
   menuToggle?.setAttribute('aria-expanded', 'false');

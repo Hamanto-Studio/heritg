@@ -6,13 +6,15 @@
   <title>HERITG | A safe home for your family history</title>
   <meta name="description" content="HERITG is an open-source, local-first family tree app with no account, no ads, and no tracking.">
   <link rel="canonical" href="https://hamanto-studio.github.io/heritg/">
-  <meta http-equiv="refresh" content="0; url=en/">
   <script>
+    let savedLanguage = null;
+    try { savedLanguage = localStorage.getItem('heritg-language'); } catch (_) {}
     const preferredLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
     const preferredLanguage = preferredLanguages.find((language) => /^(id|in|en)(-|$)/i.test(language || ''));
-    const isIndonesian = /^(id|in)(-|$)/i.test(preferredLanguage || '');
-    window.location.replace(`${isIndonesian ? 'id' : 'en'}/${window.location.search}${window.location.hash}`);
+    const detectedLanguage = /^(id|in)(-|$)/i.test(preferredLanguage || '') ? 'id' : 'en';
+    const destinationLanguage = /^(id|en)$/.test(savedLanguage || '') ? savedLanguage : detectedLanguage;
+    window.location.replace(`${destinationLanguage}/${window.location.search}${window.location.hash}`);
   </script>
 </head>
-<body><p>Opening <a href="en/">HERITG in English</a>...</p></body>
+<body><p>Opening HERITG… <a href="en/">Continue in English</a> · <a href="id/" lang="id">Lanjut dalam Bahasa Indonesia</a></p></body>
 </html>
