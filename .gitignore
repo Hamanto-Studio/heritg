@@ -44,3 +44,4 @@ key.properties
 captures/
 .externalNativeBuild/
 .cxx/
+.vercel/
