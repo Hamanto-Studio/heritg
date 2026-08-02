@@ -1,0 +1,107 @@
+.canvas-host {
+  position: relative;
+}
+
+.canvas-actions {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: 11;
+}
+
+.canvas-empty-anchor {
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.canvas-empty-anchor button {
+  pointer-events: auto;
+}
+
+.canvas-action-group {
+  align-items: center;
+  display: flex;
+  pointer-events: none;
+  position: absolute;
+  transform: translateY(-50%) scale(var(--canvas-action-scale, 1));
+  transform-origin: left center;
+  z-index: 2;
+}
+
+.canvas-person-hit {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  touch-action: manipulation;
+  z-index: 1;
+}
+
+.canvas-person-hit:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.canvas-action-group[data-side="left"] {
+  flex-direction: row-reverse;
+  transform: translate(-100%, -50%) scale(var(--canvas-action-scale, 1));
+  transform-origin: right center;
+}
+
+.canvas-action-group[data-stack="true"] {
+  flex-direction: column;
+}
+
+.canvas-action-button {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+  pointer-events: auto;
+  position: relative;
+  touch-action: manipulation;
+  width: 44px;
+}
+
+.canvas-action-button::before {
+  border-radius: 50%;
+  box-shadow: 0 3px 9px rgba(62, 48, 34, 0.2);
+  content: "";
+  height: 28px;
+  position: absolute;
+  transition: filter 120ms ease, transform 120ms ease;
+  width: 28px;
+}
+
+.canvas-action-button.add::before {
+  background: var(--add);
+}
+
+.canvas-action-button.edit::before {
+  background: var(--brand);
+}
+
+.canvas-action-button svg {
+  position: relative;
+}
+
+.canvas-action-button:hover::before {
+  filter: brightness(0.92);
+}
+
+.canvas-action-button:active::before {
+  transform: scale(0.9);
+}

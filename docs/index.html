@@ -1,25 +1,18 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>HERITG</title>
-    <meta name="description" content="HERITG is a private, local-first family tree app.">
-    <style>
-      body { max-width: 48rem; margin: 4rem auto; padding: 0 1.25rem; color: #29261f; background: #f7f3eb; font: 18px/1.6 system-ui, sans-serif; }
-      h1 { font-size: clamp(2.5rem, 8vw, 5rem); letter-spacing: -0.05em; margin-bottom: 0; }
-      a { color: #355f45; }
-      nav { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: 2rem; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>HERITG</h1>
-      <p>A private, local-first family tree app. No account is required, and core family data stays on your device.</p>
-      <nav>
-        <a href="privacy/">Privacy Policy</a>
-        <a href="https://github.com/Hamanto-Studio/heritg">Source Code</a>
-      </nav>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HERITG | A safe home for your family history</title>
+  <meta name="description" content="HERITG is an open-source, local-first family tree app with no account, no ads, and no tracking.">
+  <link rel="canonical" href="https://hamanto-studio.github.io/heritg/">
+  <meta http-equiv="refresh" content="0; url=en/">
+  <script>
+    const preferredLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
+    const preferredLanguage = preferredLanguages.find((language) => /^(id|in|en)(-|$)/i.test(language || ''));
+    const isIndonesian = /^(id|in)(-|$)/i.test(preferredLanguage || '');
+    window.location.replace(`${isIndonesian ? 'id' : 'en'}/${window.location.search}${window.location.hash}`);
+  </script>
+</head>
+<body><p>Opening <a href="en/">HERITG in English</a>...</p></body>
 </html>

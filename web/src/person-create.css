@@ -1,0 +1,113 @@
+.person-create-form {
+  gap: 14px;
+  margin: 0 auto;
+  max-width: 500px;
+  width: 100%;
+}
+
+.person-create-form .photo-editor {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 253, 248, 0.96) 0 58px, transparent 59px),
+    linear-gradient(145deg, rgba(168, 135, 91, 0.18), rgba(126, 155, 99, 0.1));
+  border: 1px solid color-mix(in srgb, var(--brand) 36%, var(--line));
+  border-radius: 24px;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 220px;
+  overflow: hidden;
+  padding: 24px;
+  position: relative;
+}
+
+.person-create-form .photo-editor .person-avatar {
+  border: 3px solid var(--base);
+  box-shadow: 0 12px 28px rgba(62, 48, 34, 0.18);
+  font-size: 2.35rem;
+}
+
+.person-create-form .photo-actions {
+  align-items: center;
+}
+
+.person-create-form .person-name-section {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.person-create-form .person-name-section .field {
+  color: var(--text);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.person-create-form .person-name-section input,
+.relative-create-fields > .field input {
+  background: var(--base);
+  border-color: var(--line);
+  box-shadow: var(--shadow-soft);
+  font-size: 1.08rem;
+  min-height: 56px;
+  padding: 14px 16px;
+}
+
+.person-create-form .person-name-section input {
+  text-align: center;
+}
+
+.relative-create-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.person-detail-disclosure {
+  background: color-mix(in srgb, var(--base) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.person-detail-disclosure summary {
+  align-items: center;
+  color: var(--brand-deep);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.88rem;
+  font-weight: 600;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 50px;
+  padding: 0 15px;
+}
+
+.person-detail-disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.person-detail-disclosure summary::after {
+  content: "+";
+  font-size: 1.35rem;
+  font-weight: 400;
+  line-height: 1;
+  transition: transform 160ms ease;
+}
+
+.person-detail-disclosure[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.person-detail-disclosure[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.person-detail-disclosure .field-grid {
+  grid-template-columns: 1fr;
+  padding: 15px;
+}
+
+@media (max-width: 620px) {
+  .person-create-form .photo-editor {
+    min-height: 192px;
+    padding: 20px;
+  }
+}
