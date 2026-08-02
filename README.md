@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="#platform-report">Platform Report</a> |
   <a href="#features">Features</a> |
   <a href="#quick-start">Quick Start</a> |
   <a href="docs/MVP_PRODUCT_SPEC.md">Product Specification</a> |
@@ -36,6 +37,20 @@
     <img alt="Secret scanning status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/secret-scan.yml/badge.svg" />
   </a>
 </p>
+
+## Platform Report
+
+HERITG contains three local-first clients on `main`:
+
+| Platform | What is included | Local storage | Verification |
+| --- | --- | --- | --- |
+| iOS | Native SwiftUI app in [`ios/`](ios) | SwiftData | Unit and UI tests; [manual iOS CI](.github/workflows/ios-ci.yml) |
+| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Unit, lint, build, and emulator suites run locally; secret scanning runs in CI |
+| Web | Installable React progressive web app in [`web/`](web) | AES-GCM-encrypted IndexedDB | Lint, tests, and production build in [Web CI](.github/workflows/web-ci.yml) |
+
+The repository also contains the shared product, archive, privacy, analytics,
+security, data-processing, and design specifications used to keep the three
+implementations aligned.
 
 ## Features
 
@@ -105,7 +120,7 @@ not encrypted by this option.
 | Platform | Status | Implementation |
 | --- | --- | --- |
 | iOS | Active development | Swift, SwiftUI, and SwiftData |
-| Android | Active development | Kotlin, Jetpack Compose, and Room |
+| Android | Active development | Kotlin, Jetpack Compose, Room, and DataStore |
 | Web | Active development | React, TypeScript, IndexedDB, and Excalidraw |
 
 HERITG is under active development. Interfaces and archive specifications may
@@ -144,16 +159,19 @@ Requirements:
 - Java 17
 - Android SDK 37
 
-Run Android tests, lint, debug builds, and a minified release build:
+Run Android tests, lint checks, debug builds, the instrumentation-test build,
+and a minified release build:
 
 ```sh
 ./android/gradlew \
   -p android \
-  test assembleDebug lintDebug assembleRelease \
+  test assembleDebug lintDebug assembleDebugAndroidTest assembleRelease \
   --no-configuration-cache
 ```
 
-See the [Android development guide](android/README.md) for project details.
+Instrumented tests require a connected Android device or running emulator. See
+the [Android development guide](android/README.md) for architecture and test
+details.
 
 ### Web
 
