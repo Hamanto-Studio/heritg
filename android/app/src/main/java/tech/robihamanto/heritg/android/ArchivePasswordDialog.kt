@@ -4,6 +4,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -17,14 +18,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.autofill.contentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isSensitiveData
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import tech.robihamanto.heritg.android.core.model.FamilyTree
@@ -44,11 +52,23 @@ internal fun ArchivePasswordDialog(
     var password by uiState.state("password:value") { "" }
     var error by uiState.state<String?>("password:error") { null }
     var working by uiState.state("password:working") { false }
+    fun submit() {
+        if (password.isEmpty() || working) return
+        uiState.launch {
+            working = true
+            error = null
+            runCatching { restore(data, password) }
+                .onSuccess { tree -> password = ""; onRestored(tree) }
+                .onFailure { error = context.localizedError(it) }
+            working = false
+        }
+    }
+    val keyboardActions = rememberFormKeyboardActions(::submit)
     LaunchedEffect(Unit) { passwordFocus.requestFocus() }
     LaunchedEffect(error) { if (error != null) errorFocus.requestFocus() }
     AlertDialog(
         onDismissRequest = { if (!working) onClose() },
-        title = { Text(stringResource(R.string.encrypted_backup)) },
+        title = { Text(stringResource(R.string.encrypted_backup), Modifier.semantics { heading() }) },
         text = {
             Column {
                 Text(sourceName)
@@ -56,18 +76,23 @@ internal fun ArchivePasswordDialog(
                 OutlinedTextField(
                     password,
                     { password = it; error = null },
-                    Modifier.testTag("import.archivePassword").focusRequester(passwordFocus),
+                    Modifier.contentType(ContentType.Password).semantics { isSensitiveData = true }
+                        .testTag("import.archivePassword").focusRequester(passwordFocus),
                     label = { Text(stringResource(R.string.password)) },
                     visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
                     enabled = !working,
+                    isError = error != null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = keyboardActions,
                 )
-                error?.let {
+                error?.let { message ->
                     Text(
-                        it,
+                        message,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(top = 8.dp).focusRequester(errorFocus).focusable()
-                            .semantics { liveRegion = LiveRegionMode.Assertive }.testTag("import.archiveError"),
+                            .semantics { liveRegion = LiveRegionMode.Assertive; this.error(message) }
+                            .testTag("import.archiveError"),
                     )
                 }
                 if (working) Row(verticalAlignment = Alignment.CenterVertically) {
@@ -81,14 +106,7 @@ internal fun ArchivePasswordDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { uiState.launch {
-                    working = true
-                    error = null
-                    runCatching { restore(data, password) }
-                        .onSuccess { tree -> password = ""; onRestored(tree) }
-                        .onFailure { error = context.localizedError(it) }
-                    working = false
-                } },
+                onClick = ::submit,
                 enabled = password.isNotEmpty() && !working,
                 modifier = Modifier.testTag("import.restore"),
             ) { Text(stringResource(R.string.restore_family_tree)) }

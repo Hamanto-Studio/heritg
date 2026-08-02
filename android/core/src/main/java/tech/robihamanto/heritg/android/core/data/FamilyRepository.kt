@@ -19,6 +19,13 @@ import tech.robihamanto.heritg.android.core.model.PersonGender
 import tech.robihamanto.heritg.android.core.model.RelationshipKind
 import java.time.Instant
 
+data class StagedRelationshipLink(
+    val relativeId: String,
+    val role: RelativeRole,
+    val marriageDate: Instant?,
+    val inferGender: Boolean,
+)
+
 class FamilyRepository(private val database: HeritgDatabase) {
     private val dao = database.familyDao()
 
@@ -105,6 +112,9 @@ class FamilyRepository(private val database: HeritgDatabase) {
                         it.toPersonId == endpoints.toPersonId
                 }
             ) throw FamilyGraphException.DuplicateRelationship
+            if (relative.gender == PersonGender.UNSPECIFIED && role.gender != PersonGender.UNSPECIFIED) {
+                dao.updatePerson(relative.copy(gender = role.gender).toEntity())
+            }
             FamilyRelationship(
                 treeId = person.treeId,
                 fromPersonId = endpoints.fromPersonId,
@@ -194,7 +204,11 @@ class FamilyRepository(private val database: HeritgDatabase) {
                 current.toPersonId -> current.fromPersonId
                 else -> throw FamilyGraphException.InvalidGraph
             }
+            val relative = dao.person(relativeId)?.toModel() ?: throw FamilyGraphException.InvalidGraph
             val endpoints = relationshipEndpoints(focusedPersonId, relativeId, role)
+            if (relative.gender == PersonGender.UNSPECIFIED && role.gender != PersonGender.UNSPECIFIED) {
+                dao.updatePerson(relative.copy(gender = role.gender).toEntity())
+            }
             dao.deleteRelationship(current.toEntity())
             dao.insertRelationships(listOf(current.copy(
                 fromPersonId = endpoints.fromPersonId,
@@ -211,11 +225,16 @@ class FamilyRepository(private val database: HeritgDatabase) {
         gender: PersonGender,
         details: PersonDetails,
         relationshipIdsToDelete: Set<String>,
-        links: List<Triple<String, RelativeRole, Instant?>>,
+        links: List<StagedRelationshipLink>,
     ) = database.withTransaction {
         val current = dao.person(personId)?.toModel() ?: throw FamilyGraphException.InvalidGraph
         val normalized = FamilyGraph.normalizedDetails(details)
         val existing = dao.relationships(current.treeId)
+        links.groupBy(StagedRelationshipLink::relativeId).values.forEach { relativeLinks ->
+            val inferredGenders = relativeLinks.asSequence().filter(StagedRelationshipLink::inferGender)
+                .map { it.role.gender }.filter { it != PersonGender.UNSPECIFIED }.toSet()
+            if (inferredGenders.size > 1) throw FamilyGraphException.InvalidGraph
+        }
         val editedRelationships = existing.filter { it.id in relationshipIdsToDelete }
         if (editedRelationships.size != relationshipIdsToDelete.size || editedRelationships.any {
                 it.fromPersonId != current.id && it.toPersonId != current.id
@@ -230,11 +249,16 @@ class FamilyRepository(private val database: HeritgDatabase) {
             profilePhotoData = normalized.profilePhotoData,
         ).toEntity())
         existing.filter { it.id in relationshipIdsToDelete }.forEach { dao.deleteRelationship(it) }
-        links.forEach { (relativeId, role, marriageDate) ->
-            val relative = dao.person(relativeId)?.toModel() ?: throw FamilyGraphException.InvalidGraph
+        links.forEach { link ->
+            val relative = dao.person(link.relativeId)?.toModel() ?: throw FamilyGraphException.InvalidGraph
             if (relative.id == current.id) throw FamilyGraphException.SelfRelationship
             if (relative.treeId != current.treeId) throw FamilyGraphException.CrossTreeRelationship
-            val endpoint = relationshipEndpoints(current.id, relative.id, role)
+            if (link.inferGender && relative.gender == PersonGender.UNSPECIFIED &&
+                link.role.gender != PersonGender.UNSPECIFIED
+            ) {
+                dao.updatePerson(relative.copy(gender = link.role.gender).toEntity())
+            }
+            val endpoint = relationshipEndpoints(current.id, relative.id, link.role)
             if (dao.relationships(current.treeId).any {
                     it.kindRaw == endpoint.kind.wireName && it.fromPersonId == endpoint.fromPersonId &&
                         it.toPersonId == endpoint.toPersonId
@@ -242,7 +266,7 @@ class FamilyRepository(private val database: HeritgDatabase) {
             dao.insertRelationships(listOf(FamilyRelationship(
                 treeId = current.treeId, fromPersonId = endpoint.fromPersonId,
                 toPersonId = endpoint.toPersonId, kind = endpoint.kind, subtype = endpoint.subtype,
-                marriageDate = marriageDate.takeIf { endpoint.kind == RelationshipKind.PARTNER },
+                marriageDate = link.marriageDate.takeIf { endpoint.kind == RelationshipKind.PARTNER },
             ).toEntity()))
         }
     }

@@ -1,13 +1,14 @@
 package tech.robihamanto.heritg.android
 
 import android.os.Bundle
-import androidx.activity.compose.BackHandler
+import androidx.activity.ExperimentalActivityApi
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -16,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withContext
@@ -36,12 +40,14 @@ import tech.robihamanto.heritg.android.core.interop.ArchiveProtection
 import tech.robihamanto.heritg.android.core.interop.GedcomImporter
 import tech.robihamanto.heritg.android.core.interop.HeritgArchiveCodec
 import tech.robihamanto.heritg.android.core.model.FamilyTree
+import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
 
 class MainActivity : AppCompatActivity() {
     private val uiState by viewModels<AppUiState>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val app = application as HeritgApplication
         setContentView(androidx.compose.ui.platform.ComposeView(this).apply {
             setContent { HeritgApp(app.familyRepository, app.preferences, uiState) }
@@ -51,7 +57,10 @@ class MainActivity : AppCompatActivity() {
 
 internal sealed interface Overlay {
     data object People : Overlay
-    data class Settings(val treeId: String) : Overlay
+    data class Settings(
+        val treeId: String,
+        val generationLimits: TreeGenerationLimits = TreeGenerationLimits(),
+    ) : Overlay
     data object FirstPerson : Overlay
     data class Add(val personId: String) : Overlay
     data class Link(val personId: String) : Overlay
@@ -59,12 +68,13 @@ internal sealed interface Overlay {
     data class Password(val data: ByteArray, val sourceName: String) : Overlay
 }
 
+@OptIn(ExperimentalActivityApi::class)
 @Composable
 private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences, uiState: AppUiState) {
     val trees by repository.observeTrees().collectAsStateWithLifecycle(emptyList())
     val storedTreeId by preferences.selectedTreeId.collectAsStateWithLifecycle(null)
     val storedLanguage by preferences.languageTag.collectAsStateWithLifecycle(null)
-    val selectedTreeId = uiState.selectedTreeIdOverride ?: storedTreeId
+    val selectedTreeId = uiState.activeTreeId ?: uiState.selectedTreeIdOverride ?: storedTreeId
     val selectedTree = trees.firstOrNull { it.id == selectedTreeId } ?: trees.firstOrNull()
     val peopleFlow = remember(selectedTree?.id) {
         selectedTree?.id?.let(repository::observePeople) ?: flowOf(emptyList())
@@ -77,17 +87,18 @@ private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences,
     val context = LocalContext.current
     val resources = LocalResources.current
     val codec = remember { HeritgArchiveCodec() }
-    val showLibrary = uiState.showLibrary ?: (selectedTree == null)
+    val showLibrary = uiState.libraryVisible || selectedTree == null
+    val expanded = currentWindowAdaptiveInfo().windowSizeClass
+        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
     fun showError(error: Throwable) {
         uiState.importCompleted = false
         uiState.message = context.localizedError(error)
     }
 
-    fun openTree(tree: FamilyTree) {
-        uiState.selectedTreeIdOverride = tree.id
+    fun openTree(tree: FamilyTree, keepLibraryPane: Boolean = false) {
+        uiState.openTree(tree.id, keepLibraryPane)
         uiState.launch { preferences.setSelectedTreeId(tree.id) }
-        uiState.showLibrary = false
     }
 
     suspend fun importBytes(bytes: ByteArray, name: String) {
@@ -146,7 +157,7 @@ private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences,
                     retained = true
                     uiState.show(Overlay.Password(selectedBytes, name))
                 } else {
-                    runCatching { restoreArchive(selectedBytes) }.onSuccess(::openTree).onFailure(::showError)
+                    runCatching { restoreArchive(selectedBytes) }.onSuccess { openTree(it) }.onFailure(::showError)
                 }
             } catch (error: Throwable) {
                 showError(error)
@@ -163,9 +174,9 @@ private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences,
         }
     }
     LaunchedEffect(trees, storedTreeId) {
-        if (!uiState.navigationInitialized && trees.isNotEmpty()) {
-            uiState.showLibrary = selectedTree == null
-            uiState.navigationInitialized = true
+        if (trees.isNotEmpty()) {
+            if (!uiState.navigationInitialized) uiState.initializeNavigation(selectedTree?.id)
+            uiState.reconcileTrees(trees.mapTo(mutableSetOf()) { it.id }, selectedTree?.id)
         }
     }
     LaunchedEffect(storedLanguage) {
@@ -180,48 +191,53 @@ private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences,
             uiState.selectedTreeIdOverride = fallbackId
             uiState.launch { preferences.setSelectedTreeId(fallbackId) }
         }
-        if (fallbackId == null) uiState.showLibrary = true
+        uiState.removeTree(tree.id, fallbackId)
     }
 
     HeritgTheme {
+        PredictiveBackHandler(enabled = uiState.overlay == null && uiState.canNavigateBack) { progress ->
+            try {
+                progress.collect { }
+                uiState.navigateBack()
+            } catch (_: CancellationException) {
+                // Keep the current destination when the user cancels the back gesture.
+            }
+        }
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            BoxWithConstraints {
-                val expanded = maxWidth >= 840.dp
-                if (expanded) {
-                    Row(Modifier.fillMaxSize()) {
-                        if (showLibrary || selectedTree == null) LibraryScreen(
+            if (expanded) {
+                Row(Modifier.fillMaxSize()) {
+                        if (showLibrary) LibraryScreen(
                             trees = trees, selectedTreeId = selectedTree?.id,
                             repository = repository, uiState = uiState,
                             modifier = if (selectedTree == null) Modifier.fillMaxSize() else Modifier.width(340.dp),
-                            onOpen = ::openTree, onImportGedcom = { gedcomPicker.launch(arrayOf("text/*", "application/octet-stream")) },
+                            onOpen = { openTree(it, keepLibraryPane = selectedTree != null) }, onImportGedcom = { gedcomPicker.launch(arrayOf("text/*", "application/octet-stream")) },
                             onImportArchive = { archivePicker.launch(LocalFiles.ArchiveMimeTypes) },
                             onExport = { tree -> uiState.show(Overlay.Settings(tree.id)) },
                             onDeleted = ::deletedTree,
                         )
                         if (selectedTree != null) TreeHost(selectedTree, people, relationships, repository,
-                            uiState = uiState, onLibrary = { uiState.showLibrary = !showLibrary }, onOverlay = uiState::show)
-                    }
-                } else if (selectedTree == null || showLibrary) {
-                    BackHandler(enabled = selectedTree != null) { uiState.showLibrary = false }
-                    LibraryScreen(
-                        trees = trees, selectedTreeId = selectedTree?.id, repository = repository, uiState = uiState,
-                        onOpen = ::openTree, onImportGedcom = { gedcomPicker.launch(arrayOf("text/*", "application/octet-stream")) },
-                        onImportArchive = { archivePicker.launch(LocalFiles.ArchiveMimeTypes) },
-                        onExport = { tree -> uiState.showLibrary = false; uiState.show(Overlay.Settings(tree.id)) },
-                        onDeleted = ::deletedTree,
-                        onClose = selectedTree?.let { { uiState.showLibrary = false } },
-                    )
-                } else {
-                    TreeHost(selectedTree, people, relationships, repository,
-                        uiState = uiState, onLibrary = { uiState.showLibrary = true }, onOverlay = uiState::show)
+                            uiState = uiState, onLibrary = uiState::toggleLibrary, onOverlay = uiState::show,
+                            libraryPaneVisible = showLibrary)
                 }
+            } else if (selectedTree == null || showLibrary) {
+                LibraryScreen(
+                        trees = trees, selectedTreeId = selectedTree?.id, repository = repository, uiState = uiState,
+                        onOpen = { openTree(it) }, onImportGedcom = { gedcomPicker.launch(arrayOf("text/*", "application/octet-stream")) },
+                        onImportArchive = { archivePicker.launch(LocalFiles.ArchiveMimeTypes) },
+                        onExport = { tree -> uiState.show(Overlay.Settings(tree.id)) },
+                        onDeleted = ::deletedTree,
+                        onClose = selectedTree?.let { { uiState.navigateBack() } },
+                )
+            } else {
+                TreeHost(selectedTree, people, relationships, repository,
+                    uiState = uiState, onLibrary = uiState::openLibrary, onOverlay = uiState::show)
             }
         }
         AppOverlay(
             overlay = uiState.overlay, tree = selectedTree, people = people, relationships = relationships,
             repository = repository, codec = codec, uiState = uiState, onClose = uiState::closeOverlay,
             restoreArchive = { data, password -> restoreArchive(data, password) },
-            onArchiveRestored = ::openTree,
+            onArchiveRestored = { openTree(it) },
             onLanguage = { tag ->
                 uiState.launch { preferences.setLanguageTag(tag) }
                 AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tag))

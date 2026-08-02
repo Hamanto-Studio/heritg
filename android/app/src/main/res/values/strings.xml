@@ -22,7 +22,6 @@
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="close">Close</string>
-    <string name="done">Done</string>
     <string name="back">Back</string>
     <string name="ok">OK</string>
     <string name="share">Share</string>
@@ -71,6 +70,12 @@
     <string name="birthday">Birthday</string>
     <string name="death_date">Death date</string>
     <string name="marriage_date">Marriage date</string>
+    <string name="add_birthday">Add birthday</string>
+    <string name="delete_birthday">Delete birthday</string>
+    <string name="add_death_date">Add death date</string>
+    <string name="delete_death_date">Delete death date</string>
+    <string name="add_marriage_date">Add marriage date</string>
+    <string name="delete_marriage_date">Delete marriage date</string>
     <string name="married_year">Married %1$s</string>
     <string name="co_parent">Co-parent</string>
     <string name="no_co_parent">No co-parent</string>
@@ -80,6 +85,8 @@
     <string name="country">Country</string><string name="postal_code">Postal code</string><string name="notes">Notes</string>
     <string name="family">Family</string>
     <string name="edit_relationship">Edit relationship</string>
+    <string name="edit_relationship_with">Edit relationship with %1$s</string>
+    <string name="remove_relationship_with">Remove relationship with %1$s</string>
     <string name="relationship_question">How is %1$s related to %2$s?</string>
     <string name="remove">Remove</string>
     <string name="remove_person">Remove person</string>
@@ -99,7 +106,7 @@
     <string name="feedback">Give feedback or report a bug</string>
     <string name="feedback_subtitle">Contact Hamanto Studio on Telegram</string>
     <string name="feedback_message">Hi Hamanto Studio,\n\nI would like to share feedback or report a bug:\n\n[Please describe it here]\n\nApp version: %1$s\nBuild: %2$d\nDevice: %3$s\nAndroid version: %4$s</string>
-    <string name="studio_credit">Built with love by Hamanto Studio</string>
+    <string name="studio_credit">Built with ❤️ by Hamanto Studio</string>
     <string name="export_heading">Export your family tree</string>
     <string name="export_copy">Choose how the tree should be presented, then share an image or family-data file.</string>
     <string name="point_of_view">Tree image point of view</string>

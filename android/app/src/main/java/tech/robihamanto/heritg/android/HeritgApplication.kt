@@ -8,7 +8,7 @@ import tech.robihamanto.heritg.android.core.data.HeritgDatabase
 
 private val Application.dataStore by preferencesDataStore(name = "heritg_preferences")
 
-class HeritgApplication : Application() {
+open class HeritgApplication : Application() {
     val database: HeritgDatabase by lazy { HeritgDatabase.create(this) }
     val familyRepository: FamilyRepository by lazy { FamilyRepository(database) }
     val preferences: AppPreferences by lazy { AppPreferences(dataStore) }

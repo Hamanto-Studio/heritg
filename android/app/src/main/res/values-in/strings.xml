@@ -11,7 +11,7 @@
     <plurals name="people_count"><item quantity="other">%d orang</item></plurals>
     <plurals name="relationships_count"><item quantity="other">%d hubungan</item></plurals>
     <string name="create">Buat</string><string name="rename">Ganti nama</string><string name="delete">Hapus</string>
-    <string name="save">Simpan</string><string name="cancel">Batal</string><string name="close">Tutup</string><string name="done">Selesai</string>
+    <string name="save">Simpan</string><string name="cancel">Batal</string><string name="close">Tutup</string>
     <string name="back">Kembali</string><string name="ok">OK</string><string name="share">Bagikan</string><string name="could_not_complete">Tindakan Tidak Dapat Diselesaikan</string>
     <string name="name">Nama</string><string name="add_first_person">Tambah orang pertama</string><string name="start_family_tree">Mulai silsilah keluarga Anda</string>
     <string name="add_person">Tambah orang</string><string name="add_to">Tambahkan ke %1$s</string><string name="new_relative">%1$s baru</string>
@@ -36,11 +36,15 @@
     <string name="foster_son">Anak asuh laki-laki</string><string name="foster_daughter">Anak asuh perempuan</string>
     <string name="ward">Anak di bawah perwalian</string><string name="stepson">Anak tiri laki-laki</string><string name="stepdaughter">Anak tiri perempuan</string>
     <string name="birthday">Tanggal lahir</string><string name="death_date">Tanggal wafat</string><string name="marriage_date">Tanggal pernikahan</string><string name="married_year">Menikah %1$s</string>
+    <string name="add_birthday">Tambah tanggal lahir</string><string name="delete_birthday">Hapus tanggal lahir</string>
+    <string name="add_death_date">Tambah tanggal wafat</string><string name="delete_death_date">Hapus tanggal wafat</string>
+    <string name="add_marriage_date">Tambah tanggal pernikahan</string><string name="delete_marriage_date">Hapus tanggal pernikahan</string>
     <string name="co_parent">Orang tua bersama</string><string name="no_co_parent">Tanpa orang tua bersama</string>
     <string name="gender">Jenis kelamin</string><string name="male">Laki-laki</string><string name="female">Perempuan</string><string name="not_specified">Tidak ditentukan</string>
     <string name="city">Kota</string><string name="address">Alamat</string><string name="province">Provinsi atau negara bagian</string><string name="country">Negara</string><string name="postal_code">Kode pos</string><string name="notes">Catatan</string>
     <string name="family">Keluarga</string><string name="remove">Hapus</string><string name="remove_person">Hapus orang</string>
     <string name="edit_relationship">Edit hubungan</string><string name="relationship_question">Apa hubungan %1$s dengan %2$s?</string>
+    <string name="edit_relationship_with">Edit hubungan dengan %1$s</string><string name="remove_relationship_with">Hapus hubungan dengan %1$s</string>
     <string name="remove_person_message">Hapus orang ini beserta semua hubungannya?</string><string name="discard_changes">Buang perubahan?</string><string name="discard_message">Yakin ingin membuang perubahan yang belum disimpan?</string>
     <string name="add_photo">Tambah foto</string><string name="change_photo">Ganti foto</string><string name="remove_photo">Hapus foto</string>
     <string name="crop_photo">Pangkas foto</string><string name="use_photo">Gunakan foto</string><string name="reset_photo">Atur ulang posisi foto</string>
@@ -50,7 +54,7 @@
     <string name="language">Bahasa</string><string name="language_copy">Pilih bahasa yang digunakan di seluruh Heritg.</string>
     <string name="feedback">Beri masukan atau laporkan bug</string><string name="feedback_subtitle">Hubungi Hamanto Studio melalui Telegram</string>
     <string name="feedback_message">Halo Hamanto Studio,\n\nSaya ingin memberikan masukan atau melaporkan bug:\n\n[Silakan jelaskan di sini]\n\nVersi aplikasi: %1$s\nBuild: %2$d\nPerangkat: %3$s\nVersi Android: %4$s</string>
-    <string name="studio_credit">Dibuat dengan cinta oleh Hamanto Studio</string>
+    <string name="studio_credit">Dibuat dengan ❤️ oleh Hamanto Studio</string>
     <string name="export_heading">Ekspor silsilah keluarga Anda</string><string name="export_copy">Pilih tampilan silsilah, lalu bagikan gambar atau berkas data keluarga.</string>
     <string name="point_of_view">Sudut pandang gambar silsilah</string><string name="names_only">Nama saja</string>
     <string name="export_png">Ekspor gambar silsilah (PNG)</string><string name="export_svg">Ekspor silsilah skalabel (SVG)</string><string name="export_gedcom">Ekspor GEDCOM 7</string>

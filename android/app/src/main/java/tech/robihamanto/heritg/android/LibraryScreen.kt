@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,6 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -36,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -86,15 +90,17 @@ internal fun LibraryScreen(
         modifier = modifier.fillMaxSize(),
         topBar = { TopAppBar(
             title = { Text(stringResource(R.string.family_trees)) },
-            navigationIcon = { onClose?.let { close -> TextButton(onClick = close,
-                modifier = Modifier.testTag("trees.close")) { Text(stringResource(R.string.done)) } } },
+            navigationIcon = { onClose?.let { close -> IconButton(onClick = close,
+                modifier = Modifier.testTag("trees.close")) {
+                Icon(painterResource(R.drawable.ic_arrow_back), stringResource(R.string.back))
+            } } },
             actions = {
                 if (trees.isNotEmpty()) {
                     TextButton(
                         onClick = { addMenu = true },
                         modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
                             .semantics { contentDescription = addTreeDescription }.testTag("trees.add"),
-                    ) { Text("+") }
+                    ) { Icon(painterResource(R.drawable.ic_add), contentDescription = null) }
                     DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
                         DropdownMenuItem(text = { Text(stringResource(R.string.new_family_tree)) }, onClick = {
                             addMenu = false; createName = suggested
@@ -122,7 +128,12 @@ internal fun LibraryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text("♧", style = MaterialTheme.typography.displayMedium, color = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        painterResource(R.drawable.ic_park_outline),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(64.dp),
+                    )
                     Text(stringResource(R.string.start_family_archive), style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.height(8.dp))
                     Text(stringResource(R.string.library_privacy), color = MaterialTheme.colorScheme.primary)
@@ -206,14 +217,18 @@ private fun TreeRow(
             .clickable(role = Role.Button) { onOpen(tree) }.testTag("trees.open.${tree.id}").padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(if (selected) "♣" else "♧", color = MaterialTheme.colorScheme.primary)
+        Icon(
+            painterResource(if (selected) R.drawable.ic_park_filled else R.drawable.ic_park_outline),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
             Text(tree.title, style = MaterialTheme.typography.titleMedium)
             Text(pluralStringResource(R.plurals.people_count, counts.first, counts.first), color = MaterialTheme.colorScheme.primary)
         }
         TextButton(onClick = { menu = true }, modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .semantics { contentDescription = actionsLabel }
-            .testTag("trees.actions.${tree.id}")) { Text("⋮") }
+            .testTag("trees.actions.${tree.id}")) { Icon(painterResource(R.drawable.ic_more_vert), contentDescription = null) }
         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
             DropdownMenuItem(text = { Text(stringResource(R.string.rename)) }, onClick = { menu = false; onRename() })
             DropdownMenuItem(text = { Text(stringResource(R.string.export)) }, onClick = { menu = false; onExport() })

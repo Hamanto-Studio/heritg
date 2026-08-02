@@ -16,8 +16,12 @@ import tech.robihamanto.heritg.android.core.domain.RelativeRole
 import tech.robihamanto.heritg.android.core.domain.relativeRoleFor
 import tech.robihamanto.heritg.android.core.interop.ArchiveException
 import tech.robihamanto.heritg.android.core.interop.ArchivePayload
+import tech.robihamanto.heritg.android.core.model.FamilyRelationship
 import tech.robihamanto.heritg.android.core.model.FamilyTree
 import tech.robihamanto.heritg.android.core.model.PersonDetails
+import tech.robihamanto.heritg.android.core.model.PersonGender
+import tech.robihamanto.heritg.android.core.model.RelationshipKind
+import tech.robihamanto.heritg.android.core.model.RelationshipSubtype
 import java.time.Instant
 
 @RunWith(AndroidJUnit4::class)
@@ -68,6 +72,19 @@ class FamilyRepositoryTest {
     }
 
     @Test
+    fun genderedLinkInfersGenderOnlyWhenRelativeIsUnspecified() = runTest {
+        val tree = repository.createTree("Family")
+        val person = repository.createPerson(tree.id, "Child")
+        val relative = repository.createPerson(tree.id, "Parent")
+
+        val relationship = repository.link(person.id, relative.id, RelativeRole.MOTHER)
+        val savedRelative = repository.observePeople(tree.id).first().first { it.id == relative.id }
+
+        assertEquals(PersonGender.FEMALE, savedRelative.gender)
+        assertEquals(RelativeRole.MOTHER, relativeRoleFor(relationship, savedRelative, person.id))
+    }
+
+    @Test
     fun focusDoesNotReorderTreeAndDeletingFocusedPersonPersistsFallback() = runTest {
         val tree = repository.createTree("Family")
         val first = repository.createPerson(tree.id, "First")
@@ -104,13 +121,108 @@ class FamilyRepositoryTest {
 
         repository.savePersonEdits(
             child.id, child.displayName, child.gender, PersonDetails(), setOf(original.id),
-            listOf(Triple(parent.id, parentRole, null)),
+            listOf(StagedRelationshipLink(parent.id, parentRole, null, inferGender = false)),
         )
 
         val saved = repository.observeRelationships(tree.id).first().single()
         assertEquals(parent.id, saved.fromPersonId)
         assertEquals(child.id, saved.toPersonId)
         assertEquals(original.subtype, saved.subtype)
+    }
+
+    @Test
+    fun stagedRelationshipInfersGenderOnlyWhenRoleWasExplicitlySelected() = runTest {
+        val tree = repository.createTree("Family")
+        val person = repository.createPerson(tree.id, "Person")
+        val relative = repository.createPerson(tree.id, "Relative")
+        val original = repository.link(person.id, relative.id, RelativeRole.PARTNER)
+
+        repository.savePersonEdits(
+            person.id, person.displayName, person.gender, PersonDetails(), setOf(original.id),
+            listOf(StagedRelationshipLink(relative.id, RelativeRole.HUSBAND, null, inferGender = false)),
+        )
+        assertEquals(
+            PersonGender.UNSPECIFIED,
+            repository.observePeople(tree.id).first().first { it.id == relative.id }.gender,
+        )
+
+        val replacement = repository.observeRelationships(tree.id).first().single()
+        repository.savePersonEdits(
+            person.id, person.displayName, person.gender, PersonDetails(), setOf(replacement.id),
+            listOf(StagedRelationshipLink(relative.id, RelativeRole.HUSBAND, null, inferGender = true)),
+        )
+        assertEquals(
+            PersonGender.MALE,
+            repository.observePeople(tree.id).first().first { it.id == relative.id }.gender,
+        )
+    }
+
+    @Test
+    fun genderInferenceBelongsToItsSpecificStagedRelationship() = runTest {
+        val tree = repository.createTree("Family")
+        val person = repository.createPerson(tree.id, "Person")
+        val relative = repository.createPerson(tree.id, "Relative")
+        val partner = repository.link(person.id, relative.id, RelativeRole.PARTNER)
+        val endpoints = listOf(person.id, relative.id).sorted()
+        val sibling = FamilyRelationship(
+            id = "sibling",
+            treeId = tree.id,
+            fromPersonId = endpoints[0],
+            toPersonId = endpoints[1],
+            kind = RelationshipKind.SIBLING,
+            subtype = RelationshipSubtype.SIBLING,
+            createdAt = Instant.EPOCH,
+        )
+        database.familyDao().insertRelationships(listOf(sibling.toEntity()))
+
+        repository.savePersonEdits(
+            person.id, person.displayName, person.gender, PersonDetails(), setOf(partner.id, sibling.id),
+            listOf(
+                StagedRelationshipLink(relative.id, RelativeRole.HUSBAND, null, inferGender = false),
+                StagedRelationshipLink(relative.id, RelativeRole.SISTER, null, inferGender = true),
+            ),
+        )
+
+        assertEquals(
+            PersonGender.FEMALE,
+            repository.observePeople(tree.id).first().first { it.id == relative.id }.gender,
+        )
+    }
+
+    @Test
+    fun conflictingExplicitGenderRolesAreRejectedWithoutPartialWrites() = runTest {
+        val tree = repository.createTree("Family")
+        val person = repository.createPerson(tree.id, "Person")
+        val relative = repository.createPerson(tree.id, "Relative")
+        val partner = repository.link(person.id, relative.id, RelativeRole.PARTNER)
+        val endpoints = listOf(person.id, relative.id).sorted()
+        val sibling = FamilyRelationship(
+            id = "sibling",
+            treeId = tree.id,
+            fromPersonId = endpoints[0],
+            toPersonId = endpoints[1],
+            kind = RelationshipKind.SIBLING,
+            subtype = RelationshipSubtype.SIBLING,
+            createdAt = Instant.EPOCH,
+        )
+        database.familyDao().insertRelationships(listOf(sibling.toEntity()))
+
+        val error = runCatching {
+            repository.savePersonEdits(
+                person.id, person.displayName, person.gender, PersonDetails(), setOf(partner.id, sibling.id),
+                listOf(
+                    StagedRelationshipLink(relative.id, RelativeRole.HUSBAND, null, inferGender = true),
+                    StagedRelationshipLink(relative.id, RelativeRole.SISTER, null, inferGender = true),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is tech.robihamanto.heritg.android.core.domain.FamilyGraphException.InvalidGraph)
+        assertEquals(
+            PersonGender.UNSPECIFIED,
+            repository.observePeople(tree.id).first().first { it.id == relative.id }.gender,
+        )
+        assertEquals(setOf(partner.id, sibling.id), repository.observeRelationships(tree.id).first().mapTo(mutableSetOf()) { it.id })
     }
 
     @Test

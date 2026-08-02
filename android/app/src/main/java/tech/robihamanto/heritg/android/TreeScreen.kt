@@ -9,20 +9,20 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,18 +39,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -78,6 +83,7 @@ import tech.robihamanto.heritg.android.core.tree.TreeVisualMetrics
 import kotlin.math.roundToInt
 
 internal fun logicalToPixels(value: Double, density: Float): Float = value.toFloat() * density
+internal fun nodeControlTargetSize(scale: Float): Float = 34f * scale
 
 private data class TreeComputation(
     val layout: TreeLayoutResult,
@@ -90,6 +96,7 @@ private data class TreeComputation(
 internal fun TreeHost(
     tree: FamilyTree?, people: List<Person>, relationships: List<FamilyRelationship>,
     repository: FamilyRepository, uiState: AppUiState, onLibrary: () -> Unit, onOverlay: (Overlay) -> Unit,
+    libraryPaneVisible: Boolean = false,
 ) {
     if (tree == null) return
     val prefix = "tree:${tree.id}:"
@@ -122,10 +129,13 @@ internal fun TreeHost(
     computation?.let { result -> TreeCanvas(
         layout = result.layout, selectedId = selectedId, limits = result.limits,
         maxAbove = result.maxAbove, maxBelow = result.maxBelow,
-        onLimits = { limits = it }, onSelect = ::select, onAdd = { addTargetId = it },
+        onLimits = { limits = it }, onSelect = ::select, onAdd = { select(it); addTargetId = it },
         onEdit = { onOverlay(Overlay.Edit(it)) }, onFirstPerson = { onOverlay(Overlay.FirstPerson) },
-        onLibrary = onLibrary, onPeople = { onOverlay(Overlay.People) },
-        onSettings = { onOverlay(Overlay.Settings(tree.id)) },
+        showLibrary = !libraryPaneVisible,
+        navigationIcon = if (uiState.canNavigateBack) R.drawable.ic_arrow_back else R.drawable.ic_menu,
+        onLibrary = { if (uiState.canNavigateBack) uiState.navigateBack() else onLibrary() },
+        onPeople = { onOverlay(Overlay.People) },
+        onSettings = { onOverlay(Overlay.Settings(tree.id, limits)) },
     ) }
     addTargetId?.let { id -> people.firstOrNull { it.id == id } }?.let { target -> AlertDialog(
         onDismissRequest = { addTargetId = null }, title = { Text(stringResource(R.string.add_to, target.displayName)) },
@@ -144,8 +154,8 @@ internal fun TreeHost(
 private fun TreeCanvas(
     layout: TreeLayoutResult, selectedId: String?, limits: TreeGenerationLimits, maxAbove: Int, maxBelow: Int,
     onLimits: (TreeGenerationLimits) -> Unit, onSelect: (String?) -> Unit, onAdd: (String) -> Unit,
-    onEdit: (String) -> Unit, onFirstPerson: () -> Unit, onLibrary: () -> Unit,
-    onPeople: () -> Unit, onSettings: () -> Unit,
+    onEdit: (String) -> Unit, onFirstPerson: () -> Unit, showLibrary: Boolean, navigationIcon: Int,
+    onLibrary: () -> Unit, onPeople: () -> Unit, onSettings: () -> Unit,
 ) {
     val density = LocalDensity.current
     val densityValue = density.density
@@ -189,6 +199,7 @@ private fun TreeCanvas(
     LaunchedEffect(selectedId) { if (selectedId != null) fit(.9f, selectedId) }
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
             .onSizeChanged { viewport = Offset(it.width.toFloat(), it.height.toFloat()) }
             .pointerInput(layout) { detectTapGestures { onSelect(null) } }
             .pointerInput(layout) { detectTransformGestures { centroid, pan, zoom, _ ->
@@ -221,27 +232,50 @@ private fun TreeCanvas(
                     if (node.position.x <= 0) NodeSide.Left else NodeSide.Right,
                 )
                 val addOffset = controlOffset(addSide)
-                Column(
-                    Modifier.align(Alignment.TopStart).width(190.dp)
+                val nodeTargetWidth = (TreeVisualMetrics.NodeLabelWidth.toFloat() * scale).coerceAtLeast(48f)
+                val nodeTargetHeight = ((TreeVisualMetrics.AvatarDiameter + TreeVisualMetrics.NodeLabelTopSpacing +
+                    TreeVisualMetrics.LabelHeight).toFloat() * scale).coerceAtLeast(48f)
+                Box(
+                    Modifier.align(Alignment.TopStart).width(nodeTargetWidth.dp).height(nodeTargetHeight.dp)
                         .offsetPx(
-                            nodeCenter.x - logical(TreeVisualMetrics.NodeLabelWidth / 2),
-                            nodeCenter.y - logical(TreeVisualMetrics.AvatarRadius),
+                            nodeCenter.x - with(density) { (nodeTargetWidth / 2).dp.toPx() },
+                            nodeCenter.y - logical(TreeVisualMetrics.AvatarRadius) * scale,
                         )
-                        .clickable { onSelect(node.id) }
+                        .clickable(role = Role.Button) { onSelect(node.id) }
                         .clearAndSetSemantics {
                             contentDescription = person.name
                             stateDescription = role
                             selected = node.id == selectedId
                             this.role = Role.Button
                             onClick(selectDescription) { onSelect(node.id); true }
+                            customActions = buildList {
+                                if (showControls) add(CustomAccessibilityAction(addDescription) { onAdd(node.id); true })
+                                if (showControls && node.id == selectedId) {
+                                    add(CustomAccessibilityAction(editDescription) { onEdit(node.id); true })
+                                }
+                            }
                         }
                         .testTag("person.node.${node.id}"),
+                )
+                Column(
+                    Modifier.align(Alignment.TopStart).width(190.dp)
+                        .offsetPx(
+                            nodeCenter.x - logical(TreeVisualMetrics.NodeLabelWidth / 2),
+                            nodeCenter.y - logical(TreeVisualMetrics.AvatarRadius) * scale,
+                        )
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                            transformOrigin = TransformOrigin(.5f, 0f)
+                        }
+                        .clearAndSetSemantics { },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
                         Modifier.size(64.dp).background(MaterialTheme.colorScheme.surface, CircleShape)
                             .border(if (node.id == selectedId) 2.dp else 1.dp,
-                                if (node.id == selectedId) MaterialTheme.colorScheme.primary else Line, CircleShape),
+                                if (node.id == selectedId) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         val photo by rememberPhotoThumbnail(person.id, person.profilePhotoData, with(density) { 64.dp.roundToPx() })
@@ -253,40 +287,43 @@ private fun TreeCanvas(
                         }
                     }
                     Text(person.name, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
-                    if (selectedId != null) Text(role, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, maxLines = 1)
-                    person.lifeSummary?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, maxLines = 1) }
+                    if (selectedId != null) Text(role, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
+                    person.lifeSummary?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1) }
                 }
                 if (showControls) {
                     NodeControl(
-                        symbol = "+",
+                        icon = R.drawable.ic_add,
                         description = addDescription,
                         color = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
                         onClick = { onAdd(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + with(density) { (addOffset.x - 24).dp.toPx() },
-                            nodeCenter.y + with(density) { (addOffset.y - 24).dp.toPx() },
-                        ).testTag("person.add.${node.id}"),
+                            nodeCenter.x + logical(addOffset.x.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                            nodeCenter.y + logical(addOffset.y.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                        ).testTag("person.add.${node.id}"), visualScale = scale,
                     )
                 }
                 if (showControls && node.id == selectedId) {
                     val editOffset = adjacentControlOffset(addOffset, addSide)
                     NodeControl(
-                        symbol = "✎",
+                        icon = R.drawable.ic_edit,
                         description = editDescription,
                         color = MaterialTheme.colorScheme.tertiary,
+                        contentColor = MaterialTheme.colorScheme.onTertiary,
                         onClick = { onEdit(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + with(density) { (editOffset.x - 24).dp.toPx() },
-                            nodeCenter.y + with(density) { (editOffset.y - 24).dp.toPx() },
-                        ).testTag("person.edit.${node.id}"),
+                            nodeCenter.x + logical(editOffset.x.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                            nodeCenter.y + logical(editOffset.y.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                        ).testTag("person.edit.${node.id}"), visualScale = scale,
                     )
                 }
             }
         }
         TreeControls(
             hasPeople = layout.nodes.isNotEmpty(), showControls = showControls, limits = limits,
-            maxAbove = maxAbove, maxBelow = maxBelow, onLibrary = onLibrary, onPeople = onPeople,
-            onSettings = onSettings, onZoomIn = { zoomBy(1.25f) },
+            maxAbove = maxAbove, maxBelow = maxBelow, showLibrary = showLibrary,
+            navigationIcon = navigationIcon, onLibrary = onLibrary, onPeople = onPeople, onSettings = onSettings,
+            onZoomIn = { zoomBy(1.25f) },
             onZoomOut = { zoomBy(1 / 1.25f) }, onFit = { fit(.2f) },
             onToggle = { showControls = !showControls }, onLimits = onLimits,
         )
@@ -327,7 +364,7 @@ private fun controlOffset(side: NodeSide): Offset {
     }
 }
 private fun adjacentControlOffset(offset: Offset, side: NodeSide): Offset {
-    val spacing = 34f
+    val spacing = nodeControlTargetSize(1f)
     return when (side) {
         NodeSide.Left -> offset + Offset(-spacing, 0f)
         NodeSide.Right -> offset + Offset(spacing, 0f)
@@ -338,17 +375,26 @@ private fun adjacentControlOffset(offset: Offset, side: NodeSide): Offset {
     }
 }
 @Composable
-private fun NodeControl(symbol: String, description: String, color: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NodeControl(
+    icon: Int, description: String, color: Color, contentColor: Color, onClick: () -> Unit,
+    modifier: Modifier = Modifier, visualScale: Float = 1f,
+) {
     Box(
-        modifier.size(48.dp).clickable(role = Role.Button, onClick = onClick).clearAndSetSemantics {
+        modifier.size(nodeControlTargetSize(visualScale).dp).clickable(role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics {
             contentDescription = description
             role = Role.Button
             onClick(description) { onClick(); true }
         },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size(24.dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
-            Text(symbol, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Box(Modifier.size((24 * visualScale).dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
+            Icon(
+                painterResource(icon),
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size((14 * visualScale).dp),
+            )
         }
     }
 }
@@ -365,6 +411,7 @@ private fun Connections(
     val density = LocalDensity.current
     val densityValue = density.density
     val background = MaterialTheme.colorScheme.background
+    val line = MaterialTheme.colorScheme.outline
     val plan by produceState<TreeConnectionPlan?>(null, layout, relationshipLabels) {
         value = withContext(Dispatchers.Default) { TreeConnectionPlan.make(layout, relationshipLabels) }
     }
@@ -377,7 +424,7 @@ private fun Connections(
         )
         val strokeWidth = with(density) { 1.5.dp.toPx() }
         connectionPlan.families.flatMap { it.segments }.forEach { segment ->
-            drawLine(Line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y), strokeWidth)
+            drawLine(line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y), strokeWidth)
         }
         connectionPlan.nonParentEdges.forEach { edge ->
             val left = if (edge.from.x <= edge.to.x) edge.from else edge.to
@@ -385,23 +432,23 @@ private fun Connections(
             val inset = if (left.x == right.x) 0 else 32
             val from = point(left.x + inset, left.y)
             val to = point(right.x - inset, right.y)
-            if (edge.kind == RelationshipKind.PARTNER) drawLine(Line, from, to, strokeWidth)
+            if (edge.kind == RelationshipKind.PARTNER) drawLine(line, from, to, strokeWidth)
             else {
                 val path = Path().apply {
                     moveTo(from.x, from.y)
                     quadraticTo((from.x + to.x) / 2, from.y - logical(16.0) * scale, to.x, to.y)
                 }
-                drawPath(path, Line, style = Stroke(strokeWidth))
+                drawPath(path, line, style = Stroke(strokeWidth))
             }
         }
         connectionPlan.families.flatMap { it.junctions }.forEach {
-            drawCircle(Line, with(density) { 2.dp.toPx() }, point(it.x, it.y))
+            drawCircle(line, with(density) { 2.dp.toPx() }, point(it.x, it.y))
         }
         connectionPlan.crossings.forEach {
             val center = point(it.x, it.y)
             val gap = with(density) { 5.dp.toPx() }
             drawCircle(background, with(density) { 4.dp.toPx() }, center)
-            drawLine(Line, center.copy(y = center.y - gap), center.copy(y = center.y + gap), strokeWidth)
+            drawLine(line, center.copy(y = center.y - gap), center.copy(y = center.y + gap), strokeWidth)
         }
     }
     if (relationshipLabels) layout.edges.forEach { edge ->
@@ -416,82 +463,17 @@ private fun Connections(
             }
             Text(
                 label,
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.offsetPx(
                     center.x - with(density) { 50.dp.toPx() },
                     center.y - with(density) { 24.dp.toPx() },
                 ).width(100.dp)
-                    .background(background, RoundedCornerShape(10.dp)).semantics { contentDescription = label },
+                    .background(background, RoundedCornerShape(10.dp))
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .semantics { contentDescription = label },
             )
         }
     }
-}
-
-@Composable
-private fun TreeControls(
-    hasPeople: Boolean, showControls: Boolean, limits: TreeGenerationLimits, maxAbove: Int, maxBelow: Int,
-    onLibrary: () -> Unit, onPeople: () -> Unit, onSettings: () -> Unit, onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit, onFit: () -> Unit, onToggle: () -> Unit,
-    onLimits: (TreeGenerationLimits) -> Unit,
-) {
-    var menu by remember { mutableStateOf(false) }
-    val toggleState = stringResource(if (showControls) R.string.shown else R.string.hidden)
-    Box(Modifier.fillMaxSize().padding(12.dp)) {
-      if (showControls) {
-        Control("☰", "tree.library", stringResource(R.string.family_trees), onLibrary, Modifier.align(Alignment.TopStart))
-        Row(Modifier.align(Alignment.TopEnd).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).padding(4.dp)) {
-            if (hasPeople) Control("♟", "tree.people", stringResource(R.string.all_people), onPeople)
-            Control("⚙", "tree.settings", stringResource(R.string.settings), onSettings)
-        }
-        if (hasPeople) Column(Modifier.align(Alignment.BottomEnd).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).padding(4.dp)) {
-            Box {
-                Control("↕", "tree.generationLimits", stringResource(R.string.generation_limits), { menu = true },
-                    enabled = maxAbove > 0 || maxBelow > 0)
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.all_levels)) }, onClick = {
-                        onLimits(TreeGenerationLimits()); menu = false
-                    }, modifier = Modifier.semantics { selected = limits.isUnlimited })
-                    (0..maxAbove).forEach { value -> DropdownMenuItem(
-                        text = { Text(stringResource(R.string.levels_above_value, value)) },
-                        onClick = { onLimits(limits.copy(ancestorLevels = value)); menu = false },
-                        modifier = Modifier.semantics { selected = limits.ancestorLevels == value }
-                            .testTag("tree.generationLimits.ancestors.$value"),
-                    ) }
-                    (0..maxBelow).forEach { value -> DropdownMenuItem(
-                        text = { Text(stringResource(R.string.levels_below_value, value)) },
-                        onClick = { onLimits(limits.copy(descendantLevels = value)); menu = false },
-                        modifier = Modifier.semantics { selected = limits.descendantLevels == value }
-                            .testTag("tree.generationLimits.descendants.$value"),
-                    ) }
-                }
-            }
-            Control("+", "tree.zoomIn", stringResource(R.string.zoom_in), onZoomIn)
-            Control("−", "tree.zoomOut", stringResource(R.string.zoom_out), onZoomOut)
-            Control("□", "tree.fit", stringResource(R.string.show_all_people), onFit)
-        }
-      }
-      if (hasPeople) Control(
-        if (showControls) "◉" else "○", "tree.toggleControls",
-        stringResource(if (showControls) R.string.hide_controls else R.string.show_controls), onToggle,
-        Modifier.align(Alignment.BottomStart).semantics { stateDescription = toggleState },
-      )
-    }
-}
-
-@Composable
-private fun Control(
-    symbol: String,
-    tag: String,
-    label: String,
-    action: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-) {
-    TextButton(
-        onClick = action, enabled = enabled,
-        modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).testTag(tag)
-            .semantics { contentDescription = label },
-    ) { Text(symbol) }
 }
