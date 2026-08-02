@@ -85,7 +85,7 @@ backed by inspectable policies and automated checks:
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), local Android verification, [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [iOS CI](.github/workflows/ios-ci.yml), [Android CI](.github/workflows/android-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), [security audit](docs/SECURITY_AUDIT.md), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
@@ -98,7 +98,8 @@ When exporting a `.heritg` backup, users can optionally protect the family-data
 payload with a password. HERITG encrypts and authenticates protected archives
 with AES-256-GCM. The encryption key is derived from the password using
 PBKDF2-HMAC-SHA256 with 600,000 iterations and a new random salt for every
-archive.
+archive. The exact, versioned envelope and portable ZIP payload are public in
+the [data-format specification](docs/DATA_FORMAT.md).
 
 During import, HERITG detects whether a `.heritg` archive is encrypted. An
 encrypted archive must be unlocked with the same password before its contents

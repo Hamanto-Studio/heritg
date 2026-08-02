@@ -168,7 +168,8 @@
     <string name="show_all_people">Show all people</string>
     <string name="shown">Shown</string>
     <string name="hidden">Hidden</string>
-    <string name="password_restore_notice">Any non-empty password can be used. You will need it to restore the backup.</string>
+    <string name="password_restore_notice">Use at least 15 characters. Heritg cannot recover a forgotten backup password.</string>
+    <string name="password_too_short">Use at least 15 characters.</string>
     <string name="share_backup">Share Heritg backup</string>
     <string name="add_family_tree">Add family tree</string>
     <string name="actions_for">Actions for %1$s</string>

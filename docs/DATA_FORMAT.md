@@ -50,7 +50,7 @@ No other entry is allowed. ZIP entry ordering is not semantic. The Apple writer 
 
 ## 4. JSON Encoding
 
-JSON and JSON Lines are UTF-8 without a byte-order mark. JSON keys are ASCII. Writers emit compact JSON with lexicographically sorted keys and no escaped `/`; readers do not depend on key ordering. Unknown JSON object fields are ignored. Non-nullable documented fields are required. Writers emit nullable fields as JSON `null`; readers also interpret an omitted nullable field as null.
+JSON and JSON Lines are UTF-8 without a byte-order mark. JSON keys are ASCII. Writers emit compact JSON with lexicographically sorted keys and no escaped `/`; readers do not depend on key ordering. Unknown JSON object fields are ignored. Non-nullable documented fields are required. Writers may emit nullable fields as JSON `null` or omit them; readers interpret both forms as null.
 
 Each JSON Lines record is one compact JSON object followed by LF (`0a`). Empty collections are zero-byte files. Blank lines and a missing final LF are invalid.
 
@@ -180,6 +180,8 @@ All multibyte integers are unsigned big-endian. The envelope is:
 | EOF-16 | 16 | GCM authentication tag |
 
 The password is Unicode NFC-normalized, then encoded as UTF-8. PBKDF2-HMAC-SHA256 derives a 32-byte key using the stored 16-byte salt and exactly 600,000 iterations. AES-256-GCM encrypts the complete ZIP. Bytes 0 through 43 are the authenticated additional data. Salt and nonce must be newly generated with a cryptographically secure random source for every production archive.
+
+User interfaces for new encrypted exports require at least 15 NFC-normalized Unicode code points, permit spaces and Unicode, and impose no character-class rules. Readers do not enforce that minimum so older archives remain recoverable.
 
 The deterministic compatibility vector in `ios/HeritgTests/HeritgArchiveTests.swift` uses salt `000102030405060708090a0b0c0d0e0f`, nonce `101112131415161718191a1b`, and the NFC-equivalent passwords `Cafe\u0301 family` / `Caf\u00e9 family`. For that test payload, the complete encrypted-envelope SHA-256 is `2806b437258da23ca3e0f1f57df81ae69467869ed9d9e8e0c84e00cb9bcd2780`.
 

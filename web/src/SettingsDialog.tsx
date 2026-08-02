@@ -1,6 +1,8 @@
 import { Download, FileImage, Globe2, HardDrive, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 
-import { downloadText, exportGedcom, exportHeritgBackup, safeFilename } from "./portability";
+import { exportHeritgArchive } from "./heritgArchive";
+import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
 import type { Translator } from "./i18n";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
@@ -29,6 +31,10 @@ export function SettingsDialog({
   exportPng,
   exportSvg
 }: SettingsDialogProps) {
+  const [archivePassword, setArchivePassword] = useState("");
+  const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
+  const passwordIsReady = [...archivePassword.normalize("NFC")].length >= 15 &&
+    archivePassword === archivePasswordConfirmation;
   const perform = (operation: () => void | Promise<void>) => {
     void Promise.resolve()
       .then(operation)
@@ -55,15 +61,38 @@ export function SettingsDialog({
               <p className="settings-detail">{t("backupDetail")}</p>
             </div>
           </div>
+          <label className="field">
+            {t("archivePassword")}
+            <input
+              autoComplete="new-password"
+              maxLength={1024}
+              onChange={(event) => setArchivePassword(event.target.value)}
+              type="password"
+              value={archivePassword}
+            />
+          </label>
+          <label className="field">
+            {t("confirmArchivePassword")}
+            <input
+              autoComplete="new-password"
+              maxLength={1024}
+              onChange={(event) => setArchivePasswordConfirmation(event.target.value)}
+              type="password"
+              value={archivePasswordConfirmation}
+            />
+          </label>
+          <p className="settings-detail">{t("archivePasswordHelp")}</p>
           <div className="settings-actions">
-            <button className="button secondary" onClick={() => perform(() => {
-              downloadText(
-                exportHeritgBackup(data),
-                safeFilename(`${tree.title}-heritg-backup`, "json"),
-                "application/json;charset=utf-8"
+            <button className="button secondary" disabled={!passwordIsReady} onClick={() => perform(async () => {
+              const archive = await exportHeritgArchive(data, tree.id, archivePassword);
+              downloadBlob(
+                new Blob([archive.slice().buffer as ArrayBuffer], { type: "application/vnd.heritg.family-archive" }),
+                safeFilename(tree.title, "heritg")
               );
+              setArchivePassword("");
+              setArchivePasswordConfirmation("");
             })} type="button">
-              <Download aria-hidden="true" size={16} /> {t("downloadBackup")}
+              <Download aria-hidden="true" size={16} /> {t("downloadEncryptedBackup")}
             </button>
             <button className="button secondary" onClick={() => perform(() => {
               downloadText(

@@ -108,7 +108,8 @@
     <string name="show_all_people">Tampilkan semua orang</string>
     <string name="shown">Ditampilkan</string>
     <string name="hidden">Disembunyikan</string>
-    <string name="password_restore_notice">Kata sandi apa pun yang tidak kosong dapat digunakan. Anda akan memerlukannya untuk memulihkan cadangan.</string>
+    <string name="password_restore_notice">Gunakan minimal 15 karakter. Heritg tidak dapat memulihkan kata sandi cadangan yang terlupa.</string>
+    <string name="password_too_short">Gunakan minimal 15 karakter.</string>
     <string name="share_backup">Bagikan cadangan Heritg</string>
     <string name="add_family_tree">Tambah silsilah keluarga</string>
     <string name="actions_for">Tindakan untuk %1$s</string>

@@ -16,8 +16,12 @@ struct ExportSettingsView: View {
     @State private var exportPointOfViewID: String?
     @State private var archivePassword = ""
     @State private var archivePasswordConfirmation = ""
-    @State private var encryptsArchive = false
+    @State private var encryptsArchive = true
     @State private var isPreparingArchive = false
+
+    private var archivePasswordCharacterCount: Int {
+        archivePassword.precomposedStringWithCanonicalMapping.unicodeScalars.count
+    }
 
     init(
         tree: FamilyTree,
@@ -98,7 +102,7 @@ struct ExportSettingsView: View {
                 .accessibilityIdentifier("settings.encryptArchive")
 
             if encryptsArchive {
-                Text("Any non-empty password can be used. You will need it to restore the backup.")
+                Text("Use at least 15 characters. Heritg cannot recover a forgotten backup password.")
                     .font(.footnote)
                     .foregroundStyle(HeritgColor.subtleText)
                 SecureField("Password", text: $archivePassword)
@@ -122,6 +126,12 @@ struct ExportSettingsView: View {
                     .foregroundStyle(HeritgColor.danger)
             }
 
+            if encryptsArchive, !archivePassword.isEmpty, archivePasswordCharacterCount < 15 {
+                Text("Use at least 15 characters.")
+                    .font(.footnote)
+                    .foregroundStyle(HeritgColor.danger)
+            }
+
             Button {
                 prepareArchive()
             } label: {
@@ -134,7 +144,8 @@ struct ExportSettingsView: View {
             .buttonStyle(HeritgButtonStyle(variant: .secondary))
             .disabled(
                 isPreparingArchive || (encryptsArchive && (
-                    archivePassword.isEmpty || archivePasswordConfirmation.isEmpty
+                    archivePasswordCharacterCount < 15 || archivePasswordConfirmation.isEmpty ||
+                        archivePassword != archivePasswordConfirmation
                 ))
             )
             .accessibilityIdentifier("settings.exportHeritg")
@@ -266,6 +277,10 @@ struct ExportSettingsView: View {
         exportError = nil
         guard !encryptsArchive || archivePassword == archivePasswordConfirmation else {
             exportError = String(localized: "Passwords do not match.", locale: AppLanguage.selectedLocale)
+            return
+        }
+        guard !encryptsArchive || archivePasswordCharacterCount >= 15 else {
+            exportError = String(localized: "Use at least 15 characters.", locale: AppLanguage.selectedLocale)
             return
         }
 

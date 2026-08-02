@@ -84,9 +84,11 @@ import tech.robihamanto.heritg.android.core.model.Person
 import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
 import tech.robihamanto.heritg.android.core.tree.TreeLayout
 import tech.robihamanto.heritg.android.core.tree.TreeLayoutResult
+import java.text.Normalizer
 import java.time.Instant
 import java.time.LocalDate
 
+private const val MINIMUM_ARCHIVE_PASSWORD_CHARACTERS = 15
 private enum class SettingsPage { ROOT, LANGUAGE, EXPORT }
 private data class GeneratedShare(val bytes: ByteArray, val name: String, val mime: String) : MemoryOnlyValue {
     override fun clearMemory() = bytes.fill(0)
@@ -211,13 +213,16 @@ private fun ExportScreen(
     val errorFocus = remember { FocusRequester() }
     var pointOfView by uiState.state<String?>(prefix + "pointOfView") { tree.lastSelectedPersonId }
     var pointMenu by uiState.state(prefix + "pointMenu") { false }
-    var encrypt by uiState.state(prefix + "encrypt") { false }
+    var encrypt by uiState.state(prefix + "encrypt") { true }
     var password by uiState.state(prefix + "password") { "" }
     var confirmation by uiState.state(prefix + "confirmation") { "" }
     var working by uiState.state(prefix + "working") { false }
     var error by uiState.state<String?>(prefix + "error") { null }
     var generatedArchive by uiState.state<GeneratedShare?>(prefix + "generatedArchive") { null }
     val passwordMismatch = stringResource(R.string.passwords_mismatch)
+    val passwordTooShort = stringResource(R.string.password_too_short)
+    val normalizedPassword = remember(password) { Normalizer.normalize(password, Normalizer.Form.NFC) }
+    val passwordCharacterCount = normalizedPassword.codePointCount(0, normalizedPassword.length)
     val layoutState = remember(people, relationships, pointOfView, generationLimits, locale) {
         mutableStateOf<TreeLayoutResult?>(null)
     }
@@ -250,6 +255,10 @@ private fun ExportScreen(
         }
     }
     fun prepareArchive() {
+        if (encrypt && passwordCharacterCount < MINIMUM_ARCHIVE_PASSWORD_CHARACTERS) {
+            error = passwordTooShort
+            return
+        }
         if (encrypt && password != confirmation) {
             error = passwordMismatch
             return
@@ -280,7 +289,7 @@ private fun ExportScreen(
     }
     val keyboardActions = rememberFormKeyboardActions()
     val confirmationKeyboardActions = rememberFormKeyboardActions {
-        if (!working && password.isNotEmpty() && confirmation.isNotEmpty()) prepareArchive()
+        if (!working && passwordCharacterCount >= MINIMUM_ARCHIVE_PASSWORD_CHARACTERS && password == confirmation) prepareArchive()
     }
     val passwordsDoNotMatch = confirmation.isNotEmpty() && password != confirmation
     LaunchedEffect(error) { if (error != null) errorFocus.requestFocus() }
@@ -344,9 +353,14 @@ private fun ExportScreen(
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordMismatch) }
                     .testTag("settings.passwordMismatch"),
             )
+            if (password.isNotEmpty() && passwordCharacterCount < MINIMUM_ARCHIVE_PASSWORD_CHARACTERS) Text(
+                passwordTooShort, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordTooShort) }
+                    .testTag("settings.passwordTooShort"),
+            )
         } else Text(stringResource(R.string.unencrypted_warning), color = MaterialTheme.colorScheme.error)
         Button(onClick = ::prepareArchive,
-            enabled = !working && (!encrypt || password.isNotEmpty() && confirmation.isNotEmpty()),
+            enabled = !working && (!encrypt || passwordCharacterCount >= MINIMUM_ARCHIVE_PASSWORD_CHARACTERS && password == confirmation),
             modifier = Modifier.fillMaxWidth().testTag("settings.exportHeritg")) {
             Text(if (working) stringResource(R.string.creating_backup) else stringResource(R.string.create_backup))
         }

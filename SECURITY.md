@@ -1,5 +1,47 @@
 # Security Policy
 
+## Cryptography Guardrails
+
+The cross-platform `.heritg` format is specified in
+[`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md). Implementations must not introduce
+another platform-specific archive or cryptographic construction.
+
+- Use platform cryptography: CryptoKit/CommonCrypto on iOS, Web Crypto in
+  browsers, and JCA on Android. Do not implement AES.
+- Encrypted archives use AES-256-GCM with a fresh 96-bit nonce and a fresh
+  128-bit salt from the platform CSPRNG for every export.
+- Derive the key with PBKDF2-HMAC-SHA256 at 600,000 iterations. NFC-normalize
+  the password and encode it as UTF-8 before derivation.
+- Authenticate the complete 44-byte envelope header as GCM additional data.
+  Reject unknown versions, algorithm identifiers, or work factors before key
+  derivation.
+- Never reuse an AES-GCM key/nonce pair, log a password or derived key, persist
+  an archive password, or expose a deterministic salt/nonce production API.
+- Treat all imports as hostile. Enforce size and record limits, reject unsafe
+  ZIP paths and unsupported ZIP features, verify every SHA-256 checksum before
+  parsing JSON, validate graph references, and commit only after full success.
+- Preserve portable IDs. Reject any collision with existing data instead of
+  silently overwriting or partially importing records.
+- Any format or parameter change requires a new version, an explicit migration
+  decision, updated documentation, and one deterministic fixture asserted by
+  iOS, web, and Android.
+
+The deterministic fixture is test-only and contains synthetic data. Production
+code must always generate its salt and nonce randomly.
+
+## Security Review Gate
+
+Before a public release or cryptography change:
+
+1. Run the iOS, web, and Android archive suites and confirm the published
+   encrypted-envelope SHA-256 matches on all three platforms.
+2. Run dependency, secret-history, lint, and production-build checks.
+3. Review archive parsers for path traversal, duplicate entries, links,
+   decompression bombs, oversized fields, broken references, and partial writes.
+4. Update [`docs/SECURITY_AUDIT.md`](docs/SECURITY_AUDIT.md) when the threat
+   model, platform implementation, dependency set, or network behavior changes.
+5. Do not release from a branch that omits a supported platform implementation.
+
 ## Before Every Commit
 
 1. Review `git status` and the staged diff.

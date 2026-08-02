@@ -98,7 +98,6 @@ class AppFlowTest {
             runCatching { compose.onNodeWithTag("settings.export", true).assertIsDisplayed(); true }.getOrDefault(false)
         }
         compose.onNodeWithTag("settings.export", true).performClick()
-        compose.onNodeWithTag("settings.encryptArchive", true).performClick()
         compose.onNodeWithTag("settings.archivePassword", true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("first")
