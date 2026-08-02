@@ -94,6 +94,7 @@
     <string name="error_file_open">Berkas yang dipilih tidak dapat dibuka.</string>
     <string name="error_photo_open">Foto yang dipilih tidak dapat dibuka.</string>
     <string name="error_photo_crop">Foto tidak dapat dipangkas.</string>
+    <string name="error_tree_routing">Silsilah keluarga tidak dapat diekspor karena beberapa hubungan tidak dapat ditampilkan dengan aman.</string>
     <string name="error_invalid_date">Masukkan tanggal kalender yang valid dalam format YYYY-MM-DD.</string>
     <string name="error_unknown">Tindakan tidak dapat diselesaikan.</string>
     <string name="profile_photo_of">Foto profil %1$s</string>
@@ -114,4 +115,5 @@
     <string name="add_relative_to">Tambah kerabat untuk %1$s</string>
     <string name="edit_person_named">Edit %1$s</string>
     <string name="select_person_named">Pilih %1$s</string>
+    <string name="tree_routing_warning">Beberapa hubungan tidak dapat ditampilkan dengan aman.</string>
 </resources>

@@ -19,6 +19,8 @@ object ArchiveConstants {
     const val HashAlgorithm = "sha256"
 
     val EncryptedMagic = "HTGENC01".encodeToByteArray()
+    val LegacyUnencryptedMagic = "HERITG00".encodeToByteArray()
+    val LegacyEncryptedMagic = "HERITG01".encodeToByteArray()
     val ZipMagic = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
     const val EnvelopeVersion = 1
     const val KdfIdPbkdf2HmacSha256 = 1
@@ -29,6 +31,9 @@ object ArchiveConstants {
     const val NonceBytes = 12
     const val TagBytes = 16
     const val HeaderBytes = 8 + 2 + 1 + 1 + 4 + SaltBytes + NonceBytes
+    const val LegacyHeaderBytes = 8 + 2 + 4 + SaltBytes + NonceBytes
+    const val MinimumPbkdf2Iterations = 100_000
+    const val MaximumPbkdf2Iterations = 2_000_000
 
     const val MaximumArchiveBytes = 32 * 1024 * 1024
     const val MaximumPeople = 100_000

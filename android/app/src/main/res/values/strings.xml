@@ -154,6 +154,7 @@
     <string name="error_file_open">The selected file could not be opened.</string>
     <string name="error_photo_open">The selected photo could not be opened.</string>
     <string name="error_photo_crop">The photo could not be cropped.</string>
+    <string name="error_tree_routing">The family tree could not be exported because some relationships could not be displayed safely.</string>
     <string name="error_invalid_date">Enter a valid calendar date in YYYY-MM-DD format.</string>
     <string name="error_unknown">The action could not be completed.</string>
     <string name="profile_photo_of">Profile photo of %1$s</string>
@@ -174,4 +175,5 @@
     <string name="add_relative_to">Add relative to %1$s</string>
     <string name="edit_person_named">Edit %1$s</string>
     <string name="select_person_named">Select %1$s</string>
+    <string name="tree_routing_warning">Some relationships could not be displayed safely.</string>
 </resources>

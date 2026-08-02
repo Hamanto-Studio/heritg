@@ -14,6 +14,8 @@ internal object ArchiveCrypto {
     fun protection(bytes: ByteArray): ArchiveProtection = when {
         bytes.size > ArchiveConstants.MaximumArchiveBytes -> throw ArchiveException.FileTooLarge()
         bytes.startsWith(ArchiveConstants.EncryptedMagic) -> ArchiveProtection.ENCRYPTED
+        bytes.startsWith(ArchiveConstants.LegacyEncryptedMagic) -> ArchiveProtection.ENCRYPTED
+        bytes.startsWith(ArchiveConstants.LegacyUnencryptedMagic) -> ArchiveProtection.UNENCRYPTED
         bytes.startsWith(ArchiveConstants.ZipMagic) ->
             ArchiveProtection.UNENCRYPTED
         else -> throw ArchiveException.InvalidArchive()
@@ -108,7 +110,7 @@ internal object ArchiveCrypto {
         Normalizer.normalize(password, Normalizer.Form.NFC).encodeToByteArray()
 
     // This byte-oriented PBKDF2 avoids provider-specific char-to-byte conversion.
-    private fun pbkdf2(password: ByteArray, salt: ByteArray, iterations: Int): ByteArray {
+    internal fun pbkdf2(password: ByteArray, salt: ByteArray, iterations: Int): ByteArray {
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(password, "HmacSHA256"))
         val firstInput = salt + byteArrayOf(0, 0, 0, 1)

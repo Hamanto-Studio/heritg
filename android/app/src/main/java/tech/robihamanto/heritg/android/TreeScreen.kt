@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,10 +39,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tech.robihamanto.heritg.android.core.data.FamilyRepository
+import tech.robihamanto.heritg.android.core.domain.SemanticFormatter
 import tech.robihamanto.heritg.android.core.domain.semanticFormatter
 import tech.robihamanto.heritg.android.core.model.FamilyRelationship
 import tech.robihamanto.heritg.android.core.model.FamilyTree
@@ -83,10 +84,13 @@ import tech.robihamanto.heritg.android.core.tree.TreeVisualMetrics
 import kotlin.math.roundToInt
 
 internal fun logicalToPixels(value: Double, density: Float): Float = value.toFloat() * density
-internal fun nodeControlTargetSize(scale: Float): Float = 34f * scale
+internal fun nodeControlTargetSize(scale: Float): Float = 44f * scale
+internal fun nodeControlAdjacentSpacing(scale: Float): Float = 34f * scale
+internal fun nodeControlVisualSize(scale: Float): Float = 24f * scale
 
 private data class TreeComputation(
     val layout: TreeLayoutResult,
+    val connectionPlan: TreeConnectionPlan,
     val limits: TreeGenerationLimits,
     val maxAbove: Int,
     val maxBelow: Int,
@@ -104,6 +108,9 @@ internal fun TreeHost(
     var limits by uiState.state(prefix + "limits") { TreeGenerationLimits() }
     var addTargetId by uiState.state<String?>(prefix + "addTarget") { null }
     val locale = LocalConfiguration.current.locales[0]
+    val formatter = remember(locale) { semanticFormatter(locale) }
+    val density = LocalDensity.current.density
+    val textMeasurer = remember(density) { AndroidTreeTextMeasurer(density) }
     LaunchedEffect(tree.id, people.map { it.id }, tree.lastSelectedPersonId) {
         if (selectedId !in people.map { it.id }) selectedId = tree.resolvedFocusId(people)
     }
@@ -111,23 +118,27 @@ internal fun TreeHost(
         selectedId = id
         if (id != null) uiState.launch { repository.rememberSelectedPerson(tree.id, id) }
     }
-    val computation by produceState<TreeComputation?>(null, people, relationships, selectedId, limits, locale) {
+    val computation by produceState<TreeComputation?>(
+        null, people, relationships, selectedId, limits, locale, textMeasurer,
+    ) {
         value = withContext(Dispatchers.Default) {
             val snapshots = people.snapshots(locale)
             val relationshipSnapshots = relationships.snapshots()
             val available = TreeLayout.availableGenerationLevels(selectedId, snapshots, relationshipSnapshots)
             val actualLimits = limits.clamped(available)
+            val layout = TreeLayout.make(
+                null, snapshots, relationshipSnapshots, selectedId, actualLimits, formatter,
+            )
             TreeComputation(
-                TreeLayout.make(
-                    null, snapshots, relationshipSnapshots, selectedId, actualLimits, semanticFormatter(locale),
-                ),
-                actualLimits, available.ancestorLevels, available.descendantLevels,
+                layout, TreeConnectionPlan.make(layout, selectedId != null, formatter, textMeasurer), actualLimits,
+                available.ancestorLevels, available.descendantLevels,
             )
         }
     }
     LaunchedEffect(computation?.limits) { computation?.limits?.let { if (limits != it) limits = it } }
     computation?.let { result -> TreeCanvas(
-        layout = result.layout, selectedId = selectedId, limits = result.limits,
+        layout = result.layout, connectionPlan = result.connectionPlan, semanticFormatter = formatter,
+        selectedId = selectedId, limits = result.limits,
         maxAbove = result.maxAbove, maxBelow = result.maxBelow,
         onLimits = { limits = it }, onSelect = ::select, onAdd = { select(it); addTargetId = it },
         onEdit = { onOverlay(Overlay.Edit(it)) }, onFirstPerson = { onOverlay(Overlay.FirstPerson) },
@@ -152,7 +163,9 @@ internal fun TreeHost(
 
 @Composable
 private fun TreeCanvas(
-    layout: TreeLayoutResult, selectedId: String?, limits: TreeGenerationLimits, maxAbove: Int, maxBelow: Int,
+    layout: TreeLayoutResult, connectionPlan: TreeConnectionPlan, semanticFormatter: SemanticFormatter,
+    selectedId: String?, limits: TreeGenerationLimits,
+    maxAbove: Int, maxBelow: Int,
     onLimits: (TreeGenerationLimits) -> Unit, onSelect: (String?) -> Unit, onAdd: (String) -> Unit,
     onEdit: (String) -> Unit, onFirstPerson: () -> Unit, showLibrary: Boolean, navigationIcon: Int,
     onLibrary: () -> Unit, onPeople: () -> Unit, onSettings: () -> Unit,
@@ -163,6 +176,7 @@ private fun TreeCanvas(
     var translation by remember { mutableStateOf(Offset.Zero) }
     var viewport by remember { mutableStateOf(Offset.Zero) }
     var showControls by remember { mutableStateOf(true) }
+    val drawingBounds = connectionPlan.drawingBounds(layout.nodes)
     fun logical(value: Double) = logicalToPixels(value, densityValue)
     fun center(x: Double, y: Double) = Offset(
         viewport.x / 2 + logical(x) * scale + translation.x,
@@ -170,32 +184,32 @@ private fun TreeCanvas(
     )
     fun fit(minimum: Float = .2f, centerId: String? = null) {
         if (layout.nodes.isEmpty() || viewport.x <= 0) return
-        val minX = logical(layout.nodes.minOf { it.position.x }); val maxX = logical(layout.nodes.maxOf { it.position.x })
-        val minY = logical(layout.nodes.minOf { it.position.y }); val maxY = logical(layout.nodes.maxOf { it.position.y })
         val horizontalPadding = with(density) { 64.dp.toPx() }
         val verticalPadding = with(density) { 180.dp.toPx() }
-        val nodeExtent = logical(TreeVisualMetrics.NodeLabelWidth)
         scale = minOf(
-            (viewport.x - horizontalPadding).coerceAtLeast(1f) / (maxX - minX + nodeExtent),
-            (viewport.y - verticalPadding).coerceAtLeast(1f) / (maxY - minY + nodeExtent),
+            (viewport.x - horizontalPadding).coerceAtLeast(1f) /
+                logical(maxOf(drawingBounds.width, TreeVisualMetrics.NodeLabelWidth)),
+            (viewport.y - verticalPadding).coerceAtLeast(1f) /
+                logical(maxOf(drawingBounds.height, TreeVisualMetrics.NodeLabelWidth)),
         )
             .coerceIn(minimum, 1.25f)
         val target = centerId?.let { id -> layout.nodes.firstOrNull { it.id == id }?.position }
         translation = if (target == null) {
-            Offset(-(minX + maxX) / 2 * scale, -(minY + maxY) / 2 * scale)
+            Offset(-logical((drawingBounds.minX + drawingBounds.maxX) / 2) * scale,
+                -logical((drawingBounds.minY + drawingBounds.maxY) / 2) * scale)
         } else Offset(-logical(target.x) * scale, -logical(target.y) * scale)
     }
     fun zoomBy(factor: Float) {
         if (layout.nodes.isEmpty()) return
         val oldScale = scale
         val newScale = (scale * factor).coerceIn(.2f, 1.8f)
-        val centerX = logical((layout.nodes.minOf { it.position.x } + layout.nodes.maxOf { it.position.x }) / 2)
-        val centerY = logical((layout.nodes.minOf { it.position.y } + layout.nodes.maxOf { it.position.y }) / 2)
+        val centerX = logical((drawingBounds.minX + drawingBounds.maxX) / 2)
+        val centerY = logical((drawingBounds.minY + drawingBounds.maxY) / 2)
         val screenCenter = Offset(centerX * oldScale + translation.x, centerY * oldScale + translation.y)
         scale = newScale
         translation = Offset(screenCenter.x - centerX * newScale, screenCenter.y - centerY * newScale)
     }
-    LaunchedEffect(layout, viewport, densityValue) { fit(.72f, selectedId) }
+    LaunchedEffect(layout, connectionPlan, viewport, densityValue) { fit(.72f, selectedId) }
     LaunchedEffect(selectedId) { if (selectedId != null) fit(.9f, selectedId) }
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -214,7 +228,7 @@ private fun TreeCanvas(
                 Text(stringResource(R.string.add_first_person))
             }
         } else {
-            Connections(layout, scale, translation, viewport, selectedId != null)
+            Connections(connectionPlan, semanticFormatter, scale, translation, viewport)
             val overscan = with(density) { 220.dp.toPx() }
             layout.nodes.filter { node ->
                 val position = center(node.position.x, node.position.y)
@@ -286,9 +300,7 @@ private fun TreeCanvas(
                                 contentScale = ContentScale.Crop)
                         }
                     }
-                    Text(person.name, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
-                    if (selectedId != null) Text(role, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1)
-                    person.lifeSummary?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, maxLines = 1) }
+                    TreeNodeLabels(person.name, role.takeIf { selectedId != null }, person.lifeSummary)
                 }
                 if (showControls) {
                     NodeControl(
@@ -298,8 +310,10 @@ private fun TreeCanvas(
                         contentColor = MaterialTheme.colorScheme.onSecondary,
                         onClick = { onAdd(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + logical(addOffset.x.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
-                            nodeCenter.y + logical(addOffset.y.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                            nodeCenter.x + logical(addOffset.x.toDouble()) * scale -
+                                with(density) { (nodeControlTargetSize(scale) / 2).dp.toPx() },
+                            nodeCenter.y + logical(addOffset.y.toDouble()) * scale -
+                                with(density) { (nodeControlTargetSize(scale) / 2).dp.toPx() },
                         ).testTag("person.add.${node.id}"), visualScale = scale,
                     )
                 }
@@ -312,8 +326,10 @@ private fun TreeCanvas(
                         contentColor = MaterialTheme.colorScheme.onTertiary,
                         onClick = { onEdit(node.id) },
                         modifier = Modifier.align(Alignment.TopStart).offsetPx(
-                            nodeCenter.x + logical(editOffset.x.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
-                            nodeCenter.y + logical(editOffset.y.toDouble()) * scale - with(density) { (17 * scale).dp.toPx() },
+                            nodeCenter.x + logical(editOffset.x.toDouble()) * scale -
+                                with(density) { (nodeControlTargetSize(scale) / 2).dp.toPx() },
+                            nodeCenter.y + logical(editOffset.y.toDouble()) * scale -
+                                with(density) { (nodeControlTargetSize(scale) / 2).dp.toPx() },
                         ).testTag("person.edit.${node.id}"), visualScale = scale,
                     )
                 }
@@ -327,6 +343,9 @@ private fun TreeCanvas(
             onZoomOut = { zoomBy(1 / 1.25f) }, onFit = { fit(.2f) },
             onToggle = { showControls = !showControls }, onLimits = onLimits,
         )
+        if (connectionPlan.hasRoutingFailures) {
+            TreeRoutingWarning(Modifier.align(Alignment.TopCenter))
+        }
     }
 }
 
@@ -364,7 +383,7 @@ private fun controlOffset(side: NodeSide): Offset {
     }
 }
 private fun adjacentControlOffset(offset: Offset, side: NodeSide): Offset {
-    val spacing = nodeControlTargetSize(1f)
+    val spacing = nodeControlAdjacentSpacing(1f)
     return when (side) {
         NodeSide.Left -> offset + Offset(-spacing, 0f)
         NodeSide.Right -> offset + Offset(spacing, 0f)
@@ -388,7 +407,8 @@ private fun NodeControl(
         },
         contentAlignment = Alignment.Center,
     ) {
-        Box(Modifier.size((24 * visualScale).dp).background(color, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(nodeControlVisualSize(visualScale).dp).background(color, CircleShape),
+            contentAlignment = Alignment.Center) {
             Icon(
                 painterResource(icon),
                 contentDescription = null,
@@ -401,61 +421,56 @@ private fun NodeControl(
 
 @Composable
 private fun Connections(
-    layout: TreeLayoutResult,
+    connectionPlan: TreeConnectionPlan,
+    semanticFormatter: SemanticFormatter,
     scale: Float,
     translation: Offset,
     viewport: Offset,
-    relationshipLabels: Boolean,
 ) {
-    val locale = LocalConfiguration.current.locales[0]
     val density = LocalDensity.current
     val densityValue = density.density
     val background = MaterialTheme.colorScheme.background
     val line = MaterialTheme.colorScheme.outline
-    val plan by produceState<TreeConnectionPlan?>(null, layout, relationshipLabels) {
-        value = withContext(Dispatchers.Default) { TreeConnectionPlan.make(layout, relationshipLabels) }
-    }
-    val connectionPlan = plan ?: return
     Canvas(Modifier.fillMaxSize()) {
         fun logical(value: Double) = logicalToPixels(value, densityValue)
         fun point(x: Double, y: Double) = Offset(
             viewport.x / 2 + logical(x) * scale + translation.x,
             viewport.y / 2 + logical(y) * scale + translation.y,
         )
-        val strokeWidth = with(density) { 1.5.dp.toPx() }
+        val strokeWidth = logical(1.5) * scale
         connectionPlan.families.flatMap { it.segments }.forEach { segment ->
-            drawLine(line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y), strokeWidth)
+            drawLine(
+                line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
+                strokeWidth, cap = StrokeCap.Round,
+            )
         }
-        connectionPlan.nonParentEdges.forEach { edge ->
-            val left = if (edge.from.x <= edge.to.x) edge.from else edge.to
-            val right = if (edge.from.x <= edge.to.x) edge.to else edge.from
-            val inset = if (left.x == right.x) 0 else 32
-            val from = point(left.x + inset, left.y)
-            val to = point(right.x - inset, right.y)
-            if (edge.kind == RelationshipKind.PARTNER) drawLine(line, from, to, strokeWidth)
-            else {
-                val path = Path().apply {
-                    moveTo(from.x, from.y)
-                    quadraticTo((from.x + to.x) / 2, from.y - logical(16.0) * scale, to.x, to.y)
-                }
-                drawPath(path, line, style = Stroke(strokeWidth))
-            }
+        connectionPlan.nonParentRoutes.flatMap { it.segments }.forEach { segment ->
+            drawLine(
+                line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
+                strokeWidth, cap = StrokeCap.Round,
+            )
         }
         connectionPlan.families.flatMap { it.junctions }.forEach {
-            drawCircle(line, with(density) { 2.dp.toPx() }, point(it.x, it.y))
+            drawCircle(line, logical(2.0) * scale, point(it.x, it.y))
         }
         connectionPlan.crossings.forEach {
             val center = point(it.x, it.y)
-            val gap = with(density) { 5.dp.toPx() }
-            drawCircle(background, with(density) { 4.dp.toPx() }, center)
-            drawLine(line, center.copy(y = center.y - gap), center.copy(y = center.y + gap), strokeWidth)
+            val gap = logical(5.0) * scale
+            drawCircle(background, logical(4.0) * scale, center)
+            drawLine(
+                line, center.copy(y = center.y - gap), center.copy(y = center.y + gap),
+                strokeWidth, cap = StrokeCap.Round,
+            )
         }
     }
-    if (relationshipLabels) layout.edges.forEach { edge ->
-        edge.marriageLabel(semanticFormatter(locale))?.let { label ->
+    connectionPlan.nonParentRoutes.forEach { route ->
+        val position = route.labelPosition
+        val obstacle = route.labelObstacle
+        route.edge.marriageLabel(semanticFormatter)?.let { label ->
+            if (position == null || obstacle == null) return@let
             val center = Offset(
-                viewport.x / 2 + logicalToPixels((edge.from.x + edge.to.x) / 2, densityValue) * scale + translation.x,
-                viewport.y / 2 + logicalToPixels((edge.from.y + edge.to.y) / 2, densityValue) * scale + translation.y,
+                viewport.x / 2 + logicalToPixels(position.x, densityValue) * scale + translation.x,
+                viewport.y / 2 + logicalToPixels(position.y, densityValue) * scale + translation.y,
             )
             val overscan = with(density) { 100.dp.toPx() }
             if (center.x !in -overscan..(viewport.x + overscan) || center.y !in -overscan..(viewport.y + overscan)) {
@@ -464,14 +479,24 @@ private fun Connections(
             Text(
                 label,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp,
+                fontSize = fixedLogicalTextSp(12f, density.fontScale).sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = fixedLogicalTextSp(12f * .7f, density.fontScale).sp,
+                    maxFontSize = fixedLogicalTextSp(12f, density.fontScale).sp,
+                ),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.offsetPx(
-                    center.x - with(density) { 50.dp.toPx() },
-                    center.y - with(density) { 24.dp.toPx() },
-                ).width(100.dp)
-                    .background(background, RoundedCornerShape(10.dp))
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    center.x - logicalToPixels(obstacle.rect.width / 2, densityValue),
+                    center.y - logicalToPixels(obstacle.rect.height / 2, densityValue),
+                ).width(obstacle.rect.width.dp).height(obstacle.rect.height.dp)
+                    .background(background, RoundedCornerShape(50))
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        transformOrigin = TransformOrigin.Center
+                    }
                     .semantics { contentDescription = label },
             )
         }

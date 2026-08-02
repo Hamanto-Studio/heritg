@@ -1,16 +1,20 @@
 package tech.robihamanto.heritg.android
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -24,15 +28,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
+import tech.robihamanto.heritg.android.core.tree.TreeVisualMetrics
 
 @Composable
 internal fun TreeControls(
@@ -89,6 +100,66 @@ internal fun TreeControls(
             Modifier.align(Alignment.BottomStart).semantics { stateDescription = toggleState },
         )
     }
+}
+
+@Composable
+internal fun TreeNodeLabels(name: String, role: String?, lifeSummary: String?) {
+    val fontScale = LocalDensity.current.fontScale
+    Spacer(Modifier.height(TreeVisualMetrics.NodeLabelTopSpacing.dp))
+    Text(
+        name,
+        fontSize = fixedLogicalTextSp(16f, fontScale).sp,
+        lineHeight = fixedLogicalTextSp(20f, fontScale).sp,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        autoSize = TextAutoSize.StepBased(
+            minFontSize = fixedLogicalTextSp(16f * .55f, fontScale).sp,
+            maxFontSize = fixedLogicalTextSp(16f, fontScale).sp,
+        ),
+        textAlign = TextAlign.Center,
+    )
+    role?.let {
+        Text(
+            it,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = fixedLogicalTextSp(13f, fontScale).sp,
+            lineHeight = fixedLogicalTextSp(20f, fontScale).sp,
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(
+                minFontSize = fixedLogicalTextSp(13f * .7f, fontScale).sp,
+                maxFontSize = fixedLogicalTextSp(13f, fontScale).sp,
+            ),
+        )
+    }
+    lifeSummary?.let {
+        Text(
+            it,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = fixedLogicalTextSp(11f, fontScale).sp,
+            lineHeight = fixedLogicalTextSp(16f, fontScale).sp,
+            maxLines = 1,
+        )
+    }
+}
+
+internal fun fixedLogicalTextSp(logicalDp: Float, fontScale: Float): Float {
+    require(fontScale > 0f)
+    return logicalDp / fontScale
+}
+
+@Composable
+internal fun TreeRoutingWarning(modifier: Modifier = Modifier) {
+    Text(
+        stringResource(R.string.tree_routing_warning),
+        color = MaterialTheme.colorScheme.onErrorContainer,
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+        modifier = modifier.padding(horizontal = 72.dp, vertical = 16.dp)
+            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .testTag("tree.routingWarning"),
+    )
 }
 
 @Composable

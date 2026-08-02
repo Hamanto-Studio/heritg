@@ -42,8 +42,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +53,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -205,6 +206,8 @@ private fun ExportScreen(
 ) {
     val context = LocalContext.current
     val locale = LocalConfiguration.current.locales[0]
+    val density = LocalDensity.current.density
+    val textMeasurer = remember(density) { AndroidTreeTextMeasurer(density) }
     val errorFocus = remember { FocusRequester() }
     var pointOfView by uiState.state<String?>(prefix + "pointOfView") { tree.lastSelectedPersonId }
     var pointMenu by uiState.state(prefix + "pointMenu") { false }
@@ -215,10 +218,12 @@ private fun ExportScreen(
     var error by uiState.state<String?>(prefix + "error") { null }
     var generatedArchive by uiState.state<GeneratedShare?>(prefix + "generatedArchive") { null }
     val passwordMismatch = stringResource(R.string.passwords_mismatch)
-    val layout by produceState<TreeLayoutResult?>(
-        null, people, relationships, pointOfView, generationLimits, locale,
-    ) {
-        value = withContext(Dispatchers.Default) {
+    val layoutState = remember(people, relationships, pointOfView, generationLimits, locale) {
+        mutableStateOf<TreeLayoutResult?>(null)
+    }
+    val layout by layoutState
+    LaunchedEffect(people, relationships, pointOfView, generationLimits, locale) {
+        layoutState.value = withContext(Dispatchers.Default) {
             TreeLayout.make(
                 null, people.snapshots(locale), relationships.snapshots(), pointOfView,
                 generationLimits, semanticFormatter(locale),
@@ -298,10 +303,12 @@ private fun ExportScreen(
             }
         }
         Button(onClick = { layout?.let { current -> prepare("$base-Chart.png", "image/png") {
-            TreePngExporter.export(current, pointOfView != null, locale = locale)
+            TreePngExporter.export(current, pointOfView != null, locale = locale, textMeasurer = textMeasurer)
         } } }, enabled = !working && layout != null, modifier = Modifier.fillMaxWidth().testTag("settings.exportPNG")) { Text(stringResource(R.string.export_png)) }
         OutlinedButton(onClick = { layout?.let { current -> prepare("$base-Chart.svg", "image/svg+xml") {
-            TreeSvgExporter.export(current, pointOfView != null, locale = locale).encodeToByteArray()
+            TreeSvgExporter.export(
+                current, pointOfView != null, locale = locale, textMeasurer = textMeasurer,
+            ).encodeToByteArray()
         } } }, enabled = !working && layout != null, modifier = Modifier.fillMaxWidth().testTag("settings.exportSVG")) { Text(stringResource(R.string.export_svg)) }
         OutlinedButton(onClick = { prepare("$base.ged", "text/plain") {
             GedcomExporter.export(people, relationships).encodeToByteArray()

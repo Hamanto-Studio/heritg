@@ -40,11 +40,16 @@ class HeritgArchiveCodec {
     }
 
     fun decode(archive: ByteArray, password: String? = null): ArchivePayload = try {
-        val zip = when (ArchiveCrypto.protection(archive)) {
-            ArchiveProtection.UNENCRYPTED -> archive
-            ArchiveProtection.ENCRYPTED -> ArchiveCrypto.decrypt(archive, password.orEmpty())
+        val protection = ArchiveCrypto.protection(archive)
+        if (LegacyHeritgArchive.matches(archive)) {
+            LegacyHeritgArchive.decode(archive, password.orEmpty())
+        } else {
+            val zip = when (protection) {
+                ArchiveProtection.UNENCRYPTED -> archive
+                ArchiveProtection.ENCRYPTED -> ArchiveCrypto.decrypt(archive, password.orEmpty())
+            }
+            decodeZip(zip)
         }
-        decodeZip(zip)
     } catch (error: ArchiveException) {
         throw error
     } catch (error: Exception) {
@@ -250,7 +255,7 @@ class HeritgArchiveCodec {
                 province = it.province,
                 country = it.country,
                 postalCode = it.postalCode,
-                profilePhotoData = it.profilePhoto?.path?.let(media::get)?.copyOf(),
+                profilePhotoData = it.profilePhoto?.path?.let(media::get),
             )
         },
         relationships = relationships.map {

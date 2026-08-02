@@ -10,9 +10,9 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.core.content.FileProvider
@@ -20,8 +20,10 @@ import androidx.exifinterface.media.ExifInterface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tech.robihamanto.heritg.android.core.domain.semanticFormatter
+import tech.robihamanto.heritg.android.core.interop.TreeRoutingException
 import tech.robihamanto.heritg.android.core.tree.TreeConnectionPlan
 import tech.robihamanto.heritg.android.core.tree.TreeLayoutResult
+import tech.robihamanto.heritg.android.core.tree.TreeTextMeasurer
 import java.io.ByteArrayOutputStream
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -88,14 +90,29 @@ object LocalFiles {
     private const val ExportLifetimeMillis = 86_400_000L
 }
 
+internal class AndroidTreeTextMeasurer(density: Float) : TreeTextMeasurer {
+    private val logicalDensity = density.also { require(it > 0f) }
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+    @Synchronized
+    override fun measureWidth(text: String, fontSize: Double, bold: Boolean): Double {
+        paint.textSize = (fontSize * logicalDensity).toFloat()
+        paint.typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        return (paint.measureText(text) / logicalDensity).toDouble()
+    }
+}
+
 object TreePngExporter {
     fun export(
         layout: TreeLayoutResult,
         relationshipLabels: Boolean,
         exportedAt: Instant = Instant.now(),
         locale: Locale = Locale.getDefault(),
+        textMeasurer: TreeTextMeasurer = AndroidTreeTextMeasurer(1f),
     ): ByteArray {
-        val plan = TreeConnectionPlan.make(layout, relationshipLabels)
+        val formatter = semanticFormatter(locale)
+        val plan = TreeConnectionPlan.make(layout, relationshipLabels, formatter, textMeasurer)
+        if (!plan.isValid) throw TreeRoutingException()
         val bounds = plan.drawingBounds(layout.nodes)
         val logicalHeight = bounds.height + 56
         val exportScale = minOf(
@@ -114,27 +131,14 @@ object TreePngExporter {
             alpha = 115
             strokeWidth = (1.5 * exportScale).toFloat()
             strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
             style = Paint.Style.STROKE
         }
         fun x(value: Double) = ((value - bounds.minX) * exportScale).toFloat()
         fun y(value: Double) = ((value - bounds.minY) * exportScale).toFloat()
         plan.families.flatMap { it.segments }.forEach { canvas.drawLine(x(it.start.x), y(it.start.y), x(it.end.x), y(it.end.y), line) }
-        plan.nonParentEdges.forEach { edge ->
-            val left = if (edge.from.x <= edge.to.x) edge.from else edge.to
-            val right = if (edge.from.x <= edge.to.x) edge.to else edge.from
-            val inset = if (left.x == right.x) 0.0 else tech.robihamanto.heritg.android.core.tree.TreeVisualMetrics.AvatarRadius
-            val startX = x(left.x + inset)
-            val startY = y(left.y)
-            val endX = x(right.x - inset)
-            val endY = y(right.y)
-            if (edge.kind == tech.robihamanto.heritg.android.core.model.RelationshipKind.PARTNER) {
-                canvas.drawLine(startX, startY, endX, endY, line)
-            } else {
-                canvas.drawPath(Path().apply {
-                    moveTo(startX, startY)
-                    quadTo((startX + endX) / 2, y(left.y - 16), endX, endY)
-                }, line)
-            }
+        plan.nonParentRoutes.flatMap { it.segments }.forEach {
+            canvas.drawLine(x(it.start.x), y(it.start.y), x(it.end.x), y(it.end.y), line)
         }
         val junction = Paint(line).apply { style = Paint.Style.FILL }
         plan.families.flatMap { it.junctions }.forEach {
@@ -146,18 +150,23 @@ object TreePngExporter {
         }
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(32, 52, 46); textAlign = Paint.Align.CENTER }
-        layout.edges.forEach { edge -> edge.marriageLabel(semanticFormatter(locale))?.let { label ->
-            val cx = x((edge.from.x + edge.to.x) / 2)
-            val cy = y((edge.from.y + edge.to.y) / 2)
+        plan.nonParentRoutes.forEach { route -> route.edge.marriageLabel(formatter)?.let { label ->
+            val position = route.labelPosition ?: return@let
+            val obstacle = route.labelObstacle ?: return@let
+            val cx = x(position.x)
+            val cy = y(position.y)
             text.textSize = (12 * exportScale).toFloat()
             text.isFakeBoldText = false
-            val textWidth = text.measureText(label) + (14 * exportScale).toFloat()
             canvas.drawRoundRect(
-                RectF(cx - textWidth / 2, cy - (10 * exportScale).toFloat(), cx + textWidth / 2,
-                    cy + (10 * exportScale).toFloat()),
-                (10 * exportScale).toFloat(), (10 * exportScale).toFloat(), fill,
+                RectF(x(obstacle.rect.minX), y(obstacle.rect.minY), x(obstacle.rect.maxX), y(obstacle.rect.maxY)),
+                (obstacle.rect.height / 2 * exportScale).toFloat(),
+                (obstacle.rect.height / 2 * exportScale).toFloat(), fill,
             )
             text.color = Color.GRAY
+            val maximumLabelWidth = ((obstacle.rect.width - 14) * exportScale).toFloat().coerceAtLeast(1f)
+            if (text.measureText(label) > maximumLabelWidth) {
+                text.textSize *= maximumLabelWidth / text.measureText(label)
+            }
             canvas.drawText(label, cx, cy + (4 * exportScale).toFloat(), text)
         } }
         layout.nodes.forEach { node ->

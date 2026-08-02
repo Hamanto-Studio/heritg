@@ -4,6 +4,7 @@ import android.content.Context
 import tech.robihamanto.heritg.android.core.domain.FamilyGraphException
 import tech.robihamanto.heritg.android.core.interop.ArchiveException
 import tech.robihamanto.heritg.android.core.interop.GedcomException
+import tech.robihamanto.heritg.android.core.interop.TreeRoutingException
 import java.io.IOException
 import java.time.format.DateTimeParseException
 
@@ -44,6 +45,7 @@ fun Context.localizedError(error: Throwable): String = when (error) {
     LocalFileException.WrongExtension -> getString(R.string.error_archive_extension)
     PhotoEditException.InvalidImage -> getString(R.string.error_photo_open)
     PhotoEditException.CropFailed -> getString(R.string.error_photo_crop)
+    is TreeRoutingException -> getString(R.string.error_tree_routing)
     is DateTimeParseException -> getString(R.string.error_invalid_date)
     else -> error.localizedMessage?.takeIf { it.isNotBlank() } ?: getString(R.string.error_unknown)
 }

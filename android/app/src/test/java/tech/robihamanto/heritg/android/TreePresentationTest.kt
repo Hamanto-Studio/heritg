@@ -26,10 +26,20 @@ class TreePresentationTest {
     }
 
     @Test
-    fun nodeControlsFollowTreeZoomWithoutAVisualFloor() {
-        assertEquals(6.8f, nodeControlTargetSize(.2f), .001f)
-        assertEquals(34f, nodeControlTargetSize(1f), .001f)
-        assertEquals(61.2f, nodeControlTargetSize(1.8f), .001f)
+    fun nodeTextCompensatesForNonDefaultSystemFontScale() {
+        assertEquals(16f, fixedLogicalTextSp(16f, 1f), .001f)
+        assertEquals(10.6667f, fixedLogicalTextSp(16f, 1.5f), .001f)
+        assertEquals(20f, fixedLogicalTextSp(20f, 2f) * 2f, .001f)
+        assertEquals(11f, fixedLogicalTextSp(11f, 1.3f) * 1.3f, .001f)
+    }
+
+    @Test
+    fun nodeControlsUseCanonicalHitSpacingAndVisualSizesAtTreeZoom() {
+        assertEquals(8.8f, nodeControlTargetSize(.2f), .001f)
+        assertEquals(44f, nodeControlTargetSize(1f), .001f)
+        assertEquals(79.2f, nodeControlTargetSize(1.8f), .001f)
+        assertEquals(34f, nodeControlAdjacentSpacing(1f), .001f)
+        assertEquals(24f, nodeControlVisualSize(1f), .001f)
     }
 
     @Test

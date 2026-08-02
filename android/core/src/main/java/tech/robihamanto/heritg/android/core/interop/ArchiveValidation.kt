@@ -74,7 +74,12 @@ internal object ArchiveValidation {
         if (personIds.size != people.size ||
             tree.lastSelectedPersonId != null && tree.lastSelectedPersonId !in personIds
         ) throw ArchiveException.InvalidArchive()
+        val mediaReferences = media.mapValues { (_, bytes) ->
+            if (bytes.size > ArchiveConstants.MaximumMediaBytes) throw ArchiveException.MediaTooLarge()
+            mediaInfo(bytes).reference
+        }
         val referencedMedia = mutableSetOf<String>()
+        var referencedMediaBytes = 0L
         people.forEach { person ->
             if (person.schemaVersion != ArchiveConstants.SchemaVersion) throw ArchiveException.UnsupportedVersion()
             if (person.treeId != tree.id || PersonGender.fromWire(person.gender) == null ||
@@ -97,7 +102,11 @@ internal object ArchiveValidation {
                 if (bytes.size != reference.byteSize || bytes.size > ArchiveConstants.MaximumMediaBytes) {
                     throw ArchiveException.InvalidArchive()
                 }
-                val actual = mediaInfo(bytes).reference
+                referencedMediaBytes += bytes.size
+                if (referencedMediaBytes > ArchiveConstants.MaximumArchiveBytes) {
+                    throw ArchiveException.FileTooLarge()
+                }
+                val actual = mediaReferences.getValue(reference.path)
                 if (reference != actual) throw ArchiveException.InvalidArchive()
                 referencedMedia += reference.path
             }
