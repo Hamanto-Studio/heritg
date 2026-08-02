@@ -1,13 +1,18 @@
-<!doctype html>
-<html lang="id">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HERITG | Rumah aman untuk sejarah keluarga Anda</title>
-  <meta name="description" content="HERITG adalah aplikasi silsilah keluarga sumber terbuka dan lokal tanpa akun, iklan, atau pelacakan.">
+  <title>HERITG | A safe home for your family history</title>
+  <meta name="description" content="HERITG is an open-source, local-first family tree app with no account, no ads, and no tracking.">
   <link rel="canonical" href="https://hamanto-studio.github.io/heritg/">
-  <meta http-equiv="refresh" content="0; url=id/">
-  <script>window.location.replace('id/' + window.location.search + window.location.hash);</script>
+  <meta http-equiv="refresh" content="0; url=en/">
+  <script>
+    const preferredLanguages = navigator.languages?.length ? navigator.languages : [navigator.language];
+    const preferredLanguage = preferredLanguages.find((language) => /^(id|in|en)(-|$)/i.test(language || ''));
+    const isIndonesian = /^(id|in)(-|$)/i.test(preferredLanguage || '');
+    window.location.replace(`${isIndonesian ? 'id' : 'en'}/${window.location.search}${window.location.hash}`);
+  </script>
 </head>
-<body><p>Membuka <a href="id/">HERITG dalam Bahasa Indonesia</a>...</p></body>
+<body><p>Opening <a href="en/">HERITG in English</a>...</p></body>
 </html>
