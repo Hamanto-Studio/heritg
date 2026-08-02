@@ -11,7 +11,8 @@
 - Canonical app URL: `https://heritg.hamanto.com/app`.
 - Vercel project: `heritg`.
 - Vercel CLI: exactly `58.4.4`.
-- Build root: `web/`; Node.js `22.x`; output `dist/`.
+- Deployment root: repository root; build package: `web/`; Node.js `22.x`;
+  output: `web/dist/`; local Vercel config: `web/vercel.json`.
 
 Web, iOS, and Android versions are independent. Do not change iOS
 `MARKETING_VERSION`, iOS `CURRENT_PROJECT_VERSION`, Android `versionName`, or

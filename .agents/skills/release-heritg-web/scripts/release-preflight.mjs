@@ -115,8 +115,9 @@ for (const file of requiredFiles) {
 }
 
 const vercel = readJson(resolve(webDirectory, "vercel.json"));
-if (vercel.framework !== "vite" || vercel.outputDirectory !== "dist" || vercel.installCommand !== "npm ci") {
-  fail("web/vercel.json must use Vite, npm ci, and dist output");
+if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
+    vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {
+  fail("web/vercel.json must build the Web package from the repository deployment root");
 }
 const appRewrite = (vercel.rewrites ?? []).find((rule) => rule.source === "/app/(.*)");
 if (appRewrite?.destination !== "/app/index.html") {

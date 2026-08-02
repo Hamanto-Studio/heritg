@@ -54,9 +54,11 @@ not change merely because an application version changes.
    at `https://heritg.hamanto.com/app`, then create `<platform>-<version>` and
    the matching GitHub Release.
 
-The Vercel project is `heritg`, builds `web/` with Node.js 22, and has no
-runtime secrets. Cloudflare remains authoritative for `hamanto.com`; the
-`heritg` CNAME is DNS-only and points to the target assigned by Vercel.
+The Vercel project is `heritg`. It deploys from the repository root so the
+landing source in `docs/` is available, but installs and builds only `web/`
+with Node.js 22 and publishes `web/dist/`. It has no runtime secrets.
+Cloudflare remains authoritative for `hamanto.com`; the `heritg` CNAME is
+DNS-only and points to the target assigned by Vercel.
 
 Browser storage is tied to its origin. Localhost, Vercel preview URLs, and
 `heritg.hamanto.com` do not share IndexedDB records or encryption keys. The
