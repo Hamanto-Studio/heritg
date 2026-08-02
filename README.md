@@ -50,9 +50,13 @@ The current iOS app supports:
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
 
-Android is planned as a native Kotlin and Jetpack Compose app. Both platforms
+Android is planned as a native Kotlin and Jetpack Compose app. All implementations
 will follow shared product, archive, privacy, and design specifications without
 sharing platform UI code.
+
+The web app provides the same private, local-first family-tree workflow in a
+React progressive web app. Family data is stored in IndexedDB, and the core
+experience works offline after installation.
 
 ## Trust by Design
 
@@ -66,7 +70,7 @@ backed by inspectable policies and automated checks:
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
@@ -98,13 +102,15 @@ not encrypted by this option.
 | --- | --- | --- |
 | iOS | Active development | Swift, SwiftUI, and SwiftData |
 | Android | Planned | Kotlin, Jetpack Compose, and Room |
-| Web | Not planned | No web application or hosted family database |
+| Web | Active development | React, TypeScript, IndexedDB, and Excalidraw |
 
 HERITG is under active development. Interfaces and archive specifications may
 change before the first stable release; do not use it as the only copy of
 important family records.
 
 ## Quick Start
+
+### iOS
 
 Requirements:
 
@@ -127,12 +133,26 @@ xcodebuild test \
 
 See the [iOS development guide](ios/README.md) for project details.
 
+### Web
+
+Run the web app from the repository root:
+
+```sh
+cd web
+npm ci
+npm run dev
+```
+
+Before opening a pull request, run `npm run lint`, `npm test`, and
+`npm run build` from `web/`.
+
 ## Repository Layout
 
 ```text
 android/                    Android roadmap and future project boundary
 docs/                       Product, data, privacy, and design specifications
 ios/                        Native SwiftUI application and tests
+web/                        React progressive web application and tests
 .github/                    CI, ownership, and contribution templates
 PRIVACY.md                  User-facing privacy policy
 SECURITY.md                 Vulnerability and secret-handling policy

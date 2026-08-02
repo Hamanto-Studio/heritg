@@ -29,6 +29,7 @@ body:
       options:
         - Shared product behavior
         - iOS
+        - Web
         - Android (planned)
         - Data format
     validations:

@@ -1,0 +1,58 @@
+@media (max-width: 840px) {
+  .tree-pane-toggle {
+    left: 12px;
+    top: max(10px, env(safe-area-inset-top));
+  }
+
+  .workspace-header {
+    gap: 8px;
+    left: 64px;
+    right: 12px;
+    top: max(10px, env(safe-area-inset-top));
+  }
+
+  .tree-pane-hint {
+    left: 17px;
+    top: 74px;
+  }
+
+  .settings-pane-hint {
+    height: 100px;
+    left: auto;
+    right: 17px;
+    width: 180px;
+  }
+
+  .settings-pane-hint svg {
+    margin: 0;
+    position: absolute;
+    right: 0;
+    top: -27px;
+  }
+
+  .settings-pane-hint span {
+    position: absolute;
+    right: 0;
+    top: 40px;
+  }
+
+  .workspace-title {
+    border-radius: 14px;
+    flex: 1;
+    padding: 9px 12px;
+  }
+
+  .workspace-title h2 {
+    font-size: 1rem;
+  }
+
+  .workspace-tools .desktop-tool {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
+  .workspace-title p { display: none; }
+  .empty-canvas { padding: 28px 22px; }
+  .brand-mark.large { height: 64px; width: 64px; }
+}

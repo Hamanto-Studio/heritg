@@ -1,0 +1,331 @@
+.modal-backdrop ~ .modal-backdrop {
+  z-index: 110;
+}
+
+.relationship-wizard {
+  display: grid;
+  gap: 18px;
+}
+
+.relationship-progress {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+}
+
+.relationship-progress span {
+  align-items: center;
+  background: var(--recessed);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--subtle);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  height: 25px;
+  justify-content: center;
+  width: 25px;
+}
+
+.relationship-progress span.active,
+.relationship-progress span.complete {
+  background: var(--brand-deep);
+  border-color: var(--brand-deep);
+  color: #fff;
+}
+
+.relationship-progress i {
+  background: var(--line);
+  display: block;
+  flex: 1 1 34px;
+  height: 2px;
+  max-width: 64px;
+}
+
+.relationship-progress i.complete {
+  background: var(--brand-deep);
+}
+
+.relationship-progress strong {
+  color: var(--subtle);
+  font-size: 0.73rem;
+  font-weight: 600;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.relationship-step-copy h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px;
+}
+
+.relationship-step-copy p {
+  color: var(--subtle);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.relationship-methods {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.relationship-method-card {
+  align-items: flex-start;
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  display: flex;
+  gap: 12px;
+  min-height: 126px;
+  padding: 17px;
+  text-align: left;
+}
+
+.relationship-method-card:not(:disabled):hover {
+  background: var(--elevated);
+  border-color: var(--brand);
+}
+
+.relationship-method-card > span:last-child {
+  min-width: 0;
+}
+
+.relationship-method-card strong,
+.relationship-method-card small {
+  display: block;
+}
+
+.relationship-method-card strong {
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.relationship-method-card small {
+  color: var(--subtle);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+
+.relationship-method-icon,
+.relationship-role-symbol {
+  align-items: center;
+  background: var(--recessed);
+  border-radius: 50%;
+  color: var(--brand-deep);
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.relationship-method-icon {
+  height: 40px;
+  width: 40px;
+}
+
+.relationship-role-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.relationship-role-group {
+  display: grid;
+  gap: 9px;
+}
+
+.relationship-role-group h4 {
+  color: var(--subtle);
+  font-size: 0.73rem;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.relationship-role-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.relationship-role-button {
+  align-items: center;
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 600;
+  gap: 9px;
+  min-height: 53px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.relationship-role-button:hover,
+.relationship-role-button.selected {
+  background: var(--elevated);
+  border-color: var(--brand);
+}
+
+.relationship-role-button.selected {
+  box-shadow: inset 0 0 0 1px var(--brand);
+}
+
+.relationship-role-symbol {
+  height: 31px;
+  width: 31px;
+}
+
+.relationship-selection-summary,
+.relationship-fixed-person {
+  align-items: center;
+  background: color-mix(in srgb, var(--brand) 9%, var(--base));
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--line));
+  border-radius: 12px;
+  display: flex;
+  gap: 11px;
+  padding: 11px 13px;
+}
+
+.relationship-selection-summary {
+  justify-content: space-between;
+}
+
+.relationship-selection-summary span,
+.relationship-fixed-person span {
+  color: var(--subtle);
+  font-size: 0.74rem;
+}
+
+.relationship-fixed-person div,
+.relationship-fixed-person strong,
+.relationship-fixed-person span {
+  display: block;
+}
+
+.relationship-fixed-person strong {
+  margin-top: 2px;
+}
+
+.relationship-date-field {
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 13px;
+}
+
+.relationship-unavailable {
+  background: var(--recessed);
+  border-radius: 10px;
+  color: var(--subtle);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 0;
+  padding: 10px 12px;
+}
+
+.relationship-gender-notice {
+  background: color-mix(in srgb, var(--brand) 10%, var(--base));
+  border-left: 3px solid var(--brand);
+  border-radius: 8px;
+  color: var(--subtle);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  margin: 10px 0 0;
+  padding: 9px 11px;
+}
+
+.relationship-editor-section {
+  gap: 12px;
+}
+
+.relationship-section-heading {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+}
+
+.relationship-section-heading h3 {
+  margin-bottom: 3px;
+}
+
+.relationship-section-heading p {
+  color: var(--subtle);
+  font-size: 0.73rem;
+  line-height: 1.4;
+  margin: 0;
+  max-width: 390px;
+}
+
+.relationship-section-heading .button {
+  flex: 0 0 auto;
+}
+
+.relationship-row-actions {
+  align-items: center;
+  display: flex;
+  gap: 2px;
+}
+
+.relationship-status {
+  background: color-mix(in srgb, var(--add) 14%, var(--base));
+  border-radius: 999px;
+  color: #4f6a3e;
+  display: inline-block;
+  font-size: 0.65rem;
+  font-style: normal;
+  font-weight: 700;
+  margin-top: 6px;
+  padding: 3px 7px;
+}
+
+.relationship-status.removal {
+  background: color-mix(in srgb, var(--danger) 12%, var(--base));
+  color: var(--danger);
+}
+
+.relationship-row.pending-removal {
+  background: color-mix(in srgb, var(--danger) 5%, var(--base));
+  opacity: 0.76;
+}
+
+.relationship-row.pending-link {
+  border-style: dashed;
+}
+
+@media (max-width: 620px) {
+  .relationship-methods {
+    grid-template-columns: 1fr;
+  }
+
+  .relationship-method-card {
+    min-height: 0;
+  }
+
+  .relationship-section-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .relationship-section-heading .button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .relationship-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .relationship-progress strong {
+    margin-left: 0;
+  }
+}

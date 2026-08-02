@@ -1,6 +1,6 @@
 # HERITG Privacy Policy
 
-Effective date: July 31, 2026
+Effective date: August 2, 2026
 
 HERITG is developed by Hamanto Studio. It is designed to let people create and
 preserve family trees without creating an account or sending family information
@@ -28,19 +28,23 @@ The current processing register is published in
 HERITG may store information entered by the user, including names, family
 relationships, dates, photographs, notes, and imported genealogy records. This
 information is stored in the app's local container using Apple platform storage
-technologies.
+technologies on iOS and IndexedDB in the user's browser on the web.
 
 Hamanto Studio does not operate an account system or server that receives this
 family data in the current version. Deleting a person, tree, or the application
-removes data according to the app and operating system behavior. Device backups
-managed by Apple may retain app data according to the user's Apple settings and
-Apple's policies.
+removes data according to the app, browser, and operating system behavior. Web
+users can also remove local data by clearing the site's browser storage. Device
+backups managed by Apple or browser-profile backup and synchronization features
+may retain local app data according to the user's platform settings and provider
+policies.
 
 ## Imports, Exports, and Sharing
 
 When a user imports a file, HERITG processes it on the device. When a user
 exports or shares a tree, the user chooses the destination through the Apple
-system interface.
+system interface on iOS or the browser's download interface on the web. Web JSON
+backups are identified as `.json`; the cross-platform `.heritg` archive format
+is documented separately in [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
 
 After an export leaves HERITG, its handling is controlled by the selected app,
 service, recipient, and the user's choices. Exported family information may be
@@ -51,6 +55,12 @@ sensitive, so users should share it only with trusted recipients.
 The current app does not require network access for its core family-tree
 features. Opening an external support link or using an Apple-provided service
 may contact that service under its own terms.
+
+Opening the web app downloads its public HTML, JavaScript, styles, fonts, and
+images from the configured hosting origin. Standard request metadata may be
+processed by that host under its terms. A service worker may cache those public
+assets in browser Cache Storage for offline use. HERITG does not send family-tree
+content from IndexedDB to the hosting origin.
 
 If optional analytics, crash reporting, sync, backup, or another online feature
 is introduced, it must:
@@ -99,7 +109,7 @@ application.
 
 ## App Store and Purchases
 
-Apple processes App Store downloads, payments, receipts, and related account
+For iOS distribution, Apple processes App Store downloads, payments, receipts, and related account
 information under Apple's privacy policy. Hamanto Studio does not receive a
 user's full payment-card details from Apple.
 
@@ -123,8 +133,8 @@ and websites owned by other companies.
 ## Security
 
 HERITG uses platform storage protections, but no software can guarantee
-absolute security. Users should protect their device with a passcode, maintain
-appropriate backups, and handle exported files carefully.
+absolute security. Users should protect their device and browser profile,
+maintain appropriate backups, and handle exported files carefully.
 
 Repository security practices and vulnerability-reporting guidance are
 documented in [`SECURITY.md`](SECURITY.md).

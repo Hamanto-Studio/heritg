@@ -1,0 +1,246 @@
+:root {
+  color: #302b25;
+  background: #f5f5f3;
+  --font-sans: "Assistant", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-sans);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --canvas: #f7f3ec;
+  --tree-canvas: #f5f5f3;
+  --base: #fffdf8;
+  --elevated: #fffaf2;
+  --recessed: #ede5d8;
+  --text: #302b25;
+  --subtle: #796f63;
+  --line: #d8ccbc;
+  --brand: #a8875b;
+  --brand-deep: #795d3f;
+  --add: #7e9b63;
+  --danger: #b95c4b;
+  --shadow: 0 18px 46px rgba(62, 48, 34, 0.13);
+  --shadow-soft: 0 8px 24px rgba(62, 48, 34, 0.09);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  min-width: 320px;
+  background: var(--tree-canvas);
+}
+
+button,
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+button,
+select,
+label[for] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  border: 0;
+}
+
+button:not(:disabled),
+select:not(:disabled),
+input[type="file"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+.button {
+  align-items: center;
+  border-radius: 12px;
+  display: inline-flex;
+  font-size: 0.92rem;
+  font-weight: 600;
+  gap: 8px;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+
+.button:not(:disabled):active,
+.icon-button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.button.primary {
+  background: var(--brand-deep);
+  box-shadow: 0 5px 13px rgba(121, 93, 63, 0.2);
+  color: #fff;
+}
+
+.button.primary:hover {
+  background: #684d34;
+}
+
+.button.add {
+  background: #5c7849;
+  color: #fff;
+}
+
+.button.secondary {
+  background: var(--base);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+.button.secondary:hover {
+  background: var(--elevated);
+}
+
+.button.ghost {
+  background: transparent;
+  color: var(--text);
+}
+
+.button.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.button.full {
+  width: 100%;
+}
+
+.icon-button {
+  align-items: center;
+  background: rgba(255, 253, 248, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 44px;
+  justify-content: center;
+  transition: background 120ms ease, transform 120ms ease;
+  width: 44px;
+}
+
+.icon-button:hover {
+  background: var(--elevated);
+}
+
+.icon-button.quiet {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.icon-button.small {
+  height: 36px;
+  width: 36px;
+}
+
+.brand-mark {
+  border-radius: 22%;
+  box-shadow: 0 6px 16px rgba(62, 48, 34, 0.16);
+  display: block;
+  flex: 0 0 auto;
+  height: 40px;
+  object-fit: cover;
+  width: 40px;
+}
+
+.brand-mark.large {
+  height: 72px;
+  width: 72px;
+}
+
+.person-avatar {
+  align-items: center;
+  background: var(--recessed);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--brand-deep);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 700;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.person-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.sr-only {
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.loading-screen {
+  align-items: center;
+  background: var(--canvas);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  justify-content: center;
+  padding: 24px;
+}
+
+.loading-screen strong {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.loading-screen p {
+  color: var(--subtle);
+  font-size: 0.92rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
