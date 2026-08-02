@@ -44,7 +44,7 @@ still validates metadata, changelog structure, workflows, and Vercel policy.
 1. Confirm `npx --yes vercel@58.4.4 whoami` succeeds. If not, pause and ask the
    user to run `npx --yes vercel@58.4.4 login` locally. Never request a token in
    chat or commit `.vercel/`.
-2. From `web/`, link the existing `heritg-web` project or create it only after
+2. From `web/`, link the existing `heritg` project or create it only after
    confirming it does not exist. Use Node.js 22, `dist`, no runtime variables,
    and no Git integration.
 3. Deploy a preview with the pinned CLI. Capture the resulting URL without

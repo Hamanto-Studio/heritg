@@ -65,7 +65,34 @@
       ]
     },
     {
-      "source": "/app/(index\\.html|sw\\.js|registerSW\\.js|manifest\\.webmanifest|workbox-(.*)\\.js)",
+      "source": "/app/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app/registerSW.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/app/manifest.webmanifest",
       "headers": [
         {
           "key": "Cache-Control",
@@ -92,7 +119,25 @@
       ]
     },
     {
-      "source": "/(en|id|privacy)/(.*)",
+      "source": "/en/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/id/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/privacy/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

@@ -9,7 +9,7 @@
 - GitHub Release title: `Heritg Web <version>`.
 - Landing URL: `https://heritg.hamanto.com`.
 - Canonical app URL: `https://heritg.hamanto.com/app`.
-- Vercel project: `heritg-web`.
+- Vercel project: `heritg`.
 - Vercel CLI: exactly `58.4.4`.
 - Build root: `web/`; Node.js `22.x`; output `dist/`.
 
