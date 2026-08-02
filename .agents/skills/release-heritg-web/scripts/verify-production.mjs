@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 
 const args = process.argv.slice(2);
-const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritg.hamanto.com";
+const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritg.hamanto.com/app";
 const versionIndex = args.indexOf("--expect-version");
 const expectedVersion = versionIndex >= 0 ? args[versionIndex + 1] : undefined;
 
-let base;
+let appBase;
 try {
-  base = new URL(target);
+  appBase = new URL(target);
+  if (!appBase.pathname.endsWith("/")) appBase.pathname += "/";
 } catch {
   console.error(`Production verification failed: invalid URL ${target}`);
   process.exit(1);
 }
-if (base.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(base.hostname)) {
+if (appBase.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(appBase.hostname)) {
   console.error("Production verification failed: the target must use HTTPS");
   process.exit(1);
 }
@@ -20,7 +21,11 @@ if (base.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(base.host
 const failures = [];
 const checked = [];
 const request = async (path, options = {}) => {
-  const url = new URL(path, base);
+  const url = path instanceof URL
+    ? path
+    : path.startsWith("/")
+      ? new URL(path, appBase.origin)
+      : new URL(path, appBase);
   const response = await fetch(url, { redirect: "follow", ...options });
   checked.push(`${response.status} ${url.pathname}`);
   if (!response.ok) failures.push(`${url.pathname} returned ${response.status}`);
@@ -28,7 +33,13 @@ const request = async (path, options = {}) => {
 };
 
 try {
-  const home = await request("/");
+  const landing = await request("/");
+  const landingHtml = await landing.text();
+  if (!landingHtml.includes('href="/app/"')) {
+    failures.push("landing page does not link to /app/");
+  }
+
+  const home = await request("");
   const html = await home.text();
   const requiredHeaders = {
     "content-security-policy": ["default-src 'self'", "frame-ancestors 'none'", "object-src 'none'"],
@@ -47,10 +58,10 @@ try {
     }
   }
 
-  const manifest = await request("/manifest.webmanifest");
+  const manifest = await request("manifest.webmanifest");
   try {
     const manifestBody = await manifest.json();
-    if (!manifestBody.name || manifestBody.start_url !== "/" || !Array.isArray(manifestBody.icons)) {
+    if (!manifestBody.name || manifestBody.start_url !== "/app/" || manifestBody.scope !== "/app/" || !Array.isArray(manifestBody.icons)) {
       failures.push("manifest.webmanifest is missing required PWA fields");
     }
     for (const icon of manifestBody.icons ?? []) await request(icon.src);
@@ -58,13 +69,13 @@ try {
     failures.push("manifest.webmanifest is not valid JSON");
   }
 
-  await request("/sw.js");
-  await request("/registerSW.js");
-  const deepRoute = await request("/release-verification/deep-link");
+  await request("sw.js");
+  await request("registerSW.js");
+  const deepRoute = await request("release-verification/deep-link");
   const deepHtml = await deepRoute.text();
   if (!deepHtml.includes('<div id="root"></div>')) failures.push("SPA deep-link fallback did not return the app shell");
 
-  const assetPaths = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]);
+  const assetPaths = [...html.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g)].map((match) => match[1]);
   if (assetPaths.length === 0) failures.push("no hashed Vite assets were found in the app shell");
   const assetBodies = [];
   for (const assetPath of [...new Set(assetPaths)]) {
@@ -88,6 +99,6 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Production verification passed for ${base.origin}.`);
+console.log(`Production verification passed for ${appBase.href}.`);
 for (const item of checked) console.log(`- ${item}`);
 console.log("Manual checks still required: protected preview access, responsive interaction, .heritg import/export, install, and offline restart.");

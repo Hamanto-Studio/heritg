@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && node scripts/prepare-dist.mjs && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "lint": "eslint .",

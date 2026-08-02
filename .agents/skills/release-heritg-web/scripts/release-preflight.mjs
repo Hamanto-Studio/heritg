@@ -107,7 +107,8 @@ const requiredFiles = [
   ".github/workflows/web-ci.yml",
   ".github/workflows/secret-scan.yml",
   ".github/workflows/commit-policy.yml",
-  "web/vercel.json"
+  "web/vercel.json",
+  "web/scripts/prepare-dist.mjs"
 ];
 for (const file of requiredFiles) {
   if (!existsSync(resolve(repositoryRoot, file))) fail(`required release file is missing: ${file}`);
@@ -116,6 +117,18 @@ for (const file of requiredFiles) {
 const vercel = readJson(resolve(webDirectory, "vercel.json"));
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "dist" || vercel.installCommand !== "npm ci") {
   fail("web/vercel.json must use Vite, npm ci, and dist output");
+}
+const appRewrite = (vercel.rewrites ?? []).find((rule) => rule.source === "/app/(.*)");
+if (appRewrite?.destination !== "/app/index.html") {
+  fail("web/vercel.json must route /app deep links to /app/index.html");
+}
+const appRedirect = (vercel.redirects ?? []).find((rule) => rule.source === "/app");
+if (appRedirect?.destination !== "/app/" || appRedirect.permanent !== true) {
+  fail("web/vercel.json must permanently redirect /app to /app/");
+}
+const viteConfig = readFileSync(resolve(webDirectory, "vite.config.ts"), "utf8");
+if (!viteConfig.includes('base: "/app/"') || !viteConfig.includes('outDir: "dist/app"')) {
+  fail("web/vite.config.ts must build the application below /app/");
 }
 const headers = (vercel.headers ?? []).flatMap((rule) => rule.headers ?? []);
 const headerNames = new Set(headers.map((header) => String(header.key).toLowerCase()));

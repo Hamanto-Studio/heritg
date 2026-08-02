@@ -7,7 +7,8 @@
 - Immutable annotated tag: `web-<version>`.
 - Changelog heading: `## [web-<version>] - YYYY-MM-DD`.
 - GitHub Release title: `Heritg Web <version>`.
-- Canonical URL: `https://heritg.hamanto.com`.
+- Landing URL: `https://heritg.hamanto.com`.
+- Canonical app URL: `https://heritg.hamanto.com/app`.
 - Vercel project: `heritg-web`.
 - Vercel CLI: exactly `58.4.4`.
 - Build root: `web/`; Node.js `22.x`; output `dist/`.
@@ -46,7 +47,8 @@ Before production promotion:
 
 - Candidate deployment points to the exact release commit.
 - Desktop, iPhone, and iPad smoke tests pass with synthetic data.
-- SPA navigation, PWA manifest, service worker, installation, offline restart,
+- Landing-page routing, `/app` SPA navigation, PWA manifest, service worker,
+  installation, offline restart,
   local persistence, import, and export work.
 - Security headers and immutable hashed-asset caching are present.
 - The user explicitly approves promotion.
@@ -69,10 +71,11 @@ DNS-only CNAME to the value Vercel returns for that domain. Do not enable the
 Cloudflare proxy in front of Vercel. Inspect the current record and save its
 identifier, content, TTL, and proxy state before changing it.
 
-The application uses local encrypted IndexedDB. Browser data and encryption
-keys are origin-specific; localhost, preview URLs, and the canonical hostname
-cannot read one another's records. Never use real family data for deployment
-verification.
+The application uses local encrypted IndexedDB. The landing page and `/app`
+share the production origin, but the service worker must remain scoped to
+`/app/`. Browser data and encryption keys are origin-specific; localhost,
+preview URLs, and the canonical hostname cannot read one another's records.
+Never use real family data for deployment verification.
 
 ## Confirmation and recovery
 

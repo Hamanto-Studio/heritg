@@ -66,10 +66,12 @@ family-tree content or application traffic. A service worker may cache public
 assets in browser Cache Storage for offline use. HERITG does not send
 family-tree content from IndexedDB to Vercel, Cloudflare, or Hamanto Studio.
 
-Browser storage and its encryption key are isolated by origin. Family data
-created on localhost or a Vercel preview URL does not automatically appear at
-`heritg.hamanto.com`. Users must deliberately export and import a backup to move
-data between those origins.
+Browser storage and its encryption key are isolated by origin. The public
+landing page is served at `heritg.hamanto.com`, and the application is served
+at `heritg.hamanto.com/app`. Those paths share the same origin, while the app's
+service worker is limited to `/app/`. Family data created on localhost or a
+Vercel preview URL does not automatically appear in the production app. Users
+must deliberately export and import a backup to move data between origins.
 
 If optional analytics, crash reporting, sync, backup, or another online feature
 is introduced, it must:

@@ -29,6 +29,7 @@ prefix.
 
 ### Changed
 
+- Published the product landing page at `heritg.hamanto.com` and moved the installable web workspace to `heritg.hamanto.com/app`.
 - Matched the web family-tree relationships, life-date summaries, and branch controls more closely with the iOS experience.
 - Improved family-line routing, marriage-date placement, person navigation, and mobile and tablet layouts.
 

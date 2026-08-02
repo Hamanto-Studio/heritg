@@ -11,11 +11,11 @@ consistent.
 | Component | Status | Purpose | Data | Destination | User control |
 | --- | --- | --- | --- | --- | --- |
 | SwiftData and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
-| IndexedDB | Active on web | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
+| IndexedDB | Active at `heritg.hamanto.com/app` | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
 | File import | Active | Import genealogy records or backups | User-selected file contents | Processed on-device or in-browser | User explicitly selects a file |
 | Image and document export | Active | Create user-requested exports | User-selected family-tree content | User-selected system share or browser download destination | User initiates and chooses destination |
 | PWA service worker and Cache Storage | Active on web | Cache the public application shell for offline use | Public HTML, JavaScript, styles, fonts, and images; no family content | Browser cache on the user's device | Clear site data or uninstall the PWA |
-| Vercel static web hosting | Active on web | Deliver and protect public application assets | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the web app |
+| Vercel static web hosting | Active on web | Deliver the landing page and protect public application assets | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the website or web app |
 | Cloudflare authoritative DNS | Active on web | Resolve `heritg.hamanto.com` without proxying application traffic | DNS query and resolution metadata; no family-tree payload | Cloudflare DNS | User opens the web app |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
