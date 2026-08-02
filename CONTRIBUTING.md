@@ -30,10 +30,11 @@ same format and becomes the final commit subject on `main`.
 
 - `ios/`: SwiftUI and SwiftData application, unit tests, and UI tests
 - `android/`: future Kotlin and Jetpack Compose application boundary
+- `web/`: React and TypeScript progressive web application and tests
 - `docs/`: specifications shared by all platforms
 
 Platform implementations follow shared behavior and data contracts while using
-native frameworks and platform conventions.
+platform-appropriate frameworks and conventions.
 
 ## iOS Development
 
@@ -50,6 +51,21 @@ xcodebuild test \
 
 Update English and Bahasa Indonesia resources when changing user-visible text.
 Include before-and-after screenshots for visible UI changes.
+
+## Web Development
+
+Install and validate the web application from `web/`:
+
+```sh
+npm ci
+npm run lint
+npm test
+npm run build
+```
+
+The web application stores family data locally in IndexedDB. Do not introduce
+networked storage, tracking, or production credentials without the privacy and
+security review described below.
 
 ## Android Development
 

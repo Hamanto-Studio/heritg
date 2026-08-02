@@ -1,0 +1,31 @@
+.DS_Store
+.claude-flow/
+
+# Dependencies and generated outputs
+node_modules/
+dist/
+coverage/
+*.log
+firebase-debug.log*
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.mobileprovision
+
+# Firebase and infrastructure state
+.firebase/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
