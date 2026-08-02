@@ -1,3 +1,5 @@
+import { encodeBase64, parsePlistDictionary } from "rork-plist";
+
 import { newId } from "./types";
 import { downloadBlob, downloadText, safeFilename } from "./images";
 import type { AppData, FamilyRelationship, FamilyTree, Gender, Person, RelationshipKind, RelationshipSubtype } from "./types";
@@ -7,7 +9,11 @@ export const HERITG_SCHEMA_VERSION = 1;
 export const MAX_PORTABILITY_BYTES = 32 * 1024 * 1024;
 const MAX_RECORDS = 50_000;
 const MAX_FIELD_LENGTH = 65_536;
-const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+const NATIVE_HEADER_BYTES = 10;
+const NATIVE_ENVELOPE_VERSION = 1;
+const NATIVE_MAGIC = "HERITG00";
+const NATIVE_ENCRYPTED_MAGIC = "HERITG01";
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const GENDERS = ["female", "male", "unspecified"] as const;
 const KINDS = ["parent", "partner", "sibling"] as const;
@@ -89,6 +95,13 @@ const dateValue = (value: unknown, label: string): string => {
 };
 const optionalDate = (value: unknown, label: string): string | undefined =>
   value === undefined ? undefined : dateValue(value, label);
+const nativeDateValue = (value: unknown, label: string, dateOnly = false): string => {
+  if (!(value instanceof Date) || !Number.isFinite(value.getTime())) invalid(`${label} must be a valid date.`);
+  const iso = (value as Date).toISOString();
+  return dateOnly ? iso.slice(0, 10) : iso;
+};
+const optionalNativeDate = (value: unknown, label: string, dateOnly = false): string | undefined =>
+  value === undefined ? undefined : nativeDateValue(value, label, dateOnly);
 const photoValue = (value: unknown, label: string): string | undefined => {
   if (value === undefined) return undefined;
   const photo = textValue(value, label, Math.ceil(MAX_PHOTO_BYTES * 4 / 3) + 64);
@@ -97,6 +110,22 @@ const photoValue = (value: unknown, label: string): string | undefined => {
     invalid(`${label} must be a bounded raster image data URL.`);
   }
   return photo;
+};
+const nativePhotoValue = (value: unknown, label: string): string | undefined => {
+  if (value === undefined) return undefined;
+  if (!(value instanceof Uint8Array) || value.byteLength === 0 || value.byteLength > MAX_PHOTO_BYTES) {
+    invalid(`${label} must be a bounded raster image.`);
+  }
+  const bytes = value as Uint8Array;
+  let mime: "image/jpeg" | "image/png" | "image/webp" | undefined;
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) mime = "image/jpeg";
+  else if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) mime = "image/png";
+  else if (
+    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+  ) mime = "image/webp";
+  if (!mime) invalid(`${label} uses an unsupported image format.`);
+  return `data:${mime};base64,${encodeBase64(bytes)}`;
 };
 const numberValue = (value: unknown, label: string): number => {
   if (typeof value !== "number" || !Number.isFinite(value) || Math.abs(value) > 10_000_000) invalid(`${label} is invalid.`);
@@ -229,8 +258,7 @@ const nextId = (factory: IdFactory, used: Set<string>): string => {
   }
   return invalid("the ID generator did not produce a unique ID.");
 };
-export function importHeritgBackup(source: string, options: BackupImportOptions = {}): AppData {
-  const imported = parseHeritgBackup(source).data;
+const mergeImportedData = (imported: AppData, options: BackupImportOptions = {}): AppData => {
   const target = options.into ? validateAppData(options.into) : undefined;
   const used = new Set<string>(target ? [...target.trees, ...target.people, ...target.relationships].map((item) => item.id) : []);
   const factory = options.idFactory ?? newId;
@@ -256,6 +284,89 @@ export function importHeritgBackup(source: string, options: BackupImportOptions 
     language: target.language,
     viewports: { ...target.viewports, ...remapped.viewports }
   });
+};
+export function importHeritgBackup(source: string, options: BackupImportOptions = {}): AppData {
+  return mergeImportedData(parseHeritgBackup(source).data, options);
+}
+
+const nativeMagic = (bytes: Uint8Array): string =>
+  String.fromCharCode(...bytes.subarray(0, 8));
+
+export function importNativeHeritgArchive(
+  source: ArrayBuffer | Uint8Array,
+  options: BackupImportOptions = {}
+): AppData {
+  const bytes = source instanceof Uint8Array ? source : new Uint8Array(source);
+  if (bytes.byteLength < NATIVE_HEADER_BYTES || bytes.byteLength > MAX_PORTABILITY_BYTES) {
+    return invalid("native archive must be between 10 bytes and 32 MB.");
+  }
+  const magic = nativeMagic(bytes);
+  if (magic === NATIVE_ENCRYPTED_MAGIC) {
+    throw new Error("Password-protected .heritg archives are not supported on the web yet.");
+  }
+  if (magic !== NATIVE_MAGIC) invalid("native archive header is invalid.");
+  const envelopeVersion = (bytes[8] << 8) | bytes[9];
+  if (envelopeVersion !== NATIVE_ENVELOPE_VERSION) invalid("native archive version is unsupported.");
+
+  let payload: JsonObject;
+  try {
+    payload = objectValue(parsePlistDictionary(bytes.subarray(NATIVE_HEADER_BYTES), { maxDepth: 64 }), "archive");
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Invalid portability data:")) throw error;
+    return invalid("native archive payload is invalid.");
+  }
+  if (payload.schemaVersion !== 1) invalid("native archive schema is unsupported.");
+  const tree = objectValue(payload.tree, "archive.tree");
+  const treeId = idValue(tree.id, "archive.tree.id");
+  const people = arrayValue(payload.people, "archive.people").map((entry, index): Person => {
+    const item = objectValue(entry, `archive.person ${index}`);
+    return {
+      id: idValue(item.id, `archive.person ${index}.id`),
+      treeId: idValue(item.treeID, `archive.person ${index}.treeID`),
+      displayName: textValue(item.displayName, `archive.person ${index}.displayName`, 2_048),
+      gender: enumValue(item.genderRaw, GENDERS, `archive.person ${index}.genderRaw`),
+      createdAt: nativeDateValue(item.createdAt, `archive.person ${index}.createdAt`),
+      birthDate: optionalNativeDate(item.birthDate, `archive.person ${index}.birthDate`, true),
+      deathDate: optionalNativeDate(item.deathDate, `archive.person ${index}.deathDate`, true),
+      birthDatePrecision: enumValue(item.birthDatePrecisionRaw, PRECISIONS, `archive.person ${index}.birthDatePrecisionRaw`),
+      notes: textValue(item.notes, `archive.person ${index}.notes`),
+      addressLine: textValue(item.addressLine, `archive.person ${index}.addressLine`),
+      city: textValue(item.city, `archive.person ${index}.city`),
+      province: textValue(item.province, `archive.person ${index}.province`),
+      country: textValue(item.country, `archive.person ${index}.country`),
+      postalCode: textValue(item.postalCode, `archive.person ${index}.postalCode`, 256),
+      photoDataUrl: nativePhotoValue(item.profilePhotoData, `archive.person ${index}.profilePhotoData`)
+    };
+  });
+  const relationships = arrayValue(payload.relationships, "archive.relationships").map((entry, index): FamilyRelationship => {
+    const item = objectValue(entry, `archive.relationship ${index}`);
+    return {
+      id: idValue(item.id, `archive.relationship ${index}.id`),
+      treeId: idValue(item.treeID, `archive.relationship ${index}.treeID`),
+      fromPersonId: idValue(item.fromPersonID, `archive.relationship ${index}.fromPersonID`),
+      toPersonId: idValue(item.toPersonID, `archive.relationship ${index}.toPersonID`),
+      kind: enumValue(item.kindRaw, KINDS, `archive.relationship ${index}.kindRaw`),
+      subtype: enumValue(item.subtypeRaw, SUBTYPES, `archive.relationship ${index}.subtypeRaw`),
+      createdAt: nativeDateValue(item.createdAt, `archive.relationship ${index}.createdAt`),
+      marriageDate: optionalNativeDate(item.marriageDate, `archive.relationship ${index}.marriageDate`, true)
+    };
+  });
+  const imported = validateAppData({
+    version: 1,
+    trees: [{
+      id: treeId,
+      title: textValue(tree.title, "archive.tree.title", 2_048),
+      createdAt: nativeDateValue(tree.createdAt, "archive.tree.createdAt"),
+      updatedAt: nativeDateValue(tree.updatedAt, "archive.tree.updatedAt"),
+      lastSelectedPersonId: optionalId(tree.lastSelectedPersonID, "archive.tree.lastSelectedPersonID")
+    }],
+    people,
+    relationships,
+    selectedTreeId: treeId,
+    language: options.into?.language ?? "en",
+    viewports: { [treeId]: { scrollX: 0, scrollY: 0, zoom: 1 } }
+  });
+  return mergeImportedData(imported, options);
 }
 
 const cleanGedcomValue = (value: string, maximum = 2_048): string =>

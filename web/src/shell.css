@@ -13,9 +13,13 @@
   display: flex;
   flex-direction: column;
   left: 0;
-  max-width: 304px;
+  max-width: calc(304px + env(safe-area-inset-left, 0px));
   min-height: 0;
-  padding: max(22px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+  padding:
+    max(22px, env(safe-area-inset-top, 0px))
+    max(18px, env(safe-area-inset-right, 0px))
+    max(18px, env(safe-area-inset-bottom, 0px))
+    max(18px, env(safe-area-inset-left, 0px));
   position: fixed;
   top: 0;
   transform: translateX(-105%);
@@ -108,7 +112,7 @@
   border-radius: 14px;
   display: grid;
   gap: 10px;
-  grid-template-columns: 38px minmax(0, 1fr) 34px;
+  grid-template-columns: 38px minmax(0, 1fr) 44px;
   min-height: 66px;
   padding: 7px 7px 7px 9px;
   text-align: left;
@@ -185,7 +189,7 @@
   padding: 5px;
   position: absolute;
   right: 0;
-  top: 39px;
+  top: 47px;
   z-index: 50;
 }
 
@@ -196,7 +200,7 @@
   display: flex;
   font-size: 0.85rem;
   gap: 9px;
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 10px;
   text-align: left;
 }
@@ -213,6 +217,38 @@
   display: grid;
   gap: 8px;
   padding-top: 6px;
+}
+
+.sidebar-utilities {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.sidebar-utilities button {
+  align-items: center;
+  background: transparent;
+  border-radius: 11px;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  min-height: 50px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.sidebar-utilities button:hover { background: var(--recessed); }
+.sidebar-utilities svg { color: var(--brand-deep); }
+.sidebar-utilities strong,
+.sidebar-utilities small { display: block; }
+.sidebar-utilities strong { font-size: 0.8rem; }
+.sidebar-utilities small {
+  color: var(--subtle);
+  font-size: 0.68rem;
+  line-height: 1.25;
+  margin-top: 2px;
 }
 
 .privacy-note {
@@ -256,34 +292,39 @@
 .canvas-host .excalidraw .App-menu_top,
 .canvas-host .excalidraw .layer-ui__wrapper__top-right,
 .canvas-host .excalidraw .App-toolbar,
-.canvas-host .excalidraw .help-icon {
+.canvas-host .excalidraw .help-icon,
+.canvas-host .excalidraw .zoom-actions {
   display: none !important;
 }
 
-.canvas-host .excalidraw .zoom-actions,
 .canvas-host .excalidraw .undo-redo-buttons {
   filter: sepia(0.12);
+}
+
+.canvas-host .excalidraw .undo-redo-buttons .ToolIcon {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .workspace-header {
   align-items: center;
   display: flex;
   gap: 14px;
-  left: 78px;
+  left: max(78px, calc(env(safe-area-inset-left, 0px) + 56px));
   pointer-events: none;
   position: absolute;
-  right: 22px;
-  top: max(18px, env(safe-area-inset-top));
+  right: max(22px, env(safe-area-inset-right, 0px));
+  top: max(18px, env(safe-area-inset-top, 0px));
   z-index: 12;
 }
 
 .workspace-title {
   background: rgba(255, 253, 248, 0.9);
   border: 1px solid rgba(216, 204, 188, 0.88);
-  border-radius: 16px;
+  border-radius: 12px;
   box-shadow: var(--shadow-soft);
   min-width: 0;
-  padding: 11px 16px;
+  padding: 8px 14px;
 }
 
 .workspace-title h2 {
@@ -314,61 +355,218 @@
   pointer-events: auto;
 }
 
-.tree-pane-toggle {
-  left: 22px;
+.canvas-controls {
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   position: absolute;
-  top: max(18px, env(safe-area-inset-top));
+  right: max(18px, env(safe-area-inset-right, 0px));
+  z-index: 13;
+}
+
+.canvas-controls .generation-popover {
+  bottom: 0;
+  right: 54px;
+  top: auto;
+}
+
+.tree-pane-toggle {
+  left: max(22px, env(safe-area-inset-left, 0px));
+  position: absolute;
+  top: max(18px, env(safe-area-inset-top, 0px));
   z-index: 13;
 }
 
 .tree-pane-hint {
-  align-items: flex-start;
   color: var(--brand-deep);
-  display: flex;
   font-family: var(--font-display);
   font-size: 0.84rem;
   font-weight: 600;
-  gap: 3px;
-  left: 27px;
+  left: max(22px, env(safe-area-inset-left, 0px));
   line-height: 1.25;
   pointer-events: none;
   position: absolute;
-  top: 82px;
-  transform: rotate(-2deg);
-  z-index: 12;
+  top: 183px;
+  transform: rotate(-1.5deg);
+  width: min(196px, calc(50vw - 24px));
+  z-index: 14;
 }
 
 .tree-pane-hint svg {
   fill: none;
-  height: 44px;
-  margin-top: -27px;
+  height: 78px;
+  left: 10px;
+  position: absolute;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.8;
-  width: 52px;
+  top: -84px;
+  width: 64px;
 }
 
 .tree-pane-hint span {
-  max-width: 132px;
+  display: block;
+  margin-left: 50px;
+  max-width: 140px;
 }
 
 .settings-pane-hint {
   left: auto;
-  right: 27px;
+  right: max(22px, env(safe-area-inset-right, 0px));
   text-align: right;
-  transform: rotate(2deg);
+  transform: rotate(1.5deg);
+}
+
+.settings-pane-hint svg {
+  left: auto;
+  right: 10px;
 }
 
 .settings-pane-hint span {
-  max-width: 150px;
+  margin-left: auto;
+  margin-right: 50px;
+  max-width: 146px;
 }
 
-.empty-canvas.welcome-canvas {
+.welcome-canvas {
+  color: var(--text);
+  pointer-events: none;
+  text-align: center;
+  width: min(390px, calc(100vw - 64px));
+}
+
+.welcome-brand {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.welcome-brand .brand-mark {
+  height: 44px;
+  width: 44px;
+}
+
+.welcome-brand strong {
+  color: var(--brand-deep);
+  font-size: 1.55rem;
+  letter-spacing: -0.03em;
+}
+
+.welcome-canvas h3 {
+  font-size: 1.35rem;
+  margin: 0 0 6px;
+}
+
+.welcome-canvas > p {
+  color: var(--subtle);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  margin: 0 auto 18px;
+  max-width: 330px;
+}
+
+.welcome-actions {
+  display: grid;
+  gap: 3px;
+  margin: 0 auto;
+  max-width: 340px;
+}
+
+.welcome-action {
+  align-items: center;
   background: transparent;
-  border: 0;
-  box-shadow: none;
-  max-width: 430px;
+  border-radius: 11px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  min-height: 58px;
+  padding: 8px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.welcome-action:hover,
+.welcome-action:focus-visible {
+  background: color-mix(in srgb, var(--recessed) 74%, transparent);
+}
+
+.welcome-action > svg { color: var(--brand-deep); }
+.welcome-action strong,
+.welcome-action small { display: block; }
+.welcome-action strong { font-size: 0.88rem; }
+.welcome-action small {
+  color: var(--subtle);
+  font-size: 0.71rem;
+  line-height: 1.25;
+  margin-top: 3px;
+}
+
+.canvas-move-hint {
+  align-items: center;
+  color: var(--subtle);
+  display: flex;
+  font-size: 0.72rem;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 17px;
+}
+
+.canvas-utilities {
+  align-items: center;
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  gap: 8px;
+  position: absolute;
+  right: max(80px, calc(env(safe-area-inset-right, 0px) + 62px));
+  z-index: 13;
+}
+
+.privacy-button {
+  align-items: center;
+  background: rgba(255, 253, 248, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-soft);
+  color: #52703f;
+  display: flex;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 6px;
+  height: 44px;
+  padding: 0 12px;
+}
+
+.onboarding-hint {
+  color: var(--brand-deep);
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1.25;
+  pointer-events: none;
+  position: absolute;
+  z-index: 14;
+}
+
+.canvas-controls-hint {
+  bottom: 246px;
+  right: max(64px, calc(env(safe-area-inset-right, 0px) + 52px));
+  text-align: right;
+  width: 188px;
+}
+
+.canvas-controls-hint svg {
+  fill: none;
+  height: 58px;
+  margin-left: auto;
+  margin-right: -30px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  width: 76px;
 }
 
 .empty-canvas {
@@ -435,38 +633,20 @@
   background: var(--canvas);
   border: 1px solid var(--line);
   border-radius: 9px;
-  height: 38px;
+  height: 44px;
   padding: 0 9px;
-}
-
-.drawer-backdrop {
-  background: rgba(48, 43, 37, 0.22);
-  bottom: 0;
-  display: block;
-  left: 0;
-  opacity: 0;
-  pointer-events: none;
-  position: fixed;
-  right: 0;
-  top: 0;
-  transition: opacity 180ms ease, visibility 180ms;
-  visibility: hidden;
-  z-index: 19;
-}
-
-.drawer-backdrop.open {
-  opacity: 1;
-  pointer-events: auto;
-  visibility: visible;
 }
 
 .toast {
   background: var(--text);
   border-radius: 12px;
-  bottom: 24px;
+  bottom: max(24px, env(safe-area-inset-bottom, 0px));
   color: #fff;
   font-size: 0.84rem;
   left: 50%;
+  max-width: calc(
+    100% - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)
+  );
   padding: 11px 16px;
   position: fixed;
   transform: translateX(-50%);

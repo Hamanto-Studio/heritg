@@ -4,7 +4,7 @@ import { downloadText, exportGedcom, exportHeritgBackup, safeFilename } from "./
 import type { Translator } from "./i18n";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
-import { Modal } from "./ui";
+import { SidePanel } from "./ui";
 
 interface SettingsDialogProps {
   data: AppData;
@@ -39,7 +39,7 @@ export function SettingsDialog({
   };
 
   return (
-    <Modal closeLabel={t("close")} onClose={onClose} size="medium" title={t("settings")}>
+    <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
       <div className="settings-intro">
         <h3>{t("privateSimple")}</h3>
         <p>{t("privateDescription")}</p>
@@ -131,6 +131,6 @@ export function SettingsDialog({
         <ShieldCheck aria-hidden="true" size={17} />
         <span><strong>{t("offlineReady")}</strong><br />{t("savedAutomatically")}</span>
       </div>
-    </Modal>
+    </SidePanel>
   );
 }

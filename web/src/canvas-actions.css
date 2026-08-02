@@ -10,12 +10,24 @@
   z-index: 11;
 }
 
+.canvas-empty-anchor {
+  pointer-events: none;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
+.canvas-empty-anchor button {
+  pointer-events: auto;
+}
+
 .canvas-action-group {
   align-items: center;
   display: flex;
   pointer-events: none;
   position: absolute;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scale(var(--canvas-action-scale, 1));
+  transform-origin: left center;
   z-index: 2;
 }
 
@@ -39,7 +51,8 @@
 
 .canvas-action-group[data-side="left"] {
   flex-direction: row-reverse;
-  transform: translate(-100%, -50%);
+  transform: translate(-100%, -50%) scale(var(--canvas-action-scale, 1));
+  transform-origin: right center;
 }
 
 .canvas-action-group[data-stack="true"] {

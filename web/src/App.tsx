@@ -1,9 +1,16 @@
 import {
+  CircleHelp,
+  FolderOpen,
+  Hand,
   Maximize2,
-  PanelLeft,
+  Menu,
   Settings2,
+  ShieldCheck,
   SlidersHorizontal,
-  UsersRound
+  UserRoundPlus,
+  UsersRound,
+  ZoomIn,
+  ZoomOut
 } from "lucide-react";
 import {
   startTransition,
@@ -17,8 +24,10 @@ import { availableGenerationLevels } from "./layout";
 import { createTranslator } from "./i18n";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
+import { PrivacyPanel } from "./PrivacyPanel";
 import { RelativeDialog } from "./RelativeDialog";
 import { SettingsDialog } from "./SettingsDialog";
+import { HelpPanel } from "./HelpPanel";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import { TreeSidebar } from "./TreeSidebar";
 import { useAppStore } from "./store";
@@ -26,13 +35,13 @@ import type { GenerationLimits, Person } from "./types";
 import { LoadingScreen, Modal } from "./ui";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
+type RightPanel = "people" | "settings" | "help" | "privacy";
 
 export function App() {
   const store = useAppStore();
   const { data, actions } = store;
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [peopleOpen, setPeopleOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [rightPanel, setRightPanel] = useState<RightPanel>();
   const [generationOpen, setGenerationOpen] = useState(false);
   const [generationLimitsByTree, setGenerationLimitsByTree] = useState<Record<string, GenerationLimits>>({});
   const [editingPerson, setEditingPerson] = useState<Person | "new">();
@@ -63,6 +72,8 @@ export function App() {
     () => availableGenerationLevels(people, relationships, selectedPerson?.id),
     [people, relationships, selectedPerson?.id]
   );
+  const showTreeOnboarding = !sidebarOpen && (!activeTree || !people.length);
+  const showSettingsOnboarding = Boolean(activeTree && !people.length && !rightPanel);
 
   useEffect(() => {
     document.documentElement.lang = data?.language === "id" ? "id" : "en";
@@ -86,6 +97,7 @@ export function App() {
   }
 
   const selectAndFocus = (personId: string) => {
+    setGenerationOpen(false);
     startTransition(() => actions.selectPerson(personId));
     setTimeout(() => canvasRef.current?.focusPerson(personId), 60);
   };
@@ -93,6 +105,7 @@ export function App() {
   const addRelativeTo = (personId: string) => {
     const target = people.find((person) => person.id === personId);
     if (!target) return;
+    setGenerationOpen(false);
     actions.selectPerson(target.id);
     canvasRef.current?.focusPerson(target.id);
     setRelativeTarget(target);
@@ -105,6 +118,7 @@ export function App() {
 
   const generationOptions = (maximum: number) => [
     <option key="all" value="all">{t("allGenerations")}</option>,
+    <option key={0} value={0}>{t("zeroGenerations")}</option>,
     ...Array.from({ length: maximum }, (_, index) => (
       <option key={index + 1} value={index + 1}>
         {index === 0 ? t("oneGeneration") : t("generations", { count: index + 1 })}
@@ -123,6 +137,32 @@ export function App() {
     }));
   };
 
+  const emptyWelcome = !people.length ? (
+    <section className="welcome-canvas" aria-labelledby="welcome-title">
+      <div className="welcome-brand">
+        <img alt="" aria-hidden="true" className="brand-mark" height={192} src="/pwa-192.png" width={192} />
+        <strong>Heritg</strong>
+      </div>
+      <h3 id="welcome-title">{t("startTitle")}</h3>
+      <p>{t("startDetail")}</p>
+      <div className="welcome-actions">
+        <button className="welcome-action" onClick={() => setEditingPerson("new")} type="button">
+          <UserRoundPlus aria-hidden="true" size={19} />
+          <span><strong>{t("addFirstPerson")}</strong><small>{t("welcomeAddDetail")}</small></span>
+        </button>
+        <button className="welcome-action" onClick={() => setSidebarOpen(true)} type="button">
+          <FolderOpen aria-hidden="true" size={19} />
+          <span><strong>{t("welcomeOpenTree")}</strong><small>{t("welcomeOpenTreeDetail")}</small></span>
+        </button>
+        <button className="welcome-action" onClick={() => setRightPanel("help")} type="button">
+          <CircleHelp aria-hidden="true" size={19} />
+          <span><strong>{t("welcomeHelp")}</strong><small>{t("welcomeHelpDetail")}</small></span>
+        </button>
+      </div>
+      <div className="canvas-move-hint"><Hand aria-hidden="true" size={15} /> {t("canvasMoveHint")}</div>
+    </section>
+  ) : undefined;
+
   return (
     <div className="app-shell">
       <TreeSidebar
@@ -134,6 +174,8 @@ export function App() {
         }}
         onError={setOperationError}
         onImported={() => setToast(t("imported"))}
+        onShowHelp={() => setRightPanel("help")}
+        onShowPrivacy={() => setRightPanel("privacy")}
         open={sidebarOpen}
         t={t}
       />
@@ -141,22 +183,23 @@ export function App() {
       <main className="workspace">
         <button
           aria-controls="tree-navigation"
+          aria-describedby={showTreeOnboarding ? "tree-menu-onboarding" : undefined}
           aria-expanded={sidebarOpen}
           aria-label={t("showTrees")}
           className="icon-button tree-pane-toggle"
           onClick={() => setSidebarOpen(true)}
           type="button"
         >
-          <PanelLeft aria-hidden="true" size={19} />
+          <Menu aria-hidden="true" size={19} />
         </button>
 
-        {!sidebarOpen && (!activeTree || !people.length) ? (
-          <div className="tree-pane-hint" aria-hidden="true">
-            <svg viewBox="0 0 52 44">
-              <path d="M47 39C33 35 19 25 11 7" />
-              <path d="M7 17 11 7l10 4" />
+        {showTreeOnboarding ? (
+          <div className="tree-pane-hint" id="tree-menu-onboarding" role="note">
+            <svg aria-hidden="true" viewBox="0 0 64 78">
+              <path d="M58 73C39 67 21 40 12 16" />
+              <path d="M8 27 12 16l11 4" />
             </svg>
-            <span>{t("treeMenuHint")}</span>
+            <span>{t("treeMenuHintDetailed")}</span>
           </div>
         ) : null}
 
@@ -164,13 +207,20 @@ export function App() {
           <div className="canvas-frame">
             <TreeCanvas
               generationLimits={generationLimits}
+              emptyContent={emptyWelcome}
               initialViewport={data.viewports[activeTree.id]}
               key={`${activeTree.id}-${data.language}`}
               language={data.language}
               onAddRelative={addRelativeTo}
-              onDeselectPerson={() => actions.selectPerson(undefined)}
+              onDeselectPerson={() => {
+                setGenerationOpen(false);
+                actions.selectPerson(undefined);
+              }}
               onEditPerson={editPerson}
-              onSelectPerson={(personId) => actions.selectPerson(personId)}
+              onSelectPerson={(personId) => {
+                setGenerationOpen(false);
+                actions.selectPerson(personId);
+              }}
               onViewportChange={(viewport) => actions.setViewport(activeTree.id, viewport)}
               people={people}
               ref={canvasRef}
@@ -192,62 +242,19 @@ export function App() {
                   className="icon-button"
                   onClick={() => {
                     setGenerationOpen(false);
-                    setPeopleOpen(true);
+                    setRightPanel("people");
                   }}
                   type="button"
                 >
                   <UsersRound aria-hidden="true" size={19} />
                 </button>
                 <button
-                  aria-label={t("fitTree")}
-                  className="icon-button"
-                  disabled={!people.length}
-                  onClick={() => canvasRef.current?.fitAll()}
-                  type="button"
-                >
-                  <Maximize2 aria-hidden="true" size={18} />
-                </button>
-                <div className="tree-menu-wrap desktop-tool">
-                  <button
-                    aria-expanded={generationOpen}
-                    aria-label={t("branchDepth")}
-                    className="icon-button"
-                    disabled={!selectedPerson}
-                    onClick={() => setGenerationOpen((value) => !value)}
-                    type="button"
-                  >
-                    <SlidersHorizontal aria-hidden="true" size={18} />
-                  </button>
-                  {generationOpen ? (
-                    <div className="generation-popover">
-                      <strong>{t("branchDepth")}</strong>
-                      <label>
-                        {t("ancestors")}
-                        <select
-                          onChange={(event) => setLimit("ancestors", event.target.value)}
-                          value={generationLimits.ancestors ?? "all"}
-                        >
-                          {generationOptions(availableLevels.ancestors)}
-                        </select>
-                      </label>
-                      <label>
-                        {t("descendants")}
-                        <select
-                          onChange={(event) => setLimit("descendants", event.target.value)}
-                          value={generationLimits.descendants ?? "all"}
-                        >
-                          {generationOptions(availableLevels.descendants)}
-                        </select>
-                      </label>
-                    </div>
-                  ) : null}
-                </div>
-                <button
+                  aria-describedby={showSettingsOnboarding ? "settings-menu-onboarding" : undefined}
                   aria-label={t("settings")}
                   className="icon-button"
                   onClick={() => {
                     setGenerationOpen(false);
-                    setSettingsOpen(true);
+                    setRightPanel("settings");
                   }}
                   type="button"
                 >
@@ -256,25 +263,97 @@ export function App() {
               </div>
             </header>
 
-            {!sidebarOpen && !people.length && !settingsOpen ? (
-              <div className="tree-pane-hint settings-pane-hint" aria-hidden="true">
-                <span>{t("settingsMenuHint")}</span>
-                <svg viewBox="0 0 52 44">
-                  <path d="M5 39C19 35 33 25 41 7" />
-                  <path d="M31 11 41 7l4 10" />
+            <div className="canvas-controls" aria-label={t("canvasControls")} role="toolbar">
+              <div className="tree-menu-wrap">
+                <button
+                  aria-expanded={generationOpen && Boolean(selectedPerson)}
+                  aria-label={t("branchDepth")}
+                  className="icon-button"
+                  disabled={!selectedPerson}
+                  onClick={() => setGenerationOpen((value) => !value)}
+                  type="button"
+                >
+                  <SlidersHorizontal aria-hidden="true" size={18} />
+                </button>
+                {generationOpen && selectedPerson ? (
+                  <div className="generation-popover">
+                    <strong>{t("branchDepth")}</strong>
+                    <label>
+                      {t("ancestors")}
+                      <select
+                        onChange={(event) => setLimit("ancestors", event.target.value)}
+                        value={generationLimits.ancestors ?? "all"}
+                      >
+                        {generationOptions(availableLevels.ancestors)}
+                      </select>
+                    </label>
+                    <label>
+                      {t("descendants")}
+                      <select
+                        onChange={(event) => setLimit("descendants", event.target.value)}
+                        value={generationLimits.descendants ?? "all"}
+                      >
+                        {generationOptions(availableLevels.descendants)}
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+              <button
+                aria-label={t("zoomIn")}
+                className="icon-button"
+                onClick={() => canvasRef.current?.zoomIn()}
+                type="button"
+              >
+                <ZoomIn aria-hidden="true" size={18} />
+              </button>
+              <button
+                aria-label={t("zoomOut")}
+                className="icon-button"
+                onClick={() => canvasRef.current?.zoomOut()}
+                type="button"
+              >
+                <ZoomOut aria-hidden="true" size={18} />
+              </button>
+              <button
+                aria-label={t("fitTree")}
+                className="icon-button"
+                disabled={!people.length}
+                onClick={() => canvasRef.current?.fitAll()}
+                type="button"
+              >
+                <Maximize2 aria-hidden="true" size={18} />
+              </button>
+            </div>
+
+            {showSettingsOnboarding ? (
+              <div className="tree-pane-hint settings-pane-hint" id="settings-menu-onboarding" role="note">
+                <span>{t("workspaceToolsHint")}</span>
+                <svg aria-hidden="true" viewBox="0 0 64 78">
+                  <path d="M6 67C25 62 43 38 52 16" />
+                  <path d="m41 20 11-4 4 11" />
                 </svg>
               </div>
             ) : null}
 
-            {!people.length ? (
-              <section className="empty-canvas welcome-canvas">
-                <img alt="" aria-hidden="true" className="brand-mark large" height={192} src="/pwa-192.png" width={192} />
-                <h3>{t("startTitle")}</h3>
-                <p>{t("startDetail")}</p>
-                <button className="button primary" onClick={() => setEditingPerson("new")} type="button">
-                  {t("addFirstPerson")}
-                </button>
-              </section>
+            <div className="canvas-utilities" aria-label={t("helpPrivacyHint")} role="toolbar">
+              <button aria-label={`${t("privacyProtection")}: ${t("protected")}`} className="privacy-button" onClick={() => setRightPanel("privacy")} type="button">
+                <ShieldCheck aria-hidden="true" size={18} />
+                <span>{t("protected")}</span>
+              </button>
+              <button aria-label={t("help")} className="icon-button" onClick={() => setRightPanel("help")} type="button">
+                <CircleHelp aria-hidden="true" size={18} />
+              </button>
+            </div>
+
+            {showSettingsOnboarding ? (
+              <div className="canvas-controls-hint onboarding-hint" role="note">
+                <span>{t("canvasToolsHint")}</span>
+                <svg aria-hidden="true" viewBox="0 0 76 58">
+                  <path d="M5 7c30 2 52 14 62 38" />
+                  <path d="m58 39 9 6 3-10" />
+                </svg>
+              </div>
             ) : null}
           </div>
         ) : (
@@ -320,10 +399,10 @@ export function App() {
         />
       ) : null}
 
-      {peopleOpen ? (
+      {rightPanel === "people" ? (
         <PeopleDialog
           language={data.language}
-          onClose={() => setPeopleOpen(false)}
+          onClose={() => setRightPanel(undefined)}
           onSelect={selectAndFocus}
           people={people}
           relationships={relationships}
@@ -332,18 +411,26 @@ export function App() {
         />
       ) : null}
 
-      {activeTree && settingsOpen ? (
+      {activeTree && rightPanel === "settings" ? (
         <SettingsDialog
           actions={actions}
           data={data}
           exportPng={() => canvasRef.current?.exportPng() ?? Promise.reject(new Error("Canvas is not ready."))}
           exportSvg={() => canvasRef.current?.exportSvg() ?? Promise.reject(new Error("Canvas is not ready."))}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => setRightPanel(undefined)}
           onError={setOperationError}
           onExported={() => setToast(t("exported"))}
           t={t}
           tree={activeTree}
         />
+      ) : null}
+
+      {rightPanel === "help" ? (
+        <HelpPanel onClose={() => setRightPanel(undefined)} t={t} />
+      ) : null}
+
+      {rightPanel === "privacy" ? (
+        <PrivacyPanel onClose={() => setRightPanel(undefined)} t={t} />
       ) : null}
 
       {operationError ? (

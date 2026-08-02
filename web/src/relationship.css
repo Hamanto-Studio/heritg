@@ -233,7 +233,7 @@
 
 .relationship-gender-notice {
   background: color-mix(in srgb, var(--brand) 10%, var(--base));
-  border-left: 3px solid var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, var(--line));
   border-radius: 8px;
   color: var(--subtle);
   font-size: 0.76rem;

@@ -101,6 +101,68 @@ export function Modal({
   );
 }
 
+export function SidePanel({
+  title,
+  onClose,
+  children,
+  footer,
+  side = "right",
+  closeLabel = "Close"
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  side?: "left" | "right";
+  closeLabel?: string;
+}) {
+  const panelRef = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusFrame = requestAnimationFrame(() => panel?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeRef.current();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleKeyDown);
+      if (panel?.contains(document.activeElement) && previousFocus?.isConnected) {
+        previousFocus.focus();
+      }
+    };
+  }, []);
+
+  return (
+    <section
+      aria-label={title}
+      aria-modal="false"
+      className={`side-panel side-panel-${side}`}
+      ref={panelRef}
+      role="dialog"
+      tabIndex={-1}
+    >
+      <header className="side-panel-header">
+        <h2>{title}</h2>
+        <button aria-label={closeLabel} className="icon-button quiet" onClick={onClose} type="button">
+          <X aria-hidden="true" size={20} />
+        </button>
+      </header>
+      <div className="side-panel-body">{children}</div>
+      {footer ? <footer className="side-panel-footer">{footer}</footer> : null}
+    </section>
+  );
+}
+
 export function PersonAvatar({ person, size = 44 }: { person: Person; size?: number }) {
   return (
     <span className="person-avatar" style={{ width: size, height: size }} aria-hidden="true">

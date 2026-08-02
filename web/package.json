@@ -15,7 +15,8 @@
     "idb": "8.0.3",
     "lucide-react": "0.468.0",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "rork-plist": "0.7.0"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",

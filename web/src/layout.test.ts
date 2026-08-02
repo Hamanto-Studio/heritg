@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createConnectionPlan } from "./connectionPlan";
 import { directRelationshipLabel, kinshipLabel } from "./kinship";
 import {
   LAYOUT_METRICS,
@@ -126,6 +127,36 @@ describe("kinship labels", () => {
       "Half-sister"
     );
   });
+
+  it("matches iOS labels for parents, children, siblings, and extended family by marriage", () => {
+    const people = [
+      person("focus", "male"), person("spouse", "female"),
+      person("spouse-father", "male"), person("spouse-mother", "female"),
+      person("spouse-brother", "male"), person("spouse-grandmother", "female"),
+      person("daughter", "female"), person("daughter-husband", "male"),
+      person("son", "male"), person("son-wife", "female"),
+      person("focus-parent"), person("focus-sister", "female"), person("sister-husband", "male")
+    ];
+    const relationships = [
+      partner("focus", "spouse", "focus-spouse"),
+      parent("spouse-father", "spouse"), parent("spouse-mother", "spouse"),
+      parent("spouse-father", "spouse-brother"), parent("spouse-grandmother", "spouse-mother"),
+      parent("focus", "daughter"), partner("daughter", "daughter-husband", "daughter-marriage"),
+      parent("focus", "son"), partner("son", "son-wife", "son-marriage"),
+      parent("focus-parent", "focus"), parent("focus-parent", "focus-sister"),
+      partner("focus-sister", "sister-husband", "sister-marriage")
+    ];
+
+    expect(kinshipLabel("spouse-father", "focus", people, relationships)).toBe("Father-in-law");
+    expect(kinshipLabel("spouse-mother", "focus", people, relationships)).toBe("Mother-in-law");
+    expect(kinshipLabel("daughter-husband", "focus", people, relationships)).toBe("Son-in-law");
+    expect(kinshipLabel("son-wife", "focus", people, relationships)).toBe("Daughter-in-law");
+    expect(kinshipLabel("spouse-brother", "focus", people, relationships)).toBe("Brother-in-law");
+    expect(kinshipLabel("sister-husband", "focus", people, relationships)).toBe("Brother-in-law");
+    expect(kinshipLabel("spouse-grandmother", "focus", people, relationships)).toBe("Grandmother by marriage");
+    expect(kinshipLabel("spouse-mother", "focus", people, relationships, "id")).toBe("Ibu mertua");
+    expect(kinshipLabel("son-wife", "focus", people, relationships, "id")).toBe("Menantu perempuan");
+  });
 });
 
 describe("deterministic family layout", () => {
@@ -212,6 +243,33 @@ describe("deterministic family layout", () => {
     expect(layout.bounds.height).toBe(layout.height);
   });
 
+  it("keeps separate co-parent couples adjacent without interleaving their branches", () => {
+    const couplePeople = [
+      person("left-father", "male"), person("left-mother", "female"),
+      person("right-father", "male"), person("right-mother", "female"),
+      person("left-child"), person("right-child")
+    ];
+    const coupleRelationships = [
+      parent("left-father", "left-child"),
+      parent("left-mother", "left-child"),
+      parent("right-father", "right-child"),
+      parent("right-mother", "right-child")
+    ];
+
+    const value = createTreeLayout(couplePeople, coupleRelationships);
+    const parentRow = value.people
+      .filter(({ generation }) => generation === 0)
+      .sort((left, right) => left.x - right.x);
+    const indexOf = (id: string) => parentRow.findIndex((person) => person.id === id);
+    const leftIndices = [indexOf("left-father"), indexOf("left-mother")].sort((a, b) => a - b);
+    const rightIndices = [indexOf("right-father"), indexOf("right-mother")].sort((a, b) => a - b);
+
+    expect(leftIndices[1] - leftIndices[0]).toBe(1);
+    expect(rightIndices[1] - rightIndices[0]).toBe(1);
+    expect(leftIndices[1] < rightIndices[0] || rightIndices[1] < leftIndices[0]).toBe(true);
+    expect(createConnectionPlan(value).crossings).toEqual([]);
+  });
+
   it("filters generations around the selected person", () => {
     const ids = ["a2", "a1", "focus", "d1", "d2", "partner"];
     const chainPeople = ids.map((id) => person(id));
@@ -252,5 +310,36 @@ describe("deterministic family layout", () => {
           layout.people.some(({ id }) => id === toPersonId)
       )
     ).toBe(true);
+  });
+
+  it("supports hiding every ancestor or descendant generation", () => {
+    const ids = ["ancestor", "focus", "partner", "child"];
+    const chainPeople = ids.map((id) => person(id));
+    const chainRelationships = [
+      parent("ancestor", "focus"),
+      partner("focus", "partner"),
+      parent("focus", "child"),
+      parent("partner", "child")
+    ];
+
+    const noAncestors = createTreeLayout(
+      chainPeople,
+      chainRelationships,
+      "focus",
+      { ancestors: 0, descendants: null }
+    );
+    expect(new Set(noAncestors.people.map(({ id }) => id))).toEqual(
+      new Set(["focus", "partner", "child"])
+    );
+
+    const noDescendants = createTreeLayout(
+      chainPeople,
+      chainRelationships,
+      "focus",
+      { ancestors: null, descendants: 0 }
+    );
+    expect(new Set(noDescendants.people.map(({ id }) => id))).toEqual(
+      new Set(["ancestor", "focus", "partner"])
+    );
   });
 });

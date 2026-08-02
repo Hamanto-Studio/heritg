@@ -357,6 +357,19 @@ const orderRow = (
       groups.union(relationship.fromPersonId, relationship.toPersonId);
     }
   }
+  const coParentsByChild = new Map<string, string[]>();
+  for (const relationship of relationships) {
+    if (relationship.kind !== "parent" || !rowIds.has(relationship.fromPersonId)) continue;
+    const coParents = coParentsByChild.get(relationship.toPersonId) ?? [];
+    coParents.push(relationship.fromPersonId);
+    coParentsByChild.set(relationship.toPersonId, coParents);
+  }
+  for (const coParents of coParentsByChild.values()) {
+    const ordered = [...new Set(coParents)].sort(compareText);
+    for (let index = 1; index < ordered.length; index += 1) {
+      groups.union(ordered[0], ordered[index]);
+    }
+  }
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const blocks = [...groups.values().values()].map((ids) => {
     const members = ids.map((id) => peopleById.get(id)).filter((person): person is Person => Boolean(person));

@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
+import { buildPlist } from "rork-plist";
 import type { AppData } from "./types";
 import {
   HERITG_FORMAT,
@@ -7,6 +8,7 @@ import {
   exportHeritgBackup,
   importGedcom,
   importHeritgBackup,
+  importNativeHeritgArchive,
   parseGedcom,
   parseHeritgBackup,
   safeFilename
@@ -122,6 +124,42 @@ const sequence = (...ids: string[]) => {
   return () => ids[index++];
 };
 
+const nativeArchive = () => {
+  const payload = buildPlist({
+    schemaVersion: 1,
+    exportedAt: new Date(timestamp),
+    tree: {
+      id: "native-tree",
+      title: "Native Family",
+      createdAt: new Date(timestamp),
+      updatedAt: new Date(timestamp),
+      lastSelectedPersonID: "native-child"
+    },
+    people: [
+      {
+        id: "native-parent", treeID: "native-tree", displayName: "Native Parent", genderRaw: "female",
+        createdAt: new Date(timestamp), birthDate: new Date("1975-03-12T00:00:00.000Z"),
+        birthDatePrecisionRaw: "exact", notes: "", addressLine: "", city: "", province: "", country: "", postalCode: "",
+        profilePhotoData: new Uint8Array([0xff, 0xd8, 0xff, 0xd9])
+      },
+      {
+        id: "native-child", treeID: "native-tree", displayName: "Native Child", genderRaw: "male",
+        createdAt: new Date(timestamp), birthDatePrecisionRaw: "year", notes: "", addressLine: "", city: "", province: "", country: "", postalCode: ""
+      }
+    ],
+    relationships: [{
+      id: "native-relation", treeID: "native-tree", fromPersonID: "native-parent", toPersonID: "native-child",
+      kindRaw: "parent", subtypeRaw: "biologicalParent", createdAt: new Date(timestamp)
+    }]
+  }, { format: "binary" }) as Uint8Array;
+  const header = new TextEncoder().encode("HERITG00");
+  const archive = new Uint8Array(10 + payload.byteLength);
+  archive.set(header);
+  archive[9] = 1;
+  archive.set(payload, 10);
+  return archive;
+};
+
 describe("HERITG JSON backups", () => {
   it("exports all app data and imports it with remapped IDs", () => {
     const source = exportHeritgBackup(appData, timestamp);
@@ -169,6 +207,36 @@ describe("HERITG JSON backups", () => {
     backup.schemaVersion = 1;
     backup.data.relationships[0].toPersonId = "person-missing";
     expect(() => importHeritgBackup(JSON.stringify(backup))).toThrow(/endpoint/i);
+  });
+});
+
+describe("native HERITG archives", () => {
+  it("imports the Apple binary archive with dates, photos, relationships, and remapped IDs", () => {
+    const restored = importNativeHeritgArchive(nativeArchive(), {
+      idFactory: sequence("new-tree", "new-parent", "new-child", "new-relation")
+    });
+
+    expect(restored.trees[0]).toMatchObject({
+      id: "new-tree", title: "Native Family", lastSelectedPersonId: "new-child"
+    });
+    expect(restored.people[0]).toMatchObject({
+      id: "new-parent", treeId: "new-tree", birthDate: "1975-03-12"
+    });
+    expect(restored.people[0].photoDataUrl).toBe("data:image/jpeg;base64,/9j/2Q==");
+    expect(restored.relationships[0]).toMatchObject({
+      id: "new-relation", treeId: "new-tree", fromPersonId: "new-parent", toPersonId: "new-child"
+    });
+  });
+
+  it("clearly rejects password-protected and unsupported archives", () => {
+    const encrypted = new Uint8Array(10);
+    encrypted.set(new TextEncoder().encode("HERITG01"));
+    encrypted[9] = 1;
+    expect(() => importNativeHeritgArchive(encrypted)).toThrow(/password-protected/i);
+
+    const unsupported = nativeArchive();
+    unsupported[9] = 2;
+    expect(() => importNativeHeritgArchive(unsupported)).toThrow(/version/i);
   });
 });
 

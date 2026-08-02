@@ -1,6 +1,7 @@
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
 import type { RouteSegment } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
+import { personLifeSummary } from "./lifeSummary";
 import type { AppData, PositionedPerson, TreeLayout } from "./types";
 
 const PADDING = 56;
@@ -16,17 +17,6 @@ const escapeXml = (value: string) => value
 const compactText = (value: string, maximum: number) => {
   const normalized = value.trim().replace(/\s+/g, " ");
   return normalized.length > maximum ? `${normalized.slice(0, maximum - 1)}...` : normalized;
-};
-
-const year = (value?: string) => value?.match(/^\d{4}/)?.[0];
-
-const lifeText = (person: PositionedPerson, language: AppData["language"] = "en") => {
-  const birth = year(person.birthDate);
-  const death = year(person.deathDate);
-  if (birth && death) return `${birth} - ${death}`;
-  if (birth) return language === "id" ? `Lahir ${birth}` : `Born ${birth}`;
-  if (death) return language === "id" ? `Wafat ${death}` : `Died ${death}`;
-  return "";
 };
 
 const svgLine = (
@@ -58,7 +48,7 @@ const personNode = (
   const avatar = person.photoDataUrl
     ? `<defs><clipPath id="${clipId}"><circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}"/></clipPath></defs><image href="${escapeXml(person.photoDataUrl)}" x="${avatarX - innerRadius}" y="${avatarY - innerRadius}" width="${LAYOUT_METRICS.innerAvatarDiameter}" height="${LAYOUT_METRICS.innerAvatarDiameter}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`
     : `<circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}" fill="${selected ? "#f3eadf" : "#ede5d8"}"/><text x="${avatarX}" y="${avatarY + 8}" text-anchor="middle" font-size="24" font-weight="700" fill="#302b25">${escapeXml(person.displayName.charAt(0).toUpperCase() || "?")}</text>`;
-  const life = lifeText(person, language);
+  const life = personLifeSummary(person, language);
   return `<g>
     <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${selected ? "#f3eadf" : "#fffdf8"}" stroke="${selected ? "#a8875b" : "#d8ccbc"}" stroke-width="${selected ? 2 : 1}"/>
     ${avatar}
@@ -108,7 +98,7 @@ export function buildChartSvg(
       offsetY,
       `data-route-id="${escapeXml(route.id)}" data-segment-index="${index}"`,
       route.relationship.kind === "partner" ? "#b77972" : "#7e9b63",
-      1.5,
+      2,
       route.relationship.kind === "sibling"
     )
   )).join("");
@@ -116,7 +106,7 @@ export function buildChartSvg(
     `<circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="3" fill="#a8875b" data-family-junction="${escapeXml(family.id)}:${index}"/>`
   )).join("");
   const crossings = plan.crossings.map((point, index) =>
-    `<g data-crossing-index="${index}"><circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="4" fill="#fffdf8"/><line x1="${point.x + offsetX}" y1="${point.y + offsetY - 5}" x2="${point.x + offsetX}" y2="${point.y + offsetY + 5}" stroke="${point.kind === "parent" ? "#a8875b" : point.kind === "partner" ? "#b77972" : "#7e9b63"}" stroke-width="${point.kind === "parent" ? 2 : 1.5}" ${point.kind === "sibling" ? 'stroke-dasharray="4 3"' : ""} stroke-linecap="round"/></g>`
+    `<g data-crossing-index="${index}"><circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="4" fill="#fffdf8"/><line x1="${point.x + offsetX}" y1="${point.y + offsetY - 5}" x2="${point.x + offsetX}" y2="${point.y + offsetY + 5}" stroke="${point.kind === "parent" ? "#a8875b" : point.kind === "partner" ? "#b77972" : "#7e9b63"}" stroke-width="2" ${point.kind === "sibling" ? 'stroke-dasharray="4 3"' : ""} stroke-linecap="round"/></g>`
   ).join("");
   const relationshipLabels = plan.nonParentRoutes.flatMap((route) => route.label ? [
     `<g data-relationship-label="${escapeXml(route.id)}"><rect x="${route.label.rect.x + offsetX}" y="${route.label.rect.y + offsetY}" width="${route.label.rect.width}" height="${route.label.rect.height}" rx="12" fill="#fffdf8"/><text x="${route.label.center.x + offsetX}" y="${route.label.center.y + offsetY + 4}" text-anchor="middle" font-size="12" font-weight="500" fill="#796f63">${escapeXml(route.label.text)}</text></g>`

@@ -239,7 +239,7 @@ export const relationshipLabelText = (
 
 export const relationshipLabelRect = (text: string, center: RoutePoint): RouteRect => {
   const width = Math.max(44, Math.min(240, text.length * 6.2 + 14));
-  return { x: center.x - width / 2, y: center.y - 12, width, height: 24 };
+  return { x: center.x - width / 2, y: center.y - 10, width, height: 20 };
 };
 
 export const pointOnSegment = (point: RoutePoint, segment: RouteSegment) => {

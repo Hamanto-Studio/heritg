@@ -15,6 +15,7 @@ import { circularAvatarData } from "./avatar";
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
 import type { PlannedRelationshipLabel, RouteSegment } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
+import { personLifeSummary } from "./lifeSummary";
 import type {
   AppData,
   FamilyRelationship,
@@ -159,15 +160,6 @@ const textSkeleton = (
     opacity: 100,
     ...elementIdentity(id, link, customData, groupIds)
   }) as ExcalidrawElementSkeleton;
-const lifeText = (person: PositionedPerson, language: AppData["language"] = "en") => {
-  const year = (date: string | undefined) => date?.match(/^\d{4}/)?.[0];
-  const birthYear = year(person.birthDate);
-  const deathYear = year(person.deathDate);
-  if (birthYear && deathYear) return `${birthYear} - ${deathYear}`;
-  if (birthYear) return language === "id" ? `Lahir ${birthYear}` : `Born ${birthYear}`;
-  if (deathYear) return language === "id" ? `Wafat ${deathYear}` : `Died ${deathYear}`;
-  return undefined;
-};
 const nodeName = (value: string) => {
   const normalized = value.trim().replace(/\s+/g, " ") || "Unnamed person";
   return normalized.length > 34 ? `${normalized.slice(0, 31).trimEnd()}...` : normalized;
@@ -346,7 +338,7 @@ const personSkeletons = (
       groupIds
     )
   );
-  const life = lifeText(person, language);
+  const life = personLifeSummary(person, language);
   if (life) {
     values.push(
       textSkeleton(
@@ -430,7 +422,7 @@ export function projectLayoutToScene(
       segment,
       `heritg:relationship:${key}:segment:${index}`,
       color,
-      1,
+      2,
       relationship.kind === "sibling" ? "dashed" : "solid",
       `#heritg-relationship=${key}`,
       relationshipData(relationship),
@@ -457,7 +449,7 @@ export function projectLayoutToScene(
       { start: { x: point.x, y: point.y - 5 }, end: { x: point.x, y: point.y + 5 } },
       `heritg:crossing:${encodedId(key)}:bridge`,
       relationshipColor(point.kind),
-      point.kind === "parent" ? 2 : 1,
+      2,
       point.kind === "sibling" ? "dashed" : "solid",
       "",
       { heritgType: "crossing" }

@@ -3,8 +3,9 @@ import { useDeferredValue, useMemo, useState } from "react";
 
 import { deriveKinshipLabels } from "./kinship";
 import type { Translator } from "./i18n";
+import { personLifeSummary } from "./lifeSummary";
 import type { AppData, FamilyRelationship, Person } from "./types";
-import { Modal, PersonAvatar } from "./ui";
+import { PersonAvatar, SidePanel } from "./ui";
 
 interface PeopleDialogProps {
   people: Person[];
@@ -15,15 +16,6 @@ interface PeopleDialogProps {
   onClose: () => void;
   onSelect: (personId: string) => void;
 }
-
-const lifeSummary = (person: Person) => {
-  const birth = person.birthDate?.slice(0, 4);
-  const death = person.deathDate?.slice(0, 4);
-  if (birth && death) return `${birth} - ${death}`;
-  if (birth) return `b. ${birth}`;
-  if (death) return `d. ${death}`;
-  return person.city || undefined;
-};
 
 export function PeopleDialog({
   people,
@@ -50,7 +42,7 @@ export function PeopleDialog({
     });
 
   return (
-    <Modal closeLabel={t("close")} onClose={onClose} size="medium" title={t("allPeople")}>
+    <SidePanel closeLabel={t("close")} onClose={onClose} title={t("allPeople")}>
       <label className="people-toolbar">
         <Search aria-hidden="true" size={18} />
         <span className="sr-only">{t("searchPeople")}</span>
@@ -65,24 +57,27 @@ export function PeopleDialog({
       </label>
       {filtered.length ? (
         <div className="people-list">
-          {filtered.map((person) => (
-            <button
-              className="person-list-row"
-              key={person.id}
-              onClick={() => {
-                onSelect(person.id);
-                onClose();
-              }}
-              type="button"
-            >
-              <PersonAvatar person={person} />
-              <span>
-                <strong>{person.displayName}</strong>
-                <span>{labels[person.id] ?? t("unknownRelationship")}{lifeSummary(person) ? ` · ${lifeSummary(person)}` : ""}</span>
-              </span>
-              <ArrowRight aria-hidden="true" color="var(--subtle)" size={17} />
-            </button>
-          ))}
+          {filtered.map((person) => {
+            const summary = personLifeSummary(person, language) ?? person.city;
+            return (
+              <button
+                className="person-list-row"
+                key={person.id}
+                onClick={() => {
+                  onSelect(person.id);
+                  onClose();
+                }}
+                type="button"
+              >
+                <PersonAvatar person={person} />
+                <span className="person-list-copy">
+                  <strong>{person.displayName}</strong>
+                  <span>{labels[person.id] ?? t("unknownRelationship")}{summary ? ` · ${summary}` : ""}</span>
+                </span>
+                <ArrowRight aria-hidden="true" color="var(--subtle)" size={17} />
+              </button>
+            );
+          })}
         </div>
       ) : (
         <div className="empty-dialog-state">
@@ -91,6 +86,6 @@ export function PeopleDialog({
           <span>{t("emptySearch")}</span>
         </div>
       )}
-    </Modal>
+    </SidePanel>
   );
 }

@@ -10,6 +10,7 @@ const ancestrySubtypes = new Set<RelationshipSubtype>([
   "biologicalParent",
   "adoptiveParent"
 ]);
+const activeUnionSubtypes = new Set<RelationshipSubtype>(["partner", "spouse"]);
 
 const compareText = (left: string, right: string) =>
   left < right ? -1 : left > right ? 1 : 0;
@@ -145,11 +146,17 @@ const INDONESIAN_LABELS: Record<string, string> = {
   "Grandson": "Cucu laki-laki", "Granddaughter": "Cucu perempuan", "Grandchild": "Cucu",
   "Uncle": "Paman", "Aunt": "Bibi", "Aunt/Uncle": "Paman/Bibi",
   "Nephew": "Keponakan laki-laki", "Niece": "Keponakan perempuan", "Niece/Nephew": "Keponakan",
+  "Father-in-law": "Ayah mertua", "Mother-in-law": "Ibu mertua", "Parent-in-law": "Mertua",
+  "Son-in-law": "Menantu laki-laki", "Daughter-in-law": "Menantu perempuan", "Child-in-law": "Menantu",
+  "Brother-in-law": "Ipar laki-laki", "Sister-in-law": "Ipar perempuan", "Sibling-in-law": "Ipar",
   "Family member": "Anggota keluarga"
 };
 
-const localizedLabel = (label: string, language: AppData["language"]) => {
+const localizedLabel = (label: string, language: AppData["language"]): string => {
   if (language === "en") return label;
+  if (label.endsWith(" by marriage")) {
+    return `${localizedLabel(label.slice(0, -" by marriage".length), language)} melalui pernikahan`;
+  }
   if (INDONESIAN_LABELS[label]) return INDONESIAN_LABELS[label];
   if (/cousin/i.test(label)) return "Sepupu";
   if (/^Great-/i.test(label)) {
@@ -240,7 +247,92 @@ const cousinLabel = (degree: number, removal: number) => {
   return `${base} ${removal} times removed`;
 };
 
-function kinshipLabelEnglish(
+const parentIds = (
+  personId: string,
+  relationships: readonly FamilyRelationship[]
+) => new Set(relationships.flatMap((relationship) =>
+  relationship.kind === "parent" && ancestrySubtypes.has(relationship.subtype) &&
+  relationship.toPersonId === personId ? [relationship.fromPersonId] : []
+));
+
+const childIds = (
+  personId: string,
+  relationships: readonly FamilyRelationship[]
+) => new Set(relationships.flatMap((relationship) =>
+  relationship.kind === "parent" && ancestrySubtypes.has(relationship.subtype) &&
+  relationship.fromPersonId === personId ? [relationship.toPersonId] : []
+));
+
+const activePartnerIds = (
+  personId: string,
+  relationships: readonly FamilyRelationship[]
+) => new Set(relationships.flatMap((relationship) => {
+  if (relationship.kind !== "partner" || !activeUnionSubtypes.has(relationship.subtype)) return [];
+  if (relationship.fromPersonId === personId) return [relationship.toPersonId];
+  if (relationship.toPersonId === personId) return [relationship.fromPersonId];
+  return [];
+}));
+
+const areSiblings = (
+  firstId: string,
+  secondId: string,
+  relationships: readonly FamilyRelationship[]
+) => relationships.some((relationship) => relationship.kind === "sibling" &&
+  new Set([relationship.fromPersonId, relationship.toPersonId]).size === 2 &&
+  [relationship.fromPersonId, relationship.toPersonId].includes(firstId) &&
+  [relationship.fromPersonId, relationship.toPersonId].includes(secondId)) ||
+  [...parentIds(firstId, relationships)].some((id) => parentIds(secondId, relationships).has(id));
+
+const stepLabel = (
+  person: Person,
+  relativeToPersonId: string,
+  relationships: readonly FamilyRelationship[]
+) => {
+  const referenceParents = parentIds(relativeToPersonId, relationships);
+  if ([...referenceParents].some((id) => activePartnerIds(id, relationships).has(person.id))) {
+    return gendered(person.gender, "Stepfather", "Stepmother", "Step-parent");
+  }
+  const referencePartners = activePartnerIds(relativeToPersonId, relationships);
+  if ([...referencePartners].some((id) => parentIds(person.id, relationships).has(id))) {
+    return gendered(person.gender, "Stepson", "Stepdaughter", "Stepchild");
+  }
+  for (const parentId of referenceParents) {
+    for (const stepParentId of activePartnerIds(parentId, relationships)) {
+      if (parentIds(person.id, relationships).has(stepParentId)) {
+        return gendered(person.gender, "Stepbrother", "Stepsister", "Stepsibling");
+      }
+    }
+  }
+  return undefined;
+};
+
+const inLawLabel = (
+  person: Person,
+  relativeToPersonId: string,
+  people: readonly Person[],
+  relationships: readonly FamilyRelationship[]
+) => {
+  const referencePartners = activePartnerIds(relativeToPersonId, relationships);
+  if ([...referencePartners].some((id) => parentIds(id, relationships).has(person.id))) {
+    return gendered(person.gender, "Father-in-law", "Mother-in-law", "Parent-in-law");
+  }
+  const referenceChildren = childIds(relativeToPersonId, relationships);
+  if ([...referenceChildren].some((id) => activePartnerIds(id, relationships).has(person.id))) {
+    return gendered(person.gender, "Son-in-law", "Daughter-in-law", "Child-in-law");
+  }
+  if ([...referencePartners].some((id) => areSiblings(person.id, id, relationships)) ||
+      [...activePartnerIds(person.id, relationships)].some((id) =>
+        areSiblings(id, relativeToPersonId, relationships))) {
+    return gendered(person.gender, "Brother-in-law", "Sister-in-law", "Sibling-in-law");
+  }
+  for (const partnerId of referencePartners) {
+    const label = lineageLabelEnglish(person.id, partnerId, people, relationships);
+    if (label) return `${label} by marriage`;
+  }
+  return undefined;
+};
+
+function lineageLabelEnglish(
   personId: string,
   relativeToPersonId: string,
   people: readonly Person[],
@@ -248,11 +340,7 @@ function kinshipLabelEnglish(
 ): string | undefined {
   const peopleById = new Map(people.map((person) => [person.id, person]));
   const person = peopleById.get(personId);
-  if (!person || !peopleById.has(relativeToPersonId)) return undefined;
-  if (personId === relativeToPersonId) return "You";
-
-  const direct = directRelationshipLabel(person, relativeToPersonId, relationships);
-  if (direct) return direct;
+  if (!person || !peopleById.has(relativeToPersonId) || personId === relativeToPersonId) return undefined;
 
   const validIds = new Set(peopleById.keys());
   const personAncestors = ancestorDistances(personId, validIds, relationships);
@@ -312,6 +400,26 @@ function kinshipLabelEnglish(
     Math.min(personDistance, referenceDistance) - 1,
     Math.abs(personDistance - referenceDistance)
   );
+}
+
+function kinshipLabelEnglish(
+  personId: string,
+  relativeToPersonId: string,
+  people: readonly Person[],
+  relationships: readonly FamilyRelationship[]
+): string | undefined {
+  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const person = peopleById.get(personId);
+  if (!person || !peopleById.has(relativeToPersonId)) return undefined;
+  if (personId === relativeToPersonId) return "You";
+
+  const direct = directRelationshipLabel(person, relativeToPersonId, relationships);
+  if (direct) return direct;
+  const lineage = lineageLabelEnglish(personId, relativeToPersonId, people, relationships);
+  if (lineage) return lineage;
+  const step = stepLabel(person, relativeToPersonId, relationships);
+  if (step) return step;
+  return inLawLabel(person, relativeToPersonId, people, relationships);
 }
 
 export function kinshipLabel(

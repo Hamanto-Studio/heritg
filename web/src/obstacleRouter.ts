@@ -249,14 +249,14 @@ export const placeRelationshipLabel = (
         x: segment.start.x + (segment.end.x - segment.start.x) * fraction,
         y: segment.start.y
       };
-      for (const offset of [-22, 22, -40, 40, -58, 58]) {
+      for (const offset of [-14, -22, -40, -58, -76, -94]) {
         const center = { x: anchor.x, y: anchor.y + offset };
         const rect = relationshipLabelRect(text, center);
         const clearsObstacles = obstacles.every((obstacle) =>
           !rectsIntersect(expandRect(obstacle.rect, ROUTE_CLEARANCE), rect)
         );
         const clearsRoutes = occupied.every((routeSegment) =>
-          !segmentIntersectsRect(routeSegment, rect, ROUTE_CLEARANCE)
+          !segmentIntersectsRect(routeSegment, rect, 2)
         );
         if (clearsObstacles && clearsRoutes) {
           return {

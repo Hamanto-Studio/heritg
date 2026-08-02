@@ -18,6 +18,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
+  type ReactNode,
   type RefObject
 } from "react";
 
@@ -40,6 +42,8 @@ import type {
 export interface TreeCanvasHandle {
   fitAll: () => void;
   focusPerson: (personId: string) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
   exportPng: () => Promise<void>;
   exportSvg: () => Promise<void>;
 }
@@ -59,12 +63,13 @@ interface TreeCanvasProps {
   onSelectPerson: (personId: string) => void;
   onDeselectPerson: () => void;
   onViewportChange: (viewport: ViewportState) => void;
+  emptyContent?: ReactNode;
 }
 
 type CanvasViewport = Pick<AppState, "scrollX" | "scrollY" | "zoom">;
 type CanvasTransform = CanvasViewport
   & Pick<AppState, "offsetLeft" | "offsetTop">
-  & { hostLeft: number; hostTop: number; hostWidth: number };
+  & { hostLeft: number; hostTop: number; hostWidth: number; hostHeight: number };
 
 interface CanvasActionsProps {
   api?: ExcalidrawImperativeAPI;
@@ -76,6 +81,7 @@ interface CanvasActionsProps {
   onAddRelative: (personId: string) => void;
   onEditPerson: (personId: string) => void;
   onTogglePerson: (personId: string) => void;
+  emptyContent?: ReactNode;
 }
 
 const personIdFromHit = (pointerDownState: PointerDownState) => {
@@ -102,7 +108,8 @@ const readCanvasTransform = (
     offsetTop: appState.offsetTop,
     hostLeft: bounds.left,
     hostTop: bounds.top,
-    hostWidth: bounds.width
+    hostWidth: bounds.width,
+    hostHeight: bounds.height
   };
 };
 
@@ -115,7 +122,8 @@ function CanvasActions({
   t,
   onAddRelative,
   onEditPerson,
-  onTogglePerson
+  onTogglePerson,
+  emptyContent
 }: CanvasActionsProps) {
   const [transform, setTransform] = useState<CanvasTransform>();
 
@@ -137,10 +145,12 @@ function CanvasActions({
     observer.observe(host);
     window.addEventListener("resize", scheduleResizeUpdate);
     scheduleResizeUpdate();
+    const settledUpdate = window.setTimeout(scheduleResizeUpdate, 180);
     return () => {
       unsubscribe();
       observer.disconnect();
       window.removeEventListener("resize", scheduleResizeUpdate);
+      window.clearTimeout(settledUpdate);
       if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
     };
   }, [api, hostRef]);
@@ -149,6 +159,7 @@ function CanvasActions({
   const hideUnselectedActions = Boolean(selectedPersonId) &&
     people.length > 24 && transform.zoom.value < 0.16;
   const hitSize = Math.max(44, LAYOUT_METRICS.avatarDiameter * transform.zoom.value);
+  const actionScale = Math.min(1, Math.max(0.34, transform.zoom.value));
   const controlsByPerson = new Map(controls.map((control) => [control.personId, control]));
   const screenPeople = people.map((person) => {
     const center = sceneCoordsToViewportCoords({
@@ -163,6 +174,7 @@ function CanvasActions({
       centerY
     };
   });
+  const sceneOrigin = sceneCoordsToViewportCoords({ sceneX: 0, sceneY: 0 }, transform);
 
   return (
     <div
@@ -171,6 +183,17 @@ function CanvasActions({
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
     >
+      {emptyContent ? (
+        <div
+          className="canvas-empty-anchor"
+          style={{
+            left: sceneOrigin.x - transform.hostLeft + transform.hostWidth / 2,
+            top: sceneOrigin.y - transform.hostTop + transform.hostHeight / 2
+          }}
+        >
+          {emptyContent}
+        </div>
+      ) : null}
       {screenPeople.map(({ person, centerX, centerY }) => {
         const selected = person.id === selectedPersonId;
         const showActions = !hideUnselectedActions || selected;
@@ -202,9 +225,10 @@ function CanvasActions({
               className="canvas-action-group"
               data-side={side}
               style={{
+                "--canvas-action-scale": actionScale,
                 left: anchor.x - transform.hostLeft,
                 top: anchor.y - transform.hostTop
-              }}
+              } as CSSProperties}
             >
               <button
                 aria-label={addLabel}
@@ -252,7 +276,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   onEditPerson,
   onSelectPerson,
   onDeselectPerson,
-  onViewportChange
+  onViewportChange,
+  emptyContent
 }, ref) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI>();
   const canvasHost = useRef<HTMLDivElement>(null);
@@ -315,6 +340,30 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     });
   };
 
+  const zoomBy = (change: number) => {
+    if (!api) return;
+    const appState = api.getAppState();
+    const currentZoom = appState.zoom.value;
+    const nextZoom = Math.min(
+      1.8,
+      Math.max(0.08, Math.round((currentZoom + change) * 10) / 10)
+    );
+    if (nextZoom === currentZoom) return;
+    const centerX = appState.width / 2;
+    const centerY = appState.height / 2;
+    api.updateScene({
+      appState: {
+        scrollX: appState.scrollX + centerX * (1 / nextZoom - 1 / currentZoom),
+        scrollY: appState.scrollY + centerY * (1 / nextZoom - 1 / currentZoom),
+        zoom: { value: zoomValue(nextZoom) }
+      },
+      captureUpdate: CaptureUpdateAction.EVENTUALLY
+    });
+  };
+
+  const zoomIn = () => zoomBy(0.1);
+  const zoomOut = () => zoomBy(-0.1);
+
   const exportPng = async () => {
     downloadBlob(
       await chartSvgToPng(buildChartSvg(
@@ -332,7 +381,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     );
   };
 
-  useImperativeHandle(ref, () => ({ fitAll, focusPerson, exportPng, exportSvg }));
+  useImperativeHandle(ref, () => ({ fitAll, focusPerson, zoomIn, zoomOut, exportPng, exportSvg }));
 
   useEffect(() => {
     if (!api) return;
@@ -398,7 +447,9 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     togglePerson(personId);
   };
 
-  const restoreViewport = window.innerWidth > 840 ? initialViewport : undefined;
+  const restoreViewport = window.innerWidth > 840 && scene.elements.length
+    ? initialViewport
+    : undefined;
   const initialAppState = {
     viewBackgroundColor: scene.appState.viewBackgroundColor,
     showWelcomeScreen: false,
@@ -458,6 +509,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         people={layout.people}
         selectedPersonId={selectedPersonId}
         t={t}
+        emptyContent={emptyContent}
       />
     </div>
   );

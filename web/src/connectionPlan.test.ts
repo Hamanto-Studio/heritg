@@ -257,10 +257,12 @@ describe("family connection planning", () => {
     const plan = createConnectionPlan(value);
     const chart = buildChartSvg(value, "Family", undefined, "en", plan);
 
+    expect(plan.nonParentRoutes[0].label?.center.y).toBe(-14);
     expect(chart.svg.match(/data-family-id=/g)).toHaveLength(plan.families[0].segments.length);
     expect(chart.svg.match(/data-route-id="marriage"/g)).toHaveLength(
       plan.nonParentRoutes[0].segments.length
     );
+    expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });
 });

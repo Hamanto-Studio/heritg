@@ -1,9 +1,10 @@
 import {
-  LockKeyhole,
+  CircleHelp,
   MoreHorizontal,
   Pencil,
   Plus,
   Search,
+  ShieldCheck,
   Trash2,
   TreePine,
   Upload,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useRef, useState } from "react";
 
-import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
+import { importGedcom, importHeritgBackup, importNativeHeritgArchive, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
 import type { Translator } from "./i18n";
@@ -29,6 +30,8 @@ interface TreeSidebarProps {
   onClose: () => void;
   onError: (message: string) => void;
   onImported: () => void;
+  onShowHelp: () => void;
+  onShowPrivacy: () => void;
 }
 
 const treeDate = (value: string, language: AppData["language"]) =>
@@ -44,7 +47,9 @@ export function TreeSidebar({
   t,
   onClose,
   onError,
-  onImported
+  onImported,
+  onShowHelp,
+  onShowPrivacy
 }: TreeSidebarProps) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
@@ -82,12 +87,13 @@ export function TreeSidebar({
     if (file.size === 0 || file.size > MAX_PORTABILITY_BYTES) {
       throw new Error("Choose a non-empty family file smaller than 32 MB.");
     }
-    const source = await file.text();
     const lowerName = file.name.toLowerCase();
-    if (lowerName.endsWith(".json")) {
-      actions.replaceData(importHeritgBackup(source, { into: data }));
+    if (lowerName.endsWith(".heritg")) {
+      actions.replaceData(importNativeHeritgArchive(await file.arrayBuffer(), { into: data }));
+    } else if (lowerName.endsWith(".json")) {
+      actions.replaceData(importHeritgBackup(await file.text(), { into: data }));
     } else if (lowerName.endsWith(".ged") || lowerName.endsWith(".gedcom")) {
-      const imported = importGedcom(source, {
+      const imported = importGedcom(await file.text(), {
         title: file.name.replace(/\.(?:ged|gedcom)$/i, ""),
         language: data.language
       });
@@ -100,7 +106,7 @@ export function TreeSidebar({
         viewports: { ...data.viewports, ...imported.viewports }
       }));
     } else {
-      throw new Error("Choose a HERITG JSON backup, .ged, or .gedcom file.");
+      throw new Error("Choose a .heritg archive, HERITG JSON backup, .ged, or .gedcom file.");
     }
     onImported();
     onClose();
@@ -108,12 +114,6 @@ export function TreeSidebar({
 
   return (
     <>
-      <button
-        aria-label={t("close")}
-        className={`drawer-backdrop ${open ? "open" : ""}`}
-        onClick={onClose}
-        type="button"
-      />
       <aside
         aria-hidden={!open}
         aria-label={t("familyTrees")}
@@ -220,7 +220,7 @@ export function TreeSidebar({
             <Upload aria-hidden="true" size={17} /> {t("importFile")}
           </button>
           <input
-            accept=".json,.ged,.gedcom,application/json,text/plain"
+            accept=".heritg,.json,.ged,.gedcom,application/json,text/plain"
             hidden
             onChange={(event) => {
               const file = event.target.files?.[0];
@@ -233,9 +233,15 @@ export function TreeSidebar({
             type="file"
           />
         </div>
-        <div className="privacy-note">
-          <LockKeyhole aria-hidden="true" size={16} />
-          <span><strong>{t("localOnly")}</strong><br />{t("localOnlyDetail")}</span>
+        <div className="sidebar-utilities">
+          <button onClick={() => { onShowPrivacy(); onClose(); }} type="button">
+            <ShieldCheck aria-hidden="true" size={17} />
+            <span><strong>{t("privacyProtection")}</strong><small>{t("protectedOnDevice")}</small></span>
+          </button>
+          <button onClick={() => { onShowHelp(); onClose(); }} type="button">
+            <CircleHelp aria-hidden="true" size={17} />
+            <span><strong>{t("help")}</strong><small>{t("welcomeHelpDetail")}</small></span>
+          </button>
         </div>
       </aside>
 
