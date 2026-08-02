@@ -49,7 +49,7 @@ enum KinshipResolver {
         relativeTo referenceID: String,
         relationships: [RelationshipSnapshot]
     ) -> String? {
-        guard let relationship = relationships.first(where: {
+        guard let relationship = relationships.sorted(by: relationshipOrder).first(where: {
             ($0.fromPersonID == person.id && $0.toPersonID == referenceID) ||
                 ($0.toPersonID == person.id && $0.fromPersonID == referenceID)
         }) else { return nil }
@@ -83,7 +83,8 @@ enum KinshipResolver {
         guard let closest = common.min(by: {
             let lhs = (max(personAncestors[$0]!, referenceAncestors[$0]!), personAncestors[$0]! + referenceAncestors[$0]!)
             let rhs = (max(personAncestors[$1]!, referenceAncestors[$1]!), personAncestors[$1]! + referenceAncestors[$1]!)
-            return lhs < rhs
+            if lhs != rhs { return lhs < rhs }
+            return $0 < $1
         }) else { return nil }
         let personDistance = personAncestors[closest]!
         let referenceDistance = referenceAncestors[closest]!
@@ -119,8 +120,8 @@ enum KinshipResolver {
         if referencePartners.contains(where: { parentIDs(of: person.id, relationships: relationships).contains($0) }) {
             return gendered(person.gender, male: "Stepson", female: "Stepdaughter", neutral: "Stepchild")
         }
-        for parentID in referenceParents {
-            for stepParentID in activePartners(of: parentID, relationships: relationships) {
+        for parentID in referenceParents.sorted() {
+            for stepParentID in activePartners(of: parentID, relationships: relationships).sorted() {
                 if parentIDs(of: person.id, relationships: relationships).contains(stepParentID) {
                     return gendered(person.gender, male: "Stepbrother", female: "Stepsister", neutral: "Stepsibling")
                 }
@@ -150,7 +151,7 @@ enum KinshipResolver {
             return gendered(person.gender, male: "Brother-in-law", female: "Sister-in-law", neutral: "Sibling-in-law")
         }
 
-        for partnerID in referencePartners {
+        for partnerID in referencePartners.sorted() {
             if let label = lineageLabel(
                 for: person,
                 relativeTo: partnerID,
@@ -173,7 +174,7 @@ enum KinshipResolver {
         while index < queue.count {
             let (currentID, distance) = queue[index]
             index += 1
-            for relationship in relationships where relationship.kind == .parent &&
+            for relationship in relationships.sorted(by: relationshipOrder) where relationship.kind == .parent &&
                 relationship.subtype.contributesToAncestry && relationship.toPersonID == currentID {
                 guard relationship.fromPersonID != personID,
                       result[relationship.fromPersonID] == nil else { continue }
@@ -277,5 +278,19 @@ enum KinshipResolver {
         case .female: AppLanguage.localized(female)
         case .unspecified: AppLanguage.localized(neutral)
         }
+    }
+
+    private static func relationshipOrder(
+        _ lhs: RelationshipSnapshot,
+        _ rhs: RelationshipSnapshot
+    ) -> Bool {
+        let kindOrder: [RelationshipKind: Int] = [.parent: 0, .partner: 1, .sibling: 2]
+        let lhsKind = kindOrder[lhs.kind, default: 3]
+        let rhsKind = kindOrder[rhs.kind, default: 3]
+        if lhsKind != rhsKind { return lhsKind < rhsKind }
+        if lhs.fromPersonID != rhs.fromPersonID { return lhs.fromPersonID < rhs.fromPersonID }
+        if lhs.toPersonID != rhs.toPersonID { return lhs.toPersonID < rhs.toPersonID }
+        if lhs.subtype.rawValue != rhs.subtype.rawValue { return lhs.subtype.rawValue < rhs.subtype.rawValue }
+        return lhs.id < rhs.id
     }
 }

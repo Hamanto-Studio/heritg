@@ -236,7 +236,7 @@ enum TreeLayout {
             result[node.id] = node.position
         }
         let visibleIDs = Set(orderedNodes.map(\.id))
-        let edges = relationships.compactMap { relationship -> TreeEdgeLayout? in
+        let edges = relationships.sorted(by: relationshipOrder).compactMap { relationship -> TreeEdgeLayout? in
             guard visibleIDs.contains(relationship.fromPersonID),
                   visibleIDs.contains(relationship.toPersonID),
                   let from = positions[relationship.fromPersonID],
@@ -286,7 +286,7 @@ enum TreeLayout {
             depths: depths,
             limits: generationLimits
         )
-        let visiblePeople = people.filter { visibleIDs.contains($0.id) }
+        let visiblePeople = people.filter { visibleIDs.contains($0.id) }.sorted(by: stablePersonOrder)
 
         let visibleDepths = visiblePeople.map { layoutLevels[$0.id] ?? 0 }
         let minDepth = visibleDepths.min() ?? 0
@@ -324,7 +324,7 @@ enum TreeLayout {
         let positions = nodes.reduce(into: [String: CGPoint]()) { result, node in
             result[node.id] = node.position
         }
-        let edges = relationships.compactMap { relationship -> TreeEdgeLayout? in
+        let edges = relationships.sorted(by: relationshipOrder).compactMap { relationship -> TreeEdgeLayout? in
             guard let from = positions[relationship.fromPersonID],
                   let to = positions[relationship.toPersonID],
                   peopleByID[relationship.fromPersonID] != nil,
@@ -383,9 +383,7 @@ enum TreeLayout {
             constraints[secondID, default: []].append((firstID, -offset))
         }
 
-        let orderedRelationships = relationships.sorted {
-            ($0.kind == .parent ? 0 : 1) < ($1.kind == .parent ? 0 : 1)
-        }
+        let orderedRelationships = relationships.sorted(by: relationshipOrder)
         for relationship in orderedRelationships {
             addConstraint(
                 relationship.fromPersonID,
@@ -398,7 +396,8 @@ enum TreeLayout {
             grouping: relationships.filter { $0.kind == .parent },
             by: \.toPersonID
         )
-        for parentRelationships in parentsByChild.values {
+        for childID in parentsByChild.keys.sorted() {
+            let parentRelationships = parentsByChild[childID, default: []].sorted(by: relationshipOrder)
             guard let firstParentID = parentRelationships.first?.fromPersonID else { continue }
             for relationship in parentRelationships.dropFirst() {
                 addConstraint(firstParentID, relationship.fromPersonID, offset: 0)
@@ -409,8 +408,16 @@ enum TreeLayout {
             $0.kind == .parent ? $0.toPersonID : nil
         })
         var starts = [String]()
-        starts += people.map(\.id).filter { !parentedIDs.contains($0) && !starts.contains($0) }
-        starts += people.map(\.id).filter { !starts.contains($0) }
+        let orderedPersonIDs = people.map(\.id).sorted()
+        starts += orderedPersonIDs.filter { !parentedIDs.contains($0) }
+        starts += orderedPersonIDs.filter { !starts.contains($0) }
+
+        for personID in constraints.keys.sorted() {
+            constraints[personID]?.sort {
+                if $0.personID != $1.personID { return $0.personID < $1.personID }
+                return $0.offset < $1.offset
+            }
+        }
 
         var depths = [String: Int]()
         for startID in starts where depths[startID] == nil {
@@ -450,7 +457,7 @@ enum TreeLayout {
     ) -> [PersonSnapshot] {
         let peopleByID = Dictionary(uniqueKeysWithValues: people.map { ($0.id, $0) })
         let personIDs = Set(peopleByID.keys)
-        let originalIndices = Dictionary(uniqueKeysWithValues: people.enumerated().map { ($0.element.id, $0.offset) })
+        let orderedPeople = people.sorted(by: chronologicalOrder)
         var parentIDsByPerson = [String: Set<String>]()
         for relationship in relationships where relationship.kind == .parent &&
             personIDs.contains(relationship.toPersonID) {
@@ -470,11 +477,10 @@ enum TreeLayout {
         var units = [(
             groupKey: String,
             anchor: PersonSnapshot,
-            members: [PersonSnapshot],
-            firstIndex: Int
+            members: [PersonSnapshot]
         )]()
 
-        for person in people where
+        for person in orderedPeople where
             !parentIDsByPerson[person.id, default: []].isEmpty && !added.contains(person.id) {
             var componentIDs: Set<String> = [person.id]
             var queue = [person.id]
@@ -482,7 +488,7 @@ enum TreeLayout {
             while index < queue.count {
                 let personID = queue[index]
                 index += 1
-                for partnerID in partnerIDsByPerson[personID, default: []]
+                for partnerID in partnerIDsByPerson[personID, default: []].sorted()
                     where parentIDsByPerson[partnerID, default: []].isEmpty &&
                     !added.contains(partnerID) && componentIDs.insert(partnerID).inserted {
                     queue.append(partnerID)
@@ -490,7 +496,7 @@ enum TreeLayout {
             }
 
             added.formUnion(componentIDs)
-            let members = people.filter { componentIDs.contains($0.id) }
+            let members = orderedPeople.filter { componentIDs.contains($0.id) }
             let orderedMembers = [person] + members
                 .filter { $0.id != person.id }
                 .sorted(by: chronologicalOrder)
@@ -500,29 +506,26 @@ enum TreeLayout {
             units.append((
                 groupKey: "parents:\(parentKey)",
                 anchor: person,
-                members: orderedMembers,
-                firstIndex: originalIndices[person.id] ?? 0
+                members: orderedMembers
             ))
         }
 
-        for person in people where !added.contains(person.id) {
+        for person in orderedPeople where !added.contains(person.id) {
             var componentIDs: Set<String> = [person.id]
             var queue = [person.id]
             var index = 0
             while index < queue.count {
                 let personID = queue[index]
                 index += 1
-                for partnerID in partnerIDsByPerson[personID, default: []]
+                for partnerID in partnerIDsByPerson[personID, default: []].sorted()
                     where !added.contains(partnerID) && componentIDs.insert(partnerID).inserted {
                     queue.append(partnerID)
                 }
             }
 
             added.formUnion(componentIDs)
-            let members = people.filter { componentIDs.contains($0.id) }
-            guard let anchor = members.min(by: {
-                (originalIndices[$0.id] ?? 0) < (originalIndices[$1.id] ?? 0)
-            }) else {
+            let members = orderedPeople.filter { componentIDs.contains($0.id) }
+            guard let anchor = members.min(by: chronologicalOrder) else {
                 continue
             }
             let orderedMembers = [anchor] + members
@@ -531,19 +534,22 @@ enum TreeLayout {
             units.append((
                 groupKey: "root:\(componentIDs.sorted().joined(separator: "|"))",
                 anchor: anchor,
-                members: orderedMembers,
-                firstIndex: originalIndices[anchor.id] ?? 0
+                members: orderedMembers
             ))
         }
 
-        let unitsInOriginalOrder = units.sorted { $0.firstIndex < $1.firstIndex }
+        let orderedUnits = units.sorted { lhs, rhs in
+            if chronologicalOrder(lhs.anchor, rhs.anchor) { return true }
+            if chronologicalOrder(rhs.anchor, lhs.anchor) { return false }
+            return lhs.groupKey < rhs.groupKey
+        }
         var groupKeys = [String]()
-        for unit in unitsInOriginalOrder where !groupKeys.contains(unit.groupKey) {
+        for unit in orderedUnits where !groupKeys.contains(unit.groupKey) {
             groupKeys.append(unit.groupKey)
         }
 
         return groupKeys.flatMap { groupKey in
-            unitsInOriginalOrder
+            orderedUnits
                 .filter { $0.groupKey == groupKey }
                 .sorted { lhs, rhs in
                     if chronologicalOrder(lhs.anchor, rhs.anchor) { return true }
@@ -566,7 +572,7 @@ enum TreeLayout {
         if let label = KinshipResolver.label(
             for: personID,
             relativeTo: selectedPersonID,
-            people: Array(peopleByID.values),
+            people: peopleByID.values.sorted(by: stablePersonOrder),
             relationships: relationships
         ) {
             return label
@@ -605,7 +611,7 @@ enum TreeLayout {
             return gendered(person.gender, male: "Brother", female: "Sister", neutral: "Sibling")
         }
 
-        for (ancestorID, distance) in ancestors {
+        for (ancestorID, distance) in ancestors.sorted(by: distanceThenID) {
             if siblingIDs(of: ancestorID, relationships: relationships).contains(personID),
                let person = peopleByID[personID] {
                 let label = gendered(
@@ -618,7 +624,7 @@ enum TreeLayout {
             }
         }
 
-        for siblingID in siblingsOfSelected {
+        for siblingID in siblingsOfSelected.sorted() {
             let siblingDescendants = descendantDistances(from: siblingID, relationships: relationships)
             if let distance = siblingDescendants[personID],
                let person = peopleByID[personID] {
@@ -711,7 +717,7 @@ enum TreeLayout {
         while index < queue.count {
             let (currentID, distance) = queue[index]
             index += 1
-            for relationship in relationships where relationship.kind == .parent {
+            for relationship in relationships.sorted(by: relationshipOrder) where relationship.kind == .parent {
                 let nextID: String?
                 if followsParent, relationship.toPersonID == currentID {
                     nextID = relationship.fromPersonID
@@ -782,7 +788,7 @@ enum TreeLayout {
         relationships: [RelationshipSnapshot]
     ) -> [String: String] {
         people.reduce(into: [:]) { labels, person in
-            guard let relationship = relationships.first(where: {
+            guard let relationship = relationships.sorted(by: relationshipOrder).first(where: {
                 ($0.fromPersonID == person.id && $0.toPersonID == focusID) ||
                     ($0.toPersonID == person.id && $0.fromPersonID == focusID)
             }) else { return }
@@ -813,7 +819,11 @@ enum TreeLayout {
         let lhsOrder = genderOrder[lhs.gender, default: 2]
         let rhsOrder = genderOrder[rhs.gender, default: 2]
         if lhsOrder != rhsOrder { return lhsOrder < rhsOrder }
-        return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+        let lhsName = lhs.name.lowercased()
+        let rhsName = rhs.name.lowercased()
+        if lhsName != rhsName { return lhsName < rhsName }
+        if lhs.name != rhs.name { return lhs.name < rhs.name }
+        return lhs.id < rhs.id
     }
 
     nonisolated private static func chronologicalOrder(
@@ -830,5 +840,36 @@ enum TreeLayout {
         default:
             return familyOrder(lhs, rhs)
         }
+    }
+
+    nonisolated private static func stablePersonOrder(
+        _ lhs: PersonSnapshot,
+        _ rhs: PersonSnapshot
+    ) -> Bool {
+        if familyOrder(lhs, rhs) { return true }
+        if familyOrder(rhs, lhs) { return false }
+        return lhs.id < rhs.id
+    }
+
+    nonisolated private static func relationshipOrder(
+        _ lhs: RelationshipSnapshot,
+        _ rhs: RelationshipSnapshot
+    ) -> Bool {
+        let kindOrder: [RelationshipKind: Int] = [.parent: 0, .partner: 1, .sibling: 2]
+        let lhsKind = kindOrder[lhs.kind, default: 3]
+        let rhsKind = kindOrder[rhs.kind, default: 3]
+        if lhsKind != rhsKind { return lhsKind < rhsKind }
+        if lhs.fromPersonID != rhs.fromPersonID { return lhs.fromPersonID < rhs.fromPersonID }
+        if lhs.toPersonID != rhs.toPersonID { return lhs.toPersonID < rhs.toPersonID }
+        if lhs.subtype.rawValue != rhs.subtype.rawValue { return lhs.subtype.rawValue < rhs.subtype.rawValue }
+        return lhs.id < rhs.id
+    }
+
+    nonisolated private static func distanceThenID(
+        _ lhs: Dictionary<String, Int>.Element,
+        _ rhs: Dictionary<String, Int>.Element
+    ) -> Bool {
+        if lhs.value != rhs.value { return lhs.value < rhs.value }
+        return lhs.key < rhs.key
     }
 }

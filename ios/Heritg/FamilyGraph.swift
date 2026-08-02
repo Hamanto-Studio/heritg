@@ -133,21 +133,26 @@ enum FamilyGraph {
     ) throws -> FamilyTree {
         try HeritgArchive.validate(payload)
 
-        let treeID = UUID().uuidString.lowercased()
-        let personIDs = Dictionary(uniqueKeysWithValues: payload.people.map {
-            ($0.id, UUID().uuidString.lowercased())
-        })
+        let existingTreeIDs = Set(try context.fetch(FetchDescriptor<FamilyTree>()).map(\.id))
+        let existingPersonIDs = Set(try context.fetch(FetchDescriptor<Person>()).map(\.id))
+        let existingRelationshipIDs = Set(try context.fetch(FetchDescriptor<FamilyRelationship>()).map(\.id))
+        guard !existingTreeIDs.contains(payload.tree.id),
+              existingPersonIDs.isDisjoint(with: payload.people.map(\.id)),
+              existingRelationshipIDs.isDisjoint(with: payload.relationships.map(\.id)) else {
+            throw HeritgArchiveError.identifierCollision
+        }
+
         let tree = FamilyTree(
-            id: treeID,
+            id: payload.tree.id,
             title: payload.tree.title,
             createdAt: payload.tree.createdAt,
             updatedAt: payload.tree.updatedAt,
-            lastSelectedPersonID: payload.tree.lastSelectedPersonID.flatMap { personIDs[$0] }
+            lastSelectedPersonID: payload.tree.lastSelectedPersonID
         )
         let people = payload.people.map { record in
             let person = Person(
-                id: personIDs[record.id]!,
-                treeID: treeID,
+                id: record.id,
+                treeID: record.treeID,
                 displayName: record.displayName,
                 gender: PersonGender(rawValue: record.genderRaw)!,
                 createdAt: record.createdAt
@@ -165,15 +170,12 @@ enum FamilyGraph {
             return person
         }
         let relationships = payload.relationships.map { record in
-            let kind = RelationshipKind(rawValue: record.kindRaw)!
-            let mappedEndpoints = [personIDs[record.fromPersonID]!, personIDs[record.toPersonID]!]
-            let endpoints = kind == .parent ? mappedEndpoints : mappedEndpoints.sorted()
             return FamilyRelationship(
-                id: UUID().uuidString.lowercased(),
-                treeID: treeID,
-                fromPersonID: endpoints[0],
-                toPersonID: endpoints[1],
-                kind: kind,
+                id: record.id,
+                treeID: record.treeID,
+                fromPersonID: record.fromPersonID,
+                toPersonID: record.toPersonID,
+                kind: RelationshipKind(rawValue: record.kindRaw)!,
                 subtype: RelationshipSubtype(rawValue: record.subtypeRaw)!,
                 marriageDate: record.marriageDate,
                 createdAt: record.createdAt
@@ -188,7 +190,7 @@ enum FamilyGraph {
         try saveOrRollback(importContext)
 
         let importedTrees = try context.fetch(FetchDescriptor<FamilyTree>(
-            predicate: #Predicate { $0.id == treeID }
+            predicate: #Predicate { $0.id == payload.tree.id }
         ))
         guard let importedTree = importedTrees.first else {
             throw HeritgArchiveError.invalidArchive

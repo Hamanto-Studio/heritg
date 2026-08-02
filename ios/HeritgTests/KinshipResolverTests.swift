@@ -109,6 +109,55 @@ struct KinshipResolverTests {
         #expect(label("fosterChild", to: "focus", people, relationships) == nil)
     }
 
+    @Test func permutationsUseTheSameCommonAncestorTieBreak() {
+        let people = [
+            person("focus"), person("relative", gender: .male),
+            person("a-common"), person("b-common"),
+            person("focusParent"), person("relativeParent"),
+        ]
+        let relationships = [
+            parent("a-common", "relative"),
+            parent("a-common", "focusParent"), parent("focusParent", "focus"),
+            parent("b-common", "relativeParent"), parent("relativeParent", "relative"),
+            parent("b-common", "focus"),
+        ]
+        let expected = label("relative", to: "focus", people, relationships)
+
+        #expect(expected == AppLanguage.localized("Uncle"))
+        #expect(label(
+            "relative",
+            to: "focus",
+            Array(people.reversed()),
+            Array(relationships.reversed())
+        ) == expected)
+    }
+
+    @Test func permutationsUseTheSamePartnerTieBreakForInLawLabels() {
+        let people = [
+            person("focus"), person("relative", gender: .male),
+            person("a-partner"), person("b-partner"),
+            person("a-grandparent"), person("a-parent"), person("a-partner-parent"),
+            person("b-child"),
+        ]
+        let relationships = [
+            relation("focus", "b-partner", kind: .partner, subtype: .spouse),
+            relation("focus", "a-partner", kind: .partner, subtype: .spouse),
+            parent("a-grandparent", "a-parent"), parent("a-parent", "relative"),
+            parent("a-grandparent", "a-partner-parent"), parent("a-partner-parent", "a-partner"),
+            parent("b-partner", "b-child"), parent("b-child", "relative"),
+        ]
+        let cousin = AppLanguage.localized("First cousin")
+        let expected = AppLanguage.localized("\(cousin) by marriage")
+
+        #expect(label("relative", to: "focus", people, relationships) == expected)
+        #expect(label(
+            "relative",
+            to: "focus",
+            Array(people.reversed()),
+            Array(relationships.reversed())
+        ) == expected)
+    }
+
     private func person(_ id: String, gender: PersonGender = .unspecified) -> PersonSnapshot {
         PersonSnapshot(id: id, name: id, gender: gender)
     }
