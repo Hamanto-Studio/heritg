@@ -57,10 +57,19 @@ features. Opening an external support link or using an Apple-provided service
 may contact that service under its own terms.
 
 Opening the web app downloads its public HTML, JavaScript, styles, fonts, and
-images from the configured hosting origin. Standard request metadata may be
-processed by that host under its terms. A service worker may cache those public
-assets in browser Cache Storage for offline use. HERITG does not send family-tree
-content from IndexedDB to the hosting origin.
+images from Vercel's static hosting infrastructure. Vercel may process standard
+HTTP request metadata, such as IP address, user agent, requested URL, and
+request timing, to deliver and protect those public files under its terms.
+Cloudflare provides authoritative DNS for `hamanto.com`; the HERITG hostname is
+configured as DNS-only, so Cloudflare resolves the hostname but does not proxy
+family-tree content or application traffic. A service worker may cache public
+assets in browser Cache Storage for offline use. HERITG does not send
+family-tree content from IndexedDB to Vercel, Cloudflare, or Hamanto Studio.
+
+Browser storage and its encryption key are isolated by origin. Family data
+created on localhost or a Vercel preview URL does not automatically appear at
+`heritg.hamanto.com`. Users must deliberately export and import a backup to move
+data between those origins.
 
 If optional analytics, crash reporting, sync, backup, or another online feature
 is introduced, it must:

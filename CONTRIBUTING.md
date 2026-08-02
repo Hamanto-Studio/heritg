@@ -29,7 +29,7 @@ same format and becomes the final commit subject on `main`.
 ## Repository Layout
 
 - `ios/`: SwiftUI and SwiftData application, unit tests, and UI tests
-- `android/`: future Kotlin and Jetpack Compose application boundary
+- `android/`: Kotlin and Jetpack Compose application, core modules, and tests
 - `web/`: React and TypeScript progressive web application and tests
 - `docs/`: specifications shared by all platforms
 
@@ -67,11 +67,27 @@ The web application stores family data locally in IndexedDB. Do not introduce
 networked storage, tracking, or production credentials without the privacy and
 security review described below.
 
+## Releases
+
+Follow [`docs/RELEASES.md`](docs/RELEASES.md) for version branches, tags,
+platform metadata, changelog entries, and deployment gates. Web, iOS, and
+Android use one [`CHANGELOG.md`](CHANGELOG.md), version independently, and never
+prefix versions with `v`.
+
 ## Android Development
 
-Android has not started. Coordinate foundational Gradle, package, persistence,
-and archive-format decisions in an issue before creating the project. Future
-Android code belongs under `android/` and must conform to the shared documents.
+Use Java 17 and Android SDK 37. Before opening a pull request, run:
+
+```sh
+./android/gradlew \
+  -p android \
+  test assembleDebug lintDebug assembleDebugAndroidTest assembleRelease \
+  --no-configuration-cache
+```
+
+Run `connectedDebugAndroidTest` when a device or emulator is available. Android
+changes must preserve the shared domain, archive, encryption, layout, privacy,
+and localization contracts used by iOS.
 
 ## Privacy and Security
 

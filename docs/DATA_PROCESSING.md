@@ -15,7 +15,8 @@ consistent.
 | File import | Active | Import genealogy records or backups | User-selected file contents | Processed on-device or in-browser | User explicitly selects a file |
 | Image and document export | Active | Create user-requested exports | User-selected family-tree content | User-selected system share or browser download destination | User initiates and chooses destination |
 | PWA service worker and Cache Storage | Active on web | Cache the public application shell for offline use | Public HTML, JavaScript, styles, fonts, and images; no family content | Browser cache on the user's device | Clear site data or uninstall the PWA |
-| Static web hosting | Active when the web build is deployed | Deliver public application assets | Standard HTTP request metadata; no family-tree payload | Configured hosting provider | User opens the web app |
+| Vercel static web hosting | Active on web | Deliver and protect public application assets | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the web app |
+| Cloudflare authoritative DNS | Active on web | Resolve `heritg.hamanto.com` without proxying application traffic | DNS query and resolution metadata; no family-tree payload | Cloudflare DNS | User opens the web app |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
 | App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
@@ -77,3 +78,4 @@ Review and update this register when any of the following changes:
 - [Privacy Policy](../PRIVACY.md)
 - [Analytics Policy](ANALYTICS.md)
 - [Security Policy](../SECURITY.md)
+- [Release Policy](RELEASES.md)

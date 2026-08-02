@@ -70,6 +70,12 @@
   padding: 12px 20px max(12px, env(safe-area-inset-bottom, 0px));
 }
 
+.app-version {
+  color: var(--subtle);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
 .panel-intro {
   color: var(--subtle);
   font-size: 0.9rem;

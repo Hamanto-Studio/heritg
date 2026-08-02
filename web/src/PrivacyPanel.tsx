@@ -37,6 +37,7 @@ export function PrivacyPanel({
           </section>
         ))}
       </div>
+      <p className="app-version">Heritg Web {__APP_VERSION__}</p>
     </SidePanel>
   );
 }

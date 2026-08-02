@@ -19,6 +19,7 @@
   <a href="docs/MVP_PRODUCT_SPEC.md">Product Specification</a> |
   <a href="PRIVACY.md">Privacy</a> |
   <a href="SECURITY.md">Security</a> |
+  <a href="CHANGELOG.md">Changelog</a> |
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -39,20 +40,20 @@
 
 ## Features
 
-The current iOS app supports:
+The native iOS and Android apps support:
 
-- Private family trees stored locally with SwiftData
+- Private family trees stored locally with SwiftData or Room
 - People and family relationship editing
 - An interactive visual family tree
 - GEDCOM family-data import and export
-- Optional password encryption for `.heritg` backup and restore
+- Cross-platform `.heritg` backup and restore
+- Optional password encryption for `.heritg` archives
 - Image and SVG tree export
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
 
-Android is planned as a native Kotlin and Jetpack Compose app. All implementations
-will follow shared product, archive, privacy, and design specifications without
-sharing platform UI code.
+Both platforms follow shared product, archive, privacy, layout, and behavior
+contracts without sharing platform UI or persistence code.
 
 The web app provides the same private, local-first family-tree workflow in a
 React progressive web app. Family data is stored in IndexedDB, and the core
@@ -70,7 +71,7 @@ backed by inspectable policies and automated checks:
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), local Android verification, [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
@@ -90,6 +91,10 @@ encrypted archive must be unlocked with the same password before its contents
 are decoded, validated, or restored. An incorrect password or modified archive
 is rejected without importing partial family data.
 
+The archive contains platform-neutral ZIP, JSON, JSONL, and media records.
+Shared fixtures and cryptographic vectors verify encrypted transfers from iOS
+to Android and from Android to iOS.
+
 Password protection is optional. An unencrypted `.heritg` backup can be read by
 anyone who obtains the file. HERITG does not store or recover archive passwords,
 so a protected backup cannot be restored if its password is lost. This
@@ -101,7 +106,7 @@ not encrypted by this option.
 | Platform | Status | Implementation |
 | --- | --- | --- |
 | iOS | Active development | Swift, SwiftUI, and SwiftData |
-| Android | Planned | Kotlin, Jetpack Compose, and Room |
+| Android | Active development | Kotlin, Jetpack Compose, and Room |
 | Web | Active development | React, TypeScript, IndexedDB, and Excalidraw |
 
 HERITG is under active development. Interfaces and archive specifications may
@@ -133,6 +138,24 @@ xcodebuild test \
 
 See the [iOS development guide](ios/README.md) for project details.
 
+### Android
+
+Requirements:
+
+- Java 17
+- Android SDK 37
+
+Run Android tests, lint, debug builds, and a minified release build:
+
+```sh
+./android/gradlew \
+  -p android \
+  test assembleDebug lintDebug assembleRelease \
+  --no-configuration-cache
+```
+
+See the [Android development guide](android/README.md) for project details.
+
 ### Web
 
 Run the web app from the repository root:
@@ -144,16 +167,18 @@ npm run dev
 ```
 
 Before opening a pull request, run `npm run lint`, `npm test`, and
-`npm run build` from `web/`.
+`npm run build` from `web/`. Versioned deployments follow the shared
+[release policy](docs/RELEASES.md).
 
 ## Repository Layout
 
 ```text
-android/                    Android roadmap and future project boundary
+android/                    Native Compose application and tests
 docs/                       Product, data, privacy, and design specifications
 ios/                        Native SwiftUI application and tests
 web/                        React progressive web application and tests
 .github/                    CI, ownership, and contribution templates
+CHANGELOG.md                Shared Web, iOS, and Android release notes
 PRIVACY.md                  User-facing privacy policy
 SECURITY.md                 Vulnerability and secret-handling policy
 CONTRIBUTING.md             Contribution workflow
@@ -169,6 +194,9 @@ Never include real family data, credentials, signing material, or production
 configuration in an issue, commit, screenshot, test, or pull request. Commit
 and pull-request titles follow the intent-first
 [commit message guide](docs/COMMITS.md).
+
+Web, iOS, and Android releases are independently versioned without a `v`
+prefix and documented together in the [changelog](CHANGELOG.md).
 
 ## License and Trademark
 
