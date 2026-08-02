@@ -14,7 +14,7 @@
   <link rel="alternate" hreflang="id" href="https://hamanto-studio.github.io/heritg/id/">
   <link rel="alternate" hreflang="x-default" href="https://hamanto-studio.github.io/heritg/">
   <link rel="icon" href="../appicon.png" type="image/png">
-  <link rel="stylesheet" href="../site.css">
+  <link rel="stylesheet" href="../site.css?v=20260802-5">
 </head>
 <body>
   <header class="site-header page-width">
@@ -27,7 +27,7 @@
       <a href="#faq">FAQ</a>
     </nav>
     <div class="header-actions">
-      <div class="language-switch" role="group" aria-label="Language"><a href="./" aria-current="page">EN</a><a href="../id/" lang="id">ID</a></div>
+      <div class="language-switch" role="group" aria-label="Language"><a href="./" data-language="en" aria-current="page">EN</a><a href="../id/" data-language="id" lang="id">ID</a></div>
       <a class="github-count" href="https://github.com/Hamanto-Studio/heritg" target="_blank" rel="noopener" aria-label="HERITG on GitHub">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.6.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C14 4.9 15 5.2 15 5.2c.6 1.5.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.8 5.4-5.5 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .7Z"/></svg>
         <span data-github-stars>0</span>
@@ -63,20 +63,9 @@
     </section>
 
     <section id="privacy" class="privacy-showcase page-width">
-      <div class="phone-wrap" aria-hidden="true">
-        <div class="phone">
-          <div class="phone-top"><span>9:41</span><b></b></div>
-          <div class="phone-title"><small>Family Tree</small><strong>Kartini Family</strong></div>
-          <div class="phone-tree">
-            <i class="tree-line tree-line-a"></i><i class="tree-line tree-line-b"></i><i class="tree-line tree-line-c"></i>
-            <div class="tree-person tree-a"><img class="portrait portrait-sosro" src="../assets/sosroningrat.jpg" alt=""><b>Sosroningrat</b><small>Father</small></div>
-            <div class="tree-person tree-b"><img class="portrait sister-left" src="../assets/kartini.jpg" alt=""><b>Kartini</b><small>Daughter</small></div>
-            <div class="tree-person tree-c"><img class="portrait sister-center" src="../assets/kardinah.jpg" alt=""><b>Kardinah</b><small>Daughter</small></div>
-            <div class="tree-person tree-d"><img class="portrait sister-right" src="../assets/roekmini.jpg" alt=""><b>Roekmini</b><small>Daughter</small></div>
-          </div>
-          <div class="phone-nav"><span>Tree</span><span>People</span><span>Settings</span></div>
-        </div>
-      </div>
+      <figure class="phone-photo">
+        <img src="../assets/heritg-iphone-family-tree-left.webp" alt="HERITG family tree displayed on an iPhone angled toward the page content" width="1122" height="1402" loading="lazy" decoding="async">
+      </figure>
       <div class="privacy-copy">
         <span class="mini-pill">0 accounts required</span>
         <h2>Your family stays<br> on your phone</h2>
@@ -96,7 +85,7 @@
         <div class="feature-copy"><span class="example-label">Historical demo</span><h3>Family lines that are easy to follow</h3><p>Starting from R.M.A.A. Sosroningrat, every partner and child group has its own route. Dates appear only where exact records are available.</p></div>
         <div class="interactive-tree" data-family-tree data-tree-locale="en" data-tree-assets="../assets">
           <div class="tree-demo-toolbar"><div><strong>Kartini Family</strong><span data-tree-status aria-live="polite">Focused on R.M.A.A. Sosroningrat</span></div><div class="tree-demo-controls">
-            <button type="button" data-tree-action="zoom-out" aria-label="Zoom out">−</button><button type="button" data-tree-action="fit" aria-label="Show all">⌂</button><button type="button" data-tree-action="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" data-tree-action="zoom-out" aria-label="Zoom out">−</button><button type="button" data-tree-action="fit" aria-label="Fit tree to view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg></button><button type="button" data-tree-action="zoom-in" aria-label="Zoom in">+</button>
           </div></div>
           <div class="tree-demo-viewport" data-tree-viewport tabindex="0" role="group" aria-label="Interactive Kartini family tree. Drag with a mouse or use two fingers on a touchscreen to pan and zoom. Select a person to focus.">
             <div class="tree-demo-stage" data-tree-stage><svg data-tree-connectors aria-hidden="true"></svg><div data-tree-nodes></div></div>
@@ -121,20 +110,30 @@
       </section>
     </section>
 
-    <section class="more-features page-width">
-      <div class="more-figure" aria-hidden="true"><span class="leaf-one"></span><span class="leaf-two"></span><b>and a lot more</b></div>
-      <div class="more-grid">
-        <p><span>⌘</span> Multiple family trees</p><p><span>◉</span> Profile photos</p><p><span>⇩</span> GEDCOM import</p>
-        <p><span>⇧</span> Image and SVG export</p><p><span>⌕</span> People search</p><p><span>文</span> English and Indonesian</p>
+    <section id="capabilities" class="capability-showcase page-width" aria-labelledby="capabilities-title">
+      <header class="capability-intro">
+        <span>Available on iOS, Android, and the web</span>
+        <h2 id="capabilities-title">Useful from the first name to the full archive.</h2>
+        <p>These are working tools, not roadmap promises. Build more than one family history, bring existing records with you, and keep the result easy to find and share.</p>
+      </header>
+      <div class="capability-grid">
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="8" width="22" height="26" rx="5"/><path d="M15 18h6M15 24h9M20 34v6h21V18h-12"/></svg><div><h3>Multiple family trees</h3><p>Create separate trees and switch between them without mixing relatives or records.</p></div></article>
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="18" r="8"/><path d="M9 41c1.8-9.2 7-14 15-14s13.2 4.8 15 14"/></svg><div><h3>Profile photos</h3><p>Add a face to each record so large family trees remain personal and recognizable.</p></div></article>
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 6h18l8 8v28H11zM29 6v9h8M24 21v13M18 28l6 6 6-6"/></svg><div><h3>GEDCOM import</h3><p>Bring an existing genealogy file into HERITG instead of rebuilding your tree by hand.</p></div></article>
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="9" width="34" height="27" rx="4"/><path d="m12 31 9-9 7 7 5-5 8 8M24 42V29M18 36l6 6 6-6"/></svg><div><h3>Image and SVG export</h3><p>Save a shareable picture or a scalable SVG for printing and preserving offline.</p></div></article>
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="21" r="12"/><path d="m30 30 10 10M16 18h10M16 24h7"/></svg><div><h3>People search</h3><p>Jump straight to a relative by name when your family tree grows beyond one screen.</p></div></article>
+        <article class="capability-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M7 10h19M16.5 7v3M11 16c2.8 6.2 7.6 10.2 14 12M23 16c-3 7-8.2 11.7-15.5 14M29 38l6-17 6 17M31 33h8"/></svg><div><h3>English and Indonesian</h3><p>Use the app in English or Bahasa Indonesia, including its core family-tree workflows.</p></div></article>
       </div>
     </section>
 
-    <section class="no-surveillance page-width section-space">
-      <div class="no-card">
-        <h2><span>No Ads</span><span>No Tracking</span><span>No Login</span></h2>
-        <div class="fingerprint" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <section id="trust" class="no-surveillance page-width section-space">
+      <header class="no-surveillance-intro"><h2>Your family history isn’t a product.</h2><p>HERITG keeps the current app quiet by design. Nothing competes with the people and stories you came to preserve.</p></header>
+      <div class="privacy-promises">
+        <div class="privacy-promise"><span class="no-mark" aria-hidden="true"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 17v6h5l14 5V12l-14 5H8ZM13 23l2 7h5l-3-6M5 5l30 30"/></svg></span><div><strong>No ads</strong><small>No advertising SDK or sponsored content.</small></div></div>
+        <div class="privacy-promise"><span class="no-mark" aria-hidden="true"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11"/><circle cx="20" cy="20" r="3"/><path d="M20 5v4M20 31v4M5 20h4M31 20h4M5 5l30 30"/></svg></span><div><strong>No tracking</strong><small>No product analytics, device fingerprinting, or cross-app tracking.</small></div></div>
+        <div class="privacy-promise"><span class="no-mark" aria-hidden="true"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="14" r="6"/><path d="M9 32c1.5-7 5.2-11 11-11s9.5 4 11 11M5 5l30 30"/></svg></span><div><strong>No login</strong><small>No account is required to build and keep a local family tree.</small></div></div>
       </div>
-      <p>Your family history is not inventory for an ad network. HERITG contains no advertising SDK, product analytics, device fingerprinting, or cross-app tracking.</p>
+      <nav class="trust-evidence" aria-label="Verify these privacy claims"><strong>Verify these claims</strong><a href="../privacy/">Privacy policy <span aria-hidden="true">→</span></a><a href="https://github.com/Hamanto-Studio/heritg/blob/main/docs/DATA_PROCESSING.md" target="_blank" rel="noopener">Data flow <span aria-hidden="true">↗</span></a><a href="https://github.com/Hamanto-Studio/heritg/blob/main/SECURITY.md" target="_blank" rel="noopener">Security <span aria-hidden="true">↗</span></a></nav>
     </section>
 
     <section id="opensource" class="open-source page-width section-space">
@@ -145,19 +144,6 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .7a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.2.8-.6v-2.2c-3.4.7-4.1-1.4-4.1-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.6.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0C14 4.9 15 5.2 15 5.2c.6 1.5.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.8 5.4-5.5 5.7.4.4.8 1.1.8 2.2v3.2c0 .4.2.7.8.6A11.5 11.5 0 0 0 12 .7Z"/></svg>
         <span><b data-github-stars>0</b> stars</span>
       </a>
-    </section>
-
-    <section class="proof page-width section-space">
-      <div class="proof-intro">
-        <span>Open by design</span>
-        <h2>See how HERITG works.</h2>
-        <p>Privacy, data use, and security are available for anyone to review.</p>
-      </div>
-      <div class="proof-board">
-        <a href="../privacy/"><span class="proof-index" aria-hidden="true">01</span><span class="proof-copy"><strong>Privacy</strong><small>Stays on device</small></span><b aria-hidden="true">→</b></a>
-        <a href="https://github.com/Hamanto-Studio/heritg/blob/main/docs/DATA_PROCESSING.md" target="_blank" rel="noopener"><span class="proof-index" aria-hidden="true">02</span><span class="proof-copy"><strong>Data flow</strong><small>Processing steps</small></span><b aria-hidden="true">↗</b></a>
-        <a href="https://github.com/Hamanto-Studio/heritg/blob/main/SECURITY.md" target="_blank" rel="noopener"><span class="proof-index" aria-hidden="true">03</span><span class="proof-copy"><strong>Security</strong><small>Protection steps</small></span><b aria-hidden="true">↗</b></a>
-      </div>
     </section>
 
     <section class="memory-mark section-space" aria-label="Memories preserved">
@@ -213,7 +199,7 @@
     <div class="image-credits"><strong>Historical image credits</strong><p>Kartini, Kardinah, and Roekmini <a href="https://commons.wikimedia.org/wiki/File:COLLECTIE_TROPENMUSEUM_Kabinetfoto_met_gesigneerde_portretten_van_de_drie_zussen_Kartini_Kardinah_en_Roekmini_TMnr_60033327.jpg">cabinet portrait</a> and <a href="https://commons.wikimedia.org/wiki/File:COLLECTIE_TROPENMUSEUM_Studioportret_van_Raden_Ajeng_Kartini_met_haar_ouders_zussen_en_broer_TMnr_10018778.jpg">family portrait</a>: Collectie Wereldmuseum, <a href="https://creativecommons.org/licenses/by-sa/3.0">CC BY-SA 3.0</a>. Sosroningrat: Helios, Schütz en Co. / <a href="https://commons.wikimedia.org/wiki/File:Sosroningrat,_regent_van_Djapara.jpg">Leiden University Libraries</a>, <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>. Soesalit (Raden Mas Sienggih): anonymous / <a href="https://commons.wikimedia.org/wiki/File:Raden_Mas_Sienggih_(13_september_1904),_vermoedelijk_te_Rembang,_KITLV_15478.tiff">Leiden University Libraries</a>, <a href="https://creativecommons.org/licenses/by/4.0">CC BY 4.0</a>. Cropped for presentation.</p></div>
     <div class="footer-bottom"><span>© <span id="year"></span> Hamanto Studio</span><span>Made for the stories we inherit.</span></div>
   </footer>
-  <script src="../site.js"></script>
+  <script src="../site.js?v=20260802-2"></script>
   <script src="../tree.js"></script>
 </body>
 </html>
