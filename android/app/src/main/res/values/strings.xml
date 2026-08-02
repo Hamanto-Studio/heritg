@@ -1,0 +1,179 @@
+<resources>
+    <string name="app_name">HERITG</string>
+    <string name="family_trees">Family Trees</string>
+    <string name="new_family_tree">New Family Tree</string>
+    <string name="create_family_tree">Create Family Tree</string>
+    <string name="family_tree_name">Family tree name</string>
+    <string name="my_family_tree">My Family Tree</string>
+    <string name="search_family_trees">Search family trees</string>
+    <string name="start_family_archive">Start your family archive</string>
+    <string name="library_privacy">Create a family tree from scratch or import an existing GEDCOM file. Your data stays on this device unless you export it.</string>
+    <string name="import_gedcom">Import GEDCOM</string>
+    <string name="restore_backup">Restore Heritg Backup</string>
+    <string name="rename_family_tree">Rename Family Tree</string>
+    <string name="delete_family_tree">Delete Family Tree</string>
+    <string name="delete_named_tree">Delete “%1$s”?</string>
+    <string name="delete_tree_message">This permanently deletes %1$s and %2$s from this device. This can’t be undone.</string>
+    <plurals name="people_count"><item quantity="one">%d person</item><item quantity="other">%d people</item></plurals>
+    <plurals name="relationships_count"><item quantity="one">%d relationship</item><item quantity="other">%d relationships</item></plurals>
+    <string name="create">Create</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
+    <string name="back">Back</string>
+    <string name="ok">OK</string>
+    <string name="share">Share</string>
+    <string name="could_not_complete">Couldn’t Complete Action</string>
+    <string name="name">Name</string>
+    <string name="add_first_person">Add the first person</string>
+    <string name="start_family_tree">Start your family tree</string>
+    <string name="add_person">Add person</string>
+    <string name="add_to">Add to %1$s</string>
+    <string name="new_relative">New %1$s</string>
+    <string name="link_existing">Link an existing family member</string>
+    <string name="link_to">Link to %1$s</string>
+    <string name="all_people">All people</string>
+    <string name="search_people">Search people</string>
+    <string name="age_value">Age %1$d</string>
+    <string name="you">You</string>
+    <string name="settings">Settings</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
+    <string name="generation_limits">Generation limits</string>
+    <string name="all_levels">All levels</string>
+    <string name="levels_above_value">Levels above: %1$d</string>
+    <string name="levels_below_value">Levels below: %1$d</string>
+    <string name="hide_controls">Hide controls</string>
+    <string name="show_controls">Show controls</string>
+    <string name="common">Common</string>
+    <string name="parents_guardians">Parents and guardians</string>
+    <string name="partners_spouses">Partners and spouses</string>
+    <string name="children">Children</string>
+    <string name="siblings">Siblings</string>
+    <string name="father">Father</string><string name="mother">Mother</string>
+    <string name="brother">Brother</string><string name="sister">Sister</string>
+    <string name="partner">Partner</string><string name="son">Son</string><string name="daughter">Daughter</string>
+    <string name="adoptive_father">Adoptive father</string><string name="adoptive_mother">Adoptive mother</string>
+    <string name="foster_father">Foster father</string><string name="foster_mother">Foster mother</string>
+    <string name="guardian">Guardian</string><string name="stepfather">Stepfather</string><string name="stepmother">Stepmother</string>
+    <string name="half_brother">Half-brother</string><string name="half_sister">Half-sister</string>
+    <string name="adoptive_brother">Adoptive brother</string><string name="adoptive_sister">Adoptive sister</string>
+    <string name="foster_brother">Foster brother</string><string name="foster_sister">Foster sister</string>
+    <string name="stepbrother">Stepbrother</string><string name="stepsister">Stepsister</string>
+    <string name="husband">Husband</string><string name="wife">Wife</string>
+    <string name="former_partner">Former partner</string><string name="former_husband">Former husband</string><string name="former_wife">Former wife</string>
+    <string name="adoptive_son">Adoptive son</string><string name="adoptive_daughter">Adoptive daughter</string>
+    <string name="foster_son">Foster son</string><string name="foster_daughter">Foster daughter</string>
+    <string name="ward">Ward</string><string name="stepson">Stepson</string><string name="stepdaughter">Stepdaughter</string>
+    <string name="birthday">Birthday</string>
+    <string name="death_date">Death date</string>
+    <string name="marriage_date">Marriage date</string>
+    <string name="add_birthday">Add birthday</string>
+    <string name="delete_birthday">Delete birthday</string>
+    <string name="add_death_date">Add death date</string>
+    <string name="delete_death_date">Delete death date</string>
+    <string name="add_marriage_date">Add marriage date</string>
+    <string name="delete_marriage_date">Delete marriage date</string>
+    <string name="married_year">Married %1$s</string>
+    <string name="co_parent">Co-parent</string>
+    <string name="no_co_parent">No co-parent</string>
+    <string name="gender">Gender</string>
+    <string name="male">Male</string><string name="female">Female</string><string name="not_specified">Not specified</string>
+    <string name="city">City</string><string name="address">Address</string><string name="province">Province or state</string>
+    <string name="country">Country</string><string name="postal_code">Postal code</string><string name="notes">Notes</string>
+    <string name="family">Family</string>
+    <string name="edit_relationship">Edit relationship</string>
+    <string name="edit_relationship_with">Edit relationship with %1$s</string>
+    <string name="remove_relationship_with">Remove relationship with %1$s</string>
+    <string name="relationship_question">How is %1$s related to %2$s?</string>
+    <string name="remove">Remove</string>
+    <string name="remove_person">Remove person</string>
+    <string name="remove_person_message">Remove this person and all of their relationships?</string>
+    <string name="discard_changes">Discard changes?</string>
+    <string name="discard_message">Are you sure you want to discard your unsaved changes?</string>
+    <string name="add_photo">Add photo</string><string name="change_photo">Change photo</string><string name="remove_photo">Remove photo</string>
+    <string name="crop_photo">Crop photo</string><string name="use_photo">Use photo</string><string name="reset_photo">Reset photo position</string>
+    <string name="crop_instructions">Drag to reposition, then adjust the zoom until the photo looks right.</string>
+    <string name="zoom_percent">Zoom %1$d percent</string>
+    <string name="private_trees">Private family trees, kept simple</string>
+    <string name="privacy_copy">Heritg helps you build and preserve your family tree privately. Your family data stays on this device unless you choose to export it.</string>
+    <string name="export">Export</string>
+    <string name="export_subtitle">Share a PNG or SVG image, GEDCOM file, or backup</string>
+    <string name="language">Language</string>
+    <string name="language_copy">Choose the language used throughout Heritg.</string>
+    <string name="feedback">Give feedback or report a bug</string>
+    <string name="feedback_subtitle">Contact Hamanto Studio on Telegram</string>
+    <string name="feedback_message">Hi Hamanto Studio,\n\nI would like to share feedback or report a bug:\n\n[Please describe it here]\n\nApp version: %1$s\nBuild: %2$d\nDevice: %3$s\nAndroid version: %4$s</string>
+    <string name="studio_credit">Built with ❤️ by Hamanto Studio</string>
+    <string name="export_heading">Export your family tree</string>
+    <string name="export_copy">Choose how the tree should be presented, then share an image or family-data file.</string>
+    <string name="point_of_view">Tree image point of view</string>
+    <string name="names_only">Names only</string>
+    <string name="export_png">Export tree image (PNG)</string>
+    <string name="export_svg">Export scalable tree (SVG)</string>
+    <string name="export_gedcom">Export GEDCOM 7</string>
+    <string name="heritg_backup">Heritg backup</string>
+    <string name="backup_copy">Preserves all family data and photos in one file.</string>
+    <string name="encrypt_optional">Encrypt with a password (optional)</string>
+    <string name="password">Password</string><string name="confirm_password">Confirm password</string>
+    <string name="passwords_mismatch">Passwords do not match.</string>
+    <string name="unencrypted_warning">Without encryption, anyone with the backup file can read your family data.</string>
+    <string name="create_backup">Create Heritg backup</string><string name="creating_backup">Creating backup</string>
+    <string name="encrypted_backup">Encrypted Heritg backup</string>
+    <string name="enter_backup_password">Enter the password used when this backup was created.</string>
+    <string name="import_completed">Import Completed</string>
+    <plurals name="warnings_count"><item quantity="one">%d warning</item><item quantity="other">%d warnings</item></plurals>
+    <string name="imported_with_warnings">Imported %1$s with %2$s.\n\n%3$s</string>
+    <string name="warning_duplicate_person">Duplicate person record @%1$s@ was ignored.</string>
+    <string name="warning_date_not_imported">A date for %1$s could not be imported: %2$s</string>
+    <string name="warning_place_not_imported">A place for %1$s was not imported because event places are not supported yet.</string>
+    <string name="error_enter_name">Enter a name.</string>
+    <string name="error_self_relationship">A person cannot be related to themselves.</string>
+    <string name="error_duplicate_relationship">This relationship already exists.</string>
+    <string name="error_death_before_birth">Death date cannot be earlier than birth date.</string>
+    <string name="error_cross_tree_relationship">People from different family trees cannot be linked.</string>
+    <string name="error_invalid_co_parent">The selected co-parent must be an active partner.</string>
+    <string name="error_invalid_graph">The family tree data is invalid.</string>
+    <string name="error_gedcom_empty">The GEDCOM file is empty.</string>
+    <string name="error_gedcom_too_large">The GEDCOM file is larger than 25 MB.</string>
+    <string name="error_gedcom_malformed">The GEDCOM file is invalid near line %1$d.</string>
+    <string name="error_gedcom_records">The GEDCOM file contains too many records.</string>
+    <string name="error_gedcom_no_people">The GEDCOM file does not contain any people.</string>
+    <string name="error_archive_too_large">The Heritg backup is larger than 32 MB.</string>
+    <string name="error_archive_invalid">The Heritg backup is invalid.</string>
+    <string name="error_archive_version">This Heritg backup was created by an unsupported app version.</string>
+    <string name="error_archive_password">The password is incorrect or the Heritg backup is damaged.</string>
+    <string name="error_archive_records">The Heritg backup contains too many records.</string>
+    <string name="error_archive_field">The Heritg backup contains a text field that is too large.</string>
+    <string name="error_archive_media">The Heritg backup contains a photo that is too large.</string>
+    <string name="error_archive_collision">This Heritg backup uses an identifier that already exists.</string>
+    <string name="error_archive_extension">Choose a file with the .heritg extension.</string>
+    <string name="error_file_too_large">The selected file exceeds the size limit.</string>
+    <string name="error_file_open">The selected file could not be opened.</string>
+    <string name="error_photo_open">The selected photo could not be opened.</string>
+    <string name="error_photo_crop">The photo could not be cropped.</string>
+    <string name="error_tree_routing">The family tree could not be exported because some relationships could not be displayed safely.</string>
+    <string name="error_invalid_date">Enter a valid calendar date in YYYY-MM-DD format.</string>
+    <string name="error_unknown">The action could not be completed.</string>
+    <string name="profile_photo_of">Profile photo of %1$s</string>
+    <string name="square_photo_crop">Square photo crop</string>
+    <string name="processing_photo">Processing photo</string>
+    <string name="date_field_label">%1$s (YYYY-MM-DD)</string>
+    <string name="continue_editing">Continue Editing</string>
+    <string name="discard_changes_action">Discard Changes</string>
+    <string name="decrypting_backup">Decrypting backup</string>
+    <string name="restore_family_tree">Restore family tree</string>
+    <string name="show_all_people">Show all people</string>
+    <string name="shown">Shown</string>
+    <string name="hidden">Hidden</string>
+    <string name="password_restore_notice">Any non-empty password can be used. You will need it to restore the backup.</string>
+    <string name="share_backup">Share Heritg backup</string>
+    <string name="add_family_tree">Add family tree</string>
+    <string name="actions_for">Actions for %1$s</string>
+    <string name="add_relative_to">Add relative to %1$s</string>
+    <string name="edit_person_named">Edit %1$s</string>
+    <string name="select_person_named">Select %1$s</string>
+    <string name="tree_routing_warning">Some relationships could not be displayed safely.</string>
+</resources>

@@ -1,0 +1,2 @@
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-keep class tech.robihamanto.heritg.android.core.interop.**$$serializer { *; }

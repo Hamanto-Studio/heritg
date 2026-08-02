@@ -1,0 +1,119 @@
+<resources>
+    <string name="app_name">HERITG</string>
+    <string name="family_trees">Silsilah Keluarga</string><string name="new_family_tree">Silsilah Keluarga Baru</string>
+    <string name="create_family_tree">Buat Silsilah Keluarga</string><string name="family_tree_name">Nama silsilah keluarga</string>
+    <string name="my_family_tree">Silsilah Keluarga Saya</string><string name="search_family_trees">Cari silsilah keluarga</string>
+    <string name="start_family_archive">Mulai arsip keluarga Anda</string>
+    <string name="library_privacy">Buat silsilah keluarga dari awal atau impor berkas GEDCOM. Data Anda tetap di perangkat ini kecuali Anda mengekspornya.</string>
+    <string name="import_gedcom">Impor GEDCOM</string><string name="restore_backup">Pulihkan Cadangan Heritg</string>
+    <string name="rename_family_tree">Ganti Nama Silsilah Keluarga</string><string name="delete_family_tree">Hapus Silsilah Keluarga</string>
+    <string name="delete_named_tree">Hapus “%1$s”?</string><string name="delete_tree_message">Tindakan ini menghapus permanen %1$s dan %2$s dari perangkat ini. Tindakan ini tidak dapat dibatalkan.</string>
+    <plurals name="people_count"><item quantity="other">%d orang</item></plurals>
+    <plurals name="relationships_count"><item quantity="other">%d hubungan</item></plurals>
+    <string name="create">Buat</string><string name="rename">Ganti nama</string><string name="delete">Hapus</string>
+    <string name="save">Simpan</string><string name="cancel">Batal</string><string name="close">Tutup</string>
+    <string name="back">Kembali</string><string name="ok">OK</string><string name="share">Bagikan</string><string name="could_not_complete">Tindakan Tidak Dapat Diselesaikan</string>
+    <string name="name">Nama</string><string name="add_first_person">Tambah orang pertama</string><string name="start_family_tree">Mulai silsilah keluarga Anda</string>
+    <string name="add_person">Tambah orang</string><string name="add_to">Tambahkan ke %1$s</string><string name="new_relative">%1$s baru</string>
+    <string name="link_existing">Hubungkan anggota keluarga yang sudah ada</string><string name="link_to">Hubungkan ke %1$s</string>
+    <string name="all_people">Semua orang</string><string name="search_people">Cari orang</string><string name="age_value">Usia %1$d</string><string name="you">Anda</string>
+    <string name="settings">Pengaturan</string><string name="zoom_in">Perbesar</string><string name="zoom_out">Perkecil</string>
+    <string name="generation_limits">Batas generasi</string><string name="all_levels">Semua tingkat</string>
+    <string name="levels_above_value">Tingkat di atas: %1$d</string><string name="levels_below_value">Tingkat di bawah: %1$d</string>
+    <string name="hide_controls">Sembunyikan kontrol</string><string name="show_controls">Tampilkan kontrol</string>
+    <string name="common">Umum</string><string name="parents_guardians">Orang tua dan wali</string><string name="partners_spouses">Pasangan</string>
+    <string name="children">Anak</string><string name="siblings">Saudara kandung</string>
+    <string name="father">Ayah</string><string name="mother">Ibu</string><string name="brother">Saudara laki-laki</string><string name="sister">Saudara perempuan</string>
+    <string name="partner">Pasangan</string><string name="son">Anak laki-laki</string><string name="daughter">Anak perempuan</string>
+    <string name="adoptive_father">Ayah angkat</string><string name="adoptive_mother">Ibu angkat</string><string name="foster_father">Ayah asuh</string><string name="foster_mother">Ibu asuh</string>
+    <string name="guardian">Wali</string><string name="stepfather">Ayah tiri</string><string name="stepmother">Ibu tiri</string>
+    <string name="half_brother">Saudara laki-laki seayah atau seibu</string><string name="half_sister">Saudara perempuan seayah atau seibu</string>
+    <string name="adoptive_brother">Saudara angkat laki-laki</string><string name="adoptive_sister">Saudara angkat perempuan</string>
+    <string name="foster_brother">Saudara asuh laki-laki</string><string name="foster_sister">Saudara asuh perempuan</string>
+    <string name="stepbrother">Saudara tiri laki-laki</string><string name="stepsister">Saudara tiri perempuan</string>
+    <string name="husband">Suami</string><string name="wife">Istri</string><string name="former_partner">Mantan pasangan</string><string name="former_husband">Mantan suami</string><string name="former_wife">Mantan istri</string>
+    <string name="adoptive_son">Anak angkat laki-laki</string><string name="adoptive_daughter">Anak angkat perempuan</string>
+    <string name="foster_son">Anak asuh laki-laki</string><string name="foster_daughter">Anak asuh perempuan</string>
+    <string name="ward">Anak di bawah perwalian</string><string name="stepson">Anak tiri laki-laki</string><string name="stepdaughter">Anak tiri perempuan</string>
+    <string name="birthday">Tanggal lahir</string><string name="death_date">Tanggal wafat</string><string name="marriage_date">Tanggal pernikahan</string><string name="married_year">Menikah %1$s</string>
+    <string name="add_birthday">Tambah tanggal lahir</string><string name="delete_birthday">Hapus tanggal lahir</string>
+    <string name="add_death_date">Tambah tanggal wafat</string><string name="delete_death_date">Hapus tanggal wafat</string>
+    <string name="add_marriage_date">Tambah tanggal pernikahan</string><string name="delete_marriage_date">Hapus tanggal pernikahan</string>
+    <string name="co_parent">Orang tua bersama</string><string name="no_co_parent">Tanpa orang tua bersama</string>
+    <string name="gender">Jenis kelamin</string><string name="male">Laki-laki</string><string name="female">Perempuan</string><string name="not_specified">Tidak ditentukan</string>
+    <string name="city">Kota</string><string name="address">Alamat</string><string name="province">Provinsi atau negara bagian</string><string name="country">Negara</string><string name="postal_code">Kode pos</string><string name="notes">Catatan</string>
+    <string name="family">Keluarga</string><string name="remove">Hapus</string><string name="remove_person">Hapus orang</string>
+    <string name="edit_relationship">Edit hubungan</string><string name="relationship_question">Apa hubungan %1$s dengan %2$s?</string>
+    <string name="edit_relationship_with">Edit hubungan dengan %1$s</string><string name="remove_relationship_with">Hapus hubungan dengan %1$s</string>
+    <string name="remove_person_message">Hapus orang ini beserta semua hubungannya?</string><string name="discard_changes">Buang perubahan?</string><string name="discard_message">Yakin ingin membuang perubahan yang belum disimpan?</string>
+    <string name="add_photo">Tambah foto</string><string name="change_photo">Ganti foto</string><string name="remove_photo">Hapus foto</string>
+    <string name="crop_photo">Pangkas foto</string><string name="use_photo">Gunakan foto</string><string name="reset_photo">Atur ulang posisi foto</string>
+    <string name="crop_instructions">Geser untuk mengatur posisi, lalu sesuaikan pembesaran hingga foto terlihat pas.</string><string name="zoom_percent">Perbesaran %1$d persen</string>
+    <string name="private_trees">Silsilah keluarga pribadi yang sederhana</string><string name="privacy_copy">Heritg membantu Anda membuat dan menyimpan silsilah keluarga secara pribadi. Data keluarga tetap di perangkat ini kecuali Anda memilih untuk mengekspornya.</string>
+    <string name="export">Ekspor</string><string name="export_subtitle">Bagikan gambar PNG atau SVG, berkas GEDCOM, atau cadangan</string>
+    <string name="language">Bahasa</string><string name="language_copy">Pilih bahasa yang digunakan di seluruh Heritg.</string>
+    <string name="feedback">Beri masukan atau laporkan bug</string><string name="feedback_subtitle">Hubungi Hamanto Studio melalui Telegram</string>
+    <string name="feedback_message">Halo Hamanto Studio,\n\nSaya ingin memberikan masukan atau melaporkan bug:\n\n[Silakan jelaskan di sini]\n\nVersi aplikasi: %1$s\nBuild: %2$d\nPerangkat: %3$s\nVersi Android: %4$s</string>
+    <string name="studio_credit">Dibuat dengan ❤️ oleh Hamanto Studio</string>
+    <string name="export_heading">Ekspor silsilah keluarga Anda</string><string name="export_copy">Pilih tampilan silsilah, lalu bagikan gambar atau berkas data keluarga.</string>
+    <string name="point_of_view">Sudut pandang gambar silsilah</string><string name="names_only">Nama saja</string>
+    <string name="export_png">Ekspor gambar silsilah (PNG)</string><string name="export_svg">Ekspor silsilah skalabel (SVG)</string><string name="export_gedcom">Ekspor GEDCOM 7</string>
+    <string name="heritg_backup">Cadangan Heritg</string><string name="backup_copy">Menyimpan seluruh data keluarga dan foto dalam satu berkas.</string>
+    <string name="encrypt_optional">Enkripsi dengan kata sandi (opsional)</string><string name="password">Kata sandi</string><string name="confirm_password">Konfirmasi kata sandi</string>
+    <string name="passwords_mismatch">Kata sandi tidak cocok.</string><string name="unencrypted_warning">Tanpa enkripsi, siapa pun yang memiliki berkas cadangan dapat membaca data keluarga Anda.</string>
+    <string name="create_backup">Buat cadangan Heritg</string><string name="creating_backup">Membuat cadangan</string>
+    <string name="encrypted_backup">Cadangan Heritg terenkripsi</string><string name="enter_backup_password">Masukkan kata sandi yang digunakan saat cadangan ini dibuat.</string>
+    <string name="import_completed">Impor Selesai</string>
+    <plurals name="warnings_count"><item quantity="other">%d peringatan</item></plurals>
+    <string name="imported_with_warnings">Mengimpor %1$s dengan %2$s.\n\n%3$s</string>
+    <string name="warning_duplicate_person">Catatan orang duplikat @%1$s@ diabaikan.</string>
+    <string name="warning_date_not_imported">Tanggal untuk %1$s tidak dapat diimpor: %2$s</string>
+    <string name="warning_place_not_imported">Tempat untuk %1$s tidak diimpor karena tempat peristiwa belum didukung.</string>
+    <string name="error_enter_name">Masukkan nama.</string>
+    <string name="error_self_relationship">Seseorang tidak dapat memiliki hubungan dengan dirinya sendiri.</string>
+    <string name="error_duplicate_relationship">Hubungan ini sudah ada.</string>
+    <string name="error_death_before_birth">Tanggal wafat tidak boleh lebih awal dari tanggal lahir.</string>
+    <string name="error_cross_tree_relationship">Orang dari silsilah keluarga yang berbeda tidak dapat dihubungkan.</string>
+    <string name="error_invalid_co_parent">Orang tua bersama yang dipilih harus merupakan pasangan aktif.</string>
+    <string name="error_invalid_graph">Data silsilah keluarga tidak valid.</string>
+    <string name="error_gedcom_empty">Berkas GEDCOM kosong.</string>
+    <string name="error_gedcom_too_large">Berkas GEDCOM lebih besar dari 25 MB.</string>
+    <string name="error_gedcom_malformed">Berkas GEDCOM tidak valid di sekitar baris %1$d.</string>
+    <string name="error_gedcom_records">Berkas GEDCOM berisi terlalu banyak catatan.</string>
+    <string name="error_gedcom_no_people">Berkas GEDCOM tidak berisi data orang.</string>
+    <string name="error_archive_too_large">Cadangan Heritg lebih besar dari 32 MB.</string>
+    <string name="error_archive_invalid">Cadangan Heritg tidak valid.</string>
+    <string name="error_archive_version">Cadangan Heritg ini dibuat oleh versi aplikasi yang tidak didukung.</string>
+    <string name="error_archive_password">Kata sandi salah atau cadangan Heritg rusak.</string>
+    <string name="error_archive_records">Cadangan Heritg berisi terlalu banyak catatan.</string>
+    <string name="error_archive_field">Cadangan Heritg berisi kolom teks yang terlalu besar.</string>
+    <string name="error_archive_media">Cadangan Heritg berisi foto yang terlalu besar.</string>
+    <string name="error_archive_collision">Cadangan Heritg ini menggunakan pengenal yang sudah ada.</string>
+    <string name="error_archive_extension">Pilih berkas dengan ekstensi .heritg.</string>
+    <string name="error_file_too_large">Berkas yang dipilih melebihi batas ukuran.</string>
+    <string name="error_file_open">Berkas yang dipilih tidak dapat dibuka.</string>
+    <string name="error_photo_open">Foto yang dipilih tidak dapat dibuka.</string>
+    <string name="error_photo_crop">Foto tidak dapat dipangkas.</string>
+    <string name="error_tree_routing">Silsilah keluarga tidak dapat diekspor karena beberapa hubungan tidak dapat ditampilkan dengan aman.</string>
+    <string name="error_invalid_date">Masukkan tanggal kalender yang valid dalam format YYYY-MM-DD.</string>
+    <string name="error_unknown">Tindakan tidak dapat diselesaikan.</string>
+    <string name="profile_photo_of">Foto profil %1$s</string>
+    <string name="square_photo_crop">Pangkasan foto persegi</string>
+    <string name="processing_photo">Memproses foto</string>
+    <string name="date_field_label">%1$s (YYYY-MM-DD)</string>
+    <string name="continue_editing">Lanjutkan Mengedit</string>
+    <string name="discard_changes_action">Buang Perubahan</string>
+    <string name="decrypting_backup">Mendekripsi cadangan</string>
+    <string name="restore_family_tree">Pulihkan silsilah keluarga</string>
+    <string name="show_all_people">Tampilkan semua orang</string>
+    <string name="shown">Ditampilkan</string>
+    <string name="hidden">Disembunyikan</string>
+    <string name="password_restore_notice">Kata sandi apa pun yang tidak kosong dapat digunakan. Anda akan memerlukannya untuk memulihkan cadangan.</string>
+    <string name="share_backup">Bagikan cadangan Heritg</string>
+    <string name="add_family_tree">Tambah silsilah keluarga</string>
+    <string name="actions_for">Tindakan untuk %1$s</string>
+    <string name="add_relative_to">Tambah kerabat untuk %1$s</string>
+    <string name="edit_person_named">Edit %1$s</string>
+    <string name="select_person_named">Pilih %1$s</string>
+    <string name="tree_routing_warning">Beberapa hubungan tidak dapat ditampilkan dengan aman.</string>
+</resources>

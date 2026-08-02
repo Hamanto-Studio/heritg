@@ -271,7 +271,11 @@ struct PersonSheet: View {
                         editingRelationship = RelationshipEdit(
                             relationship: item.relationship,
                             person: item.person,
-                            role: relativeRole(for: item)
+                            role: Self.relationshipEditRole(
+                                relationship: item.relationship,
+                                relative: item.person,
+                                focusedPersonID: person.id
+                            )
                         )
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
@@ -412,26 +416,29 @@ struct PersonSheet: View {
         relatedPeople.filter { !removedRelationshipIDs.contains($0.relationship.id) }
     }
 
-    private func relativeRole(
-        for item: (relationship: FamilyRelationship, person: Person, role: String)
+    static func relationshipEditRole(
+        relationship: FamilyRelationship,
+        relative: Person,
+        focusedPersonID: String
     ) -> RelativeRole {
-        switch item.relationship.kind {
+        switch relationship.kind {
         case .parent:
             return parentRole(
-                subtype: item.relationship.subtype,
-                relativeIsParent: item.relationship.toPersonID == person.id,
-                gender: item.person.gender
+                subtype: relationship.subtype,
+                relativeIsParent: relationship.fromPersonID == relative.id &&
+                    relationship.toPersonID == focusedPersonID,
+                gender: relative.gender
             )
         case .partner:
-            switch item.relationship.subtype {
-            case .spouse: return item.person.gender == .female ? .wife : .husband
-            case .formerSpouse: return item.person.gender == .female ? .formerWife : .formerHusband
+            switch relationship.subtype {
+            case .spouse: return relative.gender == .female ? .wife : .husband
+            case .formerSpouse: return relative.gender == .female ? .formerWife : .formerHusband
             case .formerPartner: return .formerPartner
             default: return .partner
             }
         case .sibling:
-            let female = item.person.gender == .female
-            switch item.relationship.subtype {
+            let female = relative.gender == .female
+            switch relationship.subtype {
             case .halfSibling: return female ? .halfSister : .halfBrother
             case .adoptiveSibling: return female ? .adoptiveSister : .adoptiveBrother
             case .fosterSibling: return female ? .fosterSister : .fosterBrother
@@ -441,7 +448,7 @@ struct PersonSheet: View {
         }
     }
 
-    private func parentRole(
+    private static func parentRole(
         subtype: RelationshipSubtype,
         relativeIsParent: Bool,
         gender: PersonGender
