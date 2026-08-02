@@ -1,6 +1,6 @@
 ---
 name: release-heritg-web
-description: Prepare, stage, promote, verify, and publish independently versioned Heritg Web releases on Vercel. Use when Codex needs to update the Web version and shared changelog, create a versioned Web release branch, deploy heritg.hamanto.com/app, verify production, create a platform release tag, publish GitHub release notes, roll back a Web deployment, or audit Web release readiness.
+description: Prepare, stage, promote, verify, and publish independently versioned Heritg Web releases on Vercel. Use when Codex needs to update the Web version and shared changelog, create a versioned Web release branch, deploy heritgapp.hamanto.com, verify production, create a platform release tag, publish GitHub release notes, roll back a Web deployment, or audit Web release readiness.
 ---
 
 # Release Heritg Web
@@ -47,8 +47,7 @@ still validates metadata, changelog structure, workflows, and Vercel policy.
 2. From the repository root, link the existing `heritg` project or create it
    only after confirming it does not exist. Use Node.js 22, `web/dist`, no
    runtime variables, and no Git integration. Use `web/vercel.json` as the
-   local configuration so the landing source in `docs/` is included while only
-   the Web package is installed and built.
+   local configuration while installing and building only the Web package.
 3. Deploy a preview with the pinned CLI using
    `npx --yes vercel@58.4.4 deploy --local-config web/vercel.json`. Capture the
    resulting URL without placing credentials in logs or files.
@@ -66,11 +65,11 @@ candidate URL, version, commit, and canonical hostname.
 After approval:
 
 1. Promote the exact tested deployment; do not rebuild an untested commit.
-2. Verify the landing page and `https://heritg.hamanto.com/app` with:
+2. Verify the GitHub Pages landing site and `https://heritgapp.hamanto.com/` with:
 
    ```sh
    node .agents/skills/release-heritg-web/scripts/verify-production.mjs \
-     https://heritg.hamanto.com/app --expect-version <version>
+     https://heritgapp.hamanto.com/ --expect-version <version>
    ```
 
 3. Pause again before creating and pushing `web-<version>` or publishing its
@@ -81,7 +80,7 @@ After approval:
 
 ## Handle DNS and rollback
 
-- Keep Cloudflare authoritative. The `heritg` record must be a DNS-only CNAME
+- Keep Cloudflare authoritative. The `heritgapp` record must be a DNS-only CNAME
   to the target Vercel assigns. Inspect and preserve any old value before a
   change; obtain confirmation if replacing an existing record.
 - If Cloudflare access is unavailable, pause with the record type, name, target,

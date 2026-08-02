@@ -50,20 +50,21 @@ not change merely because an application version changes.
 5. Deploy with the pinned Vercel CLI and verify the staged deployment on
    desktop, iPhone-sized, and iPad-sized viewports.
 6. Obtain explicit confirmation before promoting the tested deployment.
-7. Verify the landing page at `https://heritg.hamanto.com` and the application
-   at `https://heritg.hamanto.com/app`, then create `<platform>-<version>` and
+7. Verify the landing page at `https://heritg.hamanto.com/en/` and the application
+   at `https://heritgapp.hamanto.com/`, then create `<platform>-<version>` and
    the matching GitHub Release.
 
-The Vercel project is `heritg`. It deploys from the repository root so the
-landing source in `docs/` is available, but installs and builds only `web/`
-with Node.js 22 and publishes `web/dist/`. It has no runtime secrets.
-Cloudflare remains authoritative for `hamanto.com`; the `heritg` CNAME is
-DNS-only and points to the target assigned by Vercel.
+The Vercel project is `heritg`. It deploys from the repository root, installs
+and builds only `web/` with Node.js 22, and publishes `web/dist/`. It has no
+runtime secrets. GitHub Pages continues to publish the landing source in
+`docs/`. Cloudflare remains authoritative for `hamanto.com`; the existing
+`heritg` CNAME stays on GitHub Pages, while the `heritgapp` CNAME is DNS-only
+and points to the target assigned by Vercel.
 
 Browser storage is tied to its origin. Localhost, Vercel preview URLs, and
-`heritg.hamanto.com` do not share IndexedDB records or encryption keys. The
-landing page and `/app` share the same origin, while the service worker is
-scoped to `/app/`. Export and import a backup when intentionally moving family
+`heritgapp.hamanto.com` do not share IndexedDB records or encryption keys. The
+landing page and app use separate origins, and the service worker is scoped to
+the app origin. Export and import a backup when intentionally moving family
 data between origins.
 
 ## Recovery

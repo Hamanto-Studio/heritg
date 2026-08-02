@@ -4,7 +4,7 @@ import { VitePWA } from "vite-plugin-pwa";
 import packageJson from "./package.json";
 
 export default defineConfig({
-  base: "/app/",
+  base: "/",
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version)
   },
@@ -20,21 +20,21 @@ export default defineConfig({
         theme_color: "#f7f3ec",
         background_color: "#f5f5f3",
         display: "standalone",
-        start_url: "/app/",
-        scope: "/app/",
+        start_url: "/",
+        scope: "/",
         icons: [
-          { src: "/app/pwa-192.png", sizes: "192x192", type: "image/png" },
-          { src: "/app/pwa-512.png", sizes: "512x512", type: "image/png" }
+          { src: "/pwa-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512.png", sizes: "512x512", type: "image/png" }
         ]
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
-        navigateFallback: "/app/index.html"
+        navigateFallback: "/index.html"
       }
     })
   ],
   build: {
-    outDir: "dist/app",
+    outDir: "dist",
     emptyOutDir: true
   },
   resolve: {

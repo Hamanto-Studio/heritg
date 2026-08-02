@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 const args = process.argv.slice(2);
-const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritg.hamanto.com/app";
+const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritgapp.hamanto.com/";
 const versionIndex = args.indexOf("--expect-version");
 const expectedVersion = versionIndex >= 0 ? args[versionIndex + 1] : undefined;
+const landingIndex = args.indexOf("--landing");
+const landingTarget = landingIndex >= 0 ? args[landingIndex + 1] : "https://heritg.hamanto.com/en/";
 
 let appBase;
 try {
@@ -33,10 +35,13 @@ const request = async (path, options = {}) => {
 };
 
 try {
-  const landing = await request("/");
+  const landingUrl = new URL(landingTarget);
+  const landing = await fetch(landingUrl, { redirect: "follow" });
+  checked.push(`${landing.status} ${landingUrl.href}`);
+  if (!landing.ok) failures.push(`${landingUrl.href} returned ${landing.status}`);
   const landingHtml = await landing.text();
-  if (!landingHtml.includes('href="/app/"')) {
-    failures.push("landing page does not link to /app/");
+  if (!landingHtml.includes('href="https://heritgapp.hamanto.com/"')) {
+    failures.push("landing page does not link to https://heritgapp.hamanto.com/");
   }
 
   const home = await request("");
@@ -61,7 +66,7 @@ try {
   const manifest = await request("manifest.webmanifest");
   try {
     const manifestBody = await manifest.json();
-    if (!manifestBody.name || manifestBody.start_url !== "/app/" || manifestBody.scope !== "/app/" || !Array.isArray(manifestBody.icons)) {
+    if (!manifestBody.name || manifestBody.start_url !== "/" || manifestBody.scope !== "/" || !Array.isArray(manifestBody.icons)) {
       failures.push("manifest.webmanifest is missing required PWA fields");
     }
     for (const icon of manifestBody.icons ?? []) await request(icon.src);

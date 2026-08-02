@@ -8,7 +8,7 @@
 - Changelog heading: `## [web-<version>] - YYYY-MM-DD`.
 - GitHub Release title: `Heritg Web <version>`.
 - Landing URL: `https://heritg.hamanto.com`.
-- Canonical app URL: `https://heritg.hamanto.com/app`.
+- Canonical app URL: `https://heritgapp.hamanto.com/`.
 - Vercel project: `heritg`.
 - Vercel CLI: exactly `58.4.4`.
 - Deployment root: repository root; build package: `web/`; Node.js `22.x`;
@@ -48,7 +48,7 @@ Before production promotion:
 
 - Candidate deployment points to the exact release commit.
 - Desktop, iPhone, and iPad smoke tests pass with synthetic data.
-- Landing-page routing, `/app` SPA navigation, PWA manifest, service worker,
+- Landing-page availability, app SPA navigation, PWA manifest, service worker,
   installation, offline restart,
   local persistence, import, and export work.
 - Security headers and immutable hashed-asset caching are present.
@@ -67,15 +67,16 @@ runtime secrets, server functions, or Git integration. Generated deployment
 URLs should use Vercel's standard Deployment Protection when the account tier
 supports it.
 
-Keep Cloudflare as authoritative DNS. Configure `heritg.hamanto.com` as a
+Keep Cloudflare as authoritative DNS. Preserve `heritg.hamanto.com` for the
+GitHub Pages landing site. Configure `heritgapp.hamanto.com` as a
 DNS-only CNAME to the value Vercel returns for that domain. Do not enable the
 Cloudflare proxy in front of Vercel. Inspect the current record and save its
 identifier, content, TTL, and proxy state before changing it.
 
-The application uses local encrypted IndexedDB. The landing page and `/app`
-share the production origin, but the service worker must remain scoped to
-`/app/`. Browser data and encryption keys are origin-specific; localhost,
-preview URLs, and the canonical hostname cannot read one another's records.
+The application uses local encrypted IndexedDB. The landing page and app use
+separate origins, and the service worker is scoped to the app origin. Browser
+data and encryption keys are origin-specific; localhost, preview URLs, the
+landing site, and the canonical app hostname cannot read one another's records.
 Never use real family data for deployment verification.
 
 ## Confirmation and recovery

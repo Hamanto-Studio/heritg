@@ -4,17 +4,10 @@
   "installCommand": "npm --prefix web ci",
   "buildCommand": "npm --prefix web run build",
   "outputDirectory": "web/dist",
-  "redirects": [
-    {
-      "source": "/app",
-      "destination": "/app/",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
-      "source": "/app/(.*)",
-      "destination": "/app/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
@@ -56,7 +49,7 @@
       ]
     },
     {
-      "source": "/app/assets/(.*)",
+      "source": "/assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -65,7 +58,7 @@
       ]
     },
     {
-      "source": "/app/index.html",
+      "source": "/index.html",
       "headers": [
         {
           "key": "Cache-Control",
@@ -74,7 +67,7 @@
       ]
     },
     {
-      "source": "/app/sw.js",
+      "source": "/sw.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -83,7 +76,7 @@
       ]
     },
     {
-      "source": "/app/registerSW.js",
+      "source": "/registerSW.js",
       "headers": [
         {
           "key": "Cache-Control",
@@ -92,16 +85,7 @@
       ]
     },
     {
-      "source": "/app/manifest.webmanifest",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/app/",
+      "source": "/manifest.webmanifest",
       "headers": [
         {
           "key": "Cache-Control",
@@ -111,33 +95,6 @@
     },
     {
       "source": "/",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/en/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/id/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/privacy/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
