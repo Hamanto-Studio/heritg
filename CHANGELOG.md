@@ -35,6 +35,7 @@ prefix.
 - Modernized family-tree connectors with smooth corners, quieter junctions, and consistent line weight on the canvas and in image exports.
 - Reduced tree clutter by showing relationship roles only while a person is selected.
 - Made canvas panning available only while holding Space and dismissed open panels when interacting with the canvas.
+- Added a prominent privacy-panel link to Heritg's encryption details.
 
 ### Fixed
 
