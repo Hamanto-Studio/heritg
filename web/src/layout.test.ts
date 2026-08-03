@@ -195,6 +195,17 @@ describe("deterministic family layout", () => {
     });
   });
 
+  it("shows kinship roles only while a person is selected", () => {
+    const values = [person("parent", "male"), person("focus")];
+    const relationships = [parent("parent", "focus")];
+    const unselected = createTreeLayout(values, relationships);
+    const selected = createTreeLayout(values, relationships, "focus");
+
+    expect(unselected.people.every(({ role }) => role === "")).toBe(true);
+    expect(selected.people.find(({ id }) => id === "focus")?.role).toBe("You");
+    expect(selected.people.find(({ id }) => id === "parent")?.role).toBe("Father");
+  });
+
   it("is stable across input permutations and keeps every parent above its child", () => {
     const first = createTreeLayout(people, relationships, "focus");
     const second = createTreeLayout(

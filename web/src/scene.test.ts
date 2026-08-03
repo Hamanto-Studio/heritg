@@ -54,6 +54,32 @@ describe("canvas avatar projection", () => {
     expect(chart.svg).not.toContain('rx="16"');
   });
 
+  it("exports role labels only when a person is selected", () => {
+    const withoutSelection = buildChartSvg(layout, "Family").svg;
+    const withSelection = buildChartSvg(layout, "Family", person.id).svg;
+
+    expect(withoutSelection).not.toContain(">You</text>");
+    expect(withSelection).toContain(">You</text>");
+  });
+
+  it("exports birth dates according to their stored precision", () => {
+    const exact = buildChartSvg(layout, "Family", person.id, "id").svg;
+    const month = buildChartSvg({
+      ...layout,
+      people: [{ ...person, birthDatePrecision: "month" }]
+    }, "Family", person.id, "id").svg;
+    const year = buildChartSvg({
+      ...layout,
+      people: [{ ...person, birthDatePrecision: "year" }]
+    }, "Family", person.id, "id").svg;
+
+    expect(exact).toContain("Lahir 1 Jan 1990");
+    expect(month).toContain("Lahir Jan 1990");
+    expect(month).not.toContain("Lahir 1 Jan 1990");
+    expect(year).toContain("Lahir 1990");
+    expect(year).not.toContain("Lahir Jan 1990");
+  });
+
   it("exports localized marriage dates on partner lines", () => {
     const spouse: PositionedPerson = {
       ...person,

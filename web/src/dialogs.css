@@ -70,6 +70,13 @@
   padding: 12px 20px max(12px, env(safe-area-inset-bottom, 0px));
 }
 
+.app-version {
+  color: var(--subtle);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  margin: 18px 0 0;
+}
+
 .panel-intro {
   color: var(--subtle);
   font-size: 0.9rem;
@@ -133,6 +140,53 @@
   font-size: 0.78rem;
   line-height: 1.45;
   margin-top: 4px;
+}
+
+.privacy-details-link {
+  align-items: center;
+  background: #4f6d3d;
+  border-radius: 14px;
+  box-shadow: 0 7px 18px rgba(52, 78, 38, 0.2);
+  color: #fff;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 18px;
+  min-height: 76px;
+  padding: 15px 17px;
+  text-decoration: none;
+  transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.privacy-details-link:hover {
+  background: #405c31;
+  box-shadow: 0 9px 22px rgba(52, 78, 38, 0.24);
+  transform: translateY(-1px);
+}
+
+.privacy-details-link:active {
+  transform: translateY(0);
+}
+
+.privacy-details-link span,
+.privacy-details-link strong,
+.privacy-details-link small {
+  display: block;
+}
+
+.privacy-details-link strong {
+  font-size: 0.94rem;
+}
+
+.privacy-details-link small {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  margin-top: 3px;
+}
+
+.privacy-details-link svg {
+  flex: 0 0 auto;
 }
 
 .modal-card {

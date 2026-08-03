@@ -137,6 +137,12 @@ export function App() {
     }));
   };
 
+  const dismissCanvasPanels = () => {
+    setSidebarOpen(false);
+    setRightPanel(undefined);
+    setGenerationOpen(false);
+  };
+
   const emptyWelcome = !people.length ? (
     <section className="welcome-canvas" aria-labelledby="welcome-title">
       <div className="welcome-brand">
@@ -212,6 +218,7 @@ export function App() {
               key={`${activeTree.id}-${data.language}`}
               language={data.language}
               onAddRelative={addRelativeTo}
+              onCanvasInteract={dismissCanvasPanels}
               onDeselectPerson={() => {
                 setGenerationOpen(false);
                 actions.selectPerson(undefined);

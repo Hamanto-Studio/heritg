@@ -4,11 +4,17 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - ".agents/skills/release-heritg-web/**"
+      - "CHANGELOG.md"
+      - "docs/RELEASES.md"
       - ".github/workflows/web-ci.yml"
   push:
     branches: [main]
     paths:
       - "web/**"
+      - ".agents/skills/release-heritg-web/**"
+      - "CHANGELOG.md"
+      - "docs/RELEASES.md"
       - ".github/workflows/web-ci.yml"
   workflow_dispatch:
 
@@ -40,6 +46,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Validate release metadata
+        run: npm run release:check
 
       - name: Lint
         run: npm run lint

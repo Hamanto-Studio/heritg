@@ -210,12 +210,18 @@ export const avatarRect = (person: PositionedPerson): RouteRect => ({
 export const hasLifeText = (person: PositionedPerson) =>
   Boolean(person.birthDate?.match(/^\d{4}/) || person.deathDate?.match(/^\d{4}/));
 
+export const personLifeTop = (showRole: boolean) =>
+  showRole ? LAYOUT_METRICS.lifeTop : LAYOUT_METRICS.roleTop;
+
 export const nodeLabelRect = (person: PositionedPerson): RouteRect => ({
   x: person.x - LAYOUT_METRICS.labelWidth / 2,
   y: person.y + LAYOUT_METRICS.labelTop,
   width: LAYOUT_METRICS.labelWidth,
-  height: (hasLifeText(person) ? LAYOUT_METRICS.lifeTop + LAYOUT_METRICS.lifeHeight :
-    LAYOUT_METRICS.roleTop + LAYOUT_METRICS.roleHeight) - LAYOUT_METRICS.labelTop
+  height: (hasLifeText(person)
+    ? personLifeTop(Boolean(person.role)) + LAYOUT_METRICS.lifeHeight
+    : person.role
+      ? LAYOUT_METRICS.roleTop + LAYOUT_METRICS.roleHeight
+      : LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight) - LAYOUT_METRICS.labelTop
 });
 
 export const controlRect = (center: RoutePoint): RouteRect => ({
