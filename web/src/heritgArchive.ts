@@ -50,6 +50,14 @@ const cryptoBytes = (bytes: Uint8Array): Uint8Array<ArrayBuffer> => {
 type ArchiveProtection = "encrypted" | "unencrypted" | "legacy-encrypted" | "legacy-unencrypted";
 type JsonObject = Record<string, unknown>;
 type MediaReference = { byteSize: number; mimeType: string; path: string; sha256: string };
+
+export class HeritgArchivePasswordError extends Error {
+  constructor() {
+    super("The password is incorrect or the .heritg archive was modified.");
+    this.name = "HeritgArchivePasswordError";
+  }
+}
+
 const fail = (message: string): never => {
   throw new Error(`Invalid .heritg archive: ${message}`);
 };
@@ -165,7 +173,7 @@ async function openEnvelope(bytes: Uint8Array, password: string): Promise<Uint8A
     );
     return new Uint8Array(opened);
   } catch {
-    throw new Error("The password is incorrect or the .heritg archive was modified.");
+    throw new HeritgArchivePasswordError();
   }
 }
 
@@ -190,7 +198,7 @@ async function openLegacyEnvelope(bytes: Uint8Array, password: string): Promise<
     writeU16BE(legacyHeader, 8, 1);
     return concat(legacyHeader, new Uint8Array(opened));
   } catch {
-    throw new Error("The password is incorrect or the .heritg archive was modified.");
+    throw new HeritgArchivePasswordError();
   }
 }
 
@@ -478,7 +486,6 @@ export async function exportHeritgArchive(
 ): Promise<Uint8Array> {
   const files = await archiveEntries(data, treeId, new Date());
   const zip = encodeHeritgZip(files);
-  if (!password) return zip;
   return sealZip(zip, password);
 }
 

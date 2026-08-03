@@ -10,8 +10,16 @@ another platform-specific archive or cryptographic construction.
   browsers, and JCA on Android. Do not implement AES.
 - Encrypted archives use AES-256-GCM with a fresh 96-bit nonce and a fresh
   128-bit salt from the platform CSPRNG for every export.
+- Every current `.heritg` writer must emit the `HTGENC01` encrypted envelope.
+  Plain ZIP input remains reader-only compatibility behavior and must not be
+  exposed as a product export path.
 - Derive the key with PBKDF2-HMAC-SHA256 at 600,000 iterations. NFC-normalize
-  the password and encode it as UTF-8 before derivation.
+  the password and encode it as UTF-8 before derivation. An empty password is
+  valid and means a zero-length byte string; it provides neither confidentiality
+  nor authenticity against a file holder, who can derive the same key.
+- Export interfaces may leave the password empty. If it is non-empty, require
+  at least 15 NFC-normalized Unicode code points. Importers must try the empty
+  password first and prompt only after authentication fails.
 - Authenticate the complete 44-byte envelope header as GCM additional data.
   Reject unknown versions, algorithm identifiers, or work factors before key
   derivation.
@@ -34,7 +42,8 @@ code must always generate its salt and nonce randomly.
 Before a public release or cryptography change:
 
 1. Run the iOS, web, and Android archive suites and confirm the published
-   encrypted-envelope SHA-256 matches on all three platforms.
+   encrypted-envelope SHA-256 values for both non-empty and empty passwords
+   match on all three platforms.
 2. Run dependency, secret-history, lint, and production-build checks.
 3. Review archive parsers for path traversal, duplicate entries, links,
    decompression bombs, oversized fields, broken references, and partial writes.

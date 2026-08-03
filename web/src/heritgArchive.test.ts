@@ -71,6 +71,31 @@ const sha256 = async (bytes: Uint8Array) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer))]
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
+const openEnvelopeForCompatibilityTest = async (archive: Uint8Array, password: string) => {
+  const header = archive.slice(0, 44);
+  const salt = archive.slice(16, 32);
+  const nonce = archive.slice(32, 44);
+  const material = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password.normalize("NFC")),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 600_000 },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  return new Uint8Array(await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: nonce, additionalData: header, tagLength: 128 },
+    key,
+    archive.slice(44)
+  ));
+};
+
 describe("cross-platform .heritg archive", () => {
   it("matches the published iOS and Android encrypted compatibility vector", async () => {
     vi.useFakeTimers();
@@ -112,11 +137,35 @@ describe("cross-platform .heritg archive", () => {
     await expect(importHeritgArchive(tampered, "correct horse battery staple")).rejects.toThrow(/incorrect|modified/i);
   });
 
-  it("round-trips unencrypted ZIP archives and preserves portable identifiers", async () => {
-    const archive = await exportHeritgArchive(syntheticData, "tree-synthetic", "");
-    expect(heritgArchiveProtection(archive)).toBe("unencrypted");
-    expect([...decodeHeritgZip(archive).keys()]).toContain("checksums.sha256");
-    const restored = await importHeritgArchive(archive);
+  it("encrypts with an empty password and restores without password entry", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2023-11-14T22:13:20.000Z"));
+    let entropyCall = 0;
+    const random = vi.spyOn(globalThis.crypto, "getRandomValues").mockImplementation(((target: Uint8Array) => {
+      const start = entropyCall++ % 2 === 0 ? 0 : 16;
+      target.forEach((_, index) => { target[index] = start + index; });
+      return target;
+    }) as typeof globalThis.crypto.getRandomValues);
+
+    let archive: Uint8Array;
+    try {
+      archive = await exportHeritgArchive(syntheticData, "tree-synthetic", "");
+    } finally {
+      random.mockRestore();
+      vi.useRealTimers();
+    }
+
+    expect(heritgArchiveProtection(archive)).toBe("encrypted");
+    expect(await sha256(archive)).toBe("bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440");
+    expect((await importHeritgArchive(archive)).trees[0]?.id).toBe("tree-synthetic");
+  });
+
+  it("still reads legacy unencrypted ZIP archives", async () => {
+    const encrypted = await exportHeritgArchive(syntheticData, "tree-synthetic", "");
+    const legacyArchive = await openEnvelopeForCompatibilityTest(encrypted, "");
+    expect(heritgArchiveProtection(legacyArchive)).toBe("unencrypted");
+    expect([...decodeHeritgZip(legacyArchive).keys()]).toContain("checksums.sha256");
+    const restored = await importHeritgArchive(legacyArchive);
     expect(restored.trees[0]?.id).toBe("tree-synthetic");
     expect(restored.relationships[0]?.id).toBe("relationship-alpha-beta");
   });

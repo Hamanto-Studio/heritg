@@ -1,6 +1,6 @@
 # HERITG Security and Cryptography Audit
 
-Audit date: 2026-08-02
+Audit date: 2026-08-03
 Scope: the iOS, web, and Android source, tests, workflows, and documentation
 included with this audit
 
@@ -8,7 +8,8 @@ included with this audit
 
 The archive design and implementations are aligned at source level, and the
 web implementation reproduces the exact iOS/Android encrypted compatibility
-vector. This is not yet an unconditional public-release approval.
+vectors for both non-empty and empty passwords. This is not yet an
+unconditional public-release approval.
 
 Before publishing a release, the repository owner must:
 
@@ -29,7 +30,6 @@ The archive controls are designed for:
 - A malicious import containing path traversal, duplicate paths, links,
   unsupported compression, oversized records, invalid UTF-8, broken references,
   or identifier collisions.
-- Accidental disclosure through a readable backup.
 - Platform differences in password Unicode, date encoding, JSON, ZIP, and
   authenticated-encryption byte layout.
 
@@ -38,6 +38,8 @@ They do not protect against:
 - A compromised operating system, browser process, origin, or running app.
 - Malware or an attacker who can read data after the user unlocks an archive.
 - Weak user-selected passwords against offline guessing.
+- An empty password. It is not a secret, so any file holder can derive the key,
+  read the archive, and create a valid replacement envelope.
 - Screenshots, clipboard disclosure, readable GEDCOM/image/SVG exports, or a
   recipient to whom the user intentionally sends plaintext.
 - Loss of the password. HERITG has no recovery key or password escrow.
@@ -49,6 +51,7 @@ They do not protect against:
 | Payload encryption | AES-256-GCM |
 | Password KDF | PBKDF2-HMAC-SHA256, 600,000 iterations |
 | Password bytes | Unicode NFC, then UTF-8 |
+| Password policy | Optional; empty is allowed, non-empty requires 15+ NFC code points in writer UIs |
 | Salt | 16 random bytes per export |
 | Nonce | 12 random bytes per export |
 | Authentication tag | 16 bytes |
@@ -64,7 +67,7 @@ PBKDF2-HMAC-SHA256 work factor matches the current
 [OWASP Password Storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 for PBKDF2.
 
-The 15-NFC-code-point minimum for newly created backup passwords follows the
+The 15-NFC-code-point minimum for newly created non-empty backup passwords follows the
 single-factor minimum in
 [NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/).
 The archive use case is local password-based encryption rather than online
@@ -86,7 +89,8 @@ All platforms use this deterministic test-only input:
 - Passwords: decomposed `Cafe\u0301 family` and composed `Caf\u00e9 family`
 - Synthetic family payload only
 
-The complete encrypted archive SHA-256 must be:
+The complete encrypted archive SHA-256 for the NFC-equivalent non-empty
+passwords must be:
 
 ```text
 2806b437258da23ca3e0f1f57df81ae69467869ed9d9e8e0c84e00cb9bcd2780
@@ -96,6 +100,16 @@ The iOS and Android source suites already assert this value. The web suite now
 asserts the same value and successfully decrypts the resulting archive. This is
 byte-for-byte evidence that password normalization, PBKDF2, header encoding,
 ZIP bytes, AES-GCM additional data, ciphertext, and tag agree.
+
+The same payload, salt, nonce, and an empty password must produce:
+
+```text
+bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440
+```
+
+All three platform suites assert this second value and restore it with the
+empty password. This proves that compulsory encryption and prompt-free import
+use the same bytes on every supported platform.
 
 Production exports never use the deterministic salt or nonce.
 
@@ -111,16 +125,22 @@ The iOS implementation now uses the shared ZIP/envelope, and the web app can
 export and import that format, including encrypted files. The web reader still
 accepts the pre-release Apple format for migration.
 
-### Resolved: readable web backup as the primary path (high)
+### Resolved: readable backup as a current product path (high)
 
-The web settings flow previously downloaded a readable JSON backup. The primary
-backup action now creates a password-protected `.heritg` file and requires a
-15-character minimum in the UI. iOS and Android encryption are now enabled by
-default and use the same minimum in their export UIs.
+The web settings flow previously downloaded a readable JSON backup, and native
+flows could create an unencrypted ZIP. Every current iOS, web, and Android
+`.heritg` export now emits `HTGENC01`. The password is optional; if supplied,
+all three interfaces require at least 15 NFC-normalized Unicode code points.
+With an empty password, importers authenticate and restore without prompting.
 
-The codec continues to decrypt older archives that used shorter passwords. This
-is required for backward compatibility and does not weaken newly created UI
-exports.
+An empty password does not turn encryption into access control or authenticity
+against the file holder. Anyone holding that file can derive its key, read it,
+and create a valid replacement envelope. The interface and public announcement
+state this tradeoff directly instead of presenting the envelope as secrecy.
+
+The codecs continue to read legacy unencrypted archives and decrypt older
+archives that used shorter passwords. This is required for backward
+compatibility and does not create an unencrypted current export path.
 
 ### Resolved: unsafe or ambiguous import behavior (high)
 
@@ -155,8 +175,9 @@ The shared readers now:
 
 Android source is included in the reviewed tree. A pinned Android workflow runs
 unit tests, lint, and a debug build for Android and compatibility-fixture
-changes. Its secure export UI defaults to encryption and applies the same
-15-character minimum as iOS and web.
+changes. Its export UI always uses the encrypted envelope, permits the empty
+password, and applies the same 15-character minimum as iOS and web when a
+password is supplied.
 
 ### Open verification item: native CI (medium)
 
@@ -181,9 +202,9 @@ required so the history result is repeated for the exact release commit.
 | Check | Result |
 | --- | --- |
 | Web lint | Passed |
-| Web tests | 95 passed |
+| Web tests | 96 passed |
 | Web production build | Passed |
-| Cross-platform encrypted SHA-256 vector | Passed on web; identical assertion present in iOS and Android |
+| Cross-platform encrypted SHA-256 vectors | Non-empty and empty-password vectors passed on web; identical assertions present in iOS and Android |
 | Production npm dependency audit | 0 known vulnerabilities reported |
 | Swift syntax parse | Passed |
 | iOS simulator suite | Not run locally: full Xcode unavailable |

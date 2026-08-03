@@ -42,15 +42,15 @@
     <section class="encryption-hero page-width">
       <div class="encryption-hero-copy">
         <h1>Your family archive travels <span>locked.</span></h1>
-        <p class="hero-lead">When you protect a <code>.heritg</code> backup with a password, HERITG encrypts it before it leaves the exporting app. A supported HERITG app uses the password to authenticate and open it on another device.</p>
-        <p class="hero-qualifier">The file carries the encrypted archive—not the password and not a recovery key.</p>
+        <p class="hero-lead">Every <code>.heritg</code> backup is encrypted before it leaves the exporting app. A password is optional: leave it empty for an archive that opens automatically, or add one to keep the file private from anyone who obtains it.</p>
+        <p class="hero-qualifier">An empty password keeps one authenticated format across platforms, but it is not a secret and provides neither confidentiality nor authenticity against someone holding the file.</p>
         <div class="hero-buttons">
           <a class="pill pill-dark" href="#journey">Follow the archive</a>
           <a class="pill pill-light external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/docs/DATA_FORMAT.md" target="_blank" rel="noopener">Read the format</a>
         </div>
       </div>
 
-      <div class="encryption-scene" role="img" aria-label="A family archive is encrypted on one device, transferred as a locked file, and decrypted on another device with the password">
+      <div class="encryption-scene" role="img" aria-label="A family archive is always encrypted on one device, transferred as a sealed file, and opened automatically with an empty password or unlocked with an optional password on another device">
         <div class="device device-source">
           <div class="device-bar"><span></span><span></span><span></span></div>
           <div class="mini-family">
@@ -75,15 +75,15 @@
           <svg class="device-lock" viewBox="0 0 48 56" aria-hidden="true"><path d="M13 25v-7c0-7 4.8-12 11-12s11 5 11 12v7"/><rect x="8" y="24" width="32" height="26" rx="8"/></svg>
           <b>Importing app</b><small>Opens after authentication</small>
         </div>
-        <div class="password-route"><span>Password shared separately</span><i></i></div>
+        <div class="password-route"><span>Optional password shared separately</span><i></i></div>
       </div>
     </section>
 
     <section class="plain-answer page-width" aria-labelledby="plain-answer-title">
-      <h2 id="plain-answer-title">End to end—for a portable backup.</h2>
+      <h2 id="plain-answer-title">One encrypted format—with an optional secret.</h2>
       <div>
-        <p>The readable family tree exists at the two ends: inside the app that creates the backup and inside the app that successfully imports it. Between those ends, the <code>.heritg</code> file contains encrypted bytes.</p>
-        <p>This differs from a messaging service. HERITG does not upload this backup to a family-data server. You choose where the file goes—such as local storage, your own cloud drive, or directly to another person—and share the password through a separate channel.</p>
+        <p>The readable family tree exists at the two ends: inside the app that creates the backup and inside the app that successfully imports it. Between those ends, every current <code>.heritg</code> file contains authenticated encrypted bytes. Password-protected backups add end-to-end confidentiality between those trusted endpoints.</p>
+        <p>This differs from a messaging service. HERITG does not upload this backup to a family-data server. You choose where the file goes—such as local storage, your own cloud drive, or directly to another person—and, when you set one, share the password through a separate channel.</p>
       </div>
     </section>
 
@@ -110,8 +110,8 @@
             </li>
             <li>
               <span class="journey-number">2</span>
-              <div><h3>Turn the password into a key</h3><p>The password is normalized to Unicode NFC and processed with PBKDF2-HMAC-SHA256 for 600,000 iterations. A new 16-byte random salt makes equal passwords derive different keys for different exports.</p></div>
-              <code>password + random salt -&gt; 256-bit key</code>
+              <div><h3>Turn the optional password into a key</h3><p>The password is normalized to Unicode NFC and processed with PBKDF2-HMAC-SHA256 for 600,000 iterations. An empty password is processed as an empty UTF-8 byte string. A new 16-byte random salt makes every export derive a different key.</p></div>
+              <code>optional password + random salt -&gt; 256-bit key</code>
             </li>
             <li>
               <span class="journey-number">3</span>
@@ -120,12 +120,12 @@
             </li>
             <li>
               <span class="journey-number">4</span>
-              <div><h3>Move an opaque file</h3><p>The resulting <code>.heritg</code> file can travel through storage or sharing services without exposing the family records inside it. The password is never embedded in the file.</p></div>
+              <div><h3>Move one sealed file</h3><p>The resulting <code>.heritg</code> file always contains encrypted bytes. A non-empty password keeps the records confidential and prevents a file holder from forging a valid replacement; an empty password does neither, because anyone can derive the same key.</p></div>
               <code>HTGENC01 · header · ciphertext · authentication tag</code>
             </li>
             <li>
               <span class="journey-number">5</span>
-              <div><h3>Authenticate before import</h3><p>The destination app derives the same key from the password and stored salt. It authenticates the envelope, verifies every checksum and graph reference, and only then commits the imported family data.</p></div>
+              <div><h3>Authenticate before import</h3><p>The destination app first tries the empty password. If that authenticates, import continues without a prompt; otherwise the app asks for the password. It verifies every checksum and graph reference before committing any family data.</p></div>
               <code>all checks pass → atomic import</code>
             </li>
           </ol>
@@ -133,7 +133,7 @@
 
         <section id="code" class="article-section code-section">
           <h2>The promise is in the source</h2>
-          <p class="section-intro">The excerpt below is abridged from the actual path used for password-protected web exports. It asks the browser’s Web Crypto implementation to derive a non-extractable AES key and authenticate both the header and payload. The link opens the complete implementation.</p>
+          <p class="section-intro">The excerpt below is abridged from the actual path used for every web <code>.heritg</code> export, including an empty password. It asks the browser’s Web Crypto implementation to derive a non-extractable AES key and authenticate both the header and payload. The link opens the complete implementation.</p>
 
           <div class="code-window">
             <div class="code-window-bar"><span>web/src/heritgArchive.ts</span><a class="external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/web/src/heritgArchive.ts#L105-L170" target="_blank" rel="noopener">Open exact lines</a></div>
@@ -163,11 +163,17 @@ const sealed = await crypto.subtle.encrypt(
             <a class="external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/android/core/src/main/java/tech/robihamanto/heritg/android/core/interop/ArchiveCrypto.kt#L24-L127" target="_blank" rel="noopener"><span>Android</span><strong>JCA + SecureRandom</strong><small>Inspect Kotlin implementation</small></a>
           </div>
           <p class="accuracy-note"><strong>Implementation note:</strong> Android archive encryption uses Java Cryptography Architecture primitives and <code>SecureRandom</code>; the password-derived archive key is not stored in Android Keystore.</p>
+          <p class="accuracy-note"><strong>Prompt-free import path:</strong> Each app first authenticates with the empty password. These links show the exact decision that restores immediately or asks for a non-empty password.</p>
+          <div class="platform-source-list" aria-label="Platform empty-password import implementations">
+            <a class="external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/ios/Heritg/FamilyTreeLibraryView.swift#L348-L364" target="_blank" rel="noopener"><span>iOS import</span><strong>Try empty, then prompt</strong><small>Inspect Swift routing</small></a>
+            <a class="external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/web/src/TreeSidebar.tsx#L101-L119" target="_blank" rel="noopener"><span>Web import</span><strong>Try empty, then prompt</strong><small>Inspect TypeScript routing</small></a>
+            <a class="external-link" href="https://github.com/Hamanto-Studio/heritg/blob/main/android/app/src/main/java/tech/robihamanto/heritg/android/MainActivity.kt#L155-L169" target="_blank" rel="noopener"><span>Android import</span><strong>Try empty, then prompt</strong><small>Inspect Kotlin routing</small></a>
+          </div>
         </section>
 
         <section id="envelope" class="article-section envelope-section">
           <h2>The file says how to open it—never the password</h2>
-          <p class="section-intro">The first 44 bytes are a versioned, authenticated envelope header. These values are safe to store beside the ciphertext; they describe how to derive the key but do not reveal the password or key.</p>
+          <p class="section-intro">The first 44 bytes are a versioned, authenticated envelope header. These values are safe to store beside the ciphertext; they describe how to derive the key but do not contain a password or key. An empty password remains publicly guessable by definition.</p>
 
           <div class="envelope-diagram" aria-label="The 44-byte HERITG encrypted archive header followed by ciphertext and a 16-byte authentication tag">
             <div class="envelope-segment segment-magic"><b>8 bytes</b><span>Magic</span><code>HTGENC01</code></div>
@@ -182,18 +188,22 @@ const sealed = await crypto.subtle.encrypt(
         </section>
 
         <section id="proof" class="article-section proof-section">
-          <h2>One vector, asserted on three platforms</h2>
-          <p class="section-intro">A synthetic test archive fixes the date, salt, nonce, and NFC-equivalent passwords. All three source suites assert the same complete encrypted file hash. The web assertion passed locally; iOS and Android remain release-CI requirements.</p>
+          <h2>Two vectors, asserted on three platforms</h2>
+          <p class="section-intro">A synthetic test archive fixes the date, salt, and nonce. All three source suites assert the same complete encrypted file hashes for both NFC-equivalent non-empty passwords and the empty-password path. This proves the compulsory envelope remains byte-compatible across iOS, web, and Android.</p>
 
           <div class="proof-hash">
             <span>Expected encrypted archive SHA-256</span>
             <code>2806b437258da23ca3e0f1f57df81ae69467869ed9d9e8e0c84e00cb9bcd2780</code>
           </div>
+          <div class="proof-hash">
+            <span>Expected empty-password archive SHA-256</span>
+            <code>bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440</code>
+          </div>
 
           <div class="proof-platforms">
-            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/ios/HeritgTests/HeritgArchiveTests.swift#L38-L81" target="_blank" rel="noopener"><span>iOS test</span><b>Same hash asserted</b><small>Native CI required</small><i class="status-pending" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></i></a>
-            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/web/src/heritgArchive.test.ts#L74-L104" target="_blank" rel="noopener"><span>Web test</span><b>Passed locally</b><small>Same hash produced</small><i class="status-passed" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></i></a>
-            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/android/core/src/test/java/tech/robihamanto/heritg/android/core/interop/HeritgArchiveCodecTest.kt#L27-L46" target="_blank" rel="noopener"><span>Android test</span><b>Same hash asserted</b><small>Native CI required</small><i class="status-pending" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></i></a>
+            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/ios/HeritgTests/HeritgArchiveTests.swift#L38-L92" target="_blank" rel="noopener"><span>iOS test</span><b>Both hashes asserted</b><small>CI-enforced native suite</small><i class="status-passed" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></i></a>
+            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/web/src/heritgArchive.test.ts#L99-L160" target="_blank" rel="noopener"><span>Web test</span><b>Both hashes asserted</b><small>CI-enforced web suite</small><i class="status-passed" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></i></a>
+            <a href="https://github.com/Hamanto-Studio/heritg/blob/main/android/core/src/test/java/tech/robihamanto/heritg/android/core/interop/HeritgArchiveCodecTest.kt#L27-L61" target="_blank" rel="noopener"><span>Android test</span><b>Both hashes asserted</b><small>CI-enforced native suite</small><i class="status-passed" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg></i></a>
           </div>
 
           <div class="proof-links">
@@ -211,17 +221,18 @@ const sealed = await crypto.subtle.encrypt(
             <div class="boundary-protects">
               <h3>Protected by the encrypted backup</h3>
               <ul>
-                <li>Family records and photos inside the exported archive</li>
-                <li>Detection of a modified header, ciphertext, or authentication tag</li>
+                <li>Family records and photos inside the exported archive when a non-empty password is used</li>
+                <li>Detection of accidental or unauthenticated changes to the header, ciphertext, or tag</li>
                 <li>Detection of changed, missing, extra, or corrupted payload files</li>
               </ul>
             </div>
             <div class="boundary-does-not">
               <h3>Outside the encryption boundary</h3>
               <ul>
+                <li>An empty password, which provides no confidentiality or authenticity against someone holding the file</li>
                 <li>A weak, reused, shared, or exposed password</li>
                 <li>Malware or an attacker controlling an unlocked device or browser</li>
-                <li>Readable GEDCOM, image, SVG, or deliberately unencrypted exports</li>
+                <li>Readable GEDCOM, image, SVG, or legacy unencrypted archives</li>
                 <li>Password loss—HERITG has no recovery key or password escrow</li>
               </ul>
             </div>
@@ -229,7 +240,7 @@ const sealed = await crypto.subtle.encrypt(
 
           <div class="password-advice">
             <svg viewBox="0 0 48 56" aria-hidden="true"><path d="M13 25v-7c0-7 4.8-12 11-12s11 5 11 12v7"/><rect x="8" y="24" width="32" height="26" rx="8"/></svg>
-            <div><strong>Use a long, unique password—and keep it somewhere safe.</strong><p>New encrypted exports require at least 15 Unicode code points. Length helps resist offline guessing, but no work factor can rescue an easily guessed password.</p></div>
+            <div><strong>Choose convenience or confidentiality deliberately.</strong><p>Leave the password empty when automatic import matters more than file secrecy. To keep the archive private, use at least 15 Unicode code points and store the password safely; HERITG has no recovery key.</p></div>
           </div>
         </section>
       </article>

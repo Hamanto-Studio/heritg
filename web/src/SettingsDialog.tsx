@@ -20,6 +20,10 @@ interface SettingsDialogProps {
   exportSvg: () => Promise<void>;
 }
 
+export const archivePasswordIsReady = (password: string, confirmation: string) =>
+  password === confirmation &&
+  (password.length === 0 || [...password.normalize("NFC")].length >= 15);
+
 export function SettingsDialog({
   data,
   tree,
@@ -33,8 +37,16 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
-  const passwordIsReady = [...archivePassword.normalize("NFC")].length >= 15 &&
-    archivePassword === archivePasswordConfirmation;
+  const archivePasswordLength = [...archivePassword.normalize("NFC")].length;
+  const passwordIsReady = archivePasswordIsReady(archivePassword, archivePasswordConfirmation);
+  const passwordIsTooShort = archivePassword.length > 0 && archivePasswordLength < 15;
+  const passwordsDoNotMatch = archivePasswordConfirmation.length > 0 &&
+    archivePassword !== archivePasswordConfirmation;
+  const archivePasswordError = passwordsDoNotMatch
+    ? t("archivePasswordsMismatch")
+    : passwordIsTooShort
+      ? t("archivePasswordTooShort")
+      : undefined;
   const perform = (operation: () => void | Promise<void>) => {
     void Promise.resolve()
       .then(operation)
@@ -61,9 +73,12 @@ export function SettingsDialog({
               <p className="settings-detail">{t("backupDetail")}</p>
             </div>
           </div>
+          <p className="settings-detail"><strong>{t("everyBackupEncrypted")}</strong></p>
           <label className="field">
-            {t("archivePassword")}
+            {t("archivePasswordOptional")}
             <input
+              aria-describedby={archivePasswordError ? "archive-password-help archive-password-error" : "archive-password-help"}
+              aria-invalid={Boolean(archivePasswordError)}
               autoComplete="new-password"
               maxLength={1024}
               onChange={(event) => setArchivePassword(event.target.value)}
@@ -74,6 +89,8 @@ export function SettingsDialog({
           <label className="field">
             {t("confirmArchivePassword")}
             <input
+              aria-describedby={archivePasswordError ? "archive-password-help archive-password-error" : "archive-password-help"}
+              aria-invalid={Boolean(archivePasswordError)}
               autoComplete="new-password"
               maxLength={1024}
               onChange={(event) => setArchivePasswordConfirmation(event.target.value)}
@@ -81,7 +98,8 @@ export function SettingsDialog({
               value={archivePasswordConfirmation}
             />
           </label>
-          <p className="settings-detail">{t("archivePasswordHelp")}</p>
+          <p className="settings-detail" id="archive-password-help">{t("archivePasswordHelp")}</p>
+          {archivePasswordError ? <p className="danger-text" id="archive-password-error" role="alert">{archivePasswordError}</p> : null}
           <div className="settings-actions">
             <button className="button secondary" disabled={!passwordIsReady} onClick={() => perform(async () => {
               const archive = await exportHeritgArchive(data, tree.id, archivePassword);

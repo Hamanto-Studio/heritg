@@ -121,7 +121,6 @@ nonisolated enum HeritgArchive {
 
     static func makeArchive(_ payload: HeritgArchivePayload, password: String) throws -> Data {
         let zip = try HeritgArchiveFormat.encode(payload)
-        guard !password.isEmpty else { return zip }
         return try encrypt(zip, password: password, salt: randomData(count: saltByteCount), nonce: randomData(count: nonceByteCount))
     }
 
@@ -133,7 +132,6 @@ nonisolated enum HeritgArchive {
         nonce: Data
     ) throws -> Data {
         let zip = try HeritgArchiveFormat.encode(payload)
-        guard !password.isEmpty else { return zip }
         return try encrypt(zip, password: password, salt: salt, nonce: nonce)
     }
 

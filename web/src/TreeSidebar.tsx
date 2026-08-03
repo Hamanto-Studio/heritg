@@ -12,7 +12,11 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useRef, useState } from "react";
 
-import { heritgArchiveProtection, importHeritgArchive } from "./heritgArchive";
+import {
+  HeritgArchivePasswordError,
+  heritgArchiveProtection,
+  importHeritgArchive
+} from "./heritgArchive";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
@@ -97,12 +101,18 @@ export function TreeSidebar({
       const bytes = new Uint8Array(await file.arrayBuffer());
       const protection = heritgArchiveProtection(bytes);
       if (protection === "encrypted" || protection === "legacy-encrypted") {
-        setArchivePassword("");
-        setArchiveError(undefined);
-        setPendingArchive({ name: file.name, bytes });
-        return;
+        try {
+          actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
+        } catch (error) {
+          if (!(error instanceof HeritgArchivePasswordError)) throw error;
+          setArchivePassword("");
+          setArchiveError(undefined);
+          setPendingArchive({ name: file.name, bytes });
+          return;
+        }
+      } else {
+        actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
       }
-      actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
     } else if (lowerName.endsWith(".json")) {
       actions.replaceData(importHeritgBackup(await file.text(), { into: data }));
     } else if (lowerName.endsWith(".ged") || lowerName.endsWith(".gedcom")) {

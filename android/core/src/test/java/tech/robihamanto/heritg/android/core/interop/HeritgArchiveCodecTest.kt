@@ -45,6 +45,16 @@ class HeritgArchiveCodecTest {
         assertThrows(ArchiveException.WrongPasswordOrCorrupt::class.java) { codec.decode(tampered, composed) }
     }
 
+    @Test fun emptyPasswordStillProducesEncryptedArchiveAndRestoresWithoutPrompt() {
+        val salt = ByteArray(16) { it.toByte() }
+        val nonce = ByteArray(12) { (it + 16).toByte() }
+        val archive = codec.encode(validPayload(), "", salt, nonce)
+
+        assertEquals(ArchiveProtection.ENCRYPTED, codec.protection(archive))
+        assertEquals("bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440", sha256(archive))
+        assertEquals("tree-synthetic", codec.decode(archive, "").tree.id)
+    }
+
     @Test fun generatedSchemaMatchesAndReaderConsumesSharedExplodedFixture() {
         val expected = fixtureFiles()
         val actual = codec.exploded(fixturePayload())

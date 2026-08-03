@@ -110,6 +110,7 @@
 .diagram-caption { max-width: 68ch; margin: 20px 0 0; color: var(--muted); font-size: .86rem; line-height: 1.65; }
 
 .proof-hash { padding: clamp(26px, 4vw, 42px); border-radius: 14px; background: var(--forest); color: white; }
+.proof-hash + .proof-hash { margin-top: 12px; }
 .proof-hash span { display: block; margin-bottom: 15px; color: #c9ddc2; font-size: .76rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .proof-hash code { display: block; font-size: clamp(.72rem, 1.5vw, 1rem); line-height: 1.75; overflow-wrap: anywhere; }
 .proof-platforms { display: grid; grid-template-columns: repeat(3, 1fr); margin: 18px 0 46px; border-block: 1px solid var(--line); }

@@ -122,11 +122,12 @@
 "Above: %@; Below: %@" = "Atas: %@; Bawah: %@";
 "Limits how many family levels are shown above and below the selected person" = "Membatasi jumlah tingkat keluarga yang ditampilkan di atas dan di bawah orang yang dipilih";
 "Confirm password" = "Konfirmasi kata sandi";
-"Any non-empty password can be used. You will need it to restore the backup." = "Kata sandi apa pun yang tidak kosong dapat digunakan. Anda memerlukannya untuk memulihkan cadangan.";
 "Create Heritg backup" = "Buat cadangan Heritg";
 "Creating backup" = "Membuat cadangan";
 "Decrypting backup" = "Mendekripsi cadangan";
-"Encrypt with a password (optional)" = "Enkripsi dengan kata sandi (opsional)";
+"Every Heritg backup is encrypted" = "Setiap cadangan Heritg dienkripsi";
+"The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private." = "Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi, atau gunakan minimal 15 karakter agar berkas tetap privat.";
+"Password (optional)" = "Kata sandi (opsional)";
 "Encrypted Heritg backup" = "Cadangan Heritg terenkripsi";
 "Enter the password used when this backup was created." = "Masukkan kata sandi yang digunakan saat cadangan ini dibuat.";
 "Password" = "Kata sandi";
@@ -144,7 +145,6 @@
 "The Heritg backup is larger than 32 MB." = "Ukuran cadangan Heritg lebih dari 32 MB.";
 "The password is incorrect or the Heritg backup is damaged." = "Kata sandi salah atau cadangan Heritg rusak.";
 "This Heritg backup was created by an unsupported app version." = "Cadangan Heritg ini dibuat oleh versi aplikasi yang tidak didukung.";
-"Without encryption, anyone with the backup file can read your family data." = "Tanpa enkripsi, siapa pun yang memiliki berkas cadangan dapat membaca data keluarga Anda.";
 "%lld warnings" = "%lld peringatan";
 "Import Completed" = "Impor Selesai";
 "Imported %@ with %@.\n\n%@" = "Berhasil mengimpor %1$@ dengan %2$@.\n\n%3$@";

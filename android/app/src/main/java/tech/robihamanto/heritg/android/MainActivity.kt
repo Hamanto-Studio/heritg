@@ -37,6 +37,7 @@ import kotlinx.coroutines.withContext
 import tech.robihamanto.heritg.android.core.data.AppPreferences
 import tech.robihamanto.heritg.android.core.data.FamilyRepository
 import tech.robihamanto.heritg.android.core.interop.ArchiveProtection
+import tech.robihamanto.heritg.android.core.interop.ArchiveException
 import tech.robihamanto.heritg.android.core.interop.GedcomImporter
 import tech.robihamanto.heritg.android.core.interop.HeritgArchiveCodec
 import tech.robihamanto.heritg.android.core.model.FamilyTree
@@ -154,10 +155,14 @@ private fun HeritgApp(repository: FamilyRepository, preferences: AppPreferences,
                 val selectedBytes = LocalFiles.read(context.contentResolver, selected, 32 * 1024 * 1024)
                 bytes = selectedBytes
                 if (withContext(Dispatchers.Default) { codec.protection(selectedBytes) } == ArchiveProtection.ENCRYPTED) {
-                    retained = true
-                    uiState.show(Overlay.Password(selectedBytes, name))
+                    try {
+                        openTree(restoreArchive(selectedBytes, ""))
+                    } catch (_: ArchiveException.WrongPasswordOrCorrupt) {
+                        retained = true
+                        uiState.show(Overlay.Password(selectedBytes, name))
+                    }
                 } else {
-                    runCatching { restoreArchive(selectedBytes) }.onSuccess { openTree(it) }.onFailure(::showError)
+                    openTree(restoreArchive(selectedBytes))
                 }
             } catch (error: Throwable) {
                 showError(error)
