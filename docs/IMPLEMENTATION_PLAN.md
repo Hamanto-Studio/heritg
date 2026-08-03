@@ -1,469 +1,260 @@
 # HERITG Encrypted Sharing Implementation Plan
 
-Status: Saved for later implementation. This document does not authorize production deployment.
-
-## Document Security
-
-This plan intentionally contains no credentials or private account identifiers. Values that must be supplied during implementation use descriptive placeholders such as `<GCP_PROJECT_ID>`, `<BILLING_ACCOUNT_ID>`, `<CLOUDFLARE_ZONE_ID>`, `<APPLE_TEAM_ID>`, and `<SIGNING_CERT_SHA256>`.
-
-Never place API tokens, passwords, service-account keys, signing keys, billing identifiers, account email addresses, or local absolute paths in this document or repository.
+Status: Backend and Web POC implementation. This document does not authorize project creation, billing attachment, Terraform apply, public deployment, or production promotion.
 
 ## Objective
 
-Build an open-source, low-cost proof of concept for immutable, private, read-only family-tree sharing across web, iOS, and Android.
+Add anonymous, immutable, read-only encrypted share links without weakening HERITG's local-first editing model.
 
-The first deployment targets users in Indonesia and uses `https://heritg.hamanto.com` as the public origin. Family-tree content remains end-to-end encrypted. Local client databases remain authoritative, and the service stores only ciphertext and minimal operational metadata.
+- `https://heritg.hamanto.com` remains the landing page.
+- `https://heritgapp.hamanto.com` remains the Web application and share-link origin.
+- Vercel continues serving the Web application and `/s/<shareId>` viewer.
+- Google Cloud runs the API and private ciphertext storage in Jakarta.
+- Local editing, import, export, and IndexedDB remain available without an account or network connection.
 
-## POC Scope
+The first POC is Web-only at the UI level. iOS and Android receive the same protocol fixtures for later interoperability work, but their sharing interfaces are explicitly deferred.
 
-- Private, read-only secret links.
-- No public or search-indexed family pages.
-- No server-side family-tree editing.
-- No plaintext family-tree CRUD API.
-- No account system required for the initial sharing POC.
-- Immutable shared snapshots rather than live synchronization.
-- Client-generated encryption keys that are never sent to the service.
-- Jakarta-hosted Cloud Run, Firestore, Artifact Registry, and payload storage.
-- Globally delivered static viewer through Firebase Hosting.
-- Open-source clients, protocol, backend, infrastructure templates, tests, and threat model.
+## Scope
 
-## Confirmed Decisions
+Included:
 
-- Public domain: `heritg.hamanto.com`.
-- Registrar: Namecheap.
-- Authoritative DNS: Cloudflare.
-- DNS records for Firebase Hosting remain DNS-only during the POC.
-- Cloud provider: Google Cloud with a dedicated POC project.
-- Project ID pattern: `heritg-poc-<short-random-suffix>`.
-- Primary region: `asia-southeast2`.
-- Static hosting and TLS: Firebase Hosting.
-- Dynamic API: Cloud Run.
-- Metadata: Firestore Native mode.
-- Ciphertext objects: private Cloud Storage bucket.
-- Source repository: this public HERITG monorepo.
-- Every committed implementation and plan artifact must be safe for public disclosure.
-- DNS automation: short-lived, zone-scoped Cloudflare API tokens.
-- Namecheap API: not required.
+- Anonymous capability links.
+- One immutable encrypted snapshot per link.
+- Browser-side encryption and decryption.
+- Read-only recipient viewer.
+- Default 30-day and maximum 90-day expiry.
+- Early revocation with a separate deletion capability.
+- Maximum 32 MiB encrypted envelope.
+- Automated cleanup of abandoned, expired, and revoked data.
 
-## Proposed Architecture
+Excluded:
+
+- Accounts, login, recovery, or identity profiles.
+- Billing, RevenueCat integration, or paid entitlements.
+- 5 GB storage promises.
+- Live sync, collaboration, editing, comments, or history.
+- Password-derived encryption or password-protected links.
+- Server-side family-tree parsing, search, or rendering.
+- iOS and Android sharing UI in the POC.
+
+RevenueCat remains a possible future entitlement layer only after accounts and paid Pro access are designed.
+
+## Repositories and prerequisite
+
+- Client, canonical archive, landing page, and viewer: [`Hamanto-Studio/heritg`](https://github.com/Hamanto-Studio/heritg).
+- Private API and infrastructure: [`Hamanto-Studio/heritg-be`](https://github.com/Hamanto-Studio/heritg-be).
+- PR #26 is the prerequisite canonical 32 MiB cross-platform `.heritg` archive implementation.
+- This PR records the client architecture and protocol contract; backend implementation belongs in `heritg-be`.
+
+Do not commit credentials, signed URLs, fragment keys, raw deletion tokens, real family data, Terraform state, account identifiers, or private absolute paths to either repository.
+
+## Architecture
 
 ```text
-Namecheap registrar
+Cloudflare authoritative DNS (DNS-only)
         |
-Cloudflare authoritative DNS
+        +-- heritg.hamanto.com       Landing page
         |
-heritg.hamanto.com (DNS-only records)
-        |
-Firebase Hosting and managed TLS
-        |
-        +-- Static HERITG viewer
-        +-- /s/**  -> SPA viewer
-        +-- /v1/** -> Cloud Run rewrite
-                         |
-                  asia-southeast2
-                         |
-                 +-------+-------+
-                 |               |
-              Firestore      Cloud Storage
-              metadata       ciphertext only
+        +-- heritgapp.hamanto.com    Vercel Web app
+                    |
+                    +-- /s/<shareId>#k=<key>  SPA viewer
+                    +-- /api/v1/*            Vercel rewrite
+                                                   |
+                                             Cloud Run API
+                                           asia-southeast2
+                                              /          \
+                                      Firestore      Cloud Storage
+                                      metadata       ciphertext only
 ```
 
-Firebase Hosting is global. Encrypted content processing and persistent content storage remain in Jakarta. Privacy disclosures must explain that static delivery, edge routing, request metadata, and security logs can involve infrastructure outside Indonesia.
+Artifact Registry, Secret Manager, Scheduler, and the cleanup Cloud Run job also run in `asia-southeast2`. Cloudflare stays authoritative and DNS-only; no initial DNS change is required.
+
+Vercel serves static code globally. Privacy disclosures must accurately describe Vercel static hosting, Cloudflare DNS, Google Cloud processing, observable metadata, and the limits of client-side encryption.
 
 ## Public URLs
 
 ```text
 https://heritg.hamanto.com/
-https://heritg.hamanto.com/s/<SHARE_ID>#k=<BASE64URL_KEY>
-https://heritg.hamanto.com/v1/<ENDPOINT>
-https://heritg.hamanto.com/healthz
+https://heritgapp.hamanto.com/
+https://heritgapp.hamanto.com/s/<SHARE_ID>#k=<BASE64URL_KEY>
+https://heritgapp.hamanto.com/api/v1/<ENDPOINT>
 ```
 
-The decryption key stays after the URL fragment marker. URL fragments are not included in HTTP requests and therefore must not reach Firebase Hosting, Cloudflare DNS, Cloud Run, Firestore, Cloud Storage, or normal access logs.
+The key exists only after `#k=`. URL fragments do not enter HTTP requests. The client must also keep the complete link out of analytics, logs, referrers, crash reports, service-worker caches, and clipboard telemetry.
 
-## Cryptographic Envelope
+## HTGSHR01 protocol
 
-Proposed immutable envelope identifier: `HTGSHR01`.
-
+- Share ID: 16 random bytes, unpadded base64url (22 characters).
+- Encryption key: 32 random bytes, unpadded base64url (43 characters).
+- Deletion token: 32 random bytes; the server stores only its SHA-256 hash.
 - Cipher: AES-256-GCM.
-- Key: 32 random bytes generated on the client.
-- Nonce: 12 random bytes generated independently for each share.
+- Nonce: 12 fresh random bytes per share.
 - Authentication tag: 16 bytes.
-- Plaintext: canonical selected-tree `.heritg` payload.
-- Associated data: envelope version and opaque share identifier.
-- Encoding: deterministic binary envelope with an explicitly versioned schema.
-- Share identifier: high-entropy opaque random value.
-- Deletion token: separate high-entropy random value.
-- Server deletion-token storage: SHA-256 hash only.
-- Key transport: URL fragment only.
+- Plaintext: canonical unencrypted `.heritg` ZIP from PR #26.
+- Authenticated data: `ASCII("HTGSHR01") || 0x00 || ASCII(shareId)`.
+- Envelope bytes: `ASCII("HTGSHR01") || nonce || ciphertext-and-tag`.
+- Maximum complete envelope: 33,554,432 bytes.
 
-The protocol must have shared test vectors for web, Android, and iOS. Do not claim audited E2EE until an independent cryptographic review and penetration test are complete.
+The sharing envelope is separate from the password-based `HTGENC01` archive envelope. The Web, iOS, and Android implementations must consume one frozen synthetic fixture. Do not claim audited end-to-end encryption before independent cryptographic and penetration reviews.
 
-## Sharing Defaults
+## Corrected upload sequence
 
-- Default expiry: 30 days.
-- Maximum expiry: 90 days.
-- Maximum encrypted payload: 32 MiB, including envelope overhead.
-- Access: anyone possessing the complete secret link.
-- Recipient capability: read-only download and local decryption.
-- Sender capability: retain deletion token for early revocation.
-- Server capability: store, expire, revoke, and delete opaque ciphertext.
+The server must allocate the share ID before encryption because the share ID is authenticated data.
 
-The exact payload limit must be validated against Firebase Hosting, Cloud Run, signed URL, browser, and mobile constraints before it is frozen.
+1. Export the canonical unencrypted `.heritg` ZIP.
+2. Calculate encrypted size as archive length plus the 36-byte HTGSHR01 overhead.
+3. Request allocation with envelope version, exact ciphertext size, and expiry.
+4. Receive the allocated share ID, one-time deletion token, signed upload URL, and required headers.
+5. Generate the 256-bit key and 96-bit nonce in the browser.
+6. Encrypt locally using the allocated share ID in authenticated data.
+7. Upload the exact envelope with the required content type, signed metadata, and `x-goog-if-generation-match: 0`.
+8. Complete using the share ID, deletion token, and returned object generation.
+9. Construct `/s/<shareId>#k=<key>` locally. The key never enters an API request.
 
-## API Surface
+## Public API
 
 ```text
-POST /v1/share-uploads
-POST /v1/share-uploads/complete
-POST /v1/share-downloads
-POST /v1/share-revocations
+POST /api/v1/share-uploads
+POST /api/v1/share-uploads/complete
+POST /api/v1/share-downloads
+POST /api/v1/share-revocations
 GET  /healthz
+GET  /readyz
 ```
 
-All mutation endpoints use validated JSON request bodies. Do not put deletion tokens, signatures, object paths, or sensitive values in query strings.
+### Allocate
 
-### Upload Flow
+Input: envelope version, exact ciphertext size, and expiry. Output: share ID, deletion token, signed upload URL, required headers, upload expiry, and share expiry.
 
-1. Client creates a canonical selected-tree archive.
-2. Client generates a key and encrypts the archive locally.
-3. Client requests an upload allocation with ciphertext size and expiry.
-4. Server validates limits and creates opaque metadata.
-5. Server returns a short-lived signed upload URL.
-6. Client uploads ciphertext directly to the private bucket.
-7. Client completes the upload through the API.
-8. Server verifies object existence, size, and immutable state.
-9. Client constructs the secret link locally by adding the key fragment.
+### Complete
 
-### Download Flow
+Input: share ID, deletion token, and object generation. Activation succeeds only when object generation, exact size, content type, signed envelope metadata, and immutable generation-zero creation all match the allocation. Completion is one-time and replay-safe.
 
-1. Recipient opens the secret link.
-2. Viewer extracts the key from the URL fragment locally.
-3. Viewer requests a download using only the opaque share identifier.
-4. Server checks completion, expiry, and revocation.
-5. Server returns a short-lived signed download URL.
-6. Viewer downloads ciphertext and decrypts locally.
-7. Viewer validates the archive before rendering a read-only tree.
+### Download
 
-### Revocation Flow
+Input: share ID. Output: a short-lived signed download URL and non-sensitive envelope metadata only when the share is active and unexpired.
 
-1. Sender submits the share identifier and deletion token in a JSON body.
-2. Server hashes the supplied token and compares it safely.
-3. Server marks metadata revoked before object deletion.
-4. Server deletes the ciphertext object.
-5. Cleanup retries remain idempotent.
+### Revoke
 
-## Data Model
+Input: share ID and deletion token. Revocation becomes authoritative before object deletion. Retries are idempotent; scheduled cleanup retries failed deletion.
 
-Firestore stores only the opaque share and object identifiers, ciphertext byte length, envelope version, lifecycle timestamps, hashed deletion token, and narrow operational status.
+Every API response uses `Cache-Control: no-store`. JSON schemas reject unknown fields, malformed identifiers, oversized bodies, invalid transitions, and replays. Application logs exclude request and response bodies, IDs, tokens, signed URLs, object locators, and keys.
 
-Do not store names, relationships, dates, notes, media metadata, plaintext archive manifests, encryption keys, raw deletion tokens, full secret URLs, or user-entered family content.
-
-## Storage Rules
-
-- Payload bucket is private.
-- Public access prevention is enforced.
-- Uniform bucket-level access is enabled.
-- Object versioning is disabled for payloads.
-- Soft-delete retention is disabled or minimized after legal review.
-- Expired ciphertext is deleted automatically.
-- Abandoned uploads are deleted automatically.
-- Signed URLs have short expiration windows.
-- Storage object names are opaque and non-enumerable.
-- The Cloud Run runtime identity receives access only to this bucket.
-
-Terraform state uses a separate private bucket with versioning enabled. Infrastructure state must never share a bucket with family-tree ciphertext.
-
-## Threat Model Boundaries
-
-The design protects family-tree plaintext from the hosting service, database administrators, storage administrators, routine infrastructure backups, and passive network observers when clients are trustworthy.
-
-The design does not fully protect against:
-
-- A compromised web deployment serving malicious JavaScript.
-- A compromised mobile application build.
-- A compromised recipient or sender device.
-- A recipient intentionally redistributing decrypted content or the secret link.
-- Browser extensions, malware, screenshots, or clipboard monitoring.
-- Traffic analysis and operational metadata.
-- Weak random-number generation or incorrect client cryptography.
-
-Mitigations include strict build provenance, reproducible fixtures, code review, self-hosted scripts, restrictive CSP, dependency pinning, secret scanning, signed mobile releases, external cryptographic review, and clear user warnings.
-
-## Web Security Requirements
-
-- Strict Content Security Policy with self-hosted scripts only.
-- `Strict-Transport-Security`.
-- `Referrer-Policy: no-referrer`.
-- `X-Content-Type-Options: nosniff`.
-- CSP `frame-ancestors 'none'`.
-- Restrictive `Permissions-Policy`.
-- `X-Robots-Tag: noindex, nofollow, noarchive`.
-- `Cache-Control: no-store` on API responses.
-- Immutable caching only for fingerprinted static assets.
-- No third-party analytics, tag managers, advertisements, or remote JavaScript in the decryption viewer.
-- No logging of full share URLs, deletion tokens, signed URLs, or request bodies.
-- Explicit review of service-worker update and caching behavior.
-
-## Mobile Link Requirements
-
-Firebase Hosting serves:
+## Lifecycle
 
 ```text
-/.well-known/apple-app-site-association
-/.well-known/assetlinks.json
+allocated -> active -> revoked -> deleted
+                    -> expired -> deleted
+allocated ----------> expired -> deleted
 ```
 
-- iOS uses Associated Domains for `applinks:heritg.hamanto.com`.
-- Android uses verified App Links for `https://heritg.hamanto.com/s/*`.
-- Production identifiers and certificate fingerprints use placeholders until supplied securely.
-- Browser fallback works when the native application is unavailable.
-- All clients parse the same fragment-key format.
-- All recipient clients render shared data read-only.
+Upload grants are short-lived. Abandoned allocations expire automatically. Active shares expire at the selected date. Revocation and cleanup are safe under concurrent retries.
 
-## Domain and DNS Plan
+## Data and storage
 
-Namecheap remains the registrar. Cloudflare remains the authoritative DNS provider.
+Firestore stores only opaque identifiers and locators, status, exact ciphertext size, envelope version, lifecycle timestamps, generation, and the deletion-token hash.
 
-- Keep registrar lock, auto-renewal, recovery controls, and 2FA enabled.
-- Preserve all existing apex website, email routing, SPF, and verification records.
-- Export the Cloudflare zone before every provisioning change.
-- Add only records requested by Firebase for `heritg.hamanto.com`.
-- Keep Firebase ownership TXT records as required for renewal.
-- Keep web records DNS-only for the POC.
-- Let Firebase Hosting provision and renew TLS.
-- Do not depend on Cloudflare WAF because Firebase-generated hostnames can bypass it.
-- Enable DNSSEC only after Firebase domain provisioning is stable.
-- Add the Cloudflare-generated DS record through the Namecheap dashboard.
+It does not store names, relationships, dates, notes, media metadata, archive manifests, plaintext, encryption keys, raw deletion tokens, or complete share URLs.
 
-## Cloudflare Token Policy
+The payload bucket must have:
 
-Use separate temporary tokens restricted to the `hamanto.com` zone. The preflight token receives Zone Read and DNS Read. The short-lived deployment token receives Zone Read and DNS Edit.
+- Regional location `ASIA-SOUTHEAST2`.
+- Public-access prevention.
+- Uniform bucket-level access.
+- No public IAM member.
+- Generation-zero upload preconditions.
+- CORS restricted to `https://heritgapp.hamanto.com` for required upload/download methods and headers.
+- Lifecycle cleanup after the maximum retention safety margin.
+- No payload-state sharing with Terraform state.
 
-Tokens must be stored outside the repository, injected through the process environment or operating-system credential store, verified through Cloudflare's token endpoint, and revoked after use. Never use the global API key.
+Jakarta availability has been confirmed for Cloud Run, Firestore Native mode, and regional Cloud Storage. Location is still an explicit irreversible apply gate.
 
-## Namecheap Access Policy
+## Web implementation
 
-The Namecheap API is intentionally excluded because DNS is delegated to Cloudflare and registrar changes are infrequent. Production Namecheap API access would introduce an account-wide query-string credential and static IPv4 allowlisting without providing a POC benefit.
+- Add a Vercel rewrite for `/api/v1/*` to the approved Cloud Run URL before the SPA fallback.
+- Keep `/s/*` as an SPA deep link.
+- Export the selected tree without a password envelope, then wrap it in HTGSHR01.
+- Keep the encryption key in memory and the fragment only.
+- Authenticate the complete envelope before parsing the ZIP.
+- Reuse PR #26 archive size, ZIP-path, schema, record-count, media, and checksum validation.
+- Render the recipient tree in a separate read-only state; do not import it into IndexedDB automatically.
+- Prevent API responses and ciphertext from entering the service-worker cache.
+- Preserve existing offline editing, import, export, and local data.
+- Clearly warn that anyone with the complete link can read and redistribute the snapshot.
 
-Use the dashboard for registrar lock, renewal, nameservers, account recovery, and DNSSEC DS management.
+The landing page must mark every hosted Pro feature as **Coming soon** until accounts, entitlements, storage quotas, and production operations exist.
 
-## GCP Project and Region
+## Security controls
 
-Create a dedicated project only after the permanent ID and billing account are explicitly approved.
+- CSP with self-hosted application code and `frame-ancestors 'none'`.
+- HSTS, `Referrer-Policy: no-referrer`, `nosniff`, restrictive Permissions Policy, COOP, and CORP.
+- No analytics, ads, tag managers, or remote JavaScript in the viewer.
+- HMAC-pseudonymized per-operation rate limits with material stored in Secret Manager.
+- No secret bytes in Terraform state.
+- Private GitHub Actions authentication through Workload Identity Federation, never service-account JSON keys.
+- Dependency lock, secret scan, OpenAPI tests, protocol tests, Terraform validation, IaC lint, and container scan.
+- Conservative Cloud Run CPU, memory, concurrency, timeout, and maximum instances.
+
+## Tooling and stable commands
+
+The private backend pins Node 22 and Terraform through `mise`. It uses `gh`, `gcloud`, `gitleaks`, `tflint`, `trivy`, `jq`, and `shellcheck`.
 
 ```text
-Project display name: HERITG POC
-Project ID pattern:   heritg-poc-<short-random-suffix>
-Primary region:       asia-southeast2
+make doctor
+make test
+make infra-plan ENV=poc
+make infra-apply ENV=poc
+make deploy-poc
+make smoke BASE_URL=https://...
+make rollback REVISION=...
 ```
 
-Regional resources are the Cloud Run service, Artifact Registry repository, Firestore database, encrypted payload bucket, and Terraform state bucket.
+Vercel remains pinned through the existing `npx vercel@58.4.4` workflow in this repository. Firebase CLI, Wrangler, Docker, Stripe CLI, and RevenueCat tooling are unnecessary for this POC.
 
-Firebase Hosting is global. Cloud Logging location and retention must be reviewed separately, and logs must not contain family content or secrets.
+## Delivery gates
 
-## Required GCP APIs
+1. Merge PR #26 and freeze the canonical archive fixture.
+2. Merge this corrected architecture reference and the landing-page Coming soon copy.
+3. Initialize and review the private backend repository.
+4. Run backend, OpenAPI, protocol, Terraform, secret, dependency, and container checks.
+5. Review the foundation Terraform plan.
+6. Obtain explicit project ID, billing, budget, state-bucket, and Jakarta approvals.
+7. Apply foundation, then add the rate-limit secret version without Terraform.
+8. Review and apply Firestore, payload bucket, Cloud Run, and cleanup data plane.
+9. Deploy a no-traffic staged Cloud Run revision and a Vercel preview.
+10. Run synthetic allocation, upload, completion, download, expiry, and revocation checks.
+11. Require protected GitHub environment approval before infrastructure apply and production traffic promotion.
+12. Complete secret-history, privacy, cryptographic, and penetration reviews before making the backend repository public.
 
-Required services are Artifact Registry, Billing Budgets, Cloud Billing, Cloud Build, Cloud Resource Manager, Firebase Management, Firebase Hosting, Firestore, IAM, IAM Credentials, Logging, Monitoring, Cloud Run, Service Usage, and Cloud Storage APIs.
+## Acceptance criteria
 
-Enable required APIs through Terraform where practical and leave unrelated APIs disabled.
+- Web creates and opens a secret link without sending plaintext or the key.
+- Wrong keys, modified envelopes, missing fragments, malformed IDs, expiry, and revocation fail safely.
+- The backend cannot decrypt stored payloads.
+- Completion rejects wrong size, generation, content type, overwrite attempts, and replay.
+- Revocation and cleanup remain correct under concurrent retries.
+- No sensitive capability appears in logs, CI output, URLs sent to the API, or Git history.
+- Vercel deep links and SPA fallback work; the service worker does not cache ciphertext or API responses.
+- Existing IndexedDB data, local editing, imports, exports, and offline startup remain unaffected.
+- Web fixtures match the frozen protocol and are shared with iOS and Android.
+- Terraform proves private storage, least-privilege IAM, Jakarta location, budget alerts, and conservative Cloud Run limits.
+- CI plans automatically; all applies and production promotions require manual approval.
+- A known-good Cloud Run revision can be restored without rolling back data resources.
 
-## IAM Model
+## Stop conditions
 
-Create separate `heritg-runtime` and `heritg-deployer` identities.
+Stop and request direction when:
 
-The runtime identity receives only Firestore data access, payload-bucket object access, logging and metrics writing, and narrowly scoped signing capability when signed URLs require it.
+- project ID, billing account, budget, or Jakarta placement lacks explicit approval;
+- Firestore, Storage, Cloud Run, Secret Manager, or Scheduler cannot use the approved location;
+- an operation would replace landing-page DNS, application DNS, email, or existing Vercel configuration unexpectedly;
+- a provider requires a long-lived service-account or account-wide key;
+- archive or protocol fixtures do not interoperate;
+- plaintext or decryption keys would reach the backend;
+- tests, secret scans, dependency scans, Terraform validation, staged smoke checks, or history review fail;
+- an infrastructure plan contains an unexpected destroy or material cost increase.
 
-The deployment identity receives only deployment-related access for Cloud Run, Artifact Registry, Firebase Hosting, and controlled runtime-service-account impersonation.
+## Current next action
 
-GitHub Actions must use Workload Identity Federation. Do not create downloadable service-account JSON keys.
+Complete repository and client implementation plus read-only validation. Pause before creating any Google Cloud project, attaching billing, creating Firestore or Storage, applying Terraform, exposing Cloud Run, or promoting production traffic.
 
-## Repository and Tooling Plan
-
-- Treat every branch and pull request as public from its first commit.
-- Ignore dependencies, generated output, credentials, local configuration, Terraform state, emulator state, and signing artifacts.
-- Pin Node.js, Firebase CLI, Terraform, providers, base images, and production dependencies.
-- Use Cloud Build or an explicit supported Linux target for deployable containers from ARM development machines.
-- Require build, lint, unit tests, integration tests, secret scanning, dependency scanning, and container scanning.
-- Review all Git history before each release.
-
-The planned layout adds `server/` for Cloud Run, `infra/` for Terraform, `tests/fixtures/` for protocol fixtures, and Firebase configuration alongside the existing web `src/`.
-
-## Implementation Sequence
-
-### Phase 1: Repository Baseline
-
-1. Establish a clean public GitHub baseline.
-2. Exclude generated and sensitive files before the first commit.
-3. Run build, tests, lint, and a secret scan.
-4. Enable branch protection and available repository security controls.
-
-### Phase 2: Access Verification
-
-1. Authenticate GitHub, GCP, and Firebase interactively.
-2. Store Cloudflare tokens outside the repository.
-3. Run read-only checks for billing, project creation, zone access, and DNS records.
-4. Confirm no account identifiers or credentials enter Git history.
-
-### Phase 3: Project Bootstrap
-
-1. Generate and approve the permanent project ID.
-2. Create the project and attach approved billing.
-3. Add environment and application labels.
-4. Create billing alerts before workloads.
-5. Set conservative Cloud Run maximum-instance limits.
-6. Add Firebase to the existing GCP project.
-
-### Phase 4: Terraform Bootstrap
-
-1. Create a private regional Terraform state bucket.
-2. Enable uniform access, public-access prevention, and state versioning.
-3. Configure the remote backend.
-4. Pin Terraform and provider versions.
-5. Add required APIs, service identities, Artifact Registry, budgets, and monitoring configuration.
-6. Review the full plan before applying.
-
-### Phase 5: Irreversible Location Gate
-
-1. Reconfirm current Jakarta availability for Firestore and Storage.
-2. Review Firestore Native mode and its immutable location selection.
-3. Review payload retention, soft delete, lifecycle cleanup, and access controls.
-4. Obtain explicit approval before creating Firestore or payload storage.
-
-### Phase 6: Format Interoperability
-
-1. Designate the newer native `.heritg` archive as canonical.
-2. Implement compatible selected-tree import and export on the web.
-3. Create deterministic fixtures shared by all clients.
-4. Freeze the `HTGSHR01` envelope only after cross-platform tests pass.
-5. Obtain independent cryptographic review.
-
-### Phase 7: Backend
-
-1. Implement the server in TypeScript under `server/`.
-2. Validate every external input and enforce strict size limits.
-3. Implement signed upload and download flows.
-4. Implement completion, expiry, revocation, and idempotent cleanup.
-5. Add rate limiting, abuse controls, structured redacted logs, and health checks.
-6. Run unit, integration, emulator, malformed-input, and container security tests.
-7. Build through Cloud Build and deploy to Cloud Run in Jakarta.
-
-### Phase 8: Firebase Hosting
-
-1. Configure the SPA and `/s/**` fallback.
-2. Rewrite `/v1/**` to the Jakarta Cloud Run service.
-3. Apply strict security and caching headers.
-4. Review PWA service-worker behavior.
-5. Deploy and test through a Firebase preview hostname.
-
-### Phase 9: Custom Domain
-
-1. Export the Cloudflare zone.
-2. Start the Firebase custom-domain workflow.
-3. Add only Firebase-provided records using a temporary write token.
-4. Keep records DNS-only.
-5. Wait for ownership verification and managed TLS.
-6. Test the viewer, API, existing apex website, and email routing.
-7. Revoke the write token.
-
-### Phase 10: DNSSEC
-
-1. Enable DNSSEC in Cloudflare after custom-domain stability.
-2. Add the generated DS record through Namecheap.
-3. Verify the public DNSSEC chain and all existing services.
-
-### Phase 11: Mobile Links
-
-1. Add iOS Associated Domains.
-2. Add Android verified App Links.
-3. Publish association files with production placeholders replaced securely.
-4. Test installed-app routing, browser fallback, fragment preservation, and read-only rendering.
-
-### Phase 12: Release Gates
-
-1. Run all builds, tests, static analysis, secret scans, and dependency scans.
-2. Verify a clean Terraform plan after deployment.
-3. Verify keys, tokens, signed URLs, and plaintext never appear in logs.
-4. Verify expiry, revocation, deletion, and abandoned-upload cleanup.
-5. Verify budget alerts and maximum-instance controls.
-6. Complete privacy, DPIA, legal, cryptographic, and penetration-testing gates.
-7. Scan the complete Git history before each release.
-
-## Compliance Workstream
-
-Obtain Indonesian legal counsel for the final interpretation and launch decision.
-
-The workstream should cover:
-
-- UU No. 27 Tahun 2022 on Personal Data Protection.
-- Controller and processor role analysis.
-- DPIA for family, child, and potentially sensitive personal data.
-- Parental or guardian consent where required.
-- PSE registration assessment.
-- Privacy notice and lawful-processing basis.
-- Data-subject request procedures.
-- Breach response procedures within applicable `3 x 24 hour` deadlines.
-- Cross-border processing and transfer review for Firebase edge delivery, logs, support, and subprocessors.
-- Retention, revocation, deletion, backup, and legal-hold behavior.
-- Vendor and subprocessor disclosures.
-
-E2EE reduces content exposure but does not remove legal obligations for metadata, client software, operations, or user support.
-
-## Cost Controls
-
-Expected small-scale POC infrastructure remains approximately USD 0-5 per month, excluding the existing domain and external reviews. Actual Jakarta storage, egress, build, and logging usage is billed.
-
-- Use scale-to-zero Cloud Run with conservative maximum instances.
-- Use small payload and expiry limits.
-- Add billing alerts before deployment.
-- Configure short log retention where legally and operationally appropriate.
-- Avoid a fixed-cost Google HTTPS load balancer.
-- Use Firebase Hosting within applicable allowances.
-- Review costs after every load test.
-
-## Delivery Estimate
-
-Estimated engineering effort: 8-12 engineer-weeks, excluding legal work, external cryptographic review, and penetration testing.
-
-Suggested milestones:
-
-1. Access, repository, and infrastructure bootstrap.
-2. Canonical archive interoperability.
-3. Cross-platform encrypted envelope.
-4. Backend and lifecycle implementation.
-5. Firebase viewer and custom domain.
-6. Mobile deep links.
-7. Security, compliance, and launch review.
-
-## Acceptance Criteria
-
-- A sender can create an immutable encrypted share from web, iOS, or Android.
-- The server receives no decryption key or plaintext family content.
-- Each supported client can decrypt fixtures created by every other client.
-- A recipient can view but cannot edit the shared snapshot through the sharing interface.
-- Expired and revoked shares cannot obtain new download URLs.
-- Ciphertext is removed according to documented lifecycle behavior.
-- Existing `hamanto.com` website and email services remain unaffected.
-- `heritg.hamanto.com` serves valid managed TLS and is not indexed.
-- No secret, key, raw deletion token, signed URL, or plaintext appears in source control or logs.
-- Runtime and deployment IAM permissions pass least-privilege review.
-- Builds, tests, lint, infrastructure validation, secret scans, dependency scans, and container scans pass.
-- Threat model, privacy scope, incident response, and legal gates are approved before public launch.
-
-## Explicit Stop Conditions
-
-Stop implementation and request approval if:
-
-- The permanent GCP project ID or billing account differs from the approved value.
-- Firestore or Storage cannot use the approved Jakarta location.
-- A provider requires a long-lived account-wide credential.
-- Existing DNS, website, or email records would be replaced.
-- A client cannot interoperate with the canonical archive or encryption fixtures.
-- Plaintext or decryption keys would be exposed to the backend.
-- Retention behavior conflicts with revocation or legal requirements.
-- Tests or secret scans fail.
-- Unexpected infrastructure cost or organization policy appears.
-
-## Current Next Action
-
-Implementation remains deferred. When resumed, perform only repository/tooling setup and read-only account verification first, then report results and obtain approval before creating any cloud resource.
