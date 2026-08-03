@@ -151,7 +151,6 @@ function separateVerticalChannels(families) {
       childRail.start.x = Math.min(...childXs, trunkX);
       childRail.end.x = Math.max(...childXs, trunkX);
     }
-    family.junctions = [{ x: trunkX, y: trunk.start.y }, { x: trunkX, y: trunk.end.y }];
     occupiedTrunks.push({ ...trunk, familyID: family.id });
   });
 }
@@ -206,6 +205,42 @@ function splitConnectorSegments(segments) {
     return ordered.slice(0, -1).map((point, index) => ({ start: point, end: ordered[index + 1] }))
       .filter((part) => !connectorPointsEqual(part.start, part.end));
   });
+}
+
+const connectorDirectionFrom = (point, other) => {
+  if (other.x < point.x) return 'left';
+  if (other.x > point.x) return 'right';
+  if (other.y < point.y) return 'up';
+  if (other.y > point.y) return 'down';
+  return undefined;
+};
+
+function branchJunctions(segments) {
+  const candidates = new Map();
+  segments.forEach(({ start, end }) => {
+    candidates.set(connectorPointKey(start), start);
+    candidates.set(connectorPointKey(end), end);
+  });
+  segments.forEach((segment, index) => segments.slice(index + 1).forEach((other) => {
+    if (orientation(segment) === orientation(other)) return;
+    const horizontal = orientation(segment) === 'horizontal' ? segment : other;
+    const vertical = orientation(segment) === 'vertical' ? segment : other;
+    const intersection = { x: vertical.start.x, y: horizontal.start.y };
+    if (pointOnConnectorSegment(intersection, segment) && pointOnConnectorSegment(intersection, other)) {
+      candidates.set(connectorPointKey(intersection), intersection);
+    }
+  }));
+  return [...candidates.values()].filter((point) => {
+    const directions = new Set();
+    segments.forEach((segment) => {
+      if (!pointOnConnectorSegment(point, segment)) return;
+      const startDirection = connectorDirectionFrom(point, segment.start);
+      const endDirection = connectorDirectionFrom(point, segment.end);
+      if (startDirection) directions.add(startDirection);
+      if (endDirection) directions.add(endDirection);
+    });
+    return directions.size >= 3;
+  }).sort((first, second) => first.y - second.y || first.x - second.x);
 }
 
 function connectorPaths(segments) {
@@ -354,7 +389,6 @@ function buildFamilyRoutes(locale) {
       { kind: 'child-rail', start: { x: Math.min(...childXs, trunkX), y: childRailY }, end: { x: Math.max(...childXs, trunkX), y: childRailY } },
       ...family.childIDs.map((id) => ({ kind: 'child-drop', start: { x: personByID.get(id).x, y: childRailY }, end: { x: personByID.get(id).x, y: personByID.get(id).y - 32 } })),
     ].filter((segment) => segment.start.x !== segment.end.x || segment.start.y !== segment.end.y);
-    family.junctions = [{ x: trunkX, y: parentJoinY }, { x: trunkX, y: childRailY }];
   });
   families.sort((a, b) => a.id.localeCompare(b.id));
   separateVerticalChannels(families);
@@ -412,7 +446,7 @@ function setupFamilyTree(root) {
   const routes = buildFamilyRoutes(locale);
   routes.families.forEach((family) => {
     connectorPaths(family.segments).forEach((points) => drawPath(points, 'family-connector'));
-    family.junctions.forEach((junction) => drawCircle(junction, 'family-junction', 3.25));
+    branchJunctions(family.segments).forEach((junction) => drawCircle(junction, 'family-junction', 2));
   });
   routes.crossings.forEach((point) => {
     drawCircle(point, 'crossing-knockout', 6);
