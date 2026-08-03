@@ -173,6 +173,131 @@ function crossingPoints(families) {
   return points;
 }
 
+const connectorPointKey = (point) => `${point.x}:${point.y}`;
+const connectorPointsEqual = (first, second) => first.x === second.x && first.y === second.y;
+const pointOnConnectorSegment = (point, segment) => {
+  if (orientation(segment) === 'vertical') {
+    return point.x === segment.start.x
+      && point.y >= Math.min(segment.start.y, segment.end.y)
+      && point.y <= Math.max(segment.start.y, segment.end.y);
+  }
+  return point.y === segment.start.y
+    && point.x >= Math.min(segment.start.x, segment.end.x)
+    && point.x <= Math.max(segment.start.x, segment.end.x);
+};
+
+function splitConnectorSegments(segments) {
+  return segments.flatMap((segment) => {
+    const points = [segment.start, segment.end];
+    segments.forEach((other) => {
+      [other.start, other.end].forEach((point) => {
+        if (pointOnConnectorSegment(point, segment)) points.push(point);
+      });
+      if (orientation(segment) === orientation(other)) return;
+      const horizontal = orientation(segment) === 'horizontal' ? segment : other;
+      const vertical = orientation(segment) === 'vertical' ? segment : other;
+      const intersection = { x: vertical.start.x, y: horizontal.start.y };
+      if (pointOnConnectorSegment(intersection, segment) && pointOnConnectorSegment(intersection, other)) {
+        points.push(intersection);
+      }
+    });
+    const ordered = [...new Map(points.map((point) => [connectorPointKey(point), point])).values()]
+      .sort((first, second) => orientation(segment) === 'vertical' ? first.y - second.y : first.x - second.x);
+    return ordered.slice(0, -1).map((point, index) => ({ start: point, end: ordered[index + 1] }))
+      .filter((part) => !connectorPointsEqual(part.start, part.end));
+  });
+}
+
+function connectorPaths(segments) {
+  const nodes = new Map();
+  const edges = [];
+  const ensureNode = (point) => {
+    const key = connectorPointKey(point);
+    if (!nodes.has(key)) nodes.set(key, { point, edgeIndexes: [] });
+    return key;
+  };
+  splitConnectorSegments(segments).forEach((segment) => {
+    const startKey = ensureNode(segment.start);
+    const endKey = ensureNode(segment.end);
+    const edgeIndex = edges.length;
+    edges.push({ startKey, endKey });
+    nodes.get(startKey).edgeIndexes.push(edgeIndex);
+    nodes.get(endKey).edgeIndexes.push(edgeIndex);
+  });
+  const otherKey = (edge, key) => edge.startKey === key ? edge.endKey : edge.startKey;
+  const comparePoints = (first, second) => first.y - second.y || first.x - second.x;
+  const sortedEdges = (key, indexes) => [...indexes].sort((first, second) => {
+    const firstPoint = nodes.get(otherKey(edges[first], key)).point;
+    const secondPoint = nodes.get(otherKey(edges[second], key)).point;
+    return comparePoints(firstPoint, secondPoint);
+  });
+  const visited = new Set();
+  const results = [];
+  const walk = (startKey, firstEdgeIndex) => {
+    const points = [nodes.get(startKey).point];
+    let currentKey = startKey;
+    let edgeIndex = firstEdgeIndex;
+    while (!visited.has(edgeIndex)) {
+      visited.add(edgeIndex);
+      currentKey = otherKey(edges[edgeIndex], currentKey);
+      const node = nodes.get(currentKey);
+      points.push(node.point);
+      if (node.edgeIndexes.length !== 2) break;
+      const nextEdge = sortedEdges(currentKey, node.edgeIndexes).find((candidate) => !visited.has(candidate));
+      if (nextEdge === undefined) break;
+      edgeIndex = nextEdge;
+    }
+    const simplified = points.filter((point, index) => {
+      if (!index || index === points.length - 1) return true;
+      const previous = points[index - 1];
+      const next = points[index + 1];
+      return !((previous.x === point.x && point.x === next.x) || (previous.y === point.y && point.y === next.y));
+    });
+    if (simplified.length > 1) results.push(simplified);
+  };
+  [...nodes.entries()]
+    .filter(([, node]) => node.edgeIndexes.length !== 2)
+    .sort(([, first], [, second]) => comparePoints(first.point, second.point))
+    .forEach(([key, node]) => sortedEdges(key, node.edgeIndexes).forEach((edgeIndex) => {
+      if (!visited.has(edgeIndex)) walk(key, edgeIndex);
+    }));
+  edges.forEach((edge, edgeIndex) => {
+    if (!visited.has(edgeIndex)) walk(edge.startKey, edgeIndex);
+  });
+  return results;
+}
+
+const connectorPathNumber = (value) => String(Math.round(value * 100) / 100);
+const connectorDistance = (first, second) => Math.abs(first.x - second.x) + Math.abs(first.y - second.y);
+const connectorPointToward = (from, to, amount) => ({
+  x: from.x + Math.sign(to.x - from.x) * Math.min(amount, Math.abs(to.x - from.x)),
+  y: from.y + Math.sign(to.y - from.y) * Math.min(amount, Math.abs(to.y - from.y)),
+});
+
+function roundedConnectorPath(points, radius = 12) {
+  const commands = [`M ${connectorPathNumber(points[0].x)} ${connectorPathNumber(points[0].y)}`];
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    const next = points[index + 1];
+    const isCorner = previous.x !== next.x && previous.y !== next.y;
+    if (!isCorner) {
+      commands.push(`L ${connectorPathNumber(current.x)} ${connectorPathNumber(current.y)}`);
+      continue;
+    }
+    const cornerRadius = Math.min(radius, connectorDistance(previous, current) / 2, connectorDistance(current, next) / 2);
+    const before = connectorPointToward(current, previous, cornerRadius);
+    const after = connectorPointToward(current, next, cornerRadius);
+    commands.push(
+      `L ${connectorPathNumber(before.x)} ${connectorPathNumber(before.y)}`,
+      `Q ${connectorPathNumber(current.x)} ${connectorPathNumber(current.y)} ${connectorPathNumber(after.x)} ${connectorPathNumber(after.y)}`,
+    );
+  }
+  const last = points[points.length - 1];
+  commands.push(`L ${connectorPathNumber(last.x)} ${connectorPathNumber(last.y)}`);
+  return commands.join(' ');
+}
+
 function buildFamilyRoutes(locale) {
   const grouped = new Map();
   const parentsByChild = new Map();
@@ -269,6 +394,15 @@ function setupFamilyTree(root) {
     drawIndex += 1;
     svg.append(line);
   };
+  const drawPath = (points, className) => {
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', roundedConnectorPath(points));
+    path.setAttribute('class', `${className} tree-line-draw`);
+    path.setAttribute('pathLength', '1');
+    path.style.setProperty('--draw-delay', `${Math.min(drawIndex * 24, 420)}ms`);
+    drawIndex += 1;
+    svg.append(path);
+  };
   const drawCircle = (point, className, radius) => {
     const circle = document.createElementNS(svgNS, 'circle');
     Object.entries({ cx: point.x, cy: point.y, r: radius }).forEach(([key, value]) => circle.setAttribute(key, value));
@@ -277,7 +411,7 @@ function setupFamilyTree(root) {
   };
   const routes = buildFamilyRoutes(locale);
   routes.families.forEach((family) => {
-    family.segments.forEach((segment) => drawLine(segment.start, segment.end, 'family-connector'));
+    connectorPaths(family.segments).forEach((points) => drawPath(points, 'family-connector'));
     family.junctions.forEach((junction) => drawCircle(junction, 'family-junction', 3.25));
   });
   routes.crossings.forEach((point) => {
