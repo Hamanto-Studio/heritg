@@ -126,7 +126,8 @@
 "Creating backup" = "Membuat cadangan";
 "Decrypting backup" = "Mendekripsi cadangan";
 "Every Heritg backup is encrypted" = "Setiap cadangan Heritg dienkripsi";
-"The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private." = "Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi, atau gunakan minimal 15 karakter agar berkas tetap privat.";
+"The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer." = "Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi. Jika menggunakan kata sandi, pakai minimal 8 karakter dengan huruf besar, huruf kecil, dan angka. Kata sandi yang lebih panjang lebih aman.";
+"Use at least 8 characters with an uppercase letter, a lowercase letter, and a number." = "Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.";
 "Password (optional)" = "Kata sandi (opsional)";
 "Encrypted Heritg backup" = "Cadangan Heritg terenkripsi";
 "Enter the password used when this backup was created." = "Masukkan kata sandi yang digunakan saat cadangan ini dibuat.";

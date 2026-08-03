@@ -18,8 +18,8 @@ struct ExportSettingsView: View {
     @State private var archivePasswordConfirmation = ""
     @State private var isPreparingArchive = false
 
-    private var archivePasswordCharacterCount: Int {
-        archivePassword.precomposedStringWithCanonicalMapping.unicodeScalars.count
+    private var archivePasswordMeetsRequirements: Bool {
+        ArchivePasswordPolicy.accepts(archivePassword)
     }
 
     init(
@@ -100,7 +100,7 @@ struct ExportSettingsView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(HeritgColor.add)
 
-            Text("The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private.")
+            Text("The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.")
                 .font(.footnote)
                 .foregroundStyle(HeritgColor.subtleText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -120,8 +120,8 @@ struct ExportSettingsView: View {
                     .foregroundStyle(HeritgColor.danger)
             }
 
-            if !archivePassword.isEmpty, archivePasswordCharacterCount < 15 {
-                Text("Use at least 15 characters.")
+            if !archivePasswordMeetsRequirements {
+                Text("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
                     .font(.footnote)
                     .foregroundStyle(HeritgColor.danger)
             }
@@ -138,7 +138,7 @@ struct ExportSettingsView: View {
             .buttonStyle(HeritgButtonStyle(variant: .secondary))
             .disabled(
                 isPreparingArchive || archivePassword != archivePasswordConfirmation ||
-                    (!archivePassword.isEmpty && archivePasswordCharacterCount < 15)
+                    !archivePasswordMeetsRequirements
             )
             .accessibilityIdentifier("settings.exportHeritg")
 
@@ -264,8 +264,8 @@ struct ExportSettingsView: View {
             exportError = String(localized: "Passwords do not match.", locale: AppLanguage.selectedLocale)
             return
         }
-        guard archivePassword.isEmpty || archivePasswordCharacterCount >= 15 else {
-            exportError = String(localized: "Use at least 15 characters.", locale: AppLanguage.selectedLocale)
+        guard archivePasswordMeetsRequirements else {
+            exportError = String(localized: "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.", locale: AppLanguage.selectedLocale)
             return
         }
 

@@ -18,8 +18,11 @@ another platform-specific archive or cryptographic construction.
   valid and means a zero-length byte string; it provides neither confidentiality
   nor authenticity against a file holder, who can derive the same key.
 - Export interfaces may leave the password empty. If it is non-empty, require
-  at least 15 NFC-normalized Unicode code points. Importers must try the empty
-  password first and prompt only after authentication fails.
+  at least 8 NFC-normalized Unicode code points with at least one Unicode
+  uppercase letter, one Unicode lowercase letter, and one Unicode decimal
+  digit. Recommend a longer unique password because archives can be guessed
+  offline. Importers must try the empty password first and prompt only after
+  authentication fails.
 - Authenticate the complete 44-byte envelope header as GCM additional data.
   Reject unknown versions, algorithm identifiers, or work factors before key
   derivation.

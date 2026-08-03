@@ -168,8 +168,8 @@
     <string name="show_all_people">Show all people</string>
     <string name="shown">Shown</string>
     <string name="hidden">Hidden</string>
-    <string name="password_restore_notice">The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private.</string>
-    <string name="password_too_short">Use at least 15 characters.</string>
+    <string name="password_restore_notice">The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.</string>
+    <string name="password_requirements">Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.</string>
     <string name="share_backup">Share Heritg backup</string>
     <string name="add_family_tree">Add family tree</string>
     <string name="actions_for">Actions for %1$s</string>

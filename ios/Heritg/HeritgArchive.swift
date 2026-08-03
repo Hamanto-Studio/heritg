@@ -45,6 +45,20 @@ nonisolated enum HeritgArchiveProtection: Equatable, Sendable {
     case unencrypted
 }
 
+nonisolated enum ArchivePasswordPolicy {
+    static let minimumCodePoints = 8
+
+    static func accepts(_ password: String) -> Bool {
+        guard !password.isEmpty else { return true }
+        let normalized = password.precomposedStringWithCanonicalMapping
+        let scalars = normalized.unicodeScalars
+        return scalars.count >= minimumCodePoints &&
+            scalars.contains { $0.properties.generalCategory == .uppercaseLetter } &&
+            scalars.contains { $0.properties.generalCategory == .lowercaseLetter } &&
+            scalars.contains { $0.properties.generalCategory == .decimalNumber }
+    }
+}
+
 nonisolated enum HeritgArchive {
     static let maximumFileBytes = 32 * 1_024 * 1_024
     static let maximumPeople = 100_000

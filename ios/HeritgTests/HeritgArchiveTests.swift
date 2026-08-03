@@ -5,6 +5,16 @@ import Testing
 @testable import HERITG
 
 struct HeritgArchiveTests {
+    @Test func optionalPasswordPolicyMatchesEveryWriter() {
+        #expect(ArchivePasswordPolicy.accepts(""))
+        #expect(ArchivePasswordPolicy.accepts("Pass1234"))
+        #expect(ArchivePasswordPolicy.accepts("Ångström1"))
+        #expect(!ArchivePasswordPolicy.accepts("Pass1"))
+        #expect(!ArchivePasswordPolicy.accepts("password1"))
+        #expect(!ArchivePasswordPolicy.accepts("PASSWORD1"))
+        #expect(!ArchivePasswordPolicy.accepts("Password"))
+    }
+
     @Test func unencryptedZIPRoundTripPreservesPortableSemantics() throws {
         let payload = validPayload()
         let archive = try HeritgArchiveFormat.encode(payload)

@@ -20,9 +20,17 @@ interface SettingsDialogProps {
   exportSvg: () => Promise<void>;
 }
 
+export const archivePasswordMeetsRequirements = (password: string) => {
+  if (password.length === 0) return true;
+  const normalized = password.normalize("NFC");
+  return [...normalized].length >= 8 &&
+    /\p{Lu}/u.test(normalized) &&
+    /\p{Ll}/u.test(normalized) &&
+    /\p{Nd}/u.test(normalized);
+};
+
 export const archivePasswordIsReady = (password: string, confirmation: string) =>
-  password === confirmation &&
-  (password.length === 0 || [...password.normalize("NFC")].length >= 15);
+  password === confirmation && archivePasswordMeetsRequirements(password);
 
 export function SettingsDialog({
   data,
@@ -37,15 +45,14 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
-  const archivePasswordLength = [...archivePassword.normalize("NFC")].length;
   const passwordIsReady = archivePasswordIsReady(archivePassword, archivePasswordConfirmation);
-  const passwordIsTooShort = archivePassword.length > 0 && archivePasswordLength < 15;
+  const passwordDoesNotMeetRequirements = !archivePasswordMeetsRequirements(archivePassword);
   const passwordsDoNotMatch = archivePasswordConfirmation.length > 0 &&
     archivePassword !== archivePasswordConfirmation;
   const archivePasswordError = passwordsDoNotMatch
     ? t("archivePasswordsMismatch")
-    : passwordIsTooShort
-      ? t("archivePasswordTooShort")
+    : passwordDoesNotMeetRequirements
+      ? t("archivePasswordRequirements")
       : undefined;
   const perform = (operation: () => void | Promise<void>) => {
     void Promise.resolve()

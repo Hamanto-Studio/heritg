@@ -51,7 +51,7 @@ They do not protect against:
 | Payload encryption | AES-256-GCM |
 | Password KDF | PBKDF2-HMAC-SHA256, 600,000 iterations |
 | Password bytes | Unicode NFC, then UTF-8 |
-| Password policy | Optional; empty is allowed, non-empty requires 15+ NFC code points in writer UIs |
+| Password policy | Optional; empty is allowed, non-empty requires 8+ NFC code points with Unicode uppercase, lowercase, and decimal-digit classes in writer UIs |
 | Salt | 16 random bytes per export |
 | Nonce | 12 random bytes per export |
 | Authentication tag | 16 bytes |
@@ -67,12 +67,15 @@ PBKDF2-HMAC-SHA256 work factor matches the current
 [OWASP Password Storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 for PBKDF2.
 
-The 15-NFC-code-point minimum for newly created non-empty backup passwords follows the
-single-factor minimum in
-[NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/).
-The archive use case is local password-based encryption rather than online
-authentication, but it has the same exposure to user-chosen weak secrets and
-adds offline guessing risk.
+The product policy for newly created non-empty backup passwords is a minimum of
+8 NFC code points plus uppercase, lowercase, and decimal-digit composition.
+This is a product compatibility choice, not a claim of equivalence with
+[NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/),
+which recommends a 15-character minimum for passwords used as a single
+authentication factor and generally advises against mandatory composition
+rules. The archive use case adds offline guessing risk: anyone with a copy can
+try candidates without an online rate limit. The interfaces therefore describe
+8 as a minimum and recommend a longer unique password.
 
 PBKDF2 is CPU-hard, not memory-hard. Argon2id would provide stronger resistance
 to massively parallel guessing, but it is not uniformly provided by CryptoKit,
@@ -130,7 +133,8 @@ accepts the pre-release Apple format for migration.
 The web settings flow previously downloaded a readable JSON backup, and native
 flows could create an unencrypted ZIP. Every current iOS, web, and Android
 `.heritg` export now emits `HTGENC01`. The password is optional; if supplied,
-all three interfaces require at least 15 NFC-normalized Unicode code points.
+all three interfaces require at least 8 NFC-normalized Unicode code points with
+an uppercase letter, a lowercase letter, and a decimal digit.
 With an empty password, importers authenticate and restore without prompting.
 
 An empty password does not turn encryption into access control or authenticity
@@ -176,8 +180,8 @@ The shared readers now:
 Android source is included in the reviewed tree. A pinned Android workflow runs
 unit tests, lint, and a debug build for Android and compatibility-fixture
 changes. Its export UI always uses the encrypted envelope, permits the empty
-password, and applies the same 15-character minimum as iOS and web when a
-password is supplied.
+password, and applies the same 8-character and character-class policy as iOS
+and web when a password is supplied.
 
 ### Open verification item: native CI (medium)
 

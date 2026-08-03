@@ -73,6 +73,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tech.robihamanto.heritg.android.core.domain.semanticFormatter
 import tech.robihamanto.heritg.android.core.interop.ArchivePayload
+import tech.robihamanto.heritg.android.core.interop.ArchivePasswordPolicy
 import tech.robihamanto.heritg.android.core.interop.GedcomExporter
 import tech.robihamanto.heritg.android.core.interop.HeritgArchiveCodec
 import tech.robihamanto.heritg.android.core.interop.TreeSvgExporter
@@ -82,11 +83,9 @@ import tech.robihamanto.heritg.android.core.model.Person
 import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
 import tech.robihamanto.heritg.android.core.tree.TreeLayout
 import tech.robihamanto.heritg.android.core.tree.TreeLayoutResult
-import java.text.Normalizer
 import java.time.Instant
 import java.time.LocalDate
 
-private const val MINIMUM_ARCHIVE_PASSWORD_CHARACTERS = 15
 private enum class SettingsPage { ROOT, LANGUAGE, EXPORT }
 private data class GeneratedShare(val bytes: ByteArray, val name: String, val mime: String) : MemoryOnlyValue {
     override fun clearMemory() = bytes.fill(0)
@@ -217,9 +216,8 @@ private fun ExportScreen(
     var error by uiState.state<String?>(prefix + "error") { null }
     var generatedArchive by uiState.state<GeneratedShare?>(prefix + "generatedArchive") { null }
     val passwordMismatch = stringResource(R.string.passwords_mismatch)
-    val passwordTooShort = stringResource(R.string.password_too_short)
-    val normalizedPassword = remember(password) { Normalizer.normalize(password, Normalizer.Form.NFC) }
-    val passwordCharacterCount = normalizedPassword.codePointCount(0, normalizedPassword.length)
+    val passwordRequirements = stringResource(R.string.password_requirements)
+    val passwordMeetsRequirements = remember(password) { ArchivePasswordPolicy.accepts(password) }
     val layoutState = remember(people, relationships, pointOfView, generationLimits, locale) {
         mutableStateOf<TreeLayoutResult?>(null)
     }
@@ -252,8 +250,8 @@ private fun ExportScreen(
         }
     }
     fun prepareArchive() {
-        if (password.isNotEmpty() && passwordCharacterCount < MINIMUM_ARCHIVE_PASSWORD_CHARACTERS) {
-            error = passwordTooShort
+        if (!passwordMeetsRequirements) {
+            error = passwordRequirements
             return
         }
         if (password != confirmation) {
@@ -281,8 +279,7 @@ private fun ExportScreen(
     }
     val keyboardActions = rememberFormKeyboardActions()
     val confirmationKeyboardActions = rememberFormKeyboardActions {
-        if (!working && (password.isEmpty() || passwordCharacterCount >= MINIMUM_ARCHIVE_PASSWORD_CHARACTERS) &&
-            password == confirmation
+        if (!working && passwordMeetsRequirements && password == confirmation
         ) prepareArchive()
     }
     val passwordsDoNotMatch = confirmation.isNotEmpty() && password != confirmation
@@ -345,14 +342,13 @@ private fun ExportScreen(
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordMismatch) }
                 .testTag("settings.passwordMismatch"),
         )
-        if (password.isNotEmpty() && passwordCharacterCount < MINIMUM_ARCHIVE_PASSWORD_CHARACTERS) Text(
-            passwordTooShort, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordTooShort) }
-                .testTag("settings.passwordTooShort"),
+        if (!passwordMeetsRequirements) Text(
+            passwordRequirements, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordRequirements) }
+                .testTag("settings.passwordRequirements"),
         )
         Button(onClick = ::prepareArchive,
-            enabled = !working && password == confirmation &&
-                (password.isEmpty() || passwordCharacterCount >= MINIMUM_ARCHIVE_PASSWORD_CHARACTERS),
+            enabled = !working && password == confirmation && passwordMeetsRequirements,
             modifier = Modifier.fillMaxWidth().testTag("settings.exportHeritg")) {
             Text(if (working) stringResource(R.string.creating_backup) else stringResource(R.string.create_backup))
         }

@@ -61,7 +61,7 @@ The native iOS and Android apps support:
 - An interactive visual family tree
 - GEDCOM family-data import and export
 - Cross-platform `.heritg` backup and restore
-- Optional password encryption for `.heritg` archives
+- Always-encrypted `.heritg` archives with an optional password
 - Image and SVG tree export
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
@@ -110,11 +110,14 @@ The archive contains platform-neutral ZIP, JSON, JSONL, and media records.
 Shared fixtures and cryptographic vectors verify encrypted transfers from iOS
 to Android and from Android to iOS.
 
-Password protection is optional. An unencrypted `.heritg` backup can be read by
-anyone who obtains the file. HERITG does not store or recover archive passwords,
-so a protected backup cannot be restored if its password is lost. This
-protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports are
-not encrypted by this option.
+Every current `.heritg` backup is encrypted. The password is optional: an empty
+password restores without a prompt but does not keep the file secret from
+someone who obtains it. A non-empty password must contain at least 8 NFC Unicode
+code points, including an uppercase letter, a lowercase letter, and a number;
+a longer unique password is safer. HERITG does not store or recover archive
+passwords, so a protected backup cannot be restored if its password is lost.
+This protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports
+remain readable files.
 
 ## Project Status
 

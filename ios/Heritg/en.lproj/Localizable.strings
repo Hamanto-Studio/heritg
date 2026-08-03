@@ -126,7 +126,8 @@
 "Creating backup" = "Creating backup";
 "Decrypting backup" = "Decrypting backup";
 "Every Heritg backup is encrypted" = "Every Heritg backup is encrypted";
-"The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private." = "The password is optional. Leave both fields empty to restore without a password, or use at least 15 characters to keep the file private.";
+"The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer." = "The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.";
+"Use at least 8 characters with an uppercase letter, a lowercase letter, and a number." = "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.";
 "Password (optional)" = "Password (optional)";
 "Encrypted Heritg backup" = "Encrypted Heritg backup";
 "Enter the password used when this backup was created." = "Enter the password used when this backup was created.";

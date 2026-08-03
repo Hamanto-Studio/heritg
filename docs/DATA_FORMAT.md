@@ -183,7 +183,7 @@ The password is Unicode NFC-normalized, then encoded as UTF-8. PBKDF2-HMAC-SHA25
 
 The password is optional. An empty password is the zero-length UTF-8 byte string and still produces the complete encrypted envelope. It provides format uniformity and detects accidental or unauthenticated modification, but no confidentiality or authenticity against a file holder: that person can derive the same key and create a valid replacement envelope. Importers first try the empty password and continue without a prompt on successful authentication.
 
-When a user supplies a non-empty password, export interfaces require at least 15 NFC-normalized Unicode code points, permit spaces and Unicode, and impose no character-class rules. Readers do not enforce that minimum so older archives remain recoverable.
+When a user supplies a non-empty password, export interfaces require at least 8 NFC-normalized Unicode code points, including at least one Unicode uppercase letter (`Lu`), one Unicode lowercase letter (`Ll`), and one Unicode decimal digit (`Nd`). Spaces and other Unicode characters are permitted. Readers do not enforce this writer policy so older archives remain recoverable. Because an archive holder can guess passwords offline, interfaces recommend a longer unique password even when the 8-character minimum is met.
 
 The deterministic compatibility vector in `ios/HeritgTests/HeritgArchiveTests.swift` uses salt `000102030405060708090a0b0c0d0e0f`, nonce `101112131415161718191a1b`, and the NFC-equivalent passwords `Cafe\u0301 family` / `Caf\u00e9 family`. For that test payload, the complete encrypted-envelope SHA-256 is `2806b437258da23ca3e0f1f57df81ae69467869ed9d9e8e0c84e00cb9bcd2780`.
 

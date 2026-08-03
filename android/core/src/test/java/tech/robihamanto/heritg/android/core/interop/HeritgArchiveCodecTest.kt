@@ -24,6 +24,16 @@ import java.util.zip.ZipOutputStream
 class HeritgArchiveCodecTest {
     private val codec = HeritgArchiveCodec()
 
+    @Test fun optionalPasswordPolicyMatchesEveryWriter() {
+        assertTrue(ArchivePasswordPolicy.accepts(""))
+        assertTrue(ArchivePasswordPolicy.accepts("Pass1234"))
+        assertTrue(ArchivePasswordPolicy.accepts("Ångström1"))
+        assertFalse(ArchivePasswordPolicy.accepts("Pass1"))
+        assertFalse(ArchivePasswordPolicy.accepts("password1"))
+        assertFalse(ArchivePasswordPolicy.accepts("PASSWORD1"))
+        assertFalse(ArchivePasswordPolicy.accepts("Password"))
+    }
+
     @Test fun outputMatchesIosEncryptedCompatibilityVectorExactly() {
         val salt = ByteArray(16) { it.toByte() }
         val nonce = ByteArray(12) { (it + 16).toByte() }
