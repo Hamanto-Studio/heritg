@@ -33,6 +33,10 @@ prefix.
 - Matched the web family-tree relationships, life-date summaries, and branch controls more closely with the iOS experience.
 - Improved family-line routing, marriage-date placement, person navigation, and mobile and tablet layouts.
 
+### Fixed
+
+- Positioned the empty-tree onboarding arrows beside the controls they explain on desktop and tablet layouts.
+
 ### Security
 
 - Added production security headers, restrictive browser permissions, offline asset caching, and documented Vercel and Cloudflare infrastructure boundaries.

@@ -387,7 +387,7 @@
   line-height: 1.25;
   pointer-events: none;
   position: absolute;
-  top: 183px;
+  top: 140px;
   transform: rotate(-1.5deg);
   width: min(196px, calc(50vw - 24px));
   z-index: 14;
@@ -551,13 +551,14 @@
 }
 
 .canvas-controls-hint {
-  bottom: 246px;
+  bottom: 220px;
   right: max(64px, calc(env(safe-area-inset-right, 0px) + 52px));
   text-align: right;
   width: 188px;
 }
 
 .canvas-controls-hint svg {
+  display: block;
   fill: none;
   height: 58px;
   margin-left: auto;
