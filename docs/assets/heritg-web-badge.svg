@@ -1,0 +1,12 @@
+<svg width="243" height="73" viewBox="0 0 243 73" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0.625" y="0.625" width="241.75" height="71.75" rx="6.77" fill="#050505" stroke="#A8A8A8" stroke-width="1.25"/>
+  <g stroke="#66FF91" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="39.5" cy="36.5" r="20.5" stroke-width="3.8"/>
+    <path d="M19 36.5h41M39.5 16c6.1 5.5 9.3 12.3 9.3 20.5S45.6 51.5 39.5 57M39.5 16c-6.1 5.5-9.3 12.3-9.3 20.5S33.4 51.5 39.5 57" stroke-width="3"/>
+    <path d="M23.5 24.8c4.8 2.5 10.1 3.8 16 3.8s11.2-1.3 16-3.8M23.5 48.2c4.8-2.5 10.1-3.8 16-3.8s11.2 1.3 16 3.8" stroke-width="2.7"/>
+  </g>
+  <path d="M47 38.5 63.8 50l-7.2 1.2 4.2 6-3.6 2.5-4.3-6.1-4.2 5.8L47 38.5Z" fill="#66FF91" stroke="#050505" stroke-width="1.7" stroke-linejoin="round"/>
+  <text x="78" y="30" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">OPEN</text>
+  <text x="78" y="47" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">ON THE</text>
+  <text x="133" y="49" fill="white" font-family="Arial, Helvetica, sans-serif" font-size="39" font-weight="700" letter-spacing="-1.5">web</text>
+</svg>
