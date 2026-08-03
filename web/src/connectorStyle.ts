@@ -1,6 +1,8 @@
 import {
   ROUTE_EPSILON,
+  pointOnSegment,
   pointsEqual,
+  segmentOrientation,
   type RoutePoint,
   type RouteSegment
 } from "./connectionGeometry";
@@ -26,6 +28,49 @@ const pointKey = (point: RoutePoint) =>
 
 const comparePoints = (left: RoutePoint, right: RoutePoint) =>
   left.y - right.y || left.x - right.x;
+
+const directionFrom = (point: RoutePoint, other: RoutePoint) => {
+  if (other.x < point.x - ROUTE_EPSILON) return "left";
+  if (other.x > point.x + ROUTE_EPSILON) return "right";
+  if (other.y < point.y - ROUTE_EPSILON) return "up";
+  if (other.y > point.y + ROUTE_EPSILON) return "down";
+  return undefined;
+};
+
+/** Returns only real T- and cross-junctions, never bends or person endpoints. */
+export const branchJunctions = (segments: readonly RouteSegment[]) => {
+  const candidates = new Map<string, RoutePoint>();
+  segments.forEach(({ start, end }) => {
+    candidates.set(pointKey(start), start);
+    candidates.set(pointKey(end), end);
+  });
+  segments.forEach((segment, index) => {
+    segments.slice(index + 1).forEach((other) => {
+      const segmentDirection = segmentOrientation(segment);
+      const otherDirection = segmentOrientation(other);
+      if (!segmentDirection || !otherDirection || segmentDirection === otherDirection) return;
+      const horizontal = segmentDirection === "horizontal" ? segment : other;
+      const vertical = segmentDirection === "vertical" ? segment : other;
+      const intersection = { x: vertical.start.x, y: horizontal.start.y };
+      if (pointOnSegment(intersection, horizontal) && pointOnSegment(intersection, vertical)) {
+        candidates.set(pointKey(intersection), intersection);
+      }
+    });
+  });
+  return [...candidates.values()]
+    .filter((point) => {
+      const directions = new Set<string>();
+      segments.forEach((segment) => {
+        if (!pointOnSegment(point, segment)) return;
+        const startDirection = directionFrom(point, segment.start);
+        const endDirection = directionFrom(point, segment.end);
+        if (startDirection) directions.add(startDirection);
+        if (endDirection) directions.add(endDirection);
+      });
+      return directions.size >= 3;
+    })
+    .sort(comparePoints);
+};
 
 const simplifyPoints = (rawPoints: readonly RoutePoint[]) => {
   const points = rawPoints.reduce<RoutePoint[]>((result, point) => {

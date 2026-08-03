@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  branchJunctions,
   connectorPaths,
   roundedConnectorPath,
   roundedConnectorPoints
@@ -8,6 +9,29 @@ import {
 import type { RouteSegment } from "./connectionGeometry";
 
 describe("modern connector rendering", () => {
+  it("shows junction dots only where at least three connector directions meet", () => {
+    const bend: RouteSegment[] = [
+      { start: { x: 0, y: 0 }, end: { x: 40, y: 0 } },
+      { start: { x: 40, y: 0 }, end: { x: 40, y: 60 } }
+    ];
+    const personEndpoint: RouteSegment[] = [
+      { start: { x: 0, y: 0 }, end: { x: 0, y: 60 } }
+    ];
+    const branch: RouteSegment[] = [
+      ...bend,
+      { start: { x: 40, y: 0 }, end: { x: 80, y: 0 } }
+    ];
+    const crossing: RouteSegment[] = [
+      { start: { x: 0, y: 30 }, end: { x: 80, y: 30 } },
+      { start: { x: 40, y: 0 }, end: { x: 40, y: 60 } }
+    ];
+
+    expect(branchJunctions(bend)).toEqual([]);
+    expect(branchJunctions(personEndpoint)).toEqual([]);
+    expect(branchJunctions(branch)).toEqual([{ x: 40, y: 0 }]);
+    expect(branchJunctions(crossing)).toEqual([{ x: 40, y: 30 }]);
+  });
+
   it("joins ordinary elbows into one path but stops at family branch points", () => {
     const segments: RouteSegment[] = [
       { start: { x: 0, y: 0 }, end: { x: 0, y: 40 } },

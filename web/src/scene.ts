@@ -14,6 +14,7 @@ import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { circularAvatarData } from "./avatar";
 import {
   CONNECTOR_STYLE,
+  branchJunctions,
   connectorPaths,
   roundedConnectorPoints
 } from "./connectorStyle";
@@ -399,7 +400,7 @@ export function projectLayoutToScene(
       data,
       [`heritg:family:${familyKey}`]
     )));
-    family.junctions.forEach((junction, index) => skeletons.push({
+    branchJunctions(family.segments).forEach((junction, index) => skeletons.push({
       type: "ellipse",
       x: junction.x - CONNECTOR_STYLE.junctionRadius,
       y: junction.y - CONNECTOR_STYLE.junctionRadius,

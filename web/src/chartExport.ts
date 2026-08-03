@@ -1,6 +1,7 @@
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
 import {
   CONNECTOR_STYLE,
+  branchJunctions,
   connectorPaths,
   roundedConnectorPath
 } from "./connectorStyle";
@@ -106,7 +107,7 @@ export function buildChartSvg(
       route.relationship.kind === "sibling"
     )
   )).join("");
-  const junctions = plan.families.flatMap((family) => family.junctions.map((point, index) =>
+  const junctions = plan.families.flatMap((family) => branchJunctions(family.segments).map((point, index) =>
     `<circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="${CONNECTOR_STYLE.junctionRadius}" fill="${CONNECTOR_STYLE.familyColor}" data-family-junction="${escapeXml(family.id)}:${index}"/>`
   )).join("");
   const crossings = plan.crossings.map((point, index) =>
