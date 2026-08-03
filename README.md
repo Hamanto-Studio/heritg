@@ -84,6 +84,7 @@ backed by inspectable policies and automated checks:
 | Offline core experience | [Product Specification](docs/MVP_PRODUCT_SPEC.md) |
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
+| Separate public origins | [Public Site Deployment](docs/DEPLOYMENT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
 | Review and verification | [iOS CI](.github/workflows/ios-ci.yml), [Android CI](.github/workflows/android-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), [security audit](docs/SECURITY_AUDIT.md), and [CODEOWNERS](.github/CODEOWNERS) |
 
