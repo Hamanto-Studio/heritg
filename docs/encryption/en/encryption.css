@@ -142,7 +142,8 @@
 .encryption-cta { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 50px; margin-block: 20px 130px; padding: clamp(40px, 6vw, 70px); border-radius: 28px; background: var(--green); color: white; }
 .encryption-cta h2 { max-width: 13ch; margin-bottom: 14px; font-size: clamp(2.5rem, 4.8vw, 4.5rem); letter-spacing: -.035em; line-height: 1.02; }
 .encryption-cta p { max-width: 60ch; margin: 0; color: white; font-size: 1rem; line-height: 1.65; }
-.encryption-cta .pill { min-width: 230px; }
+.encryption-cta .pill { min-width: 230px; background: var(--paper); color: var(--forest); }
+.encryption-cta .pill:hover { background: #fff; color: #1c2d22; }
 .encryption-footer { padding-top: 10px; }
 
 @media (max-width: 1120px) {
