@@ -32,6 +32,7 @@ prefix.
 - Published the product landing page at `heritg.hamanto.com` and the installable web application at `heritgapp.hamanto.com`.
 - Matched the web family-tree relationships, life-date summaries, and branch controls more closely with the iOS experience.
 - Improved family-line routing, marriage-date placement, person navigation, and mobile and tablet layouts.
+- Modernized family-tree connectors with smooth corners, quieter junctions, and consistent line weight on the canvas and in image exports.
 
 ### Fixed
 

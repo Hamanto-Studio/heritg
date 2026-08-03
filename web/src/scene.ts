@@ -12,8 +12,13 @@ import type {
 } from "@excalidraw/excalidraw/element/types";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { circularAvatarData } from "./avatar";
+import {
+  CONNECTOR_STYLE,
+  connectorPaths,
+  roundedConnectorPoints
+} from "./connectorStyle";
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
-import type { PlannedRelationshipLabel, RouteSegment } from "./connectionGeometry";
+import type { PlannedRelationshipLabel, RoutePoint } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
 import type {
@@ -30,9 +35,9 @@ export const HERITG_SCENE_COLORS = {
   text: "#302b25",
   subtleText: "#796f63",
   line: "#d8ccbc",
-  brand: "#a8875b",
-  partner: "#b77972",
-  sibling: "#7e9b63"
+  brand: CONNECTOR_STYLE.familyColor,
+  partner: CONNECTOR_STYLE.partnerColor,
+  sibling: CONNECTOR_STYLE.siblingColor
 } as const;
 export type SceneBounds = readonly [
   minX: number,
@@ -95,8 +100,8 @@ const personData = (person: PositionedPerson) => ({
   role: person.role,
   generation: person.generation
 });
-const segmentSkeleton = (
-  segment: RouteSegment,
+const connectorSkeleton = (
+  points: readonly RoutePoint[],
   id: string,
   strokeColor: string,
   strokeWidth: number,
@@ -105,18 +110,18 @@ const segmentSkeleton = (
   customData: Record<string, unknown>,
   groupIds: string[] = []
 ): ExcalidrawElementSkeleton => {
-  const x = Math.min(segment.start.x, segment.end.x);
-  const y = Math.min(segment.start.y, segment.end.y);
+  const renderedPoints = roundedConnectorPoints(points);
+  const x = Math.min(...renderedPoints.map((point) => point.x));
+  const y = Math.min(...renderedPoints.map((point) => point.y));
+  const maxX = Math.max(...renderedPoints.map((point) => point.x));
+  const maxY = Math.max(...renderedPoints.map((point) => point.y));
   return {
     type: "line",
     x,
     y,
-    width: Math.abs(segment.end.x - segment.start.x),
-    height: Math.abs(segment.end.y - segment.start.y),
-    points: [
-      linearPoint(segment.start.x - x, segment.start.y - y),
-      linearPoint(segment.end.x - x, segment.end.y - y)
-    ],
+    width: maxX - x,
+    height: maxY - y,
+    points: renderedPoints.map((point) => linearPoint(point.x - x, point.y - y)),
     ...elementIdentity(id, link, customData, groupIds),
     strokeColor,
     backgroundColor: "transparent",
@@ -384,11 +389,11 @@ export function projectLayoutToScene(
       parentIds: family.parentIds,
       childIds: family.childIds
     };
-    family.segments.forEach((segment, index) => skeletons.push(segmentSkeleton(
-      segment,
-      `heritg:family:${familyKey}:segment:${index}`,
+    connectorPaths(family.segments).forEach((path, index) => skeletons.push(connectorSkeleton(
+      path.points,
+      `heritg:family:${familyKey}:path:${index}`,
       HERITG_SCENE_COLORS.brand,
-      2,
+      CONNECTOR_STYLE.width,
       "solid",
       `#heritg-family=${familyKey}`,
       data,
@@ -396,10 +401,10 @@ export function projectLayoutToScene(
     )));
     family.junctions.forEach((junction, index) => skeletons.push({
       type: "ellipse",
-      x: junction.x - 3,
-      y: junction.y - 3,
-      width: 6,
-      height: 6,
+      x: junction.x - CONNECTOR_STYLE.junctionRadius,
+      y: junction.y - CONNECTOR_STYLE.junctionRadius,
+      width: CONNECTOR_STYLE.junctionRadius * 2,
+      height: CONNECTOR_STYLE.junctionRadius * 2,
       strokeColor: HERITG_SCENE_COLORS.brand,
       backgroundColor: HERITG_SCENE_COLORS.brand,
       fillStyle: "solid",
@@ -418,11 +423,11 @@ export function projectLayoutToScene(
     const relationship = route.relationship;
     const key = encodedId(relationship.id);
     const color = relationshipColor(relationship.kind);
-    route.segments.forEach((segment, index) => skeletons.push(segmentSkeleton(
-      segment,
-      `heritg:relationship:${key}:segment:${index}`,
+    connectorPaths(route.segments).forEach((path, index) => skeletons.push(connectorSkeleton(
+      path.points,
+      `heritg:relationship:${key}:path:${index}`,
       color,
-      2,
+      CONNECTOR_STYLE.width,
       relationship.kind === "sibling" ? "dashed" : "solid",
       `#heritg-relationship=${key}`,
       relationshipData(relationship),
@@ -433,10 +438,10 @@ export function projectLayoutToScene(
     const key = `${point.x}:${point.y}:${index}`;
     skeletons.push({
       type: "ellipse",
-      x: point.x - 4,
-      y: point.y - 4,
-      width: 8,
-      height: 8,
+      x: point.x - CONNECTOR_STYLE.crossingRadius,
+      y: point.y - CONNECTOR_STYLE.crossingRadius,
+      width: CONNECTOR_STYLE.crossingRadius * 2,
+      height: CONNECTOR_STYLE.crossingRadius * 2,
       strokeColor: HERITG_SCENE_COLORS.canvas,
       backgroundColor: HERITG_SCENE_COLORS.canvas,
       fillStyle: "solid",
@@ -445,11 +450,11 @@ export function projectLayoutToScene(
       opacity: 100,
       ...elementIdentity(`heritg:crossing:${encodedId(key)}:mask`, "", { heritgType: "crossing" })
     } as ExcalidrawElementSkeleton);
-    skeletons.push(segmentSkeleton(
-      { start: { x: point.x, y: point.y - 5 }, end: { x: point.x, y: point.y + 5 } },
+    skeletons.push(connectorSkeleton(
+      [{ x: point.x, y: point.y - 6 }, { x: point.x, y: point.y + 6 }],
       `heritg:crossing:${encodedId(key)}:bridge`,
       relationshipColor(point.kind),
-      2,
+      CONNECTOR_STYLE.width,
       point.kind === "sibling" ? "dashed" : "solid",
       "",
       { heritgType: "crossing" }

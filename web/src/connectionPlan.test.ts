@@ -245,7 +245,7 @@ describe("family connection planning", () => {
     )).toBe(true);
   });
 
-  it("exports every segment and marriage label from the shared plan", () => {
+  it("exports every segment through rounded paths and keeps the marriage label", () => {
     const marriage = {
       ...relationship("marriage", "parent-a", "parent-b", "partner"),
       marriageDate: "2004-01-02"
@@ -258,10 +258,13 @@ describe("family connection planning", () => {
     const chart = buildChartSvg(value, "Family", undefined, "en", plan);
 
     expect(plan.nonParentRoutes[0].label?.center.y).toBe(-14);
-    expect(chart.svg.match(/data-family-id=/g)).toHaveLength(plan.families[0].segments.length);
-    expect(chart.svg.match(/data-route-id="marriage"/g)).toHaveLength(
-      plan.nonParentRoutes[0].segments.length
-    );
+    const representedFamilySegments = [...chart.svg.matchAll(/data-family-id="[^"]+"[^>]+data-segment-indexes="([^"]+)"/g)]
+      .flatMap((match) => match[1].split(","));
+    const representedMarriageSegments = [...chart.svg.matchAll(/data-route-id="marriage"[^>]+data-segment-indexes="([^"]+)"/g)]
+      .flatMap((match) => match[1].split(","));
+    expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
+    expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
+    expect(chart.svg).toContain(" Q ");
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });
