@@ -39,7 +39,7 @@ export function PrivacyPanel({
       </div>
       <a
         className="privacy-details-link"
-        href="https://heritg-encryption.vercel.app"
+        href="https://heritg-encryption.hamanto.com"
         rel="noopener noreferrer"
         target="_blank"
       >
