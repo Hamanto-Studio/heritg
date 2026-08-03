@@ -484,9 +484,15 @@ export async function exportHeritgArchive(
   treeId: string,
   password: string
 ): Promise<Uint8Array> {
-  const files = await archiveEntries(data, treeId, new Date());
-  const zip = encodeHeritgZip(files);
-  return sealZip(zip, password);
+  return sealZip(await exportCanonicalHeritgArchive(data, treeId), password);
+}
+
+export async function exportCanonicalHeritgArchive(
+  data: AppData,
+  treeId: string,
+  exportedAt: Date | string = new Date()
+): Promise<Uint8Array> {
+  return encodeHeritgZip(await archiveEntries(data, treeId, exportedAt));
 }
 
 const object = (value: unknown, label: string): JsonObject => {

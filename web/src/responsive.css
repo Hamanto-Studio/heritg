@@ -49,6 +49,20 @@
 }
 
 @media (max-width: 620px) {
+  .shared-header { align-items: flex-start; }
+  .shared-title { max-width: calc(100% - 52px); }
+  .shared-home {
+    font-size: 0;
+    height: 44px;
+    padding: 0;
+    width: 44px;
+  }
+  .shared-home svg { margin: 0; }
+  .shared-notice {
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    max-width: calc(100% - 92px);
+  }
+
   .workspace-tools .desktop-tool {
     display: none;
   }

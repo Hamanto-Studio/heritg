@@ -64,6 +64,7 @@ interface TreeCanvasProps {
   onDeselectPerson: () => void;
   onViewportChange: (viewport: ViewportState) => void;
   emptyContent?: ReactNode;
+  readOnly?: boolean;
 }
 
 type CanvasViewport = Pick<AppState, "scrollX" | "scrollY" | "zoom">;
@@ -277,7 +278,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   onSelectPerson,
   onDeselectPerson,
   onViewportChange,
-  emptyContent
+  emptyContent,
+  readOnly = false
 }, ref) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI>();
   const canvasHost = useRef<HTMLDivElement>(null);
@@ -499,18 +501,20 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         }}
         viewModeEnabled
       />
-      <CanvasActions
-        api={api}
-        controls={connectionPlan.controls}
-        hostRef={canvasHost}
-        onAddRelative={onAddRelative}
-        onEditPerson={onEditPerson}
-        onTogglePerson={togglePerson}
-        people={layout.people}
-        selectedPersonId={selectedPersonId}
-        t={t}
-        emptyContent={emptyContent}
-      />
+      {readOnly ? emptyContent : (
+        <CanvasActions
+          api={api}
+          controls={connectionPlan.controls}
+          hostRef={canvasHost}
+          onAddRelative={onAddRelative}
+          onEditPerson={onEditPerson}
+          onTogglePerson={togglePerson}
+          people={layout.people}
+          selectedPersonId={selectedPersonId}
+          t={t}
+          emptyContent={emptyContent}
+        />
+      )}
     </div>
   );
 });

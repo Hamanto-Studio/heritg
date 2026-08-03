@@ -553,6 +553,61 @@
   margin-bottom: 3px;
 }
 
+.sharing-card {
+  background: color-mix(in srgb, var(--elevated) 62%, var(--base));
+}
+
+.share-warning {
+  align-items: flex-start;
+  color: var(--brand-deep);
+  display: flex;
+  font-size: 0.82rem;
+  gap: 8px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.share-warning svg {
+  color: #52703f;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.share-expiry select,
+.share-result input {
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 11px;
+  width: 100%;
+}
+
+.share-result {
+  display: grid;
+  gap: 10px;
+}
+
+.share-result > strong {
+  color: #405d32;
+  font-size: 0.9rem;
+}
+
+.share-result input {
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+}
+
+.share-progress,
+.share-revoked {
+  font-size: 0.82rem;
+  margin: 0;
+  text-align: center;
+}
+
+.share-progress { color: var(--brand-deep); }
+.share-revoked { color: #405d32; }
+
 .settings-actions {
   display: flex;
   flex-wrap: wrap;

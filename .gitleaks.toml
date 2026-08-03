@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Published synthetic HTGSHR01 interoperability fixture"
+paths = ['''^web/src/fixtures/htgshr01\.json$''']

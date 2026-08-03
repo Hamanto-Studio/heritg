@@ -10,12 +10,17 @@ import "./person-create.css";
 import "./relationship.css";
 import "./responsive.css";
 import { App } from "./App";
+import { SharedTreeApp } from "./SharedTreeApp";
 import { AppProvider } from "./store";
+
+const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppProvider>
-      <App />
-    </AppProvider>
+    {isSharedRoute ? <SharedTreeApp /> : (
+      <AppProvider>
+        <App />
+      </AppProvider>
+    )}
   </StrictMode>
 );
