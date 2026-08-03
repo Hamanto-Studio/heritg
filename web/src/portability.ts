@@ -7,14 +7,14 @@ export { downloadBlob, downloadText, safeFilename };
 export const HERITG_FORMAT = "heritg-web-backup";
 export const HERITG_SCHEMA_VERSION = 1;
 export const MAX_PORTABILITY_BYTES = 32 * 1024 * 1024;
-const MAX_RECORDS = 50_000;
-const MAX_FIELD_LENGTH = 65_536;
+const MAX_RECORDS = 450_000;
+const MAX_FIELD_LENGTH = 4_096;
+const MAX_NOTES_LENGTH = 1_024 * 1_024;
 const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
 const NATIVE_HEADER_BYTES = 10;
 const NATIVE_ENVELOPE_VERSION = 1;
 const NATIVE_MAGIC = "HERITG00";
 const NATIVE_ENCRYPTED_MAGIC = "HERITG01";
-const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const GENDERS = ["female", "male", "unspecified"] as const;
 const KINDS = ["parent", "partner", "sibling"] as const;
 const SUBTYPES = [
@@ -57,7 +57,7 @@ const arrayValue = (value: unknown, label: string): unknown[] => {
   return value as unknown[];
 };
 const textValue = (value: unknown, label: string, maximum = MAX_FIELD_LENGTH): string => {
-  if (typeof value !== "string" || value.length > maximum || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) {
+  if (typeof value !== "string" || new TextEncoder().encode(value).byteLength > maximum || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(value)) {
     invalid(`${label} must be valid text.`);
   }
   return value as string;
@@ -69,8 +69,8 @@ const enumValue = <T extends string>(value: unknown, allowed: readonly T[], labe
   return value as T;
 };
 const idValue = (value: unknown, label: string): string => {
-  const id = textValue(value, label, 128);
-  if (!ID_PATTERN.test(id)) invalid(`${label} is malformed.`);
+  const id = textValue(value, label);
+  if (!id.trim()) invalid(`${label} is malformed.`);
   return id;
 };
 const validDateParts = (year: number, month: number, day: number): boolean => {
@@ -105,7 +105,7 @@ const optionalNativeDate = (value: unknown, label: string, dateOnly = false): st
 const photoValue = (value: unknown, label: string): string | undefined => {
   if (value === undefined) return undefined;
   const photo = textValue(value, label, Math.ceil(MAX_PHOTO_BYTES * 4 / 3) + 64);
-  const match = /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(photo);
+  const match = /^data:(?:image\/(?:jpeg|png|webp|gif|heic)|application\/octet-stream);base64,([A-Za-z0-9+/]+={0,2})$/.exec(photo);
   if (!match || match[1].length % 4 !== 0 || Math.floor(match[1].length * 3 / 4) > MAX_PHOTO_BYTES) {
     invalid(`${label} must be a bounded raster image data URL.`);
   }
@@ -160,7 +160,7 @@ export function validateAppData(value: unknown): AppData {
       birthDate: optionalDate(item.birthDate, `person ${index}.birthDate`),
       deathDate: optionalDate(item.deathDate, `person ${index}.deathDate`),
       birthDatePrecision: enumValue(item.birthDatePrecision, PRECISIONS, `person ${index}.birthDatePrecision`),
-      notes: textValue(item.notes, `person ${index}.notes`),
+      notes: textValue(item.notes, `person ${index}.notes`, MAX_NOTES_LENGTH),
       addressLine: textValue(item.addressLine, `person ${index}.addressLine`),
       city: textValue(item.city, `person ${index}.city`),
       province: textValue(item.province, `person ${index}.province`),
@@ -191,6 +191,7 @@ export function validateAppData(value: unknown): AppData {
   for (const tree of trees) {
     if (tree.lastSelectedPersonId && personTrees.get(tree.lastSelectedPersonId) !== tree.id) invalid(`tree ${tree.id} has an invalid selected person.`);
   }
+  const relationshipSignatures = new Set<string>();
   for (const relationship of relationships) {
     if (!SUBTYPES_BY_KIND[relationship.kind].has(relationship.subtype)) invalid(`relationship ${relationship.id} has an invalid subtype.`);
     if (!treeIds.has(relationship.treeId) || !personIds.has(relationship.fromPersonId) || !personIds.has(relationship.toPersonId)) {
@@ -199,6 +200,12 @@ export function validateAppData(value: unknown): AppData {
     if (relationship.fromPersonId === relationship.toPersonId || personTrees.get(relationship.fromPersonId) !== relationship.treeId || personTrees.get(relationship.toPersonId) !== relationship.treeId) {
       invalid(`relationship ${relationship.id} has invalid endpoints.`);
     }
+    const endpoints = relationship.kind === "parent"
+      ? [relationship.fromPersonId, relationship.toPersonId]
+      : [relationship.fromPersonId, relationship.toPersonId].sort();
+    const signature = `${relationship.kind}|${endpoints[0]}|${endpoints[1]}`;
+    if (relationshipSignatures.has(signature)) invalid(`relationship ${relationship.id} duplicates existing semantics.`);
+    relationshipSignatures.add(signature);
   }
   const selectedTreeId = optionalId(root.selectedTreeId, "data.selectedTreeId");
   if (selectedTreeId && !treeIds.has(selectedTreeId)) invalid("data.selectedTreeId references a missing tree.");
@@ -258,7 +265,7 @@ const nextId = (factory: IdFactory, used: Set<string>): string => {
   }
   return invalid("the ID generator did not produce a unique ID.");
 };
-const mergeImportedData = (imported: AppData, options: BackupImportOptions = {}): AppData => {
+export const mergeImportedData = (imported: AppData, options: BackupImportOptions = {}): AppData => {
   const target = options.into ? validateAppData(options.into) : undefined;
   const used = new Set<string>(target ? [...target.trees, ...target.people, ...target.relationships].map((item) => item.id) : []);
   const factory = options.idFactory ?? newId;

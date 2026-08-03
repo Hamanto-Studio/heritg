@@ -11,7 +11,7 @@ DataStore for app preferences.
 - Navigate an interactive family-tree canvas
 - Import and export GEDCOM family data
 - Transfer `.heritg` archives between Android and iOS
-- Optionally encrypt `.heritg` archives with a password
+- Always encrypt `.heritg` archives, with an optional password for file privacy
 - Export family trees as PNG and SVG
 - Use the app in English or Bahasa Indonesia
 

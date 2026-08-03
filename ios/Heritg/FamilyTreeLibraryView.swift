@@ -347,10 +347,20 @@ struct FamilyTreeLibraryView: View {
             let data = try Data(contentsOf: url, options: .mappedIfSafe)
             switch try HeritgArchive.protection(of: data) {
             case .encrypted:
-                pendingArchiveImport = PendingArchiveImport(
-                    data: data,
-                    sourceName: url.lastPathComponent
-                )
+                let sourceName = url.lastPathComponent
+                Task {
+                    do {
+                        let payload = try await Task.detached(priority: .userInitiated) {
+                            try HeritgArchive.decrypt(data, password: "")
+                        }.value
+                        let tree = try onImportArchive(payload)
+                        open(tree)
+                    } catch HeritgArchiveError.wrongPasswordOrCorruptArchive {
+                        pendingArchiveImport = PendingArchiveImport(data: data, sourceName: sourceName)
+                    } catch {
+                        operationError = error.localizedDescription
+                    }
+                }
             case .unencrypted:
                 let tree = try onImportArchive(HeritgArchive.decodeUnencrypted(data))
                 open(tree)

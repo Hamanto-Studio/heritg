@@ -1,6 +1,17 @@
 name: iOS CI
 
 on:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "tests/compatibility/**"
+      - ".github/workflows/ios-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ios/**"
+      - "tests/compatibility/**"
+      - ".github/workflows/ios-ci.yml"
   workflow_dispatch:
 
 permissions:

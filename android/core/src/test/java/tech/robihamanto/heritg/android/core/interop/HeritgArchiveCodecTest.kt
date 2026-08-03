@@ -24,6 +24,16 @@ import java.util.zip.ZipOutputStream
 class HeritgArchiveCodecTest {
     private val codec = HeritgArchiveCodec()
 
+    @Test fun optionalPasswordPolicyMatchesEveryWriter() {
+        assertTrue(ArchivePasswordPolicy.accepts(""))
+        assertTrue(ArchivePasswordPolicy.accepts("Pass1234"))
+        assertTrue(ArchivePasswordPolicy.accepts("Ångström1"))
+        assertFalse(ArchivePasswordPolicy.accepts("Pass1"))
+        assertFalse(ArchivePasswordPolicy.accepts("password1"))
+        assertFalse(ArchivePasswordPolicy.accepts("PASSWORD1"))
+        assertFalse(ArchivePasswordPolicy.accepts("Password"))
+    }
+
     @Test fun outputMatchesIosEncryptedCompatibilityVectorExactly() {
         val salt = ByteArray(16) { it.toByte() }
         val nonce = ByteArray(12) { (it + 16).toByte() }
@@ -43,6 +53,16 @@ class HeritgArchiveCodecTest {
         assertThrows(ArchiveException.InvalidArchive::class.java) { codec.decode(wrongRounds, composed) }
         val tampered = first.copyOf().also { it[it.lastIndex - 20] = (it[it.lastIndex - 20].toInt() xor 1).toByte() }
         assertThrows(ArchiveException.WrongPasswordOrCorrupt::class.java) { codec.decode(tampered, composed) }
+    }
+
+    @Test fun emptyPasswordStillProducesEncryptedArchiveAndRestoresWithoutPrompt() {
+        val salt = ByteArray(16) { it.toByte() }
+        val nonce = ByteArray(12) { (it + 16).toByte() }
+        val archive = codec.encode(validPayload(), "", salt, nonce)
+
+        assertEquals(ArchiveProtection.ENCRYPTED, codec.protection(archive))
+        assertEquals("bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440", sha256(archive))
+        assertEquals("tree-synthetic", codec.decode(archive, "").tree.id)
     }
 
     @Test fun generatedSchemaMatchesAndReaderConsumesSharedExplodedFixture() {

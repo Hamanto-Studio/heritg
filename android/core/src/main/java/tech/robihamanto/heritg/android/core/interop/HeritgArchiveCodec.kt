@@ -24,7 +24,7 @@ class HeritgArchiveCodec {
 
     fun encode(payload: ArchivePayload, password: String? = null): ByteArray {
         val zip = encodeZip(payload)
-        val archive = if (password.isNullOrEmpty()) zip else ArchiveCrypto.encrypt(zip, password)
+        val archive = if (password == null) zip else ArchiveCrypto.encrypt(zip, password)
         if (archive.size > ArchiveConstants.MaximumArchiveBytes) throw ArchiveException.FileTooLarge()
         return archive
     }
@@ -36,7 +36,7 @@ class HeritgArchiveCodec {
         nonce: ByteArray,
     ): ByteArray {
         val zip = encodeZip(payload)
-        return if (password.isEmpty()) zip else ArchiveCrypto.encrypt(zip, password, salt, nonce)
+        return ArchiveCrypto.encrypt(zip, password, salt, nonce)
     }
 
     fun decode(archive: ByteArray, password: String? = null): ArchivePayload = try {
