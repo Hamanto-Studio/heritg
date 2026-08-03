@@ -13,9 +13,9 @@ Companion: [MVP_PRODUCT_SPEC.md](MVP_PRODUCT_SPEC.md)
 
 ## 2. Top-Level Representations
 
-An unencrypted `.heritg` file is the ZIP payload described in section 3. Its first four bytes are the ZIP local-file signature `50 4b 03 04`.
+Current writers MUST wrap every `.heritg` backup in the encrypted envelope described in section 8, even when the user leaves the password empty. Its first eight bytes are ASCII `HTGENC01`. Decryption yields the exact ZIP payload from section 3.
 
-An encrypted `.heritg` file is the binary envelope in section 8. Its first eight bytes are ASCII `HTGENC01`. Decryption yields the exact ZIP payload from section 3.
+Readers MAY accept an unencrypted ZIP payload for backward compatibility. Its first four bytes are `50 4b 03 04`. This representation is migration input only and MUST NOT be produced by a current product export flow.
 
 The filename extension is `.heritg`. The media type for an unencrypted payload is `application/vnd.heritg.family-archive+zip`; encrypted files use `application/vnd.heritg.family-archive`.
 
@@ -50,7 +50,7 @@ No other entry is allowed. ZIP entry ordering is not semantic. The Apple writer 
 
 ## 4. JSON Encoding
 
-JSON and JSON Lines are UTF-8 without a byte-order mark. JSON keys are ASCII. Writers emit compact JSON with lexicographically sorted keys and no escaped `/`; readers do not depend on key ordering. Unknown JSON object fields are ignored. Non-nullable documented fields are required. Writers emit nullable fields as JSON `null`; readers also interpret an omitted nullable field as null.
+JSON and JSON Lines are UTF-8 without a byte-order mark. JSON keys are ASCII. Writers emit compact JSON with lexicographically sorted keys and no escaped `/`; readers do not depend on key ordering. Unknown JSON object fields are ignored. Non-nullable documented fields are required. Writers may emit nullable fields as JSON `null` or omit them; readers interpret both forms as null.
 
 Each JSON Lines record is one compact JSON object followed by LF (`0a`). Empty collections are zero-byte files. Blank lines and a missing final LF are invalid.
 
@@ -181,7 +181,13 @@ All multibyte integers are unsigned big-endian. The envelope is:
 
 The password is Unicode NFC-normalized, then encoded as UTF-8. PBKDF2-HMAC-SHA256 derives a 32-byte key using the stored 16-byte salt and exactly 600,000 iterations. AES-256-GCM encrypts the complete ZIP. Bytes 0 through 43 are the authenticated additional data. Salt and nonce must be newly generated with a cryptographically secure random source for every production archive.
 
+The password is optional. An empty password is the zero-length UTF-8 byte string and still produces the complete encrypted envelope. It provides format uniformity and detects accidental or unauthenticated modification, but no confidentiality or authenticity against a file holder: that person can derive the same key and create a valid replacement envelope. Importers first try the empty password and continue without a prompt on successful authentication.
+
+When a user supplies a non-empty password, export interfaces require at least 8 NFC-normalized Unicode code points, including at least one Unicode uppercase letter (`Lu`), one Unicode lowercase letter (`Ll`), and one Unicode decimal digit (`Nd`). Spaces and other Unicode characters are permitted. Readers do not enforce this writer policy so older archives remain recoverable. Because an archive holder can guess passwords offline, interfaces recommend a longer unique password even when the 8-character minimum is met.
+
 The deterministic compatibility vector in `ios/HeritgTests/HeritgArchiveTests.swift` uses salt `000102030405060708090a0b0c0d0e0f`, nonce `101112131415161718191a1b`, and the NFC-equivalent passwords `Cafe\u0301 family` / `Caf\u00e9 family`. For that test payload, the complete encrypted-envelope SHA-256 is `2806b437258da23ca3e0f1f57df81ae69467869ed9d9e8e0c84e00cb9bcd2780`.
+
+With the same payload, salt, nonce, and an empty password, the complete encrypted-envelope SHA-256 is `bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440`. All three platform suites assert both vectors.
 
 ## 9. Validation and Import
 

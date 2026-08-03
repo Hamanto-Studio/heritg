@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <a href="#platform-report">Platform Report</a> |
   <a href="#features">Features</a> |
   <a href="#quick-start">Quick Start</a> |
   <a href="docs/MVP_PRODUCT_SPEC.md">Product Specification</a> |
@@ -38,6 +39,20 @@
   </a>
 </p>
 
+## Platform Report
+
+HERITG contains three local-first clients on `main`:
+
+| Platform | What is included | Local storage | Verification |
+| --- | --- | --- | --- |
+| iOS | Native SwiftUI app in [`ios/`](ios) | SwiftData | Unit and UI tests; [manual iOS CI](.github/workflows/ios-ci.yml) |
+| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Unit, lint, build, and emulator suites run locally; secret scanning runs in CI |
+| Web | Installable React progressive web app in [`web/`](web) | AES-GCM-encrypted IndexedDB | Lint, tests, and production build in [Web CI](.github/workflows/web-ci.yml) |
+
+The repository also contains the shared product, archive, privacy, analytics,
+security, data-processing, and design specifications used to keep the three
+implementations aligned.
+
 ## Features
 
 The native iOS and Android apps support:
@@ -47,7 +62,7 @@ The native iOS and Android apps support:
 - An interactive visual family tree
 - GEDCOM family-data import and export
 - Cross-platform `.heritg` backup and restore
-- Optional password encryption for `.heritg` archives
+- Always-encrypted `.heritg` archives with an optional password
 - Image and SVG tree export
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
@@ -70,8 +85,9 @@ backed by inspectable policies and automated checks:
 | Offline core experience | [Product Specification](docs/MVP_PRODUCT_SPEC.md) |
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
+| Separate public origins | [Public Site Deployment](docs/DEPLOYMENT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
-| Review and verification | [Manual iOS CI](.github/workflows/ios-ci.yml), local Android verification, [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), and [CODEOWNERS](.github/CODEOWNERS) |
+| Review and verification | [iOS CI](.github/workflows/ios-ci.yml), [Android CI](.github/workflows/android-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), [security audit](docs/SECURITY_AUDIT.md), and [CODEOWNERS](.github/CODEOWNERS) |
 
 The current source does not include Firebase, product analytics, advertising,
 Sentry, or a third-party crash-reporting SDK. Any future data collection,
@@ -84,7 +100,8 @@ When exporting a `.heritg` backup, users can optionally protect the family-data
 payload with a password. HERITG encrypts and authenticates protected archives
 with AES-256-GCM. The encryption key is derived from the password using
 PBKDF2-HMAC-SHA256 with 600,000 iterations and a new random salt for every
-archive.
+archive. The exact, versioned envelope and portable ZIP payload are public in
+the [data-format specification](docs/DATA_FORMAT.md).
 
 During import, HERITG detects whether a `.heritg` archive is encrypted. An
 encrypted archive must be unlocked with the same password before its contents
@@ -95,18 +112,21 @@ The archive contains platform-neutral ZIP, JSON, JSONL, and media records.
 Shared fixtures and cryptographic vectors verify encrypted transfers from iOS
 to Android and from Android to iOS.
 
-Password protection is optional. An unencrypted `.heritg` backup can be read by
-anyone who obtains the file. HERITG does not store or recover archive passwords,
-so a protected backup cannot be restored if its password is lost. This
-protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports are
-not encrypted by this option.
+Every current `.heritg` backup is encrypted. The password is optional: an empty
+password restores without a prompt but does not keep the file secret from
+someone who obtains it. A non-empty password must contain at least 8 NFC Unicode
+code points, including an uppercase letter, a lowercase letter, and a number;
+a longer unique password is safer. HERITG does not store or recover archive
+passwords, so a protected backup cannot be restored if its password is lost.
+This protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports
+remain readable files.
 
 ## Project Status
 
 | Platform | Status | Implementation |
 | --- | --- | --- |
 | iOS | Active development | Swift, SwiftUI, and SwiftData |
-| Android | Active development | Kotlin, Jetpack Compose, and Room |
+| Android | Active development | Kotlin, Jetpack Compose, Room, and DataStore |
 | Web | Active development | React, TypeScript, IndexedDB, and Excalidraw |
 
 HERITG is under active development. Interfaces and archive specifications may
@@ -145,16 +165,19 @@ Requirements:
 - Java 17
 - Android SDK 37
 
-Run Android tests, lint, debug builds, and a minified release build:
+Run Android tests, lint checks, debug builds, the instrumentation-test build,
+and a minified release build:
 
 ```sh
 ./android/gradlew \
   -p android \
-  test assembleDebug lintDebug assembleRelease \
+  test assembleDebug lintDebug assembleDebugAndroidTest assembleRelease \
   --no-configuration-cache
 ```
 
-See the [Android development guide](android/README.md) for project details.
+Instrumented tests require a connected Android device or running emulator. See
+the [Android development guide](android/README.md) for architecture and test
+details.
 
 ### Web
 

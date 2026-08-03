@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useRef, useState } from "react";
 
-import { importGedcom, importHeritgBackup, importNativeHeritgArchive, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
+import {
+  HeritgArchivePasswordError,
+  heritgArchiveProtection,
+  importHeritgArchive
+} from "./heritgArchive";
+import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
 import type { Translator } from "./i18n";
@@ -57,6 +62,10 @@ export function TreeSidebar({
   const [edit, setEdit] = useState<EditState>();
   const [deleting, setDeleting] = useState<FamilyTree>();
   const [editError, setEditError] = useState<string>();
+  const [pendingArchive, setPendingArchive] = useState<{ name: string; bytes: Uint8Array }>();
+  const [archivePassword, setArchivePassword] = useState("");
+  const [archiveError, setArchiveError] = useState<string>();
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const trees = [...data.trees]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
@@ -89,7 +98,21 @@ export function TreeSidebar({
     }
     const lowerName = file.name.toLowerCase();
     if (lowerName.endsWith(".heritg")) {
-      actions.replaceData(importNativeHeritgArchive(await file.arrayBuffer(), { into: data }));
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const protection = heritgArchiveProtection(bytes);
+      if (protection === "encrypted" || protection === "legacy-encrypted") {
+        try {
+          actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
+        } catch (error) {
+          if (!(error instanceof HeritgArchivePasswordError)) throw error;
+          setArchivePassword("");
+          setArchiveError(undefined);
+          setPendingArchive({ name: file.name, bytes });
+          return;
+        }
+      } else {
+        actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
+      }
     } else if (lowerName.endsWith(".json")) {
       actions.replaceData(importHeritgBackup(await file.text(), { into: data }));
     } else if (lowerName.endsWith(".ged") || lowerName.endsWith(".gedcom")) {
@@ -112,6 +135,24 @@ export function TreeSidebar({
     onClose();
   };
 
+  const unlockArchive = async () => {
+    if (!pendingArchive || !archivePassword || isUnlocking) return;
+    setArchiveError(undefined);
+    setIsUnlocking(true);
+    try {
+      actions.replaceData(await importHeritgArchive(pendingArchive.bytes, archivePassword, { into: data }));
+      setArchivePassword("");
+      setPendingArchive(undefined);
+      onImported();
+      onClose();
+    } catch (error) {
+      setArchivePassword("");
+      setArchiveError(error instanceof Error ? error.message : t("errorTitle"));
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
   return (
     <>
       <aside
@@ -121,7 +162,7 @@ export function TreeSidebar({
         id="tree-navigation"
       >
         <div className="sidebar-brand">
-          <img alt="" aria-hidden="true" className="brand-mark" height={192} src="/pwa-192.png" width={192} />
+          <img alt="" aria-hidden="true" className="brand-mark" height={192} src={`${import.meta.env.BASE_URL}pwa-192.png`} width={192} />
           <div>
             <h1>Heritg</h1>
             <p>{t("appTagline")}</p>
@@ -244,6 +285,39 @@ export function TreeSidebar({
           </button>
         </div>
       </aside>
+
+      {pendingArchive ? (
+        <Modal
+          closeLabel={t("close")}
+          footer={
+            <>
+              <button className="button secondary" onClick={() => setPendingArchive(undefined)} type="button">{t("cancel")}</button>
+              <button className="button primary" disabled={!archivePassword || isUnlocking} onClick={() => void unlockArchive()} type="button">
+                {t("unlockAndImport")}
+              </button>
+            </>
+          }
+          onClose={() => setPendingArchive(undefined)}
+          size="small"
+          title={t("encryptedArchiveTitle")}
+        >
+          <p className="dialog-copy">{pendingArchive.name}</p>
+          <p className="dialog-copy">{t("encryptedArchiveHelp")}</p>
+          <label className="field">
+            {t("archivePassword")}
+            <input
+              autoFocus
+              autoComplete="current-password"
+              maxLength={1024}
+              onChange={(event) => setArchivePassword(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") void unlockArchive(); }}
+              type="password"
+              value={archivePassword}
+            />
+          </label>
+          <ErrorNotice message={archiveError} />
+        </Modal>
+      ) : null}
 
       {edit ? (
         <Modal

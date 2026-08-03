@@ -112,7 +112,11 @@ internal object ArchiveCrypto {
     // This byte-oriented PBKDF2 avoids provider-specific char-to-byte conversion.
     internal fun pbkdf2(password: ByteArray, salt: ByteArray, iterations: Int): ByteArray {
         val mac = Mac.getInstance("HmacSHA256")
-        mac.init(SecretKeySpec(password, "HmacSHA256"))
+        // SunJCE rejects a zero-length SecretKeySpec even though HMAC and PBKDF2
+        // permit an empty password. One HMAC block of zeroes is the equivalent
+        // padded HMAC key for an empty byte string.
+        val macKey = if (password.isEmpty()) ByteArray(64) else password
+        mac.init(SecretKeySpec(macKey, "HmacSHA256"))
         val firstInput = salt + byteArrayOf(0, 0, 0, 1)
         var u = mac.doFinal(firstInput)
         val result = u.copyOf()
@@ -123,7 +127,10 @@ internal object ArchiveCrypto {
             result.indices.forEach { index -> result[index] = (result[index].toInt() xor u[index].toInt()).toByte() }
         }
         u.fill(0)
-        return result.copyOf(ArchiveConstants.KeyBytes).also { result.fill(0) }
+        return result.copyOf(ArchiveConstants.KeyBytes).also {
+            result.fill(0)
+            if (macKey !== password) macKey.fill(0)
+        }
     }
 }
 

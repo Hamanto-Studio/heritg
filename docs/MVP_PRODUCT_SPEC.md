@@ -146,7 +146,7 @@ Acceptance criteria:
 ### Cross-Platform Transfer
 
 1. User chooses `Backup and export`.
-2. User creates a `.heritg` archive and optionally sets a password.
+2. The app creates an encrypted `.heritg` archive; the user optionally sets a password for confidentiality.
 3. User transfers it using the system share sheet, Files, Drive, cable, or another user-controlled method.
 4. The receiving Android or iOS app inspects the archive.
 5. The app shows archive version, tree name, person count, media count, and warnings.

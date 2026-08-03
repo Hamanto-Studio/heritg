@@ -5,9 +5,19 @@ import Testing
 @testable import HERITG
 
 struct HeritgArchiveTests {
+    @Test func optionalPasswordPolicyMatchesEveryWriter() {
+        #expect(ArchivePasswordPolicy.accepts(""))
+        #expect(ArchivePasswordPolicy.accepts("Pass1234"))
+        #expect(ArchivePasswordPolicy.accepts("Ångström1"))
+        #expect(!ArchivePasswordPolicy.accepts("Pass1"))
+        #expect(!ArchivePasswordPolicy.accepts("password1"))
+        #expect(!ArchivePasswordPolicy.accepts("PASSWORD1"))
+        #expect(!ArchivePasswordPolicy.accepts("Password"))
+    }
+
     @Test func unencryptedZIPRoundTripPreservesPortableSemantics() throws {
         let payload = validPayload()
-        let archive = try HeritgArchive.makeArchive(payload, password: "")
+        let archive = try HeritgArchiveFormat.encode(payload)
 
         #expect(try HeritgArchive.protection(of: archive) == .unencrypted)
         #expect(archive.starts(with: [0x50, 0x4b, 0x03, 0x04]))
@@ -33,6 +43,17 @@ struct HeritgArchiveTests {
         #expect(decoded.people[0].profilePhotoData == payload.people[0].profilePhotoData)
         #expect(decoded.relationships[0].id == "relationship-alpha-beta")
         #expect(calendarKey(decoded.relationships[0].marriageDate) == "2010-06-20")
+    }
+
+    @Test func emptyPasswordStillProducesEncryptedArchiveAndRestoresWithoutPrompt() throws {
+        let payload = validPayload()
+        let salt = Data(0..<16)
+        let nonce = Data(16..<28)
+        let archive = try HeritgArchive.makeArchive(payload, password: "", salt: salt, nonce: nonce)
+
+        #expect(try HeritgArchive.protection(of: archive) == .encrypted)
+        #expect(sha256(archive) == "bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440")
+        #expect(try HeritgArchive.decrypt(archive, password: "").tree.id == payload.tree.id)
     }
 
     @Test func deterministicEncryptionNormalizesUnicodePasswordsAndAuthenticatesBytes() throws {
@@ -82,7 +103,7 @@ struct HeritgArchiveTests {
     }
 
     @Test func checksumAndUnexpectedEntryTamperingAreRejected() throws {
-        let archive = try HeritgArchive.makeArchive(validPayload(), password: "")
+        let archive = try HeritgArchiveFormat.encode(validPayload())
         var files = try HeritgZIP.decode(archive)
         var people = try #require(files["people.jsonl"])
         people[people.startIndex + 10] ^= 0x01
@@ -111,13 +132,13 @@ struct HeritgArchiveTests {
             ])
         }
 
-        var archive = try HeritgArchive.makeArchive(validPayload(), password: "")
+        var archive = try HeritgArchiveFormat.encode(validPayload())
         archive.append(0)
         #expect(throws: HeritgArchiveError.invalidArchive) {
             try HeritgArchive.decodeUnencrypted(archive)
         }
 
-        var linked = try HeritgArchive.makeArchive(validPayload(), password: "")
+        var linked = try HeritgArchiveFormat.encode(validPayload())
         let central = try #require(linked.range(of: Data([0x50, 0x4b, 0x01, 0x02])))
         linked[central.lowerBound + 5] = 3
         linked[central.lowerBound + 41] = 0xa0

@@ -59,8 +59,8 @@
     <string name="point_of_view">Sudut pandang gambar silsilah</string><string name="names_only">Nama saja</string>
     <string name="export_png">Ekspor gambar silsilah (PNG)</string><string name="export_svg">Ekspor silsilah skalabel (SVG)</string><string name="export_gedcom">Ekspor GEDCOM 7</string>
     <string name="heritg_backup">Cadangan Heritg</string><string name="backup_copy">Menyimpan seluruh data keluarga dan foto dalam satu berkas.</string>
-    <string name="encrypt_optional">Enkripsi dengan kata sandi (opsional)</string><string name="password">Kata sandi</string><string name="confirm_password">Konfirmasi kata sandi</string>
-    <string name="passwords_mismatch">Kata sandi tidak cocok.</string><string name="unencrypted_warning">Tanpa enkripsi, siapa pun yang memiliki berkas cadangan dapat membaca data keluarga Anda.</string>
+    <string name="every_backup_encrypted">Setiap cadangan Heritg dienkripsi</string><string name="password_optional">Kata sandi (opsional)</string><string name="password">Kata sandi</string><string name="confirm_password">Konfirmasi kata sandi</string>
+    <string name="passwords_mismatch">Kata sandi tidak cocok.</string>
     <string name="create_backup">Buat cadangan Heritg</string><string name="creating_backup">Membuat cadangan</string>
     <string name="encrypted_backup">Cadangan Heritg terenkripsi</string><string name="enter_backup_password">Masukkan kata sandi yang digunakan saat cadangan ini dibuat.</string>
     <string name="import_completed">Impor Selesai</string>
@@ -108,7 +108,8 @@
     <string name="show_all_people">Tampilkan semua orang</string>
     <string name="shown">Ditampilkan</string>
     <string name="hidden">Disembunyikan</string>
-    <string name="password_restore_notice">Kata sandi apa pun yang tidak kosong dapat digunakan. Anda akan memerlukannya untuk memulihkan cadangan.</string>
+    <string name="password_restore_notice">Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi. Jika menggunakan kata sandi, pakai minimal 8 karakter dengan huruf besar, huruf kecil, dan angka. Kata sandi yang lebih panjang lebih aman.</string>
+    <string name="password_requirements">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</string>
     <string name="share_backup">Bagikan cadangan Heritg</string>
     <string name="add_family_tree">Tambah silsilah keluarga</string>
     <string name="actions_for">Tindakan untuk %1$s</string>

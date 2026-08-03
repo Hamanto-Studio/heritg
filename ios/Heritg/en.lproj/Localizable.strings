@@ -122,11 +122,13 @@
 "Above: %@; Below: %@" = "Above: %@; Below: %@";
 "Limits how many family levels are shown above and below the selected person" = "Limits how many family levels are shown above and below the selected person";
 "Confirm password" = "Confirm password";
-"Any non-empty password can be used. You will need it to restore the backup." = "Any non-empty password can be used. You will need it to restore the backup.";
 "Create Heritg backup" = "Create Heritg backup";
 "Creating backup" = "Creating backup";
 "Decrypting backup" = "Decrypting backup";
-"Encrypt with a password (optional)" = "Encrypt with a password (optional)";
+"Every Heritg backup is encrypted" = "Every Heritg backup is encrypted";
+"The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer." = "The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.";
+"Use at least 8 characters with an uppercase letter, a lowercase letter, and a number." = "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.";
+"Password (optional)" = "Password (optional)";
 "Encrypted Heritg backup" = "Encrypted Heritg backup";
 "Enter the password used when this backup was created." = "Enter the password used when this backup was created.";
 "Password" = "Password";
@@ -144,7 +146,6 @@
 "The Heritg backup is larger than 32 MB." = "The Heritg backup is larger than 32 MB.";
 "The password is incorrect or the Heritg backup is damaged." = "The password is incorrect or the Heritg backup is damaged.";
 "This Heritg backup was created by an unsupported app version." = "This Heritg backup was created by an unsupported app version.";
-"Without encryption, anyone with the backup file can read your family data." = "Without encryption, anyone with the backup file can read your family data.";
 "%lld warnings" = "%lld warnings";
 "Import Completed" = "Import Completed";
 "Imported %@ with %@.\n\n%@" = "Imported %1$@ with %2$@.\n\n%3$@";

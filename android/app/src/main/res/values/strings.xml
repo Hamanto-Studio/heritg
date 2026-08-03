@@ -116,10 +116,10 @@
     <string name="export_gedcom">Export GEDCOM 7</string>
     <string name="heritg_backup">Heritg backup</string>
     <string name="backup_copy">Preserves all family data and photos in one file.</string>
-    <string name="encrypt_optional">Encrypt with a password (optional)</string>
+    <string name="every_backup_encrypted">Every Heritg backup is encrypted</string>
+    <string name="password_optional">Password (optional)</string>
     <string name="password">Password</string><string name="confirm_password">Confirm password</string>
     <string name="passwords_mismatch">Passwords do not match.</string>
-    <string name="unencrypted_warning">Without encryption, anyone with the backup file can read your family data.</string>
     <string name="create_backup">Create Heritg backup</string><string name="creating_backup">Creating backup</string>
     <string name="encrypted_backup">Encrypted Heritg backup</string>
     <string name="enter_backup_password">Enter the password used when this backup was created.</string>
@@ -168,7 +168,8 @@
     <string name="show_all_people">Show all people</string>
     <string name="shown">Shown</string>
     <string name="hidden">Hidden</string>
-    <string name="password_restore_notice">Any non-empty password can be used. You will need it to restore the backup.</string>
+    <string name="password_restore_notice">The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.</string>
+    <string name="password_requirements">Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.</string>
     <string name="share_backup">Share Heritg backup</string>
     <string name="add_family_tree">Add family tree</string>
     <string name="actions_for">Actions for %1$s</string>

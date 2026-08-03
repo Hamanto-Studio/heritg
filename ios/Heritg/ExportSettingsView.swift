@@ -16,8 +16,11 @@ struct ExportSettingsView: View {
     @State private var exportPointOfViewID: String?
     @State private var archivePassword = ""
     @State private var archivePasswordConfirmation = ""
-    @State private var encryptsArchive = false
     @State private var isPreparingArchive = false
+
+    private var archivePasswordMeetsRequirements: Bool {
+        ArchivePasswordPolicy.accepts(archivePassword)
+    }
 
     init(
         tree: FamilyTree,
@@ -93,31 +96,32 @@ struct ExportSettingsView: View {
                 .foregroundStyle(HeritgColor.subtleText)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Toggle("Encrypt with a password (optional)", isOn: $encryptsArchive)
-                .disabled(isPreparingArchive)
-                .accessibilityIdentifier("settings.encryptArchive")
+            Label("Every Heritg backup is encrypted", systemImage: "lock.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(HeritgColor.add)
 
-            if encryptsArchive {
-                Text("Any non-empty password can be used. You will need it to restore the backup.")
-                    .font(.footnote)
-                    .foregroundStyle(HeritgColor.subtleText)
-                SecureField("Password", text: $archivePassword)
-                    .textContentType(.newPassword)
-                    .disabled(isPreparingArchive)
-                    .accessibilityIdentifier("settings.archivePassword")
-                SecureField("Confirm password", text: $archivePasswordConfirmation)
-                    .textContentType(.newPassword)
-                    .disabled(isPreparingArchive)
-                    .accessibilityIdentifier("settings.archivePasswordConfirmation")
-            } else {
-                Text("Without encryption, anyone with the backup file can read your family data.")
-                    .font(.footnote)
-                    .foregroundStyle(HeritgColor.danger)
-            }
+            Text("The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.")
+                .font(.footnote)
+                .foregroundStyle(HeritgColor.subtleText)
+                .fixedSize(horizontal: false, vertical: true)
+            SecureField("Password (optional)", text: $archivePassword)
+                .textContentType(.newPassword)
+                .disabled(isPreparingArchive)
+                .accessibilityIdentifier("settings.archivePassword")
+            SecureField("Confirm password", text: $archivePasswordConfirmation)
+                .textContentType(.newPassword)
+                .disabled(isPreparingArchive)
+                .accessibilityIdentifier("settings.archivePasswordConfirmation")
 
             if !archivePasswordConfirmation.isEmpty,
                archivePassword != archivePasswordConfirmation {
                 Text("Passwords do not match.")
+                    .font(.footnote)
+                    .foregroundStyle(HeritgColor.danger)
+            }
+
+            if !archivePasswordMeetsRequirements {
+                Text("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
                     .font(.footnote)
                     .foregroundStyle(HeritgColor.danger)
             }
@@ -127,15 +131,14 @@ struct ExportSettingsView: View {
             } label: {
                 Label(
                     isPreparingArchive ? "Creating backup" : "Create Heritg backup",
-                    systemImage: isPreparingArchive ? "hourglass" : (encryptsArchive ? "lock" : "doc")
+                    systemImage: isPreparingArchive ? "hourglass" : "lock"
                 )
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(HeritgButtonStyle(variant: .secondary))
             .disabled(
-                isPreparingArchive || (encryptsArchive && (
-                    archivePassword.isEmpty || archivePasswordConfirmation.isEmpty
-                ))
+                isPreparingArchive || archivePassword != archivePasswordConfirmation ||
+                    !archivePasswordMeetsRequirements
             )
             .accessibilityIdentifier("settings.exportHeritg")
 
@@ -159,13 +162,6 @@ struct ExportSettingsView: View {
         }
         .onChange(of: archivePasswordConfirmation) { _, password in
             if !password.isEmpty { archiveURL = nil }
-        }
-        .onChange(of: encryptsArchive) { _, encryptsArchive in
-            archiveURL = nil
-            if !encryptsArchive {
-                archivePassword = ""
-                archivePasswordConfirmation = ""
-            }
         }
     }
 
@@ -264,8 +260,12 @@ struct ExportSettingsView: View {
     private func prepareArchive() {
         archiveURL = nil
         exportError = nil
-        guard !encryptsArchive || archivePassword == archivePasswordConfirmation else {
+        guard archivePassword == archivePasswordConfirmation else {
             exportError = String(localized: "Passwords do not match.", locale: AppLanguage.selectedLocale)
+            return
+        }
+        guard archivePasswordMeetsRequirements else {
+            exportError = String(localized: "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.", locale: AppLanguage.selectedLocale)
             return
         }
 
@@ -275,7 +275,7 @@ struct ExportSettingsView: View {
                 people: people,
                 relationships: relationships
             )
-            let password = encryptsArchive ? archivePassword : ""
+            let password = archivePassword
             isPreparingArchive = true
             Task {
                 defer { isPreparingArchive = false }
