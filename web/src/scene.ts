@@ -19,7 +19,11 @@ import {
   roundedConnectorPoints
 } from "./connectorStyle";
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
-import type { PlannedRelationshipLabel, RoutePoint } from "./connectionGeometry";
+import {
+  personLifeTop,
+  type PlannedRelationshipLabel,
+  type RoutePoint
+} from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
 import type {
@@ -226,6 +230,7 @@ const personSkeletons = (
   const link = `#heritg-person=${key}`;
   const data = personData(person);
   const selected = person.id === selectedPersonId;
+  const showRole = Boolean(selectedPersonId && person.role);
   const avatarSize = LAYOUT_METRICS.avatarDiameter;
   const innerSize = LAYOUT_METRICS.innerAvatarDiameter;
   const avatarX = person.x - LAYOUT_METRICS.avatarRadius;
@@ -329,8 +334,10 @@ const personSkeletons = (
       link,
       data,
       groupIds
-    ),
-    textSkeleton(
+    )
+  );
+  if (showRole) {
+    values.push(textSkeleton(
       `heritg:person:${key}:role`,
       person.role,
       centeredTextX(person.role, 13, person.x),
@@ -342,8 +349,8 @@ const personSkeletons = (
       link,
       data,
       groupIds
-    )
-  );
+    ));
+  }
   const life = personLifeSummary(person, language);
   if (life) {
     values.push(
@@ -351,7 +358,7 @@ const personSkeletons = (
         `heritg:person:${key}:life`,
         life,
         centeredTextX(life, 11, person.x),
-        person.y + LAYOUT_METRICS.lifeTop,
+        person.y + personLifeTop(showRole),
         LAYOUT_METRICS.labelWidth,
         LAYOUT_METRICS.lifeHeight,
         11,

@@ -54,6 +54,14 @@ describe("canvas avatar projection", () => {
     expect(chart.svg).not.toContain('rx="16"');
   });
 
+  it("exports role labels only when a person is selected", () => {
+    const withoutSelection = buildChartSvg(layout, "Family").svg;
+    const withSelection = buildChartSvg(layout, "Family", person.id).svg;
+
+    expect(withoutSelection).not.toContain(">You</text>");
+    expect(withSelection).toContain(">You</text>");
+  });
+
   it("exports birth dates according to their stored precision", () => {
     const exact = buildChartSvg(layout, "Family", person.id, "id").svg;
     const month = buildChartSvg({

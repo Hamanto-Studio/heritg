@@ -5,6 +5,7 @@ import {
   connectorPaths,
   roundedConnectorPath
 } from "./connectorStyle";
+import { personLifeTop } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
 import type { AppData, PositionedPerson, TreeLayout } from "./types";
@@ -47,6 +48,7 @@ const personNode = (
   const avatarX = person.x + offsetX;
   const avatarY = person.y + offsetY;
   const selected = person.id === selectedPersonId;
+  const showRole = Boolean(selectedPersonId && person.role);
   const clipId = `photo-${person.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
   const innerRadius = LAYOUT_METRICS.innerAvatarDiameter / 2;
   const name = compactText(person.displayName || "Unnamed person", 34);
@@ -58,8 +60,8 @@ const personNode = (
     <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${selected ? "#f3eadf" : "#fffdf8"}" stroke="${selected ? "#a8875b" : "#d8ccbc"}" stroke-width="${selected ? 2 : 1}"/>
     ${avatar}
     <text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.labelTop + 15}" text-anchor="middle" font-size="${nameFontSize(name)}" font-weight="700" fill="#302b25">${escapeXml(name)}</text>
-    <text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.roleTop + 13}" text-anchor="middle" font-size="13" fill="${selected ? "#a8875b" : "#796f63"}">${escapeXml(compactText(person.role, 28))}</text>
-    ${life ? `<text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.lifeTop + 12}" text-anchor="middle" font-size="11" fill="#796f63">${escapeXml(life)}</text>` : ""}
+    ${showRole ? `<text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.roleTop + 13}" text-anchor="middle" font-size="13" fill="${selected ? "#a8875b" : "#796f63"}">${escapeXml(compactText(person.role, 28))}</text>` : ""}
+    ${life ? `<text x="${avatarX}" y="${avatarY + personLifeTop(showRole) + 12}" text-anchor="middle" font-size="11" fill="#796f63">${escapeXml(life)}</text>` : ""}
   </g>`;
 };
 
