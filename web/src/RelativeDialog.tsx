@@ -1,6 +1,7 @@
 import { Link2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
+import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import type { Translator } from "./i18n";
 import { RelationshipRolePicker } from "./RelationshipDialog";
 import {
@@ -9,7 +10,7 @@ import {
   isPartnerRole
 } from "./relationshipRoles";
 import type { AppActions } from "./store";
-import type { DirectRole, FamilyRelationship, Person } from "./types";
+import type { AppData, DirectRole, FamilyRelationship, Person } from "./types";
 import { ErrorNotice, Modal } from "./ui";
 
 interface RelativeDialogProps {
@@ -17,6 +18,7 @@ interface RelativeDialogProps {
   people: Person[];
   relationships: FamilyRelationship[];
   actions: AppActions;
+  language: AppData["language"];
   t: Translator;
   onClose: () => void;
   onSaved: (personId: string) => void;
@@ -30,6 +32,7 @@ export function RelativeDialog({
   people,
   relationships,
   actions,
+  language,
   t,
   onClose,
   onSaved
@@ -206,10 +209,15 @@ export function RelativeDialog({
           <details className="person-detail-disclosure">
             <summary>{t("optionalDetails")}</summary>
             <div className="field-grid">
-              <label className="field">
-                {t("birthDateOptional")}
-                <input onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />
-              </label>
+              <DatePickerField
+                defaultMonth={new Date(new Date().getFullYear() - 30, 0, 1)}
+                label={t("birthDateOptional")}
+                language={language}
+                max={formatIsoDate(new Date())}
+                onChange={setBirthDate}
+                t={t}
+                value={birthDate}
+              />
               <label className="field">
                 {t("city")}
                 <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
@@ -245,10 +253,14 @@ export function RelativeDialog({
       )}
 
       {isPartnerRole(role) ? (
-        <label className="field">
-          {t("marriageDateOptional")}
-          <input onChange={(event) => setMarriageDate(event.target.value)} type="date" value={marriageDate} />
-        </label>
+        <DatePickerField
+          label={t("marriageDateOptional")}
+          language={language}
+          max={formatIsoDate(new Date())}
+          onChange={setMarriageDate}
+          t={t}
+          value={marriageDate}
+        />
       ) : null}
 
       {allowsCoParent(role) && coParents.length ? (
