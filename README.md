@@ -46,12 +46,23 @@ HERITG contains three local-first clients on `main`:
 | Platform | What is included | Local storage | Verification |
 | --- | --- | --- | --- |
 | iOS | Native SwiftUI app in [`ios/`](ios) | SwiftData | Unit and UI tests; [manual iOS CI](.github/workflows/ios-ci.yml) |
-| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Unit, lint, build, and emulator suites run locally; secret scanning runs in CI |
+| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Android CI runs unit tests, lint, and a debug build; instrumentation requires a local emulator; secret scanning runs in CI |
 | Web | Installable React progressive web app in [`web/`](web) | AES-GCM-encrypted IndexedDB | Lint, tests, and production build in [Web CI](.github/workflows/web-ci.yml) |
 
 The repository also contains the shared product, archive, privacy, analytics,
 security, data-processing, and design specifications used to keep the three
 implementations aligned.
+
+### Current release cut
+
+Each client is versioned and shipped independently. The latest user-facing
+cut is recorded in the shared [changelog](CHANGELOG.md):
+
+| Platform | Current release | Latest cut |
+| --- | --- | --- |
+| Web | [0.2.1](CHANGELOG.md#web-021---2026-08-04) | Encrypted read-only sharing, responsive canvas input, and the installable offline app |
+| iOS | [1.0.0](CHANGELOG.md#ios-100---2026-08-02) | Local family trees, portable encrypted archives, GEDCOM, and chart export |
+| Android | Unreleased | Native Compose/Room client is included on `main`; release notes remain under `Unreleased` |
 
 ## Features
 
