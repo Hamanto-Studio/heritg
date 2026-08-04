@@ -397,6 +397,7 @@ export function App() {
       {relativeTarget ? (
         <RelativeDialog
           actions={actions}
+          language={data.language}
           onClose={() => setRelativeTarget(undefined)}
           onSaved={() => setTimeout(() => canvasRef.current?.focusPerson(relativeTarget.id), 60)}
           people={people}

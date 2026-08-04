@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowLeftRight, ArrowUp, Heart } from "lucide-react";
 import { useState } from "react";
 
+import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import type { MessageKey, Translator } from "./i18n";
 import {
   ROLE_GROUPS,
@@ -9,7 +10,7 @@ import {
   roleForRelationship
 } from "./relationshipRoles";
 import type { RelationshipDraftInput } from "./store";
-import type { DirectRole, FamilyRelationship, Person } from "./types";
+import type { AppData, DirectRole, FamilyRelationship, Person } from "./types";
 import { Modal, PersonAvatar } from "./ui";
 
 const ROLE_GROUP_LABELS = {
@@ -71,6 +72,7 @@ interface RelationshipDialogProps {
   relationship?: FamilyRelationship;
   relative?: Person;
   initialDraft?: RelationshipDraftInput;
+  language: AppData["language"];
   t: Translator;
   onClose: () => void;
   onSave: (input: RelationshipDraftInput) => void;
@@ -82,6 +84,7 @@ export function RelationshipDialog({
   relationship,
   relative,
   initialDraft,
+  language,
   t,
   onClose,
   onSave
@@ -154,10 +157,15 @@ export function RelationshipDialog({
       <RelationshipRolePicker onSelect={chooseRole} selectedRole={role} t={t} />
       {genderNotice}
       {role && isPartnerRole(role) ? (
-        <label className="field relationship-date-field">
-          {t("marriageDateOptional")}
-          <input onChange={(event) => setMarriageDate(event.target.value)} type="date" value={marriageDate} />
-        </label>
+        <DatePickerField
+          className="relationship-date-field"
+          label={t("marriageDateOptional")}
+          language={language}
+          max={formatIsoDate(new Date())}
+          onChange={setMarriageDate}
+          t={t}
+          value={marriageDate}
+        />
       ) : null}
     </div>
   );
@@ -183,10 +191,14 @@ export function RelationshipDialog({
       </label>
       {genderNotice}
       {role && isPartnerRole(role) ? (
-        <label className="field">
-          {t("marriageDateOptional")}
-          <input onChange={(event) => setMarriageDate(event.target.value)} type="date" value={marriageDate} />
-        </label>
+        <DatePickerField
+          label={t("marriageDateOptional")}
+          language={language}
+          max={formatIsoDate(new Date())}
+          onChange={setMarriageDate}
+          t={t}
+          value={marriageDate}
+        />
       ) : null}
       {!candidates.length ? <p className="relationship-unavailable">{t("noPeopleAvailableToLink")}</p> : null}
     </div>
