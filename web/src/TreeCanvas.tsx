@@ -290,6 +290,9 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const viewportCallback = useRef(onViewportChange);
   const didInitialMobileFit = useRef(false);
   const spacePanActive = useRef(false);
+  const [touchNavigation, setTouchNavigation] = useState(() =>
+    window.matchMedia("(pointer: coarse)").matches
+  );
   const layout = useMemo(
     () => createTreeLayout(people, relationships, selectedPersonId, generationLimits, language),
     [generationLimits, language, people, relationships, selectedPersonId]
@@ -306,6 +309,13 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   useEffect(() => {
     viewportCallback.current = onViewportChange;
   }, [onViewportChange]);
+
+  useEffect(() => {
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const updateTouchNavigation = () => setTouchNavigation(coarsePointer.matches);
+    coarsePointer.addEventListener("change", updateTouchNavigation);
+    return () => coarsePointer.removeEventListener("change", updateTouchNavigation);
+  }, []);
 
   useEffect(() => {
     if (!api) return;
@@ -528,6 +538,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
         onPointerUp={handlePointerUp}
         onScrollChange={persistViewport}
         theme="light"
+        viewModeEnabled={touchNavigation}
         UIOptions={{
           canvasActions: {
             changeViewBackgroundColor: false,
