@@ -428,9 +428,11 @@
 }
 
 .canvas-host .excalidraw .App-menu_top,
+.canvas-host .excalidraw .App-mobile-menu,
 .canvas-host .excalidraw .layer-ui__wrapper__top-right,
 .canvas-host .excalidraw .App-toolbar,
 .canvas-host .excalidraw .help-icon,
+.canvas-host .excalidraw .mobile-misc-tools-container,
 .canvas-host .excalidraw .zoom-actions {
   display: none !important;
 }

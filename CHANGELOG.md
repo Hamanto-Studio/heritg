@@ -8,7 +8,10 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+#### Changed
+
+- Kept desktop pointer selection while making one-finger canvas dragging pan naturally on phones and tablets.
+- Removed the embedded drawing library and editing controls from touch layouts so Heritg's own canvas controls stay clear.
 
 ### iOS
 
