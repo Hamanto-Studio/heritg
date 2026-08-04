@@ -6,12 +6,12 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/healthz",
-      "destination": "__HERITG_API_ORIGIN__/healthz"
+      "source": "/health",
+      "destination": "__HERITG_API_ORIGIN__/health"
     },
     {
-      "source": "/readyz",
-      "destination": "__HERITG_API_ORIGIN__/readyz"
+      "source": "/ready",
+      "destination": "__HERITG_API_ORIGIN__/ready"
     },
     {
       "source": "/api/v1/:path*",
@@ -43,7 +43,7 @@
       ]
     },
     {
-      "source": "/(healthz|readyz)",
+      "source": "/(health|ready)",
       "headers": [
         { "key": "Cache-Control", "value": "private, no-store" }
       ]
