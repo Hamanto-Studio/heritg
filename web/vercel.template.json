@@ -43,13 +43,7 @@
       ]
     },
     {
-      "source": "/health",
-      "headers": [
-        { "key": "Cache-Control", "value": "private, no-store" }
-      ]
-    },
-    {
-      "source": "/ready",
+      "source": "/(health|ready)",
       "headers": [
         { "key": "Cache-Control", "value": "private, no-store" }
       ]
