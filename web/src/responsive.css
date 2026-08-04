@@ -49,9 +49,36 @@
 }
 
 @media (max-width: 620px) {
+  .shared-header { align-items: flex-start; }
+  .shared-title { max-width: none; }
+  .shared-header-actions { flex: 0 0 auto; }
+  .shared-save,
+  .shared-home {
+    font-size: 0;
+    height: 44px;
+    padding: 0;
+    width: 44px;
+  }
+  .shared-save span { display: none; }
+  .shared-save svg,
+  .shared-home svg { margin: 0; }
+  .shared-notice {
+    bottom: max(18px, env(safe-area-inset-bottom, 0px));
+    max-width: calc(100% - 92px);
+  }
+
   .workspace-tools .desktop-tool {
     display: none;
   }
+
+  .workspace-share-button {
+    border-radius: 50%;
+    font-size: 0;
+    padding: 0;
+    width: 44px;
+  }
+
+  .workspace-share-button span { display: none; }
 }
 
 @media (max-width: 520px) {

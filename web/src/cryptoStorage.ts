@@ -3,7 +3,7 @@ import type { AppData } from "./types";
 export const LOCAL_ENCRYPTION_VERSION = 2 as const;
 export const LOCAL_ENCRYPTION_ALGORITHM = "AES-GCM" as const;
 
-const additionalData = new TextEncoder().encode("heritg:local-family-data:v2");
+const APP_DATA_CONTEXT = "heritg:local-family-data:v2";
 
 export interface EncryptedAppData {
   version: typeof LOCAL_ENCRYPTION_VERSION;
@@ -11,6 +11,8 @@ export interface EncryptedAppData {
   iv: Uint8Array<ArrayBuffer>;
   ciphertext: ArrayBuffer;
 }
+
+export type EncryptedLocalValue = EncryptedAppData;
 
 export const isEncryptedAppData = (value: unknown): value is EncryptedAppData => {
   if (!value || typeof value !== "object") return false;
@@ -29,15 +31,20 @@ export const generateLocalEncryptionKey = () => crypto.subtle.generateKey(
   ["encrypt", "decrypt"]
 );
 
-export async function encryptAppData(
-  data: AppData,
-  key: CryptoKey
-): Promise<EncryptedAppData> {
+export async function encryptLocalValue(
+  value: unknown,
+  key: CryptoKey,
+  context: string
+): Promise<EncryptedLocalValue> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ciphertext = await crypto.subtle.encrypt(
-    { name: LOCAL_ENCRYPTION_ALGORITHM, iv, additionalData },
+    {
+      name: LOCAL_ENCRYPTION_ALGORITHM,
+      iv,
+      additionalData: new TextEncoder().encode(context)
+    },
     key,
-    new TextEncoder().encode(JSON.stringify(data))
+    new TextEncoder().encode(JSON.stringify(value))
   );
   return {
     version: LOCAL_ENCRYPTION_VERSION,
@@ -47,18 +54,33 @@ export async function encryptAppData(
   };
 }
 
-export async function decryptAppData(
-  payload: EncryptedAppData,
-  key: CryptoKey
-): Promise<AppData> {
+export async function decryptLocalValue<T>(
+  payload: EncryptedLocalValue,
+  key: CryptoKey,
+  context: string
+): Promise<T> {
   const plaintext = await crypto.subtle.decrypt(
     {
       name: LOCAL_ENCRYPTION_ALGORITHM,
       iv: payload.iv,
-      additionalData
+      additionalData: new TextEncoder().encode(context)
     },
     key,
     payload.ciphertext
   );
-  return JSON.parse(new TextDecoder().decode(plaintext)) as AppData;
+  return JSON.parse(new TextDecoder().decode(plaintext)) as T;
+}
+
+export async function encryptAppData(
+  data: AppData,
+  key: CryptoKey
+): Promise<EncryptedAppData> {
+  return encryptLocalValue(data, key, APP_DATA_CONTEXT);
+}
+
+export async function decryptAppData(
+  payload: EncryptedAppData,
+  key: CryptoKey
+): Promise<AppData> {
+  return decryptLocalValue<AppData>(payload, key, APP_DATA_CONTEXT);
 }

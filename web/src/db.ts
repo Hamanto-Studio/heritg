@@ -2,19 +2,34 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
 import {
   decryptAppData,
+  decryptLocalValue,
   encryptAppData,
+  encryptLocalValue,
   generateLocalEncryptionKey,
   isEncryptedAppData,
-  type EncryptedAppData
+  type EncryptedAppData,
+  type EncryptedLocalValue
 } from "./cryptoStorage";
 import type { AppData } from "./types";
 
 const DATABASE_NAME = "heritg";
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 const STORE_NAME = "appData";
 const STATE_KEY = "state";
 const KEY_STORE_NAME = "encryptionKeys";
 const LOCAL_KEY = "localDataKey";
+const SHARE_STORE_NAME = "shareManagement";
+const SHARE_STATE_KEY = "records";
+const SHARE_CONTEXT = "heritg:share-management:v1";
+
+export interface ManagedShare {
+  shareId: string;
+  deletionToken: string;
+  treeId: string;
+  treeTitle: string;
+  createdAt: string;
+  expiresAt: string;
+}
 
 interface HeritgDatabase extends DBSchema {
   appData: {
@@ -24,6 +39,10 @@ interface HeritgDatabase extends DBSchema {
   encryptionKeys: {
     key: typeof LOCAL_KEY;
     value: CryptoKey;
+  };
+  shareManagement: {
+    key: typeof SHARE_STATE_KEY;
+    value: EncryptedLocalValue;
   };
 }
 
@@ -38,6 +57,9 @@ const database = () => {
       }
       if (!db.objectStoreNames.contains(KEY_STORE_NAME)) {
         db.createObjectStore(KEY_STORE_NAME);
+      }
+      if (!db.objectStoreNames.contains(SHARE_STORE_NAME)) {
+        db.createObjectStore(SHARE_STORE_NAME);
       }
     }
   });
@@ -65,6 +87,37 @@ export async function loadAppData(): Promise<AppData | undefined> {
 export async function saveAppData(data: AppData): Promise<void> {
   const encrypted = await encryptAppData(data, await encryptionKey());
   await (await database()).put(STORE_NAME, encrypted, STATE_KEY);
+}
+
+const shareIdPattern = /^[A-Za-z0-9_-]{22}$/u;
+const tokenPattern = /^[A-Za-z0-9_-]{43}$/u;
+
+const validManagedShare = (value: unknown): value is ManagedShare => {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<ManagedShare>;
+  return typeof item.shareId === "string" && shareIdPattern.test(item.shareId) &&
+    typeof item.deletionToken === "string" && tokenPattern.test(item.deletionToken) &&
+    typeof item.treeId === "string" && Boolean(item.treeId) &&
+    typeof item.treeTitle === "string" && Boolean(item.treeTitle) &&
+    typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt)) &&
+    typeof item.expiresAt === "string" && Number.isFinite(Date.parse(item.expiresAt));
+};
+
+export async function loadManagedShares(now = new Date()): Promise<ManagedShare[]> {
+  const db = await database();
+  const stored = await db.get(SHARE_STORE_NAME, SHARE_STATE_KEY);
+  if (!stored || !isEncryptedAppData(stored)) return [];
+  const decoded = await decryptLocalValue<unknown>(stored, await encryptionKey(), SHARE_CONTEXT);
+  if (!Array.isArray(decoded)) return [];
+  const active = decoded.filter(validManagedShare).filter((item) => Date.parse(item.expiresAt) > now.getTime());
+  if (active.length !== decoded.length) await saveManagedShares(active);
+  return active.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
+export async function saveManagedShares(records: readonly ManagedShare[]): Promise<void> {
+  if (!records.every(validManagedShare)) throw new Error("Share management data is invalid.");
+  const encrypted = await encryptLocalValue(records, await encryptionKey(), SHARE_CONTEXT);
+  await (await database()).put(SHARE_STORE_NAME, encrypted, SHARE_STATE_KEY);
 }
 
 export const loadData = loadAppData;
