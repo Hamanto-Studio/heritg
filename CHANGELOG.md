@@ -8,10 +8,7 @@ prefix.
 
 ### Web
 
-#### Changed
-
-- Kept desktop pointer selection while making one-finger canvas dragging pan naturally on phones and tablets.
-- Removed the embedded drawing library and editing controls from touch layouts so Heritg's own canvas controls stay clear.
+- No unreleased changes yet.
 
 ### iOS
 
@@ -20,6 +17,13 @@ prefix.
 ### Android
 
 - No unreleased changes yet.
+
+## [web-0.2.1] - 2026-08-04
+
+### Changed
+
+- Kept desktop pointer selection while making one-finger canvas dragging pan naturally on phones and tablets.
+- Removed the embedded drawing library and editing controls from touch layouts so Heritg's own canvas controls stay clear.
 
 ## [web-0.2.0] - 2026-08-04
 
@@ -77,4 +81,5 @@ prefix.
 
 [web-0.1.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.1.0
 [web-0.2.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.0
+[web-0.2.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.1
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0
