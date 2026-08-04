@@ -8,7 +8,7 @@ public documentation.
 | Surface | Production origin | Provider | Source |
 | --- | --- | --- | --- |
 | Landing page | `https://heritg.hamanto.com/en/` | GitHub Pages | `docs/`, published from `main` |
-| Encryption announcement | `https://heritg-encryption.vercel.app/` | Vercel project `heritg-encryption` | `docs/encryption/en/` |
+| Encryption announcement | `https://heritg-encryption.hamanto.com/` | Vercel project `heritg-encryption` | `docs/encryption/en/` |
 | Web app | A separate application origin | Vercel project `heritg` | `web/` build output |
 
 ## Guardrails

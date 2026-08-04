@@ -1,3 +1,4 @@
+import { formatDisplayDate } from "./i18n";
 import type { AppData, Person } from "./types";
 
 interface DateParts {
@@ -24,7 +25,7 @@ const ageBetween = (birth: DateParts, reference: DateParts) => {
 };
 
 export const personLifeSummary = (
-  person: Pick<Person, "birthDate" | "deathDate">,
+  person: Pick<Person, "birthDate" | "deathDate" | "birthDatePrecision">,
   language: AppData["language"] = "en",
   now = new Date()
 ): string | undefined => {
@@ -43,7 +44,16 @@ export const personLifeSummary = (
       ? years
       : language === "id" ? `${years} · usia ${age}` : `${years} · age ${age}`;
   }
-  const born = language === "id" ? `Lahir ${birth.year}` : `Born ${birth.year}`;
+  const birthValue = person.birthDate ?? String(birth.year);
+  const displayedBirth = person.birthDatePrecision === "exact"
+    ? formatDisplayDate(birthValue, language)
+    : person.birthDatePrecision === "month"
+      ? new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", {
+          month: "short",
+          year: "numeric"
+        }).format(new Date(`${birth.year}-${String(birth.month).padStart(2, "0")}-01T00:00:00`))
+      : String(birth.year);
+  const born = language === "id" ? `Lahir ${displayedBirth}` : `Born ${displayedBirth}`;
   return age === undefined
     ? born
     : language === "id" ? `${born} · usia ${age}` : `${born} · age ${age}`;

@@ -20,6 +20,7 @@ firebase-debug.log*
 # Firebase and infrastructure state
 .firebase/
 .terraform/
+.vercel/
 *.tfstate
 *.tfstate.*
 *.tfvars

@@ -67,6 +67,13 @@ The web application stores family data locally in IndexedDB. Do not introduce
 networked storage, tracking, or production credentials without the privacy and
 security review described below.
 
+## Releases
+
+Follow [`docs/RELEASES.md`](docs/RELEASES.md) for version branches, tags,
+platform metadata, changelog entries, and deployment gates. Web, iOS, and
+Android use one [`CHANGELOG.md`](CHANGELOG.md), version independently, and never
+prefix versions with `v`.
+
 ## Android Development
 
 Use Java 17 and Android SDK 37. Before opening a pull request, run:
