@@ -133,7 +133,7 @@ h1, h2, h3, p { margin-top: 0; }
 .tree-demo-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .tree-demo-stage.is-settling { transition: transform .42s cubic-bezier(.2,.8,.2,1); }
 .tree-demo-stage svg { position: absolute; top: 0; left: 0; overflow: visible; }
-.tree-demo-stage line { stroke: #9d8a70; stroke-width: 1.7; stroke-linecap: round; }
+.tree-demo-stage line, .tree-demo-stage path { fill: none; stroke: #9d8a70; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .tree-demo-stage .partner-connector { stroke: #83715a; }
 .family-junction { fill: #8f7a61; }
 .crossing-knockout { fill: #f5f4f1; }

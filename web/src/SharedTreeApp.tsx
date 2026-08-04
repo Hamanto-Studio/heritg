@@ -79,6 +79,7 @@ export function SharedTreeApp() {
           initialViewport={viewport}
           language={language}
           onAddRelative={() => undefined}
+          onCanvasInteract={() => undefined}
           onDeselectPerson={() => setSelectedPersonId(undefined)}
           onEditPerson={() => undefined}
           onSelectPerson={setSelectedPersonId}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Heritg Web"
+  short_description: "Prepare and deploy versioned web releases"
+  default_prompt: "Use $release-heritg-web to prepare, deploy, and verify the next Heritg web release."

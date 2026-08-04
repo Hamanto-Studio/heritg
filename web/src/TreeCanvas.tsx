@@ -62,6 +62,7 @@ interface TreeCanvasProps {
   onEditPerson: (personId: string) => void;
   onSelectPerson: (personId: string) => void;
   onDeselectPerson: () => void;
+  onCanvasInteract: () => void;
   onViewportChange: (viewport: ViewportState) => void;
   emptyContent?: ReactNode;
   readOnly?: boolean;
@@ -277,6 +278,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   onEditPerson,
   onSelectPerson,
   onDeselectPerson,
+  onCanvasInteract,
   onViewportChange,
   emptyContent,
   readOnly = false
@@ -287,6 +289,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const pendingViewport = useRef<ViewportState | undefined>(undefined);
   const viewportCallback = useRef(onViewportChange);
   const didInitialMobileFit = useRef(false);
+  const spacePanActive = useRef(false);
   const layout = useMemo(
     () => createTreeLayout(people, relationships, selectedPersonId, generationLimits, language),
     [generationLimits, language, people, relationships, selectedPersonId]
@@ -303,6 +306,37 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   useEffect(() => {
     viewportCallback.current = onViewportChange;
   }, [onViewportChange]);
+
+  useEffect(() => {
+    if (!api) return;
+    const releaseSpacePan = () => {
+      if (!spacePanActive.current) return;
+      spacePanActive.current = false;
+      api.setActiveTool({ type: "selection" });
+    };
+    const handleSpaceDown = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) return;
+      const target = event.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLElement && target.isContentEditable)) return;
+      event.preventDefault();
+      spacePanActive.current = true;
+      api.setActiveTool({ type: "hand" });
+    };
+    const handleSpaceUp = (event: KeyboardEvent) => {
+      if (event.code === "Space") releaseSpacePan();
+    };
+    window.addEventListener("keydown", handleSpaceDown);
+    window.addEventListener("keyup", handleSpaceUp);
+    window.addEventListener("blur", releaseSpacePan);
+    return () => {
+      window.removeEventListener("keydown", handleSpaceDown);
+      window.removeEventListener("keyup", handleSpaceUp);
+      window.removeEventListener("blur", releaseSpacePan);
+      spacePanActive.current = false;
+    };
+  }, [api]);
 
   const personElements = (personId: string) => scene.elements.filter((element) => {
     const customData = element.customData as { personId?: unknown } | undefined;
@@ -463,7 +497,14 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   };
 
   return (
-    <div className="canvas-host" aria-label={treeTitle} ref={canvasHost} role="region">
+    <div
+      className="canvas-host"
+      aria-label={treeTitle}
+      onPointerDownCapture={onCanvasInteract}
+      onWheelCapture={onCanvasInteract}
+      ref={canvasHost}
+      role="region"
+    >
       <Excalidraw
         autoFocus={false}
         detectScroll={false}
@@ -499,7 +540,6 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
           },
           tools: { image: false }
         }}
-        viewModeEnabled
       />
       {readOnly ? emptyContent : (
         <CanvasActions

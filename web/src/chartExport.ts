@@ -1,5 +1,11 @@
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
-import type { RouteSegment } from "./connectionGeometry";
+import {
+  CONNECTOR_STYLE,
+  branchJunctions,
+  connectorPaths,
+  roundedConnectorPath
+} from "./connectorStyle";
+import { personLifeTop } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
 import type { AppData, PositionedPerson, TreeLayout } from "./types";
@@ -19,15 +25,15 @@ const compactText = (value: string, maximum: number) => {
   return normalized.length > maximum ? `${normalized.slice(0, maximum - 1)}...` : normalized;
 };
 
-const svgLine = (
-  segment: RouteSegment,
+const svgConnector = (
+  points: Parameters<typeof roundedConnectorPath>[0],
   offsetX: number,
   offsetY: number,
   metadata: string,
   color: string,
   width: number,
   dashed = false
-) => `<line x1="${segment.start.x + offsetX}" y1="${segment.start.y + offsetY}" x2="${segment.end.x + offsetX}" y2="${segment.end.y + offsetY}" ${metadata} fill="none" stroke="${color}" stroke-width="${width}" ${dashed ? 'stroke-dasharray="7 6"' : ""} stroke-linecap="round" stroke-linejoin="round"/>`;
+) => `<path d="${roundedConnectorPath(points, offsetX, offsetY)}" ${metadata} fill="none" stroke="${color}" stroke-width="${width}" ${dashed ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round" stroke-linejoin="round"/>`;
 
 const nameFontSize = (value: string) =>
   Math.max(9, Math.min(16, Math.floor(320 / Math.max(20, value.length))));
@@ -42,6 +48,7 @@ const personNode = (
   const avatarX = person.x + offsetX;
   const avatarY = person.y + offsetY;
   const selected = person.id === selectedPersonId;
+  const showRole = Boolean(selectedPersonId && person.role);
   const clipId = `photo-${person.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
   const innerRadius = LAYOUT_METRICS.innerAvatarDiameter / 2;
   const name = compactText(person.displayName || "Unnamed person", 34);
@@ -53,8 +60,8 @@ const personNode = (
     <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${selected ? "#f3eadf" : "#fffdf8"}" stroke="${selected ? "#a8875b" : "#d8ccbc"}" stroke-width="${selected ? 2 : 1}"/>
     ${avatar}
     <text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.labelTop + 15}" text-anchor="middle" font-size="${nameFontSize(name)}" font-weight="700" fill="#302b25">${escapeXml(name)}</text>
-    <text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.roleTop + 13}" text-anchor="middle" font-size="13" fill="${selected ? "#a8875b" : "#796f63"}">${escapeXml(compactText(person.role, 28))}</text>
-    ${life ? `<text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.lifeTop + 12}" text-anchor="middle" font-size="11" fill="#796f63">${escapeXml(life)}</text>` : ""}
+    ${showRole ? `<text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.roleTop + 13}" text-anchor="middle" font-size="13" fill="${selected ? "#a8875b" : "#796f63"}">${escapeXml(compactText(person.role, 28))}</text>` : ""}
+    ${life ? `<text x="${avatarX}" y="${avatarY + personLifeTop(showRole) + 12}" text-anchor="middle" font-size="11" fill="#796f63">${escapeXml(life)}</text>` : ""}
   </g>`;
 };
 
@@ -81,32 +88,32 @@ export function buildChartSvg(
   const height = Math.ceil(maxY - minY + PADDING * 2 + FOOTER_HEIGHT);
   const offsetX = -minX + PADDING;
   const offsetY = -minY + PADDING;
-  const familyLines = plan.families.flatMap((family) => family.segments.map((segment, index) =>
-    svgLine(
-      segment,
+  const familyLines = plan.families.flatMap((family) => connectorPaths(family.segments).map((path, index) =>
+    svgConnector(
+      path.points,
       offsetX,
       offsetY,
-      `data-family-id="${escapeXml(family.id)}" data-segment-index="${index}"`,
-      "#a8875b",
-      2
+      `data-family-id="${escapeXml(family.id)}" data-path-index="${index}" data-segment-indexes="${path.segmentIndexes.join(",")}"`,
+      CONNECTOR_STYLE.familyColor,
+      CONNECTOR_STYLE.width
     )
   )).join("");
-  const relationshipLines = plan.nonParentRoutes.flatMap((route) => route.segments.map((segment, index) =>
-    svgLine(
-      segment,
+  const relationshipLines = plan.nonParentRoutes.flatMap((route) => connectorPaths(route.segments).map((path, index) =>
+    svgConnector(
+      path.points,
       offsetX,
       offsetY,
-      `data-route-id="${escapeXml(route.id)}" data-segment-index="${index}"`,
-      route.relationship.kind === "partner" ? "#b77972" : "#7e9b63",
-      2,
+      `data-route-id="${escapeXml(route.id)}" data-path-index="${index}" data-segment-indexes="${path.segmentIndexes.join(",")}"`,
+      route.relationship.kind === "partner" ? CONNECTOR_STYLE.partnerColor : CONNECTOR_STYLE.siblingColor,
+      CONNECTOR_STYLE.width,
       route.relationship.kind === "sibling"
     )
   )).join("");
-  const junctions = plan.families.flatMap((family) => family.junctions.map((point, index) =>
-    `<circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="3" fill="#a8875b" data-family-junction="${escapeXml(family.id)}:${index}"/>`
+  const junctions = plan.families.flatMap((family) => branchJunctions(family.segments).map((point, index) =>
+    `<circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="${CONNECTOR_STYLE.junctionRadius}" fill="${CONNECTOR_STYLE.familyColor}" data-family-junction="${escapeXml(family.id)}:${index}"/>`
   )).join("");
   const crossings = plan.crossings.map((point, index) =>
-    `<g data-crossing-index="${index}"><circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="4" fill="#fffdf8"/><line x1="${point.x + offsetX}" y1="${point.y + offsetY - 5}" x2="${point.x + offsetX}" y2="${point.y + offsetY + 5}" stroke="${point.kind === "parent" ? "#a8875b" : point.kind === "partner" ? "#b77972" : "#7e9b63"}" stroke-width="2" ${point.kind === "sibling" ? 'stroke-dasharray="4 3"' : ""} stroke-linecap="round"/></g>`
+    `<g data-crossing-index="${index}"><circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="${CONNECTOR_STYLE.crossingRadius}" fill="#fffdf8"/><line x1="${point.x + offsetX}" y1="${point.y + offsetY - 6}" x2="${point.x + offsetX}" y2="${point.y + offsetY + 6}" stroke="${point.kind === "parent" ? CONNECTOR_STYLE.familyColor : point.kind === "partner" ? CONNECTOR_STYLE.partnerColor : CONNECTOR_STYLE.siblingColor}" stroke-width="${CONNECTOR_STYLE.width}" ${point.kind === "sibling" ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round"/></g>`
   ).join("");
   const relationshipLabels = plan.nonParentRoutes.flatMap((route) => route.label ? [
     `<g data-relationship-label="${escapeXml(route.id)}"><rect x="${route.label.rect.x + offsetX}" y="${route.label.rect.y + offsetY}" width="${route.label.rect.width}" height="${route.label.rect.height}" rx="12" fill="#fffdf8"/><text x="${route.label.center.x + offsetX}" y="${route.label.center.y + offsetY + 4}" text-anchor="middle" font-size="12" font-weight="500" fill="#796f63">${escapeXml(route.label.text)}</text></g>`

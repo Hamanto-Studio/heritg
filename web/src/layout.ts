@@ -434,11 +434,6 @@ export function createTreeLayout(
   const labels = selectedPersonId
     ? deriveKinshipLabels(selectedPersonId, orderedPeople, orderedRelationships, language)
     : undefined;
-  const parentedIds = new Set(
-    orderedRelationships
-      .filter((relationship) => relationship.kind === "parent")
-      .map((relationship) => relationship.toPersonId)
-  );
   const rows = new Map<number, Person[]>();
   for (const person of visiblePeople) {
     const generation = generations.get(person.id) ?? 0;
@@ -458,9 +453,7 @@ export function createTreeLayout(
         ...person,
         x: startX + index * LAYOUT_METRICS.horizontalSpacing,
         y: (generation - minimumGeneration) * LAYOUT_METRICS.generationSpacing,
-        role: labels?.[person.id] ?? (language === "id"
-          ? (parentedIds.has(person.id) ? "Anak" : "Anggota keluarga")
-          : (parentedIds.has(person.id) ? "Child" : "Family member")),
+        role: labels?.[person.id] ?? "",
         generation
       };
       positioned.set(person.id, value);

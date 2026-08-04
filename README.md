@@ -20,6 +20,7 @@
   <a href="docs/MVP_PRODUCT_SPEC.md">Product Specification</a> |
   <a href="PRIVACY.md">Privacy</a> |
   <a href="SECURITY.md">Security</a> |
+  <a href="CHANGELOG.md">Changelog</a> |
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
@@ -189,7 +190,8 @@ npm run dev
 ```
 
 Before opening a pull request, run `npm run lint`, `npm test`, and
-`npm run build` from `web/`.
+`npm run build` from `web/`. Versioned deployments follow the shared
+[release policy](docs/RELEASES.md).
 
 ## Repository Layout
 
@@ -199,6 +201,7 @@ docs/                       Product, data, privacy, and design specifications
 ios/                        Native SwiftUI application and tests
 web/                        React progressive web application and tests
 .github/                    CI, ownership, and contribution templates
+CHANGELOG.md                Shared Web, iOS, and Android release notes
 PRIVACY.md                  User-facing privacy policy
 SECURITY.md                 Vulnerability and secret-handling policy
 CONTRIBUTING.md             Contribution workflow
@@ -214,6 +217,9 @@ Never include real family data, credentials, signing material, or production
 configuration in an issue, commit, screenshot, test, or pull request. Commit
 and pull-request titles follow the intent-first
 [commit message guide](docs/COMMITS.md).
+
+Web, iOS, and Android releases are independently versioned without a `v`
+prefix and documented together in the [changelog](CHANGELOG.md).
 
 ## License and Trademark
 

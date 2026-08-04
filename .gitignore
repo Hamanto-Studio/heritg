@@ -44,4 +44,4 @@ key.properties
 captures/
 .externalNativeBuild/
 .cxx/
-/web/vercel.json
+.vercel/

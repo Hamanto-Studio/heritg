@@ -13,7 +13,7 @@
 
   .tree-pane-hint {
     left: max(12px, env(safe-area-inset-left, 0px));
-    top: 175px;
+    top: 132px;
   }
 
   .settings-pane-hint {
@@ -43,7 +43,7 @@
   }
 
   .canvas-controls-hint {
-    bottom: 238px;
+    bottom: 208px;
     right: max(56px, calc(env(safe-area-inset-right, 0px) + 46px));
   }
 }
