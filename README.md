@@ -72,7 +72,9 @@ contracts without sharing platform UI or persistence code.
 
 The web app provides the same private, local-first family-tree workflow in a
 React progressive web app. Family data is stored in IndexedDB, and the core
-experience works offline after installation.
+experience works offline after installation. Web users may explicitly create
+an expiring encrypted read-only snapshot; the sharing backend stores ciphertext
+without the URL-fragment viewing key.
 
 ## Trust by Design
 

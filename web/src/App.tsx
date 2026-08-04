@@ -4,6 +4,7 @@ import {
   Hand,
   Maximize2,
   Menu,
+  Share2,
   Settings2,
   ShieldCheck,
   SlidersHorizontal,
@@ -27,6 +28,7 @@ import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { RelativeDialog } from "./RelativeDialog";
 import { SettingsDialog } from "./SettingsDialog";
+import { SharePanel } from "./SharePanel";
 import { HelpPanel } from "./HelpPanel";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import { TreeSidebar } from "./TreeSidebar";
@@ -35,7 +37,7 @@ import type { GenerationLimits, Person } from "./types";
 import { LoadingScreen, Modal } from "./ui";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
-type RightPanel = "people" | "settings" | "help" | "privacy";
+type RightPanel = "people" | "settings" | "share" | "help" | "privacy";
 
 export function App() {
   const store = useAppStore();
@@ -244,6 +246,21 @@ export function App() {
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               <div className="workspace-tools">
+                {__SHARING_ENABLED__ ? (
+                  <button
+                    aria-label={t("shareTree")}
+                    className="button secondary workspace-share-button"
+                    disabled={!people.length}
+                    onClick={() => {
+                      setGenerationOpen(false);
+                      setRightPanel("share");
+                    }}
+                    type="button"
+                  >
+                    <Share2 aria-hidden="true" size={17} />
+                    <span>{t("share")}</span>
+                  </button>
+                ) : null}
                 <button
                   aria-label={t("allPeople")}
                   className="icon-button"
@@ -428,6 +445,18 @@ export function App() {
           onClose={() => setRightPanel(undefined)}
           onError={setOperationError}
           onExported={() => setToast(t("exported"))}
+          t={t}
+          tree={activeTree}
+        />
+      ) : null}
+
+      {activeTree && rightPanel === "share" ? (
+        <SharePanel
+          data={data}
+          onClose={() => setRightPanel(undefined)}
+          onCopied={() => setToast(t("shareLinkCopied"))}
+          onError={setOperationError}
+          peopleCount={people.length}
           t={t}
           tree={activeTree}
         />

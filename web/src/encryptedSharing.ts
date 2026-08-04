@@ -17,6 +17,7 @@ export interface CreateShareOptions {
   fetchImpl?: Fetch;
   origin?: string;
   onProgress?: (phase: SharePhase) => void;
+  signal?: AbortSignal;
 }
 
 export interface CreatedShare {
@@ -99,21 +100,40 @@ const jsonObject = async (response: Response): Promise<Record<string, unknown>> 
 const apiPost = async (
   path: string,
   body: Record<string, unknown>,
-  fetchImpl: Fetch
+  fetchImpl: Fetch,
+  signal?: AbortSignal,
+  retryable = true
 ): Promise<Record<string, unknown>> => {
-  let response: Response;
-  try {
-    response = await fetchImpl(path, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-      cache: "no-store",
-      credentials: "omit",
-      referrerPolicy: "no-referrer"
+  let response: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    response = undefined;
+    try {
+      response = await fetchImpl(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal
+      });
+    } catch {
+      if (signal?.aborted) throw new DOMException("The sharing request was cancelled.", "AbortError");
+      if (!retryable || attempt === 2) {
+        throw new Error("The sharing service could not be reached. Check your connection and try again.");
+      }
+    }
+    if (response && (!retryable || ![429, 500, 503].includes(response.status) || attempt === 2)) break;
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, 250 * (2 ** attempt) + Math.floor(Math.random() * 150));
+      signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(new DOMException("The sharing request was cancelled.", "AbortError"));
+      }, { once: true });
     });
-  } catch {
-    throw new Error("The sharing service could not be reached. Check your connection and try again.");
   }
+  if (!response) throw new Error("The sharing service could not be reached. Check your connection and try again.");
   if (!response.ok) {
     const value = await jsonObject(response).catch(() => undefined);
     const code = value?.error && typeof value.error === "object"
@@ -189,48 +209,56 @@ export async function createEncryptedShare(
     envelopeVersion: SHARE_ENVELOPE_VERSION,
     ciphertextBytes,
     expiryDays
-  }, fetchImpl));
+  }, fetchImpl, options.signal));
 
-  const keyBytes = crypto.getRandomValues(new Uint8Array(32));
-  options.onProgress?.("encrypting");
-  const envelope = await encryptArchive(archive, allocation.shareId, keyBytes);
-  if (envelope.byteLength !== ciphertextBytes) throw new Error("The encrypted share size changed unexpectedly.");
-
-  options.onProgress?.("uploading");
-  let upload: Response;
   try {
-    upload = await fetchImpl(allocation.uploadUrl, {
-      method: "PUT",
-      body: envelope.slice().buffer as ArrayBuffer,
-      headers: allocation.requiredHeaders,
-      cache: "no-store",
-      credentials: "omit",
-      referrerPolicy: "no-referrer"
-    });
-  } catch {
-    throw new Error("The encrypted upload was interrupted. Please create a new link.");
-  }
-  if (!upload.ok) throw new Error("The encrypted upload was rejected. Please create a new link.");
-  const objectGeneration = upload.headers.get("x-goog-generation");
-  if (!objectGeneration || !GENERATION_PATTERN.test(objectGeneration)) {
-    throw new Error("The upload could not be verified. Please create a new link.");
-  }
+    const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+    options.onProgress?.("encrypting");
+    const envelope = await encryptArchive(archive, allocation.shareId, keyBytes);
+    if (envelope.byteLength !== ciphertextBytes) throw new Error("The encrypted share size changed unexpectedly.");
 
-  options.onProgress?.("activating");
-  await apiPost("/api/v1/share-uploads/complete", {
-    shareId: allocation.shareId,
-    deletionToken: allocation.deletionToken,
-    objectGeneration
-  }, fetchImpl);
+    options.onProgress?.("uploading");
+    let upload: Response;
+    try {
+      upload = await fetchImpl(allocation.uploadUrl, {
+        method: "PUT",
+        body: envelope.slice().buffer as ArrayBuffer,
+        headers: allocation.requiredHeaders,
+        cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "no-referrer",
+        signal: options.signal
+      });
+    } catch {
+      if (options.signal?.aborted) throw new DOMException("The sharing request was cancelled.", "AbortError");
+      throw new Error("The encrypted upload was interrupted. Please create a new link.");
+    }
+    if (!upload.ok) throw new Error("The encrypted upload was rejected. Please create a new link.");
+    const objectGeneration = upload.headers.get("x-goog-generation");
+    if (!objectGeneration || !GENERATION_PATTERN.test(objectGeneration)) {
+      throw new Error("The upload could not be verified. Please create a new link.");
+    }
 
-  const origin = options.origin ?? window.location.origin;
-  const key = bytesToBase64Url(keyBytes);
-  return {
-    shareId: allocation.shareId,
-    deletionToken: allocation.deletionToken,
-    url: `${origin}/s/${allocation.shareId}#k=${key}`,
-    expiresAt: allocation.shareExpiresAt
-  };
+    options.onProgress?.("activating");
+    await apiPost("/api/v1/share-uploads/complete", {
+      shareId: allocation.shareId,
+      deletionToken: allocation.deletionToken,
+      objectGeneration
+    }, fetchImpl, options.signal, false);
+
+    const origin = options.origin ?? window.location.origin;
+    const key = bytesToBase64Url(keyBytes);
+    return {
+      shareId: allocation.shareId,
+      deletionToken: allocation.deletionToken,
+      url: `${origin}/s/${allocation.shareId}#k=${key}`,
+      expiresAt: allocation.shareExpiresAt
+    };
+  } catch (error) {
+    await revokeEncryptedShare(allocation.shareId, allocation.deletionToken, fetchImpl).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function parseEncryptedShareLocation(pathname: string, hash: string) {
@@ -245,11 +273,12 @@ export function parseEncryptedShareLocation(pathname: string, hash: string) {
 export async function loadEncryptedShare(
   pathname = window.location.pathname,
   hash = window.location.hash,
-  fetchImpl: Fetch = fetch
+  fetchImpl: Fetch = fetch,
+  signal?: AbortSignal
 ): Promise<LoadedShare> {
   const parsed = parseEncryptedShareLocation(pathname, hash);
   if (!parsed) throw new Error("This share link is invalid.");
-  const grantValue = await apiPost("/api/v1/share-downloads", { shareId: parsed.shareId }, fetchImpl);
+  const grantValue = await apiPost("/api/v1/share-downloads", { shareId: parsed.shareId }, fetchImpl, signal);
   const grant: DownloadGrant = {
     downloadUrl: stringField(grantValue, "downloadUrl"),
     envelopeVersion: stringField(grantValue, "envelopeVersion"),
@@ -267,7 +296,9 @@ export async function loadEncryptedShare(
     response = await fetchImpl(grant.downloadUrl, {
       cache: "no-store",
       credentials: "omit",
-      referrerPolicy: "no-referrer"
+      redirect: "error",
+      referrerPolicy: "no-referrer",
+      signal
     });
   } catch {
     throw new Error("The encrypted family archive could not be downloaded. Check your connection and try again.");
@@ -303,12 +334,13 @@ export async function loadEncryptedShare(
 export async function revokeEncryptedShare(
   shareId: string,
   deletionToken: string,
-  fetchImpl: Fetch = fetch
+  fetchImpl: Fetch = fetch,
+  signal?: AbortSignal
 ) {
   if (!SHARE_ID_PATTERN.test(shareId) || !TOKEN_PATTERN.test(deletionToken)) {
     throw new Error("This share cannot be revoked from this browser session.");
   }
-  await apiPost("/api/v1/share-revocations", { shareId, deletionToken }, fetchImpl);
+  await apiPost("/api/v1/share-revocations", { shareId, deletionToken }, fetchImpl, signal);
 }
 
 export const encryptedShareTestHelpers = { authenticatedData, base64UrlToBytes, bytesToBase64Url, encryptArchive };

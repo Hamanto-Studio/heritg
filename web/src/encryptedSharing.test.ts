@@ -129,4 +129,32 @@ describe("HTGSHR01 browser protocol", () => {
     expect(JSON.stringify(calls)).not.toContain(key);
     expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: "HTGSHR01", expiryDays: 30 });
   });
+
+  it("revokes an allocation when its encrypted upload fails", async () => {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      if (url === "/api/v1/share-uploads") {
+        return response({
+          shareId: fixture.shareId,
+          deletionToken: fixture.keyBase64Url,
+          uploadUrl: "https://storage.googleapis.com/synthetic/upload",
+          requiredHeaders: { "content-type": "application/vnd.heritg.share" },
+          shareExpiresAt: "2026-09-02T00:00:00.000Z"
+        }, 201);
+      }
+      if (url.includes("storage.googleapis.com")) return new Response(null, { status: 503 });
+      if (url === "/api/v1/share-revocations") return response({});
+      return response({}, 500);
+    }) as unknown as typeof fetch;
+
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl }))
+      .rejects.toThrow(/upload was rejected/i);
+    expect(calls).toEqual([
+      "/api/v1/share-uploads",
+      "https://storage.googleapis.com/synthetic/upload",
+      "/api/v1/share-revocations"
+    ]);
+  });
 });

@@ -1,7 +1,6 @@
-import { Copy, Download, FileImage, Globe2, HardDrive, Link2, Send, ShieldCheck, Trash2 } from "lucide-react";
+import { Download, FileImage, Globe2, HardDrive, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
-import { createEncryptedShare, revokeEncryptedShare, type CreatedShare, type SharePhase } from "./encryptedSharing";
 import { exportHeritgArchive } from "./heritgArchive";
 import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
 import type { Translator } from "./i18n";
@@ -46,10 +45,6 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
-  const [shareExpiryDays, setShareExpiryDays] = useState(30);
-  const [sharePhase, setSharePhase] = useState<SharePhase>();
-  const [createdShare, setCreatedShare] = useState<CreatedShare>();
-  const [shareRevoked, setShareRevoked] = useState(false);
   const passwordIsReady = archivePasswordIsReady(archivePassword, archivePasswordConfirmation);
   const passwordDoesNotMeetRequirements = !archivePasswordMeetsRequirements(archivePassword);
   const passwordsDoNotMatch = archivePasswordConfirmation.length > 0 &&
@@ -67,97 +62,12 @@ export function SettingsDialog({
         onError(reason instanceof Error ? reason.message : t("errorTitle"))
       );
   };
-  const shareProgress = sharePhase ? t(`sharePhase${sharePhase[0].toUpperCase()}${sharePhase.slice(1)}` as
-    "sharePhaseExporting" | "sharePhaseAllocating" | "sharePhaseEncrypting" | "sharePhaseUploading" | "sharePhaseActivating") : undefined;
-  const createShare = () => {
-    setShareRevoked(false);
-    setCreatedShare(undefined);
-    void createEncryptedShare(data, tree.id, {
-      expiryDays: shareExpiryDays,
-      onProgress: setSharePhase
-    }).then((result) => {
-      setCreatedShare(result);
-      setSharePhase(undefined);
-    }).catch((reason: unknown) => {
-      setSharePhase(undefined);
-      onError(reason instanceof Error ? reason.message : t("errorTitle"));
-    });
-  };
-  const copyShare = () => {
-    if (!createdShare) return;
-    void navigator.clipboard.writeText(createdShare.url)
-      .then(() => onExported())
-      .catch(() => onError(t("shareCopyFailed")));
-  };
-  const revokeShare = () => {
-    if (!createdShare) return;
-    setSharePhase("activating");
-    void revokeEncryptedShare(createdShare.shareId, createdShare.deletionToken)
-      .then(() => {
-        setSharePhase(undefined);
-        setShareRevoked(true);
-        setCreatedShare(undefined);
-      })
-      .catch((reason: unknown) => {
-        setSharePhase(undefined);
-        onError(reason instanceof Error ? reason.message : t("errorTitle"));
-      });
-  };
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
       <div className="settings-intro">
         <h3>{t("privateSimple")}</h3>
         <p>{t("privateDescription")}</p>
-      </div>
-
-      <div className="settings-group">
-        <h3>{t("encryptedSharing")}</h3>
-        <section className="settings-card sharing-card">
-          <div className="settings-card-header">
-            <Link2 aria-hidden="true" size={23} />
-            <div>
-              <strong>{t("shareReadOnlyCopy")}</strong>
-              <p className="settings-detail">{t("shareDetail")}</p>
-            </div>
-          </div>
-          <p className="share-warning"><ShieldCheck aria-hidden="true" size={17} /> <span>{t("shareWarning")}</span></p>
-          <label className="field share-expiry">
-            {t("shareExpiry")}
-            <select disabled={Boolean(sharePhase)} onChange={(event) => setShareExpiryDays(Number(event.target.value))} value={shareExpiryDays}>
-              <option value={7}>{t("shareSevenDays")}</option>
-              <option value={30}>{t("shareThirtyDays")}</option>
-              <option value={90}>{t("shareNinetyDays")}</option>
-            </select>
-          </label>
-          {createdShare ? (
-            <div className="share-result" role="status">
-              <strong>{t("shareReady")}</strong>
-              <p className="settings-detail">{t("shareExpires", {
-                date: new Intl.DateTimeFormat(data.language === "id" ? "id-ID" : "en-US", { dateStyle: "medium" })
-                  .format(new Date(createdShare.expiresAt))
-              })}</p>
-              <label className="sr-only" htmlFor="encrypted-share-url">{t("shareLink")}</label>
-              <input id="encrypted-share-url" readOnly value={createdShare.url} />
-              <div className="settings-actions">
-                <button className="button primary" onClick={copyShare} type="button"><Copy aria-hidden="true" size={16} /> {t("copyShareLink")}</button>
-                {typeof navigator.share === "function" ? (
-                  <button className="button secondary" onClick={() => void navigator.share({ title: tree.title, url: createdShare.url })} type="button">
-                    <Send aria-hidden="true" size={16} /> {t("shareLink")}
-                  </button>
-                ) : null}
-                <button className="button ghost danger-text" onClick={revokeShare} type="button"><Trash2 aria-hidden="true" size={16} /> {t("revokeShare")}</button>
-              </div>
-              <p className="settings-detail">{t("shareRevocationNotice")}</p>
-            </div>
-          ) : (
-            <button className="button primary full" disabled={Boolean(sharePhase)} onClick={createShare} type="button">
-              <Link2 aria-hidden="true" size={17} /> {shareProgress ?? t("createShareLink")}
-            </button>
-          )}
-          {sharePhase ? <p className="share-progress" role="status">{shareProgress}</p> : null}
-          {shareRevoked ? <p className="share-revoked" role="status">{t("shareRevoked")}</p> : null}
-        </section>
       </div>
 
       <div className="settings-group">

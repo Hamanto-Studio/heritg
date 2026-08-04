@@ -3,10 +3,15 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import packageJson from "./package.json";
 
+const buildEnvironment = (globalThis as {
+  process?: { env?: Record<string, string | undefined> };
+}).process?.env;
+
 export default defineConfig({
   base: "/",
   define: {
-    __APP_VERSION__: JSON.stringify(packageJson.version)
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+    __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false")
   },
   plugins: [
     react(),
@@ -30,7 +35,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/(?:api\/|health$|ready$)/],
         runtimeCaching: [
           {
             urlPattern: /\/api\/v1\//,

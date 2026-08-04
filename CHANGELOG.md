@@ -18,6 +18,22 @@ prefix.
 
 - No unreleased changes yet.
 
+## [web-0.2.0] - 2026-08-04
+
+### Added
+
+- Added expiring encrypted read-only links for complete family-tree snapshots, with browser-side encryption and a recipient viewer.
+- Added an explicit Save a copy action that imports a shared snapshot as an independent editable local tree.
+- Added encrypted on-device management for revoking active links without retaining their secret viewing keys.
+
+### Changed
+
+- Added a dedicated Share action to the canvas header and updated English and Bahasa Indonesia privacy guidance for optional encrypted sharing.
+
+### Security
+
+- Kept share keys in URL fragments, excluded API and ciphertext traffic from service-worker caches, and routed sharing through no-store same-origin API endpoints.
+
 ## [web-0.1.0] - 2026-08-02
 
 ### Added
@@ -57,4 +73,5 @@ prefix.
 - Kept family data in the app container by default without a HERITG account, advertising SDK, or behavioral analytics.
 
 [web-0.1.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.1.0
+[web-0.2.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.0
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0

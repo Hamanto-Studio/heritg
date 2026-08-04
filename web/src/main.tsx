@@ -19,10 +19,10 @@ const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {isSharedRoute ? <SharedTreeApp /> : (
-      <AppProvider>
+    <AppProvider>
+      {isSharedRoute ? <SharedTreeApp /> : (
         <App />
-      </AppProvider>
-    )}
+      )}
+    </AppProvider>
   </StrictMode>
 );

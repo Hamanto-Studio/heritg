@@ -1,24 +1,31 @@
-import { Home, Maximize2, ShieldCheck, ZoomIn, ZoomOut } from "lucide-react";
+import { CopyPlus, Home, Maximize2, ShieldCheck, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadEncryptedShare, type LoadedShare } from "./encryptedSharing";
+import { saveAppData } from "./db";
 import { createTranslator } from "./i18n";
+import { mergeImportedData } from "./portability";
+import { useAppStore } from "./store";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
-import type { ViewportState } from "./types";
+import type { AppData, ViewportState } from "./types";
 
 const initialViewport: ViewportState = { scrollX: 0, scrollY: 0, zoom: 1 };
 
 export function SharedTreeApp() {
+  const store = useAppStore();
   const [attempt, setAttempt] = useState(0);
   const [loaded, setLoaded] = useState<LoadedShare>();
   const [error, setError] = useState<string>();
   const [selectedPersonId, setSelectedPersonId] = useState<string>();
   const [viewport, setViewport] = useState(initialViewport);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
 
   useEffect(() => {
     let active = true;
-    void loadEncryptedShare().then((result) => {
+    const controller = new AbortController();
+    void loadEncryptedShare(window.location.pathname, window.location.hash, fetch, controller.signal).then((result) => {
       if (!active) return;
       setLoaded(result);
       setSelectedPersonId(result.data.trees[0]?.lastSelectedPersonId);
@@ -26,7 +33,10 @@ export function SharedTreeApp() {
     }).catch((reason: unknown) => {
       if (active) setError(reason instanceof Error ? reason.message : "This encrypted family tree could not be opened.");
     });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [attempt]);
 
   const language = loaded?.data.language ?? (navigator.language.startsWith("id") ? "id" : "en");
@@ -42,6 +52,35 @@ export function SharedTreeApp() {
     setLoaded(undefined);
     setError(undefined);
     setAttempt((value) => value + 1);
+  };
+
+  const saveCopy = () => {
+    if (!loaded || !tree || !store.data || isSaving) return;
+    setSaveError(undefined);
+    setIsSaving(true);
+    let merged: AppData;
+    try {
+      const copied: AppData = {
+        ...loaded.data,
+        trees: loaded.data.trees.map((item) => item.id === tree.id
+          ? { ...item, title: `${item.title} — ${t("sharedCopySuffix")}` }
+          : item)
+      };
+      merged = mergeImportedData(copied, { into: store.data });
+    } catch (reason) {
+      setIsSaving(false);
+      setSaveError(reason instanceof Error ? reason.message : t("errorTitle"));
+      return;
+    }
+    void saveAppData(merged)
+      .then(() => {
+        store.actions.replaceData(merged);
+        window.location.assign("/");
+      })
+      .catch((reason: unknown) => {
+        setIsSaving(false);
+        setSaveError(reason instanceof Error ? reason.message : t("errorTitle"));
+      });
   };
 
   if (error) {
@@ -79,6 +118,7 @@ export function SharedTreeApp() {
           initialViewport={viewport}
           language={language}
           onAddRelative={() => undefined}
+          onCanvasInteract={() => undefined}
           onDeselectPerson={() => setSelectedPersonId(undefined)}
           onEditPerson={() => undefined}
           onSelectPerson={setSelectedPersonId}
@@ -101,13 +141,20 @@ export function SharedTreeApp() {
               <span>{t("sharedReadOnly")}</span>
             </div>
           </div>
-          <a className="button secondary shared-home" href="/"><Home aria-hidden="true" size={17} /> {t("openMyTrees")}</a>
+          <div className="shared-header-actions">
+            <button aria-label={t("saveSharedCopy")} className="button primary shared-save" disabled={!store.ready || isSaving} onClick={saveCopy} type="button">
+              <CopyPlus aria-hidden="true" size={17} /> <span>{isSaving ? t("savingSharedCopy") : t("saveSharedCopy")}</span>
+            </button>
+            <a className="button secondary shared-home" href="/"><Home aria-hidden="true" size={17} /> {t("openMyTrees")}</a>
+          </div>
         </header>
 
         <aside className="shared-notice">
           <strong>{t("sharedReadOnly")}</strong>
           <span>{t("sharedReadOnlyDetail")}</span>
+          <span>{t("sharedCopyDetail")}</span>
           <small>{t("sharedExpires", { date: expiry })}</small>
+          {saveError ? <small className="danger-text" role="alert">{saveError}</small> : null}
         </aside>
 
         <div className="shared-canvas-controls" aria-label={t("canvasControls")} role="toolbar">

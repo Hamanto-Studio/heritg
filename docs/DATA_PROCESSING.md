@@ -1,6 +1,6 @@
 # Data Processing Register
 
-Last reviewed: August 2, 2026
+Last reviewed: August 4, 2026
 
 This register identifies data flows in the official HERITG application. It is
 intended to keep the privacy policy, implementation, and App Store disclosures
@@ -17,6 +17,9 @@ consistent.
 | PWA service worker and Cache Storage | Active on web | Cache the public application shell for offline use | Public HTML, JavaScript, styles, fonts, and images; no family content | Browser cache on the user's device | Clear site data or uninstall the PWA |
 | Vercel static web hosting | Active on web | Deliver and protect public application assets at `heritgapp.hamanto.com` | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the web app |
 | Cloudflare authoritative DNS | Active on web | Resolve `heritg.hamanto.com` and `heritgapp.hamanto.com` without proxying application traffic | DNS query and resolution metadata; no family-tree payload | Cloudflare DNS | User opens the website or web app |
+| Encrypted share creation | Optional on web | Create an expiring immutable read-only family-tree snapshot | AES-256-GCM ciphertext; size and expiration metadata; no viewing key | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User explicitly creates a link and chooses its expiration |
+| Encrypted share viewing | Optional on web | Download and decrypt a shared snapshot in memory | Ciphertext and access timing; viewing key remains in the URL fragment | Cloud Run and private Cloud Storage in Jakarta | Recipient opens the complete link |
+| Encrypted share management | Optional on web | Revoke active links from the creating browser | Encrypted share ID, deletion capability, and expiration | Encrypted IndexedDB on the sender's device | Sender revokes the link or clears site data |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
 | App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
@@ -32,7 +35,7 @@ consistent.
 | Firebase Crashlytics | Not integrated | Optional diagnostics would require separate consent and sanitization |
 | Advertising and attribution SDKs | Not integrated | Cross-app tracking and advertising profiles are prohibited |
 | Session replay and heatmaps | Not integrated | Prohibited by the analytics policy |
-| HERITG account or hosted family database | Not available | Core functionality remains account-free and local |
+| HERITG account or hosted editable family database | Not available | Core functionality remains account-free and local; optional sharing stores immutable ciphertext only |
 
 ## Provider Approval Requirements
 

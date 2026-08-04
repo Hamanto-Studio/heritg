@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  decryptLocalValue,
   decryptAppData,
+  encryptLocalValue,
   encryptAppData,
   generateLocalEncryptionKey,
   isEncryptedAppData
@@ -35,5 +37,15 @@ describe("encrypted browser storage", () => {
     expect([...first.iv]).not.toEqual([...second.iv]);
     expect([...new Uint8Array(first.ciphertext)])
       .not.toEqual([...new Uint8Array(second.ciphertext)]);
+  });
+
+  it("separates encrypted records by their authenticated context", async () => {
+    const key = await generateLocalEncryptionKey();
+    const encrypted = await encryptLocalValue({ deletionToken: "synthetic" }, key, "heritg:test:share-management");
+
+    await expect(decryptLocalValue(encrypted, key, "heritg:test:family-data"))
+      .rejects.toThrow();
+    await expect(decryptLocalValue(encrypted, key, "heritg:test:share-management"))
+      .resolves.toEqual({ deletionToken: "synthetic" });
   });
 });
