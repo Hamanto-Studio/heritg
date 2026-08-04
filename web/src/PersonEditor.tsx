@@ -1,6 +1,7 @@
 import { ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
+import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import { processImage } from "./images";
 import { formatDisplayDate, type Translator } from "./i18n";
 import { RelationshipDialog } from "./RelationshipDialog";
@@ -281,14 +282,24 @@ export function PersonEditor({
                 {t("city")}
                 <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
               </label>
-              <label className="field">
-                {t("birthDate")}
-                <input onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />
-              </label>
-              <label className="field">
-                {t("deathDate")}
-                <input min={birthDate || undefined} onChange={(event) => setDeathDate(event.target.value)} type="date" value={deathDate} />
-              </label>
+              <DatePickerField
+                defaultMonth={new Date(new Date().getFullYear() - 30, 0, 1)}
+                label={t("birthDate")}
+                language={language}
+                max={formatIsoDate(new Date())}
+                onChange={setBirthDate}
+                t={t}
+                value={birthDate}
+              />
+              <DatePickerField
+                label={t("deathDate")}
+                language={language}
+                max={formatIsoDate(new Date())}
+                min={birthDate || undefined}
+                onChange={setDeathDate}
+                t={t}
+                value={deathDate}
+              />
               </div>
             </section>
           ) : (
@@ -302,14 +313,24 @@ export function PersonEditor({
               <details className="person-detail-disclosure">
                 <summary>{t("optionalDetails")}</summary>
                 <div className="field-grid">
-                  <label className="field">
-                    {t("birthDate")}
-                    <input onChange={(event) => setBirthDate(event.target.value)} type="date" value={birthDate} />
-                  </label>
-                  <label className="field">
-                    {t("deathDate")}
-                    <input min={birthDate || undefined} onChange={(event) => setDeathDate(event.target.value)} type="date" value={deathDate} />
-                  </label>
+                  <DatePickerField
+                    defaultMonth={new Date(new Date().getFullYear() - 30, 0, 1)}
+                    label={t("birthDate")}
+                    language={language}
+                    max={formatIsoDate(new Date())}
+                    onChange={setBirthDate}
+                    t={t}
+                    value={birthDate}
+                  />
+                  <DatePickerField
+                    label={t("deathDate")}
+                    language={language}
+                    max={formatIsoDate(new Date())}
+                    min={birthDate || undefined}
+                    onChange={setDeathDate}
+                    t={t}
+                    value={deathDate}
+                  />
                   <label className="field full">
                     {t("city")}
                     <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
@@ -449,6 +470,7 @@ export function PersonEditor({
             }
           }}
           people={openRelationshipDialog.kind === "link" ? linkablePeople : []}
+          language={language}
           relationship={openRelationshipDialog.kind === "edit" ? openRelationshipDialog.relationship : undefined}
           relative={openRelationshipDialog.kind === "edit" ? openRelationshipDialog.relative : undefined}
           t={t}
