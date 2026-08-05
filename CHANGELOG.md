@@ -8,7 +8,9 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+- Prepared the secure hostname migration to `family.heritg.us`, `heritg.us`,
+  and `family.heritg.us/blog/e2e-encryption/` with updated same-origin policy,
+  security headers, and deployment verification.
 
 ### iOS
 
@@ -29,7 +31,7 @@ prefix.
 
 ### Changed
 
-- Published the product landing page at `heritg.hamanto.com` and the installable web application at `heritgapp.hamanto.com`.
+- Published the product landing page at `family.heritg.us` and the installable web application at `heritg.us`.
 - Matched the web family-tree relationships, life-date summaries, and branch controls more closely with the iOS experience.
 - Improved family-line routing, marriage-date placement, person navigation, and mobile and tablet layouts.
 - Modernized family-tree connectors with smooth corners, quieter junctions, and consistent line weight on the canvas and in image exports.
