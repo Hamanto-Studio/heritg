@@ -20,24 +20,27 @@ export function SharedTreeApp() {
   const [viewport, setViewport] = useState(initialViewport);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
+  const [sharePassword, setSharePassword] = useState("");
+  const [needsPassword, setNeedsPassword] = useState(window.location.hash.includes("p=1"));
   const canvasRef = useRef<TreeCanvasHandle>(null);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    void loadEncryptedShare(window.location.pathname, window.location.hash, fetch, controller.signal).then((result) => {
+    void loadEncryptedShare(window.location.pathname, window.location.hash, fetch, controller.signal, sharePassword || undefined).then((result) => {
       if (!active) return;
       setLoaded(result);
       setSelectedPersonId(result.data.trees[0]?.lastSelectedPersonId);
       document.documentElement.lang = result.data.language;
     }).catch((reason: unknown) => {
-      if (active) setError(reason instanceof Error ? reason.message : "This encrypted family tree could not be opened.");
+      if (active && reason instanceof Error && reason.message === "This link is password protected.") setNeedsPassword(true);
+      else if (active) setError(reason instanceof Error ? reason.message : "This encrypted family tree could not be opened.");
     });
     return () => {
       active = false;
       controller.abort();
     };
-  }, [attempt]);
+  }, [attempt, sharePassword]);
 
   const language = loaded?.data.language ?? (navigator.language.startsWith("id") ? "id" : "en");
   const t = createTranslator(language);
@@ -53,6 +56,10 @@ export function SharedTreeApp() {
     setError(undefined);
     setAttempt((value) => value + 1);
   };
+
+  if (needsPassword && !loaded && !error) {
+    return <main className="shared-state"><img alt="" aria-hidden="true" className="brand-mark large" height={192} src="/pwa-192.png" width={192} /><h1>Password-protected share</h1><p>Enter the password shared by the person who created this link.</p><form onSubmit={(event) => { event.preventDefault(); setNeedsPassword(false); setAttempt((value) => value + 1); }}><input autoComplete="current-password" autoFocus minLength={10} onChange={(event) => setSharePassword(event.target.value)} required type="password" value={sharePassword} /><button className="button primary" type="submit">Open family tree</button></form></main>;
+  }
 
   const saveCopy = () => {
     if (!loaded || !tree || !store.data || isSaving) return;

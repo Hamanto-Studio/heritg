@@ -35,6 +35,8 @@ export function SharePanel({
   onCopied
 }: SharePanelProps) {
   const [expiryDays, setExpiryDays] = useState(30);
+  const [password, setPassword] = useState("");
+  const [protectWithPassword, setProtectWithPassword] = useState(false);
   const [phase, setPhase] = useState<SharePhase>();
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
@@ -70,6 +72,7 @@ export function SharePanel({
     setCreatedShare(undefined);
     void createEncryptedShare(data, tree.id, {
       expiryDays,
+      password: protectWithPassword ? password : undefined,
       onProgress: setPhase,
       signal: controller.signal
     }).then(async (result) => {
@@ -152,6 +155,9 @@ export function SharePanel({
           <option value={90}>{t("shareNinetyDays")}</option>
         </select>
       </label>
+
+      <label className="share-password-toggle"><input checked={protectWithPassword} disabled={Boolean(phase)} onChange={(event) => setProtectWithPassword(event.target.checked)} type="checkbox" /><span><strong>Password-protect this link</strong><small>The password stays on your device and is never sent to HERITG.</small></span></label>
+      {protectWithPassword ? <label className="field">Password<input autoComplete="new-password" disabled={Boolean(phase)} minLength={10} onChange={(event) => setPassword(event.target.value)} type="password" value={password} /><small>Use at least 10 characters. Share it separately from the link.</small></label> : null}
 
       <button className="button primary full share-create" disabled={Boolean(phase)} onClick={createShare} type="button">
         <Link2 aria-hidden="true" size={17} /> {progress ?? t("createShareLink")}
