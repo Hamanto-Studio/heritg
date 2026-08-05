@@ -10,7 +10,7 @@ prefix.
 
 ### Changed
 
-- Require a strong password when creating a new encrypted share and ask recipients for that password before opening it.
+- Require a strong password of at least 8 characters when creating a new encrypted share and ask recipients for that password before opening it.
 
 ### Security
 

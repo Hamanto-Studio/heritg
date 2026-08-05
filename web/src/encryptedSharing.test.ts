@@ -9,7 +9,8 @@ import {
   loadEncryptedShare,
   parseEncryptedShareLocation,
   SHARE_ENVELOPE_VERSION,
-  SharePasswordRequiredError
+  SharePasswordRequiredError,
+  sharePasswordMeetsRequirements
 } from "./encryptedSharing";
 import type { AppData } from "./types";
 
@@ -134,8 +135,10 @@ describe("password-protected share protocol", () => {
   });
 
   it("requires a strong password before allocating a new share", async () => {
+    expect(sharePasswordMeetsRequirements("Abc12345")).toBe(true);
+    expect(sharePasswordMeetsRequirements("Abc1234")).toBe(false);
     await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { password: "short" }))
-      .rejects.toThrow(/at least 12 characters/i);
+      .rejects.toThrow(/at least 8 characters/i);
   });
 
   it("requires the password to decrypt a new share and never sends it to the service", async () => {
