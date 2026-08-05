@@ -1,6 +1,6 @@
 ---
 name: release-heritg-web
-description: Prepare, stage, promote, verify, and publish independently versioned Heritg Web releases on Vercel. Use when Codex needs to update the Web version and shared changelog, create a versioned Web release branch, deploy heritgapp.hamanto.com, verify production, create a platform release tag, publish GitHub release notes, roll back a Web deployment, or audit Web release readiness.
+description: Prepare, stage, promote, verify, and publish independently versioned Heritg Web releases on Vercel. Use when Codex needs to update the Web version and shared changelog, create a versioned Web release branch, deploy heritg.us, verify production, create a platform release tag, publish GitHub release notes, roll back a Web deployment, or audit Web release readiness.
 ---
 
 # Release Heritg Web
@@ -65,11 +65,11 @@ candidate URL, version, commit, and canonical hostname.
 After approval:
 
 1. Promote the exact tested deployment; do not rebuild an untested commit.
-2. Verify the GitHub Pages landing site and `https://heritgapp.hamanto.com/` with:
+2. Verify the GitHub Pages landing site and `https://heritg.us/` with:
 
    ```sh
    node .agents/skills/release-heritg-web/scripts/verify-production.mjs \
-     https://heritgapp.hamanto.com/ --expect-version <version>
+     https://heritg.us/ --expect-version <version>
    ```
 
 3. Pause again before creating and pushing `web-<version>` or publishing its

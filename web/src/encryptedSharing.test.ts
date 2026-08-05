@@ -121,7 +121,7 @@ describe("password-protected share protocol", () => {
 
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
-      origin: "https://heritgapp.hamanto.com",
+      origin: "https://heritg.us",
       password: "SharePassword123"
     });
 
@@ -130,7 +130,7 @@ describe("password-protected share protocol", () => {
       "https://storage.googleapis.com/synthetic/upload",
       "/api/v1/share-uploads/complete"
     ]);
-    expect(created.url).toBe(`https://heritgapp.hamanto.com/s/${fixture.shareId}`);
+    expect(created.url).toBe(`https://heritg.us/s/${fixture.shareId}`);
     expect(JSON.stringify(calls)).not.toContain("SharePassword123");
     expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: SHARE_ENVELOPE_VERSION, expiryDays: 30 });
   });
