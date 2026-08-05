@@ -26,8 +26,15 @@ export class SharePasswordRequiredError extends Error {
   }
 }
 
+export class ShareDecryptionError extends Error {
+  constructor() {
+    super("This link has the wrong password or key, or its encrypted archive was modified.");
+    this.name = "ShareDecryptionError";
+  }
+}
+
 export interface CreateShareOptions {
-  password?: string;
+  password: string;
   expiryDays?: number;
   fetchImpl?: Fetch;
   origin?: string;
@@ -123,8 +130,8 @@ const deriveShareKey = async (password: string, salt: Uint8Array, usage: KeyUsag
 
 export const sharePasswordMeetsRequirements = (password: string) => {
   const normalized = password.normalize("NFC");
-  return normalized.length >= SHARE_PASSWORD_MIN_LENGTH &&
-    /[A-Z]/u.test(normalized) && /[a-z]/u.test(normalized) && /[0-9]/u.test(normalized);
+  return [...normalized].length >= SHARE_PASSWORD_MIN_LENGTH &&
+    /\p{Lu}/u.test(normalized) && /\p{Ll}/u.test(normalized) && /\p{Nd}/u.test(normalized);
 };
 
 export const sharePasswordIsReady = (password: string, confirmation: string) =>
@@ -241,10 +248,10 @@ const encryptArchive = async (archive: Uint8Array, shareId: string, password: st
 export async function createEncryptedShare(
   data: AppData,
   treeId: string,
-  options: CreateShareOptions = {}
+  options: CreateShareOptions
 ): Promise<CreatedShare> {
   const fetchImpl = options.fetchImpl ?? fetch;
-  const password = options.password ?? "";
+  const password = options.password;
   if (!sharePasswordMeetsRequirements(password)) {
     throw new Error(`Use a share password with at least ${SHARE_PASSWORD_MIN_LENGTH} characters, including uppercase, lowercase, and a number.`);
   }
@@ -394,7 +401,7 @@ export async function loadEncryptedShare(
       tagLength: 128
     }, key, ciphertext.slice().buffer as ArrayBuffer));
   } catch {
-    throw new Error("This link has the wrong password or key, or its encrypted archive was modified.");
+    throw new ShareDecryptionError();
   }
   return {
     data: await importHeritgArchive(archive),

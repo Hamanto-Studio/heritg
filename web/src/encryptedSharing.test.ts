@@ -9,6 +9,7 @@ import {
   loadEncryptedShare,
   parseEncryptedShareLocation,
   SHARE_ENVELOPE_VERSION,
+  ShareDecryptionError,
   SharePasswordRequiredError,
   sharePasswordMeetsRequirements
 } from "./encryptedSharing";
@@ -93,7 +94,7 @@ describe("password-protected share protocol", () => {
     await expect(loadEncryptedShare(`/s/${fixture.shareId}`, `#k=${wrongKey}`, fetchImpl)).rejects.toThrow(/wrong key|modified/i);
   });
 
-  it("allocates before encryption and never sends the fragment key", async () => {
+  it("allocates before encryption and never sends the password", async () => {
     const calls: Array<{ url: string; body?: BodyInit | null }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(input), body: init?.body });
@@ -105,7 +106,7 @@ describe("password-protected share protocol", () => {
           requiredHeaders: {
             "content-type": "application/vnd.heritg.share",
             "x-goog-if-generation-match": "0",
-            "x-goog-meta-heritg-envelope": "HTGSHR01",
+            "x-goog-meta-heritg-envelope": SHARE_ENVELOPE_VERSION,
             "x-goog-meta-heritg-state": "immutable"
           },
           uploadExpiresAt: "2026-08-03T00:15:00.000Z",
@@ -136,6 +137,7 @@ describe("password-protected share protocol", () => {
 
   it("requires a strong password before allocating a new share", async () => {
     expect(sharePasswordMeetsRequirements("Abc12345")).toBe(true);
+    expect(sharePasswordMeetsRequirements("Åbcdef1?")).toBe(true);
     expect(sharePasswordMeetsRequirements("Abc1234")).toBe(false);
     await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { password: "short" }))
       .rejects.toThrow(/at least 8 characters/i);
@@ -143,7 +145,9 @@ describe("password-protected share protocol", () => {
 
   it("requires the password to decrypt a new share and never sends it to the service", async () => {
     const archive = await exportCanonicalHeritgArchive(syntheticData, "tree-share-fixture");
-    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, fixture.shareId, "SharePassword123");
+    const decomposedPassword = "Cafe\u0301Tree1";
+    const composedPassword = "Caf\u00e9Tree1";
+    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, fixture.shareId, decomposedPassword);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
       ? response({
         downloadUrl: "https://storage.googleapis.com/synthetic/password-envelope",
@@ -158,10 +162,11 @@ describe("password-protected share protocol", () => {
     await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl))
       .rejects.toBeInstanceOf(SharePasswordRequiredError);
     await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
-      .rejects.toThrow(/wrong key|modified/i);
-    const loaded = await loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "SharePassword123");
+      .rejects.toBeInstanceOf(ShareDecryptionError);
+    const loaded = await loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, composedPassword);
     expect(loaded.data.trees[0]?.title).toBe("Synthetic Share Fixture");
-    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain("SharePassword123");
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(decomposedPassword);
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(composedPassword);
   });
 
   it("revokes an allocation when its encrypted upload fails", async () => {

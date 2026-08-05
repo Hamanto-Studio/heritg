@@ -1,7 +1,12 @@
 import { CopyPlus, Home, Maximize2, ShieldCheck, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
-import { loadEncryptedShare, SharePasswordRequiredError, type LoadedShare } from "./encryptedSharing";
+import {
+  loadEncryptedShare,
+  ShareDecryptionError,
+  SharePasswordRequiredError,
+  type LoadedShare
+} from "./encryptedSharing";
 import { saveAppData } from "./db";
 import { createTranslator } from "./i18n";
 import { mergeImportedData } from "./portability";
@@ -19,26 +24,29 @@ export function SharedTreeApp() {
   const [passwordRequired, setPasswordRequired] = useState(false);
   const [sharePassword, setSharePassword] = useState("");
   const [passwordError, setPasswordError] = useState<string>();
+  const [isUnlocking, setIsUnlocking] = useState(false);
   const [selectedPersonId, setSelectedPersonId] = useState<string>();
   const [viewport, setViewport] = useState(initialViewport);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
+  const requestRef = useRef<AbortController | undefined>(undefined);
 
   const loadShare = useCallback(async (password?: string) => {
-    let active = true;
+    requestRef.current?.abort();
     const controller = new AbortController();
+    requestRef.current = controller;
     try {
       const result = await loadEncryptedShare(window.location.pathname, window.location.hash, fetch, controller.signal, password);
-      if (!active) return;
+      if (controller.signal.aborted) return;
       setLoaded(result);
       setPasswordRequired(false);
+      setSharePassword("");
       setPasswordError(undefined);
       setSelectedPersonId(result.data.trees[0]?.lastSelectedPersonId);
       document.documentElement.lang = result.data.language;
     } finally {
-      active = false;
-      controller.abort();
+      if (requestRef.current === controller) requestRef.current = undefined;
     }
   }, []);
 
@@ -46,12 +54,14 @@ export function SharedTreeApp() {
     setError(undefined);
     setPasswordRequired(false);
     void loadShare().catch((reason: unknown) => {
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
       if (reason instanceof SharePasswordRequiredError) {
         setPasswordRequired(true);
         return;
       }
       setError(reason instanceof Error ? reason.message : "This encrypted family tree could not be opened.");
     });
+    return () => requestRef.current?.abort();
   }, [attempt, loadShare]);
 
   const language = loaded?.data.language ?? (navigator.language.startsWith("id") ? "id" : "en");
@@ -71,11 +81,15 @@ export function SharedTreeApp() {
 
   const unlockShare = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!sharePassword) return;
+    if (!sharePassword || isUnlocking) return;
     setPasswordError(undefined);
+    setIsUnlocking(true);
     void loadShare(sharePassword).catch((reason: unknown) => {
-      setPasswordError(reason instanceof Error ? reason.message : t("sharedErrorTitle"));
-    });
+      if (reason instanceof DOMException && reason.name === "AbortError") return;
+      setPasswordError(reason instanceof ShareDecryptionError
+        ? t("sharedPasswordInvalid")
+        : reason instanceof Error ? reason.message : t("sharedErrorTitle"));
+    }).finally(() => setIsUnlocking(false));
   };
 
   const saveCopy = () => {
@@ -127,19 +141,25 @@ export function SharedTreeApp() {
         <img alt="" aria-hidden="true" className="brand-mark large" height={192} src="/pwa-192.png" width="192" />
         <h1>{t("sharedPasswordTitle")}</h1>
         <p>{t("sharedPasswordDetail")}</p>
-        <form className="shared-password-form" onSubmit={unlockShare}>
+        <form aria-busy={isUnlocking} className="shared-password-form" onSubmit={unlockShare}>
           <label className="field">
             {t("sharedPassword")}
             <input
               autoComplete="current-password"
               autoFocus
-              onChange={(event) => setSharePassword(event.target.value)}
+              disabled={isUnlocking}
+              onChange={(event) => {
+                setSharePassword(event.target.value);
+                setPasswordError(undefined);
+              }}
               type="password"
               value={sharePassword}
             />
           </label>
           {passwordError ? <p className="danger-text" role="alert">{passwordError}</p> : null}
-          <button className="button primary" disabled={!sharePassword} type="submit">{t("unlockShared")}</button>
+          <button className="button primary" disabled={!sharePassword || isUnlocking} type="submit">
+            {isUnlocking ? t("sharedLoading") : t("unlockShared")}
+          </button>
         </form>
         <div className="shared-state-actions">
           <a className="button secondary" href="/"><Home aria-hidden="true" size={17} /> {t("openMyTrees")}</a>

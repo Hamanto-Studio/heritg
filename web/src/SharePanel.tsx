@@ -6,6 +6,7 @@ import {
   createEncryptedShare,
   revokeEncryptedShare,
   sharePasswordIsReady,
+  sharePasswordMeetsRequirements,
   SHARE_PASSWORD_MIN_LENGTH,
   type CreatedShare,
   type SharePhase
@@ -130,11 +131,13 @@ export function SharePanel({
   };
 
   const progress = phase ? t(phaseKey(phase)) : undefined;
+  const passwordRequirementsMet = sharePasswordMeetsRequirements(sharePassword);
   const passwordReady = sharePasswordIsReady(sharePassword, sharePasswordConfirmation);
-  const passwordError = sharePassword.length > 0 && !passwordReady
-    ? sharePasswordConfirmation.length > 0 && sharePassword !== sharePasswordConfirmation
-      ? t("sharePasswordsMismatch")
-      : t("sharePasswordRequirements", { count: SHARE_PASSWORD_MIN_LENGTH })
+  const passwordRequirementError = sharePassword.length > 0 && !passwordRequirementsMet
+    ? t("sharePasswordRequirements", { count: SHARE_PASSWORD_MIN_LENGTH })
+    : undefined;
+  const passwordMismatchError = sharePasswordConfirmation.length > 0 && sharePassword !== sharePasswordConfirmation
+    ? t("sharePasswordsMismatch")
     : undefined;
 
   return (
@@ -160,7 +163,8 @@ export function SharePanel({
       <label className="field share-password">
         {t("sharePassword")}
         <input
-          aria-describedby="share-password-help"
+          aria-describedby={passwordRequirementError ? "share-password-help share-password-error" : "share-password-help"}
+          aria-invalid={Boolean(passwordRequirementError)}
           autoComplete="new-password"
           disabled={Boolean(phase)}
           onChange={(event) => setSharePassword(event.target.value)}
@@ -168,18 +172,20 @@ export function SharePanel({
           value={sharePassword}
         />
         <small id="share-password-help">{t("sharePasswordHelp", { count: SHARE_PASSWORD_MIN_LENGTH })}</small>
+        {passwordRequirementError ? <small className="danger-text" id="share-password-error">{passwordRequirementError}</small> : null}
       </label>
       <label className="field share-password">
         {t("confirmSharePassword")}
         <input
-          aria-describedby={passwordError ? "share-password-error" : undefined}
+          aria-describedby={passwordMismatchError ? "share-password-confirmation-error" : undefined}
+          aria-invalid={Boolean(passwordMismatchError)}
           autoComplete="new-password"
           disabled={Boolean(phase)}
           onChange={(event) => setSharePasswordConfirmation(event.target.value)}
           type="password"
           value={sharePasswordConfirmation}
         />
-        {passwordError ? <small className="danger-text" id="share-password-error">{passwordError}</small> : null}
+        {passwordMismatchError ? <small className="danger-text" id="share-password-confirmation-error">{passwordMismatchError}</small> : null}
       </label>
 
       <label className="field share-expiry">
