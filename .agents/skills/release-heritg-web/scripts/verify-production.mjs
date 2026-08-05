@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 const args = process.argv.slice(2);
-const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritgapp.hamanto.com/";
+const target = args.find((argument) => !argument.startsWith("--")) ?? "https://heritg.us/";
 const versionIndex = args.indexOf("--expect-version");
 const expectedVersion = versionIndex >= 0 ? args[versionIndex + 1] : undefined;
 const landingIndex = args.indexOf("--landing");
-const landingTarget = landingIndex >= 0 ? args[landingIndex + 1] : "https://heritg.hamanto.com/en/";
+const landingTarget = landingIndex >= 0 ? args[landingIndex + 1] : "https://family.heritg.us/en/";
 
 let appBase;
 try {
@@ -40,8 +40,8 @@ try {
   checked.push(`${landing.status} ${landingUrl.href}`);
   if (!landing.ok) failures.push(`${landingUrl.href} returned ${landing.status}`);
   const landingHtml = await landing.text();
-  if (!landingHtml.includes('href="https://heritgapp.hamanto.com/"')) {
-    failures.push("landing page does not link to https://heritgapp.hamanto.com/");
+  if (!landingHtml.includes('href="https://heritg.us/"')) {
+    failures.push("landing page does not link to https://heritg.us/");
   }
 
   const home = await request("");

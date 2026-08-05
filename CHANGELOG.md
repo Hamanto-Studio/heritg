@@ -8,7 +8,10 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+- Migrated the public landing page to `family.heritg.us`, the web app to
+  `heritg.us`, and the encryption announcement to
+  `family.heritg.us/blog/e2e-encryption/`, with same-origin links and secure
+  production routing.
 
 ### iOS
 

@@ -116,7 +116,7 @@ describe("HTGSHR01 browser protocol", () => {
 
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
-      origin: "https://heritgapp.hamanto.com"
+      origin: "https://heritg.us"
     });
 
     expect(calls.map((call) => call.url)).toEqual([
