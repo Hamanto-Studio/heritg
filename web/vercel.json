@@ -7,15 +7,15 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://heritg-share-api-428519514749.asia-southeast2.run.app/api/v1/:path*"
+      "destination": "https://heritg-share-api-ulvjjfvqpq-et.a.run.app/api/v1/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://heritg-share-api-428519514749.asia-southeast2.run.app/health"
+      "destination": "https://heritg-share-api-ulvjjfvqpq-et.a.run.app/health"
     },
     {
       "source": "/ready",
-      "destination": "https://heritg-share-api-428519514749.asia-southeast2.run.app/ready"
+      "destination": "https://heritg-share-api-ulvjjfvqpq-et.a.run.app/ready"
     },
     {
       "source": "/(.*)",
