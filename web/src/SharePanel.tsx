@@ -5,6 +5,9 @@ import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
 import {
   createEncryptedShare,
   revokeEncryptedShare,
+  sharePasswordIsReady,
+  sharePasswordMeetsRequirements,
+  SHARE_PASSWORD_MIN_LENGTH,
   type CreatedShare,
   type SharePhase
 } from "./encryptedSharing";
@@ -35,6 +38,8 @@ export function SharePanel({
   onCopied
 }: SharePanelProps) {
   const [expiryDays, setExpiryDays] = useState(30);
+  const [sharePassword, setSharePassword] = useState("");
+  const [sharePasswordConfirmation, setSharePasswordConfirmation] = useState("");
   const [phase, setPhase] = useState<SharePhase>();
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
@@ -70,6 +75,7 @@ export function SharePanel({
     setCreatedShare(undefined);
     void createEncryptedShare(data, tree.id, {
       expiryDays,
+      password: sharePassword,
       onProgress: setPhase,
       signal: controller.signal
     }).then(async (result) => {
@@ -85,6 +91,8 @@ export function SharePanel({
       await saveManagedShares(next);
       setManagedShares(next);
       setCreatedShare(result);
+      setSharePassword("");
+      setSharePasswordConfirmation("");
     }).catch((reason: unknown) => {
       if (controller.signal.aborted) return;
       onError(reason instanceof Error ? reason.message : t("errorTitle"));
@@ -123,6 +131,14 @@ export function SharePanel({
   };
 
   const progress = phase ? t(phaseKey(phase)) : undefined;
+  const passwordRequirementsMet = sharePasswordMeetsRequirements(sharePassword);
+  const passwordReady = sharePasswordIsReady(sharePassword, sharePasswordConfirmation);
+  const passwordRequirementError = sharePassword.length > 0 && !passwordRequirementsMet
+    ? t("sharePasswordRequirements", { count: SHARE_PASSWORD_MIN_LENGTH })
+    : undefined;
+  const passwordMismatchError = sharePasswordConfirmation.length > 0 && sharePassword !== sharePasswordConfirmation
+    ? t("sharePasswordsMismatch")
+    : undefined;
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("shareTree")}>
@@ -144,6 +160,34 @@ export function SharePanel({
         <span>{t("shareWarning")}</span>
       </p>
 
+      <label className="field share-password">
+        {t("sharePassword")}
+        <input
+          aria-describedby={passwordRequirementError ? "share-password-help share-password-error" : "share-password-help"}
+          aria-invalid={Boolean(passwordRequirementError)}
+          autoComplete="new-password"
+          disabled={Boolean(phase)}
+          onChange={(event) => setSharePassword(event.target.value)}
+          type="password"
+          value={sharePassword}
+        />
+        <small id="share-password-help">{t("sharePasswordHelp", { count: SHARE_PASSWORD_MIN_LENGTH })}</small>
+        {passwordRequirementError ? <small className="danger-text" id="share-password-error">{passwordRequirementError}</small> : null}
+      </label>
+      <label className="field share-password">
+        {t("confirmSharePassword")}
+        <input
+          aria-describedby={passwordMismatchError ? "share-password-confirmation-error" : undefined}
+          aria-invalid={Boolean(passwordMismatchError)}
+          autoComplete="new-password"
+          disabled={Boolean(phase)}
+          onChange={(event) => setSharePasswordConfirmation(event.target.value)}
+          type="password"
+          value={sharePasswordConfirmation}
+        />
+        {passwordMismatchError ? <small className="danger-text" id="share-password-confirmation-error">{passwordMismatchError}</small> : null}
+      </label>
+
       <label className="field share-expiry">
         {t("shareExpiry")}
         <select disabled={Boolean(phase)} onChange={(event) => setExpiryDays(Number(event.target.value))} value={expiryDays}>
@@ -153,7 +197,7 @@ export function SharePanel({
         </select>
       </label>
 
-      <button className="button primary full share-create" disabled={Boolean(phase)} onClick={createShare} type="button">
+      <button className="button primary full share-create" disabled={Boolean(phase) || !passwordReady} onClick={createShare} type="button">
         <Link2 aria-hidden="true" size={17} /> {progress ?? t("createShareLink")}
       </button>
       {progress ? <p className="share-progress" role="status">{progress}</p> : null}

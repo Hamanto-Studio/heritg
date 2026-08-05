@@ -2,12 +2,16 @@
 import { describe, expect, it, vi } from "vitest";
 
 import fixture from "./fixtures/htgshr01.json";
+import { exportCanonicalHeritgArchive } from "./heritgArchive";
 import {
   createEncryptedShare,
   encryptedShareTestHelpers,
   loadEncryptedShare,
   parseEncryptedShareLocation,
-  SHARE_ENVELOPE_VERSION
+  SHARE_ENVELOPE_VERSION,
+  ShareDecryptionError,
+  SharePasswordRequiredError,
+  sharePasswordMeetsRequirements
 } from "./encryptedSharing";
 import type { AppData } from "./types";
 
@@ -46,7 +50,7 @@ const response = (value: unknown, status = 200, headers?: HeadersInit) => new Re
   headers: { "content-type": "application/json", ...headers }
 });
 
-describe("HTGSHR01 browser protocol", () => {
+describe("password-protected share protocol", () => {
   it("opens the backend compatibility fixture without persisting its key", async () => {
     const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -54,7 +58,7 @@ describe("HTGSHR01 browser protocol", () => {
         return response({
           downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
           downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-          envelopeVersion: SHARE_ENVELOPE_VERSION,
+          envelopeVersion: "HTGSHR01",
           ciphertextBytes: fixture.envelopeBytes,
           shareExpiresAt: "2026-09-02T00:00:00.000Z"
         });
@@ -74,22 +78,23 @@ describe("HTGSHR01 browser protocol", () => {
   });
 
   it("fails safely for a missing or wrong fragment key", async () => {
-    expect(() => parseEncryptedShareLocation(`/s/${fixture.shareId}`, "")).toThrow(/missing/i);
+    expect(parseEncryptedShareLocation(`/s/${fixture.shareId}`, "")).toEqual({ shareId: fixture.shareId });
     const wrongKey = "__________________________________________8";
     const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
       ? response({
         downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
         downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-        envelopeVersion: SHARE_ENVELOPE_VERSION,
+        envelopeVersion: "HTGSHR01",
         ciphertextBytes: fixture.envelopeBytes,
         shareExpiresAt: "2026-09-02T00:00:00.000Z"
       })
-      : new Response(envelope.slice().buffer as ArrayBuffer)) as unknown as typeof fetch;
+      : new Response(envelope.slice().buffer as ArrayBuffer));
+    const fetchImpl = fetchMock as unknown as typeof fetch;
     await expect(loadEncryptedShare(`/s/${fixture.shareId}`, `#k=${wrongKey}`, fetchImpl)).rejects.toThrow(/wrong key|modified/i);
   });
 
-  it("allocates before encryption and never sends the fragment key", async () => {
+  it("allocates before encryption and never sends the password", async () => {
     const calls: Array<{ url: string; body?: BodyInit | null }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(input), body: init?.body });
@@ -101,7 +106,7 @@ describe("HTGSHR01 browser protocol", () => {
           requiredHeaders: {
             "content-type": "application/vnd.heritg.share",
             "x-goog-if-generation-match": "0",
-            "x-goog-meta-heritg-envelope": "HTGSHR01",
+            "x-goog-meta-heritg-envelope": SHARE_ENVELOPE_VERSION,
             "x-goog-meta-heritg-state": "immutable"
           },
           uploadExpiresAt: "2026-08-03T00:15:00.000Z",
@@ -116,7 +121,8 @@ describe("HTGSHR01 browser protocol", () => {
 
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
-      origin: "https://heritg.us"
+      origin: "https://heritg.us",
+      password: "SharePassword123"
     });
 
     expect(calls.map((call) => call.url)).toEqual([
@@ -124,10 +130,43 @@ describe("HTGSHR01 browser protocol", () => {
       "https://storage.googleapis.com/synthetic/upload",
       "/api/v1/share-uploads/complete"
     ]);
-    expect(created.url).toMatch(new RegExp(`^https://heritg\\.us/s/${fixture.shareId}#k=[A-Za-z0-9_-]{43}$`));
-    const key = created.url.split("#k=")[1];
-    expect(JSON.stringify(calls)).not.toContain(key);
-    expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: "HTGSHR01", expiryDays: 30 });
+    expect(created.url).toBe(`https://heritg.us/s/${fixture.shareId}`);
+    expect(JSON.stringify(calls)).not.toContain("SharePassword123");
+    expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: SHARE_ENVELOPE_VERSION, expiryDays: 30 });
+  });
+
+  it("requires a strong password before allocating a new share", async () => {
+    expect(sharePasswordMeetsRequirements("Abc12345")).toBe(true);
+    expect(sharePasswordMeetsRequirements("Åbcdef1?")).toBe(true);
+    expect(sharePasswordMeetsRequirements("Abc1234")).toBe(false);
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { password: "short" }))
+      .rejects.toThrow(/at least 8 characters/i);
+  });
+
+  it("requires the password to decrypt a new share and never sends it to the service", async () => {
+    const archive = await exportCanonicalHeritgArchive(syntheticData, "tree-share-fixture");
+    const decomposedPassword = "Cafe\u0301Tree1";
+    const composedPassword = "Caf\u00e9Tree1";
+    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, fixture.shareId, decomposedPassword);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
+      ? response({
+        downloadUrl: "https://storage.googleapis.com/synthetic/password-envelope",
+        downloadExpiresAt: "2026-08-03T00:05:00.000Z",
+        envelopeVersion: SHARE_ENVELOPE_VERSION,
+        ciphertextBytes: envelope.byteLength,
+        shareExpiresAt: "2026-09-02T00:00:00.000Z"
+      })
+      : new Response(envelope.slice().buffer as ArrayBuffer));
+    const fetchImpl = fetchMock as unknown as typeof fetch;
+
+    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl))
+      .rejects.toBeInstanceOf(SharePasswordRequiredError);
+    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
+      .rejects.toBeInstanceOf(ShareDecryptionError);
+    const loaded = await loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, composedPassword);
+    expect(loaded.data.trees[0]?.title).toBe("Synthetic Share Fixture");
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(decomposedPassword);
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(composedPassword);
   });
 
   it("revokes an allocation when its encrypted upload fails", async () => {
@@ -149,7 +188,7 @@ describe("HTGSHR01 browser protocol", () => {
       return response({}, 500);
     }) as unknown as typeof fetch;
 
-    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl }))
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl, password: "SharePassword123" }))
       .rejects.toThrow(/upload was rejected/i);
     expect(calls).toEqual([
       "/api/v1/share-uploads",

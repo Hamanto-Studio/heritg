@@ -8,10 +8,17 @@ prefix.
 
 ### Web
 
+### Changed
+
+- Require a strong password of at least 8 characters when creating a new encrypted share and ask recipients for that password before opening it.
 - Migrated the public landing page to `family.heritg.us`, the web app to
   `heritg.us`, and the encryption announcement to
   `family.heritg.us/blog/e2e-encryption/`, with same-origin links and secure
   production routing.
+
+### Security
+
+- Derive new share encryption keys from the password with PBKDF2-HMAC-SHA-256 in the browser; passwords and keys are never sent to the sharing service.
 
 ### iOS
 
