@@ -11,6 +11,7 @@ prefix.
 ### Changed
 
 - Require a strong password of at least 8 characters when creating a new encrypted share and ask recipients for that password before opening it.
+- Retired the legacy fragment-key share format; shared links now use only password-protected `HTGSHR02` envelopes.
 - Migrated the public landing page to `family.heritg.us`, the web app to
   `heritg.us`, and the encryption announcement to
   `family.heritg.us/blog/e2e-encryption/`, with same-origin links and secure

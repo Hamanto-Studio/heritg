@@ -1,7 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 
-import fixture from "./fixtures/htgshr01.json";
 import { exportCanonicalHeritgArchive } from "./heritgArchive";
 import {
   createEncryptedShare,
@@ -14,6 +13,8 @@ import {
   sharePasswordMeetsRequirements
 } from "./encryptedSharing";
 import type { AppData } from "./types";
+
+const shareId = "AAECAwQFBgcICQoLDA0ODw";
 
 const syntheticData: AppData = {
   version: 1,
@@ -51,47 +52,10 @@ const response = (value: unknown, status = 200, headers?: HeadersInit) => new Re
 });
 
 describe("password-protected share protocol", () => {
-  it("opens the backend compatibility fixture without persisting its key", async () => {
-    const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input) === "/api/v1/share-downloads") {
-        return response({
-          downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
-          downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-          envelopeVersion: "HTGSHR01",
-          ciphertextBytes: fixture.envelopeBytes,
-          shareExpiresAt: "2026-09-02T00:00:00.000Z"
-        });
-      }
-      return new Response(envelope.slice().buffer as ArrayBuffer, { status: 200 });
-    });
-
-    const loaded = await loadEncryptedShare(
-      `/s/${fixture.shareId}`,
-      `#k=${fixture.keyBase64Url}`,
-      fetchMock as unknown as typeof fetch
-    );
-
-    expect(loaded.data.trees[0]?.title).toBe("Synthetic Share Fixture");
-    expect(loaded.data.people[0]?.displayName).toBe("Synthetic Person");
-    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(fixture.keyBase64Url);
-  });
-
-  it("fails safely for a missing or wrong fragment key", async () => {
-    expect(parseEncryptedShareLocation(`/s/${fixture.shareId}`, "")).toEqual({ shareId: fixture.shareId });
-    const wrongKey = "__________________________________________8";
-    const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
-      ? response({
-        downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
-        downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-        envelopeVersion: "HTGSHR01",
-        ciphertextBytes: fixture.envelopeBytes,
-        shareExpiresAt: "2026-09-02T00:00:00.000Z"
-      })
-      : new Response(envelope.slice().buffer as ArrayBuffer));
-    const fetchImpl = fetchMock as unknown as typeof fetch;
-    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, `#k=${wrongKey}`, fetchImpl)).rejects.toThrow(/wrong key|modified/i);
+  it("rejects legacy fragment-key links before contacting the API", () => {
+    expect(parseEncryptedShareLocation(`/s/${shareId}`, "")).toEqual({ shareId });
+    expect(() => parseEncryptedShareLocation(`/s/${shareId}`, "#k=legacy-key"))
+      .toThrow(/unsupported legacy key/i);
   });
 
   it("allocates before encryption and never sends the password", async () => {
@@ -100,8 +64,8 @@ describe("password-protected share protocol", () => {
       calls.push({ url: String(input), body: init?.body });
       if (String(input) === "/api/v1/share-uploads") {
         return response({
-          shareId: fixture.shareId,
-          deletionToken: fixture.keyBase64Url,
+          shareId,
+          deletionToken: "A".repeat(43),
           uploadUrl: "https://storage.googleapis.com/synthetic/upload",
           requiredHeaders: {
             "content-type": "application/vnd.heritg.share",
@@ -130,7 +94,7 @@ describe("password-protected share protocol", () => {
       "https://storage.googleapis.com/synthetic/upload",
       "/api/v1/share-uploads/complete"
     ]);
-    expect(created.url).toBe(`https://heritg.us/s/${fixture.shareId}`);
+    expect(created.url).toBe(`https://heritg.us/s/${shareId}`);
     expect(JSON.stringify(calls)).not.toContain("SharePassword123");
     expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: SHARE_ENVELOPE_VERSION, expiryDays: 30 });
   });
@@ -147,7 +111,7 @@ describe("password-protected share protocol", () => {
     const archive = await exportCanonicalHeritgArchive(syntheticData, "tree-share-fixture");
     const decomposedPassword = "Cafe\u0301Tree1";
     const composedPassword = "Caf\u00e9Tree1";
-    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, fixture.shareId, decomposedPassword);
+    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, shareId, decomposedPassword);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
       ? response({
         downloadUrl: "https://storage.googleapis.com/synthetic/password-envelope",
@@ -159,11 +123,11 @@ describe("password-protected share protocol", () => {
       : new Response(envelope.slice().buffer as ArrayBuffer));
     const fetchImpl = fetchMock as unknown as typeof fetch;
 
-    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl))
+    await expect(loadEncryptedShare(`/s/${shareId}`, "", fetchImpl))
       .rejects.toBeInstanceOf(SharePasswordRequiredError);
-    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
+    await expect(loadEncryptedShare(`/s/${shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
       .rejects.toBeInstanceOf(ShareDecryptionError);
-    const loaded = await loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, composedPassword);
+    const loaded = await loadEncryptedShare(`/s/${shareId}`, "", fetchImpl, undefined, composedPassword);
     expect(loaded.data.trees[0]?.title).toBe("Synthetic Share Fixture");
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(decomposedPassword);
     expect(JSON.stringify(fetchMock.mock.calls)).not.toContain(composedPassword);
@@ -176,8 +140,8 @@ describe("password-protected share protocol", () => {
       calls.push(url);
       if (url === "/api/v1/share-uploads") {
         return response({
-          shareId: fixture.shareId,
-          deletionToken: fixture.keyBase64Url,
+          shareId,
+          deletionToken: "A".repeat(43),
           uploadUrl: "https://storage.googleapis.com/synthetic/upload",
           requiredHeaders: { "content-type": "application/vnd.heritg.share" },
           shareExpiresAt: "2026-09-02T00:00:00.000Z"
