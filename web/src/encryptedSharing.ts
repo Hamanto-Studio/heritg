@@ -1,9 +1,16 @@
 import { exportCanonicalHeritgArchive, importHeritgArchive } from "./heritgArchive";
 import type { AppData } from "./types";
 
-export const SHARE_ENVELOPE_VERSION = "HTGSHR01";
+export const SHARE_ENVELOPE_VERSION = "HTGSHR02";
+export const LEGACY_SHARE_ENVELOPE_VERSION = "HTGSHR01";
 export const MAX_SHARE_ENVELOPE_BYTES = 32 * 1024 * 1024;
+export const SHARE_PASSWORD_MIN_LENGTH = 12;
+const SHARE_PASSWORD_ITERATIONS = 600_000;
+const SHARE_PASSWORD_SALT_BYTES = 16;
+const SHARE_NONCE_BYTES = 12;
+const SHARE_TAG_BYTES = 16;
 const SHARE_MAGIC = new TextEncoder().encode(SHARE_ENVELOPE_VERSION);
+const LEGACY_SHARE_MAGIC = new TextEncoder().encode(LEGACY_SHARE_ENVELOPE_VERSION);
 const SHARE_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/;
@@ -12,7 +19,15 @@ type Fetch = typeof fetch;
 
 export type SharePhase = "exporting" | "allocating" | "encrypting" | "uploading" | "activating";
 
+export class SharePasswordRequiredError extends Error {
+  constructor() {
+    super("This share requires a password.");
+    this.name = "SharePasswordRequiredError";
+  }
+}
+
 export interface CreateShareOptions {
+  password?: string;
   expiryDays?: number;
   fetchImpl?: Fetch;
   origin?: string;
@@ -75,11 +90,45 @@ const base64UrlToBytes = (value: string, expectedBytes: number) => {
 const authenticatedData = (shareId: string) => {
   if (!SHARE_ID_PATTERN.test(shareId)) throw new Error("This share link is invalid.");
   const encodedShareId = new TextEncoder().encode(shareId);
+  const aad = new Uint8Array(LEGACY_SHARE_MAGIC.byteLength + 1 + encodedShareId.byteLength);
+  aad.set(LEGACY_SHARE_MAGIC);
+  aad.set(encodedShareId, LEGACY_SHARE_MAGIC.byteLength + 1);
+  return aad;
+};
+
+const authenticatedPasswordData = (shareId: string) => {
+  if (!SHARE_ID_PATTERN.test(shareId)) throw new Error("This share link is invalid.");
+  const encodedShareId = new TextEncoder().encode(shareId);
   const aad = new Uint8Array(SHARE_MAGIC.byteLength + 1 + encodedShareId.byteLength);
   aad.set(SHARE_MAGIC);
   aad.set(encodedShareId, SHARE_MAGIC.byteLength + 1);
   return aad;
 };
+
+const deriveShareKey = async (password: string, salt: Uint8Array, usage: KeyUsage) => {
+  const passwordBytes = new TextEncoder().encode(password.normalize("NFC"));
+  try {
+    const material = await crypto.subtle.importKey("raw", passwordBytes, "PBKDF2", false, ["deriveKey"]);
+    return await crypto.subtle.deriveKey(
+      { name: "PBKDF2", hash: "SHA-256", salt: salt.slice().buffer as ArrayBuffer, iterations: SHARE_PASSWORD_ITERATIONS },
+      material,
+      { name: "AES-GCM", length: 256 },
+      false,
+      [usage]
+    );
+  } finally {
+    passwordBytes.fill(0);
+  }
+};
+
+export const sharePasswordMeetsRequirements = (password: string) => {
+  const normalized = password.normalize("NFC");
+  return normalized.length >= SHARE_PASSWORD_MIN_LENGTH &&
+    /[A-Z]/u.test(normalized) && /[a-z]/u.test(normalized) && /[0-9]/u.test(normalized);
+};
+
+export const sharePasswordIsReady = (password: string, confirmation: string) =>
+  password === confirmation && sharePasswordMeetsRequirements(password);
 
 const sameBytes = (left: Uint8Array, right: Uint8Array) =>
   left.byteLength === right.byteLength && left.every((byte, index) => byte === right[index]);
@@ -171,19 +220,21 @@ const allocationFrom = (value: Record<string, unknown>): Allocation => {
   return { shareId, deletionToken, uploadUrl, shareExpiresAt, requiredHeaders: headers as Record<string, string> };
 };
 
-const encryptArchive = async (archive: Uint8Array, shareId: string, keyBytes: Uint8Array) => {
-  const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const key = await crypto.subtle.importKey("raw", keyBytes.slice().buffer as ArrayBuffer, "AES-GCM", false, ["encrypt"]);
+const encryptArchive = async (archive: Uint8Array, shareId: string, password: string) => {
+  const salt = crypto.getRandomValues(new Uint8Array(SHARE_PASSWORD_SALT_BYTES));
+  const nonce = crypto.getRandomValues(new Uint8Array(SHARE_NONCE_BYTES));
+  const key = await deriveShareKey(password, salt, "encrypt");
   const ciphertext = new Uint8Array(await crypto.subtle.encrypt({
     name: "AES-GCM",
     iv: nonce,
-    additionalData: authenticatedData(shareId),
+    additionalData: authenticatedPasswordData(shareId),
     tagLength: 128
   }, key, archive.slice().buffer as ArrayBuffer));
-  const envelope = new Uint8Array(SHARE_MAGIC.byteLength + nonce.byteLength + ciphertext.byteLength);
+  const envelope = new Uint8Array(SHARE_MAGIC.byteLength + salt.byteLength + nonce.byteLength + ciphertext.byteLength);
   envelope.set(SHARE_MAGIC);
-  envelope.set(nonce, SHARE_MAGIC.byteLength);
-  envelope.set(ciphertext, SHARE_MAGIC.byteLength + nonce.byteLength);
+  envelope.set(salt, SHARE_MAGIC.byteLength);
+  envelope.set(nonce, SHARE_MAGIC.byteLength + salt.byteLength);
+  envelope.set(ciphertext, SHARE_MAGIC.byteLength + salt.byteLength + nonce.byteLength);
   return envelope;
 };
 
@@ -193,13 +244,17 @@ export async function createEncryptedShare(
   options: CreateShareOptions = {}
 ): Promise<CreatedShare> {
   const fetchImpl = options.fetchImpl ?? fetch;
+  const password = options.password ?? "";
+  if (!sharePasswordMeetsRequirements(password)) {
+    throw new Error(`Use a share password with at least ${SHARE_PASSWORD_MIN_LENGTH} characters, including uppercase, lowercase, and a number.`);
+  }
   const expiryDays = options.expiryDays ?? 30;
   if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 90) {
     throw new Error("Choose an expiry between 1 and 90 days.");
   }
   options.onProgress?.("exporting");
   const archive = await exportCanonicalHeritgArchive(data, treeId);
-  const ciphertextBytes = archive.byteLength + 36;
+  const ciphertextBytes = archive.byteLength + SHARE_MAGIC.byteLength + SHARE_PASSWORD_SALT_BYTES + SHARE_NONCE_BYTES + SHARE_TAG_BYTES;
   if (ciphertextBytes > MAX_SHARE_ENVELOPE_BYTES) {
     throw new Error("This family archive is too large to share. Keep the encrypted share under 32 MiB.");
   }
@@ -212,9 +267,8 @@ export async function createEncryptedShare(
   }, fetchImpl, options.signal));
 
   try {
-    const keyBytes = crypto.getRandomValues(new Uint8Array(32));
     options.onProgress?.("encrypting");
-    const envelope = await encryptArchive(archive, allocation.shareId, keyBytes);
+    const envelope = await encryptArchive(archive, allocation.shareId, password);
     if (envelope.byteLength !== ciphertextBytes) throw new Error("The encrypted share size changed unexpectedly.");
 
     options.onProgress?.("uploading");
@@ -248,11 +302,10 @@ export async function createEncryptedShare(
     }, fetchImpl, options.signal, false);
 
     const origin = options.origin ?? window.location.origin;
-    const key = bytesToBase64Url(keyBytes);
     return {
       shareId: allocation.shareId,
       deletionToken: allocation.deletionToken,
-      url: `${origin}/s/${allocation.shareId}#k=${key}`,
+      url: `${origin}/s/${allocation.shareId}`,
       expiresAt: allocation.shareExpiresAt
     };
   } catch (error) {
@@ -266,7 +319,8 @@ export function parseEncryptedShareLocation(pathname: string, hash: string) {
   if (!match) return undefined;
   const parameters = new URLSearchParams(hash.startsWith("#") ? hash.slice(1) : hash);
   const key = parameters.get("k");
-  if (!key || parameters.size !== 1) throw new Error("This share link is missing its encryption key.");
+  if (parameters.size === 0) return { shareId: match[1] };
+  if (!key || parameters.size !== 1) throw new Error("This share link has an invalid encryption key.");
   return { shareId: match[1], keyBytes: base64UrlToBytes(key, 32) };
 }
 
@@ -274,7 +328,8 @@ export async function loadEncryptedShare(
   pathname = window.location.pathname,
   hash = window.location.hash,
   fetchImpl: Fetch = fetch,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  password?: string
 ): Promise<LoadedShare> {
   const parsed = parseEncryptedShareLocation(pathname, hash);
   if (!parsed) throw new Error("This share link is invalid.");
@@ -285,10 +340,19 @@ export async function loadEncryptedShare(
     ciphertextBytes: grantValue.ciphertextBytes as number,
     shareExpiresAt: stringField(grantValue, "shareExpiresAt")
   };
-  if (grant.envelopeVersion !== SHARE_ENVELOPE_VERSION ||
-      !Number.isSafeInteger(grant.ciphertextBytes) || grant.ciphertextBytes < 36 ||
+  if (grant.envelopeVersion !== SHARE_ENVELOPE_VERSION && grant.envelopeVersion !== LEGACY_SHARE_ENVELOPE_VERSION ||
+      !Number.isSafeInteger(grant.ciphertextBytes) ||
+      grant.ciphertextBytes < (grant.envelopeVersion === SHARE_ENVELOPE_VERSION
+        ? SHARE_MAGIC.byteLength + SHARE_PASSWORD_SALT_BYTES + SHARE_NONCE_BYTES + SHARE_TAG_BYTES
+        : LEGACY_SHARE_MAGIC.byteLength + SHARE_NONCE_BYTES + SHARE_TAG_BYTES) ||
       grant.ciphertextBytes > MAX_SHARE_ENVELOPE_BYTES) {
     throw new Error("The sharing service returned invalid envelope information.");
+  }
+  if (grant.envelopeVersion === SHARE_ENVELOPE_VERSION && !password) {
+    throw new SharePasswordRequiredError();
+  }
+  if (grant.envelopeVersion === LEGACY_SHARE_ENVELOPE_VERSION && !parsed.keyBytes) {
+    throw new Error("This legacy share link is missing its encryption key.");
   }
 
   let response: Response;
@@ -306,23 +370,31 @@ export async function loadEncryptedShare(
   if (!response.ok) throw new Error("The encrypted family archive could not be downloaded. Try opening the link again.");
   const envelope = new Uint8Array(await response.arrayBuffer());
   if (envelope.byteLength !== grant.ciphertextBytes || envelope.byteLength > MAX_SHARE_ENVELOPE_BYTES ||
-      !sameBytes(envelope.slice(0, SHARE_MAGIC.byteLength), SHARE_MAGIC)) {
+      !sameBytes(envelope.slice(0, SHARE_MAGIC.byteLength), grant.envelopeVersion === SHARE_ENVELOPE_VERSION ? SHARE_MAGIC : LEGACY_SHARE_MAGIC)) {
     throw new Error("The encrypted family archive is incomplete or unsupported.");
   }
 
-  const nonce = envelope.slice(SHARE_MAGIC.byteLength, SHARE_MAGIC.byteLength + 12);
-  const ciphertext = envelope.slice(SHARE_MAGIC.byteLength + 12);
+  const salt = grant.envelopeVersion === SHARE_ENVELOPE_VERSION
+    ? envelope.slice(SHARE_MAGIC.byteLength, SHARE_MAGIC.byteLength + SHARE_PASSWORD_SALT_BYTES)
+    : undefined;
+  const nonceStart = SHARE_MAGIC.byteLength + (salt ? SHARE_PASSWORD_SALT_BYTES : 0);
+  const nonce = envelope.slice(nonceStart, nonceStart + SHARE_NONCE_BYTES);
+  const ciphertext = envelope.slice(nonceStart + SHARE_NONCE_BYTES);
   let archive: Uint8Array;
   try {
-    const key = await crypto.subtle.importKey("raw", parsed.keyBytes.slice().buffer as ArrayBuffer, "AES-GCM", false, ["decrypt"]);
+    const key = grant.envelopeVersion === SHARE_ENVELOPE_VERSION
+      ? await deriveShareKey(password as string, salt as Uint8Array, "decrypt")
+      : await crypto.subtle.importKey("raw", parsed.keyBytes!.slice().buffer as ArrayBuffer, "AES-GCM", false, ["decrypt"]);
     archive = new Uint8Array(await crypto.subtle.decrypt({
       name: "AES-GCM",
       iv: nonce,
-      additionalData: authenticatedData(parsed.shareId),
+      additionalData: grant.envelopeVersion === SHARE_ENVELOPE_VERSION
+        ? authenticatedPasswordData(parsed.shareId)
+        : authenticatedData(parsed.shareId),
       tagLength: 128
     }, key, ciphertext.slice().buffer as ArrayBuffer));
   } catch {
-    throw new Error("This link has the wrong key, or its encrypted archive was modified.");
+    throw new Error("This link has the wrong password or key, or its encrypted archive was modified.");
   }
   return {
     data: await importHeritgArchive(archive),

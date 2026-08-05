@@ -8,7 +8,13 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+### Changed
+
+- Require a strong password when creating a new encrypted share and ask recipients for that password before opening it.
+
+### Security
+
+- Derive new share encryption keys from the password with PBKDF2-HMAC-SHA-256 in the browser; passwords and keys are never sent to the sharing service.
 
 ### iOS
 

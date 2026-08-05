@@ -671,6 +671,27 @@
   margin-top: 2px;
 }
 
+.share-password {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.share-password input {
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 44px;
+  padding: 0 11px;
+  width: 100%;
+}
+
+.share-password small {
+  color: var(--subtle);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 .share-expiry select,
 .share-result input {
   background: var(--base);

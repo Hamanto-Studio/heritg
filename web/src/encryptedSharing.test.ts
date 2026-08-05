@@ -2,12 +2,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import fixture from "./fixtures/htgshr01.json";
+import { exportCanonicalHeritgArchive } from "./heritgArchive";
 import {
   createEncryptedShare,
   encryptedShareTestHelpers,
   loadEncryptedShare,
   parseEncryptedShareLocation,
-  SHARE_ENVELOPE_VERSION
+  SHARE_ENVELOPE_VERSION,
+  SharePasswordRequiredError
 } from "./encryptedSharing";
 import type { AppData } from "./types";
 
@@ -46,7 +48,7 @@ const response = (value: unknown, status = 200, headers?: HeadersInit) => new Re
   headers: { "content-type": "application/json", ...headers }
 });
 
-describe("HTGSHR01 browser protocol", () => {
+describe("password-protected share protocol", () => {
   it("opens the backend compatibility fixture without persisting its key", async () => {
     const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -54,7 +56,7 @@ describe("HTGSHR01 browser protocol", () => {
         return response({
           downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
           downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-          envelopeVersion: SHARE_ENVELOPE_VERSION,
+          envelopeVersion: "HTGSHR01",
           ciphertextBytes: fixture.envelopeBytes,
           shareExpiresAt: "2026-09-02T00:00:00.000Z"
         });
@@ -74,18 +76,19 @@ describe("HTGSHR01 browser protocol", () => {
   });
 
   it("fails safely for a missing or wrong fragment key", async () => {
-    expect(() => parseEncryptedShareLocation(`/s/${fixture.shareId}`, "")).toThrow(/missing/i);
+    expect(parseEncryptedShareLocation(`/s/${fixture.shareId}`, "")).toEqual({ shareId: fixture.shareId });
     const wrongKey = "__________________________________________8";
     const envelope = encryptedShareTestHelpers.base64UrlToBytes(fixture.envelopeBase64Url, fixture.envelopeBytes);
-    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
       ? response({
         downloadUrl: "https://storage.googleapis.com/synthetic/envelope",
         downloadExpiresAt: "2026-08-03T00:05:00.000Z",
-        envelopeVersion: SHARE_ENVELOPE_VERSION,
+        envelopeVersion: "HTGSHR01",
         ciphertextBytes: fixture.envelopeBytes,
         shareExpiresAt: "2026-09-02T00:00:00.000Z"
       })
-      : new Response(envelope.slice().buffer as ArrayBuffer)) as unknown as typeof fetch;
+      : new Response(envelope.slice().buffer as ArrayBuffer));
+    const fetchImpl = fetchMock as unknown as typeof fetch;
     await expect(loadEncryptedShare(`/s/${fixture.shareId}`, `#k=${wrongKey}`, fetchImpl)).rejects.toThrow(/wrong key|modified/i);
   });
 
@@ -116,7 +119,8 @@ describe("HTGSHR01 browser protocol", () => {
 
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
-      origin: "https://heritgapp.hamanto.com"
+      origin: "https://heritgapp.hamanto.com",
+      password: "SharePassword123"
     });
 
     expect(calls.map((call) => call.url)).toEqual([
@@ -124,10 +128,37 @@ describe("HTGSHR01 browser protocol", () => {
       "https://storage.googleapis.com/synthetic/upload",
       "/api/v1/share-uploads/complete"
     ]);
-    expect(created.url).toMatch(new RegExp(`^https://heritgapp\\.hamanto\\.com/s/${fixture.shareId}#k=[A-Za-z0-9_-]{43}$`));
-    const key = created.url.split("#k=")[1];
-    expect(JSON.stringify(calls)).not.toContain(key);
-    expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: "HTGSHR01", expiryDays: 30 });
+    expect(created.url).toBe(`https://heritgapp.hamanto.com/s/${fixture.shareId}`);
+    expect(JSON.stringify(calls)).not.toContain("SharePassword123");
+    expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: SHARE_ENVELOPE_VERSION, expiryDays: 30 });
+  });
+
+  it("requires a strong password before allocating a new share", async () => {
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { password: "short" }))
+      .rejects.toThrow(/at least 12 characters/i);
+  });
+
+  it("requires the password to decrypt a new share and never sends it to the service", async () => {
+    const archive = await exportCanonicalHeritgArchive(syntheticData, "tree-share-fixture");
+    const envelope = await encryptedShareTestHelpers.encryptArchive(archive, fixture.shareId, "SharePassword123");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).startsWith("/api/")
+      ? response({
+        downloadUrl: "https://storage.googleapis.com/synthetic/password-envelope",
+        downloadExpiresAt: "2026-08-03T00:05:00.000Z",
+        envelopeVersion: SHARE_ENVELOPE_VERSION,
+        ciphertextBytes: envelope.byteLength,
+        shareExpiresAt: "2026-09-02T00:00:00.000Z"
+      })
+      : new Response(envelope.slice().buffer as ArrayBuffer));
+    const fetchImpl = fetchMock as unknown as typeof fetch;
+
+    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl))
+      .rejects.toBeInstanceOf(SharePasswordRequiredError);
+    await expect(loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
+      .rejects.toThrow(/wrong key|modified/i);
+    const loaded = await loadEncryptedShare(`/s/${fixture.shareId}`, "", fetchImpl, undefined, "SharePassword123");
+    expect(loaded.data.trees[0]?.title).toBe("Synthetic Share Fixture");
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain("SharePassword123");
   });
 
   it("revokes an allocation when its encrypted upload fails", async () => {
@@ -149,7 +180,7 @@ describe("HTGSHR01 browser protocol", () => {
       return response({}, 500);
     }) as unknown as typeof fetch;
 
-    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl }))
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl, password: "SharePassword123" }))
       .rejects.toThrow(/upload was rejected/i);
     expect(calls).toEqual([
       "/api/v1/share-uploads",
