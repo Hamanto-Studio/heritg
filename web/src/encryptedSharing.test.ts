@@ -116,7 +116,7 @@ describe("HTGSHR01 browser protocol", () => {
 
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
-      origin: "https://heritgapp.hamanto.com"
+      origin: "https://heritg.us"
     });
 
     expect(calls.map((call) => call.url)).toEqual([
@@ -124,7 +124,7 @@ describe("HTGSHR01 browser protocol", () => {
       "https://storage.googleapis.com/synthetic/upload",
       "/api/v1/share-uploads/complete"
     ]);
-    expect(created.url).toMatch(new RegExp(`^https://heritgapp\\.hamanto\\.com/s/${fixture.shareId}#k=[A-Za-z0-9_-]{43}$`));
+    expect(created.url).toMatch(new RegExp(`^https://heritg\\.us/s/${fixture.shareId}#k=[A-Za-z0-9_-]{43}$`));
     const key = created.url.split("#k=")[1];
     expect(JSON.stringify(calls)).not.toContain(key);
     expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: "HTGSHR01", expiryDays: 30 });

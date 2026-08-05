@@ -89,8 +89,8 @@ HMAC-pseudonymized rate-limit windows. Operational logs exclude request bodies,
 share capabilities, viewing keys, and family plaintext.
 
 Browser storage and its encryption key are isolated by origin. The public
-landing page is served at `heritg.hamanto.com`, and the application is served
-at `heritgapp.hamanto.com`. These are separate origins, and the app's service
+landing page is served at `family.heritg.us`, and the application is served
+at `heritg.us`. These are separate origins, and the app's service
 worker is limited to the app origin. Family data created on localhost, the
 landing site, or a Vercel preview URL does not automatically appear in the
 production app. Users must deliberately export and import a backup to move

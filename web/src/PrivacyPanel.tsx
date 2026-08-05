@@ -39,7 +39,7 @@ export function PrivacyPanel({
       </div>
       <a
         className="privacy-details-link"
-        href="https://heritg-encryption.hamanto.com"
+        href="https://family.heritg.us/blog/e2e-encryption"
         rel="noopener noreferrer"
         target="_blank"
       >

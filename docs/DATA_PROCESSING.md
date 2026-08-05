@@ -11,12 +11,12 @@ consistent.
 | Component | Status | Purpose | Data | Destination | User control |
 | --- | --- | --- | --- | --- | --- |
 | SwiftData and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
-| IndexedDB | Active at `heritgapp.hamanto.com` | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
+| IndexedDB | Active at `heritg.us` | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
 | File import | Active | Import genealogy records or backups | User-selected file contents | Processed on-device or in-browser | User explicitly selects a file |
 | Image and document export | Active | Create user-requested exports | User-selected family-tree content | User-selected system share or browser download destination | User initiates and chooses destination |
 | PWA service worker and Cache Storage | Active on web | Cache the public application shell for offline use | Public HTML, JavaScript, styles, fonts, and images; no family content | Browser cache on the user's device | Clear site data or uninstall the PWA |
-| Vercel static web hosting | Active on web | Deliver and protect public application assets at `heritgapp.hamanto.com` | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the web app |
-| Cloudflare authoritative DNS | Active on web | Resolve `heritg.hamanto.com` and `heritgapp.hamanto.com` without proxying application traffic | DNS query and resolution metadata; no family-tree payload | Cloudflare DNS | User opens the website or web app |
+| Vercel static web hosting | Active on web | Deliver and protect public application assets at `heritg.us` | Standard HTTP request metadata; no family-tree payload | Vercel | User opens the web app |
+| Cloudflare authoritative DNS | Active on web | Resolve `family.heritg.us` and `heritg.us` without proxying application traffic | DNS query and resolution metadata; no family-tree payload | Cloudflare DNS | User opens the website or web app |
 | Encrypted share creation | Optional on web | Create an expiring immutable read-only family-tree snapshot | AES-256-GCM ciphertext; size and expiration metadata; no viewing key | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User explicitly creates a link and chooses its expiration |
 | Encrypted share viewing | Optional on web | Download and decrypt a shared snapshot in memory | Ciphertext and access timing; viewing key remains in the URL fragment | Cloud Run and private Cloud Storage in Jakarta | Recipient opens the complete link |
 | Encrypted share management | Optional on web | Revoke active links from the creating browser | Encrypted share ID, deletion capability, and expiration | Encrypted IndexedDB on the sender's device | Sender revokes the link or clears site data |
