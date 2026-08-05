@@ -125,6 +125,8 @@ describe("password-protected share protocol", () => {
 
     await expect(loadEncryptedShare(`/s/${shareId}`, "", fetchImpl))
       .rejects.toBeInstanceOf(SharePasswordRequiredError);
+    expect(fetchMock).not.toHaveBeenCalled();
+
     await expect(loadEncryptedShare(`/s/${shareId}`, "", fetchImpl, undefined, "WrongPassword123"))
       .rejects.toBeInstanceOf(ShareDecryptionError);
     const loaded = await loadEncryptedShare(`/s/${shareId}`, "", fetchImpl, undefined, composedPassword);

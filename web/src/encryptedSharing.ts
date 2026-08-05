@@ -302,6 +302,8 @@ export async function loadEncryptedShare(
 ): Promise<LoadedShare> {
   const parsed = parseEncryptedShareLocation(pathname, hash);
   if (!parsed) throw new Error("This share link is invalid.");
+  if (!password) throw new SharePasswordRequiredError();
+
   const grantValue = await apiPost("/api/v1/share-downloads", { shareId: parsed.shareId }, fetchImpl, signal);
   const grant: DownloadGrant = {
     downloadUrl: stringField(grantValue, "downloadUrl"),
@@ -315,8 +317,6 @@ export async function loadEncryptedShare(
       grant.ciphertextBytes > MAX_SHARE_ENVELOPE_BYTES) {
     throw new Error("The sharing service returned invalid envelope information.");
   }
-  if (!password) throw new SharePasswordRequiredError();
-
   let response: Response;
   try {
     response = await fetchImpl(grant.downloadUrl, {
