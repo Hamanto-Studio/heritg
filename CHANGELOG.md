@@ -10,6 +10,20 @@ prefix.
 
 ### Changed
 
+- No unreleased changes yet.
+
+### iOS
+
+- No unreleased changes yet.
+
+### Android
+
+- No unreleased changes yet.
+
+## [web-0.2.2] - 2026-08-06
+
+### Changed
+
 - Require a strong password of at least 8 characters when creating a new encrypted share and ask recipients for that password before opening it.
 - Retired the legacy fragment-key share format; shared links now use only password-protected `HTGSHR02` envelopes.
 - Migrated the public landing page to `family.heritg.us`, the web app to
@@ -20,14 +34,6 @@ prefix.
 ### Security
 
 - Derive new share encryption keys from the password with PBKDF2-HMAC-SHA-256 in the browser; passwords and keys are never sent to the sharing service.
-
-### iOS
-
-- No unreleased changes yet.
-
-### Android
-
-- No unreleased changes yet.
 
 ## [web-0.2.1] - 2026-08-04
 
