@@ -8,7 +8,13 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+#### Changed
+
+- Added direct marriage-date editing from partner rows, moved relationship dates above role choices, and added controls for excluding birth dates, relationship dates, photos, or ages from encrypted shares.
+
+#### Fixed
+
+- Preserved Vercel API and security routing during production promotion and made a complete encrypted-share lifecycle test mandatory before promotion.
 
 ### iOS
 

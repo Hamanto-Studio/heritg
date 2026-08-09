@@ -51,6 +51,24 @@ type ArchiveProtection = "encrypted" | "unencrypted" | "legacy-encrypted" | "leg
 type JsonObject = Record<string, unknown>;
 type MediaReference = { byteSize: number; mimeType: string; path: string; sha256: string };
 
+export interface SharedViewPolicy {
+  birthDates: boolean;
+  relationshipDates: boolean;
+  photos: boolean;
+  ages: boolean;
+  ageByPersonId: Record<string, number>;
+}
+
+interface CanonicalArchiveOptions {
+  sharedView?: SharedViewPolicy;
+}
+
+const sharedViewSymbol = Symbol("heritg.sharedView");
+type AppDataWithSharedView = AppData & { [sharedViewSymbol]?: SharedViewPolicy };
+
+export const sharedViewFor = (data: AppData): SharedViewPolicy | undefined =>
+  (data as AppDataWithSharedView)[sharedViewSymbol];
+
 export class HeritgArchivePasswordError extends Error {
   constructor() {
     super("The password is incorrect or the .heritg archive was modified.");
@@ -400,11 +418,50 @@ const photoBytes = (value: string): Uint8Array => {
   }
 };
 
-async function archiveEntries(data: AppData, treeId: string, exportedAt: Date | string): Promise<Map<string, Uint8Array>> {
+const sharedViewPolicy = (
+  value: unknown,
+  personIds: ReadonlySet<string>
+): SharedViewPolicy | undefined => {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) fail("tree.sharedView must be an object.");
+  const record = value as JsonObject;
+  const flags = ["birthDates", "relationshipDates", "photos", "ages"] as const;
+  if (flags.some((field) => typeof record[field] !== "boolean")) fail("tree.sharedView flags are invalid.");
+  if (!record.ageByPersonId || typeof record.ageByPersonId !== "object" || Array.isArray(record.ageByPersonId)) {
+    fail("tree.sharedView ages are invalid.");
+  }
+  const ages = record.ageByPersonId as Record<string, unknown>;
+  if (Object.keys(ages).length > personIds.size ||
+      Object.entries(ages).some(([personId, age]) =>
+        !personIds.has(personId) || !Number.isSafeInteger(age) || (age as number) < 0 || (age as number) > 150)) {
+    fail("tree.sharedView ages are invalid.");
+  }
+  if ((!record.ages || record.birthDates) && Object.keys(ages).length) fail("tree.sharedView ages are redundant.");
+  return {
+    birthDates: record.birthDates as boolean,
+    relationshipDates: record.relationshipDates as boolean,
+    photos: record.photos as boolean,
+    ages: record.ages as boolean,
+    ageByPersonId: Object.fromEntries(Object.entries(ages).map(([personId, age]) => [personId, age as number]))
+  };
+};
+
+const attachSharedView = (data: AppData, sharedView: SharedViewPolicy): AppData => {
+  Object.defineProperty(data, sharedViewSymbol, { enumerable: false, value: sharedView });
+  return data;
+};
+
+async function archiveEntries(
+  data: AppData,
+  treeId: string,
+  exportedAt: Date | string,
+  options: CanonicalArchiveOptions = {}
+): Promise<Map<string, Uint8Array>> {
   const clean = validateAppData(data);
   const tree = clean.trees.find((item) => item.id === treeId) ?? fail("selected tree does not exist.");
   const people = clean.people.filter((person) => person.treeId === tree.id);
   const relationships = clean.relationships.filter((relationship) => relationship.treeId === tree.id);
+  const sharedView = sharedViewPolicy(options.sharedView, new Set(people.map((person) => person.id)));
   if (people.length > MAX_PEOPLE || relationships.length > MAX_RELATIONSHIPS) fail("record count is outside the limit.");
   const media = new Map<string, Uint8Array>();
   const peopleRecords: JsonObject[] = [];
@@ -452,6 +509,7 @@ async function archiveEntries(data: AppData, treeId: string, exportedAt: Date | 
     id: tree.id,
     ...(tree.lastSelectedPersonId ? { lastSelectedPersonId: tree.lastSelectedPersonId } : {}),
     schemaVersion: SCHEMA_VERSION,
+    ...(sharedView ? { sharedView } : {}),
     title: tree.title,
     updatedAt: exactInstant(tree.updatedAt)
   };
@@ -491,9 +549,10 @@ export async function exportHeritgArchive(
 export async function exportCanonicalHeritgArchive(
   data: AppData,
   treeId: string,
-  exportedAt: Date | string = new Date()
+  exportedAt: Date | string = new Date(),
+  options: CanonicalArchiveOptions = {}
 ): Promise<Uint8Array> {
-  return encodeHeritgZip(await archiveEntries(data, treeId, exportedAt));
+  return encodeHeritgZip(await archiveEntries(data, treeId, exportedAt, options));
 }
 
 const object = (value: unknown, label: string): JsonObject => {
@@ -656,7 +715,8 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     language: into?.language ?? "en",
     viewports: { [tree.id]: { scrollX: 0, scrollY: 0, zoom: 1 } }
   });
-  if (!into) return imported;
+  const sharedView = sharedViewPolicy(treeRecord.sharedView, new Set(people.map((person) => person.id)));
+  if (!into) return sharedView ? attachSharedView(imported, sharedView) : imported;
   const target = validateAppData(into);
   const used = new Set([...target.trees, ...target.people, ...target.relationships].map((item) => item.id));
   if ([tree.id, ...people.map((person) => person.id), ...relationships.map((item) => item.id)].some((id) => used.has(id))) {

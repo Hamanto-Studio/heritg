@@ -829,6 +829,64 @@
 .share-scope strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .share-scope small { color: var(--subtle); line-height: 1.4; }
 
+.share-included {
+  border: 0;
+  margin-top: 20px;
+  min-width: 0;
+  padding: 0;
+}
+
+.share-included legend {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 0;
+}
+
+.share-included > p {
+  color: var(--subtle);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 5px 0 11px;
+}
+
+.share-included-options {
+  display: grid;
+  gap: 8px;
+}
+
+.share-included-options label {
+  align-items: center;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.82rem;
+  gap: 10px;
+  line-height: 1.4;
+  min-height: 42px;
+  padding: 8px 11px;
+}
+
+.share-included-options label:hover {
+  border-color: var(--brand);
+}
+
+.share-included-options input {
+  accent-color: var(--brand-deep);
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 0;
+  width: 18px;
+}
+
+.share-included:disabled .share-included-options label {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
 .share-warning {
   align-items: flex-start;
   color: var(--brand-deep);
@@ -836,7 +894,7 @@
   font-size: 0.82rem;
   gap: 8px;
   line-height: 1.45;
-  margin: 18px 0;
+  margin: 20px 0 18px;
 }
 
 .share-warning svg {

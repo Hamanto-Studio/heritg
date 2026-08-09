@@ -1,11 +1,11 @@
-import { ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-react";
+import { CalendarDays, ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-react";
 import { useState } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import { formatDisplayDate, type Translator } from "./i18n";
 import { PhotoCropDialog } from "./PhotoCropDialog";
 import { RelationshipDialog } from "./RelationshipDialog";
-import { roleForRelationship } from "./relationshipRoles";
+import { isPartnerRole, roleForRelationship } from "./relationshipRoles";
 import type { AppActions, RelationshipDraftInput } from "./store";
 import type { AppData, FamilyRelationship, Gender, Person } from "./types";
 import { ConfirmDialog, ErrorNotice, Modal, PersonAvatar } from "./ui";
@@ -29,7 +29,7 @@ interface ConnectedRelationship {
 
 type OpenRelationshipDialog =
   | { kind: "link" }
-  | { kind: "edit"; relationship: FamilyRelationship; relative: Person };
+  | { kind: "edit"; relationship: FamilyRelationship; relative: Person; focusMarriageDate?: boolean };
 
 const connectedRelationships = (
   personId: string,
@@ -383,6 +383,21 @@ export function PersonEditor({
                           </button>
                         ) : (
                           <>
+                            {isPartnerRole(role) ? (
+                              <button
+                                aria-label={t("editMarriageDateWith", { name: relative.displayName })}
+                                className="icon-button quiet small relationship-date-action"
+                                onClick={() => setOpenRelationshipDialog({
+                                  kind: "edit",
+                                  relationship,
+                                  relative,
+                                  focusMarriageDate: true
+                                })}
+                                type="button"
+                              >
+                                <CalendarDays aria-hidden="true" size={17} />
+                              </button>
+                            ) : null}
                             <button
                               aria-label={t("editRelationshipWith", { name: relative.displayName })}
                               className="icon-button quiet small"
@@ -452,6 +467,9 @@ export function PersonEditor({
           initialDraft={openRelationshipDialog.kind === "edit"
             ? relationshipEdits[openRelationshipDialog.relationship.id]
             : undefined}
+          focusMarriageDate={openRelationshipDialog.kind === "edit"
+            ? openRelationshipDialog.focusMarriageDate
+            : false}
           key={openRelationshipDialog.kind === "edit"
             ? openRelationshipDialog.relationship.id
             : "new-relationship"}

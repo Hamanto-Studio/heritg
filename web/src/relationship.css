@@ -275,6 +275,10 @@
   gap: 2px;
 }
 
+.relationship-date-action {
+  color: var(--brand-deep);
+}
+
 .relationship-status {
   background: color-mix(in srgb, var(--add) 14%, var(--base));
   border-radius: 999px;

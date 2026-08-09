@@ -24,25 +24,59 @@ const ageBetween = (birth: DateParts, reference: DateParts) => {
   return age >= 0 ? age : undefined;
 };
 
-export const personLifeSummary = (
-  person: Pick<Person, "birthDate" | "deathDate" | "birthDatePrecision">,
-  language: AppData["language"] = "en",
+export const personAge = (
+  person: Pick<Person, "birthDate" | "deathDate">,
   now = new Date()
-): string | undefined => {
+): number | undefined => {
   const birth = dateParts(person.birthDate);
   if (!birth) return undefined;
   const death = dateParts(person.deathDate);
-  const reference = death ?? {
+  return ageBetween(birth, death ?? {
     year: now.getFullYear(),
     month: now.getMonth() + 1,
     day: now.getDate()
-  };
-  const age = ageBetween(birth, reference);
+  });
+};
+
+export interface PersonLifeSummaryOptions {
+  showBirthDate?: boolean;
+  showAge?: boolean;
+  ageOverride?: number;
+}
+
+export const personLifeSummary = (
+  person: Pick<Person, "birthDate" | "deathDate" | "birthDatePrecision">,
+  language: AppData["language"] = "en",
+  now = new Date(),
+  options: PersonLifeSummaryOptions = {}
+): string | undefined => {
+  const showBirthDate = options.showBirthDate ?? true;
+  const showAge = options.showAge ?? true;
+  const birth = dateParts(person.birthDate);
+  const overriddenAge = Number.isInteger(options.ageOverride) && options.ageOverride! >= 0
+    ? options.ageOverride
+    : undefined;
+  if (!birth) {
+    if (!showAge || overriddenAge === undefined) return undefined;
+    return language === "id" ? `Usia ${overriddenAge}` : `Age ${overriddenAge}`;
+  }
+  const death = dateParts(person.deathDate);
+  const age = showAge ? overriddenAge ?? personAge(person, now) : undefined;
   if (death) {
+    if (!showBirthDate) {
+      return age === undefined
+        ? undefined
+        : language === "id" ? `Usia ${age}` : `Age ${age}`;
+    }
     const years = `${birth.year}-${death.year}`;
     return age === undefined
       ? years
       : language === "id" ? `${years} · usia ${age}` : `${years} · age ${age}`;
+  }
+  if (!showBirthDate) {
+    return age === undefined
+      ? undefined
+      : language === "id" ? `Usia ${age}` : `Age ${age}`;
   }
   const birthValue = person.birthDate ?? String(birth.year);
   const displayedBirth = person.birthDatePrecision === "exact"

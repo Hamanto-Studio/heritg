@@ -16,6 +16,7 @@ interface DatePickerFieldProps {
   max?: string;
   defaultMonth?: Date;
   className?: string;
+  initiallyOpen?: boolean;
 }
 
 export const parseIsoDate = (value: string): Date | undefined => {
@@ -48,9 +49,10 @@ export function DatePickerField({
   min,
   max,
   defaultMonth,
-  className = ""
+  className = "",
+  initiallyOpen = false
 }: DatePickerFieldProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const labelId = useId();
   const selected = parseIsoDate(value);
   const minDate = parseIsoDate(min ?? "") ?? new Date(1800, 0, 1);

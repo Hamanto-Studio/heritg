@@ -8,11 +8,13 @@ import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portab
 import { archivePasswordIsReady, archivePasswordMeetsRequirements } from "./SettingsDialog";
 import {
   createEncryptedShare,
+  DEFAULT_SHARE_DATA_SELECTION,
   revokeEncryptedShare,
   sharePasswordIsReady,
   sharePasswordMeetsRequirements,
   SHARE_PASSWORD_MIN_LENGTH,
   type CreatedShare,
+  type ShareDataSelection,
   type SharePhase
 } from "./encryptedSharing";
 import type { Translator } from "./i18n";
@@ -50,6 +52,9 @@ export function SharePanel({
   const [expiryDays, setExpiryDays] = useState(30);
   const [sharePassword, setSharePassword] = useState("");
   const [sharePasswordConfirmation, setSharePasswordConfirmation] = useState("");
+  const [shareSelection, setShareSelection] = useState<ShareDataSelection>({
+    ...DEFAULT_SHARE_DATA_SELECTION
+  });
   const [phase, setPhase] = useState<SharePhase>();
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
@@ -88,6 +93,7 @@ export function SharePanel({
     void createEncryptedShare(data, tree.id, {
       expiryDays,
       password: sharePassword,
+      selection: shareSelection,
       onProgress: setPhase,
       signal: controller.signal
     }).then(async (result) => {
@@ -184,6 +190,31 @@ export function SharePanel({
         <UsersRound aria-hidden="true" size={19} />
         <span><strong>{tree.title}</strong><small>{t("shareScopeDetail", { count: peopleCount })}</small></span>
       </div>
+
+      <fieldset className="share-included" disabled={Boolean(phase) || !peopleCount}>
+        <legend>{t("shareIncludedTitle")}</legend>
+        <p>{t("shareIncludedHelp")}</p>
+        <div className="share-included-options">
+          {([
+            ["birthDates", t("shareIncludesBirthDates")],
+            ["relationshipDates", t("shareIncludesRelationshipDates")],
+            ["photos", t("shareIncludesPhotos")],
+            ["ages", t("shareIncludesAges")]
+          ] as const).map(([key, label]) => (
+            <label key={key}>
+              <input
+                checked={shareSelection[key]}
+                onChange={(event) => setShareSelection((current) => ({
+                  ...current,
+                  [key]: event.target.checked
+                }))}
+                type="checkbox"
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <p className="share-warning">
         <ShieldCheck aria-hidden="true" size={18} />

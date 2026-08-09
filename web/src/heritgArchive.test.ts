@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   decodeHeritgZip,
   encodeHeritgZip,
+  exportCanonicalHeritgArchive,
   exportHeritgArchive,
   heritgArchiveProtection,
-  importHeritgArchive
+  importHeritgArchive,
+  sharedViewFor
 } from "./heritgArchive";
 import type { AppData } from "./types";
 
@@ -194,6 +196,39 @@ describe("cross-platform .heritg archive", () => {
     source.relationships[0].divorceDate = "2009-01-01";
     await expect(exportHeritgArchive(source, "tree-synthetic", "archive-pass"))
       .rejects.toThrow(/earlier than marriageDate/i);
+  });
+
+  it("round-trips encrypted-share display policy without adding archive entries", async () => {
+    const archive = await exportCanonicalHeritgArchive(
+      syntheticData,
+      "tree-synthetic",
+      "2026-08-09T00:00:00.000Z",
+      {
+        sharedView: {
+          birthDates: false,
+          relationshipDates: false,
+          photos: false,
+          ages: true,
+          ageByPersonId: { "person-alpha": 41, "person-beta": 42 }
+        }
+      }
+    );
+    expect([...decodeHeritgZip(archive).keys()].filter((path) => !path.startsWith("media/")))
+      .toEqual(expect.arrayContaining([
+        "manifest.json",
+        "tree.json",
+        "people.jsonl",
+        "relationships.jsonl",
+        "checksums.sha256"
+      ]));
+    const restored = await importHeritgArchive(archive);
+    expect(sharedViewFor(restored)).toEqual({
+      birthDates: false,
+      relationshipDates: false,
+      photos: false,
+      ages: true,
+      ageByPersonId: { "person-alpha": 41, "person-beta": 42 }
+    });
   });
 
   it("rejects identifier collisions atomically when importing into existing data", async () => {

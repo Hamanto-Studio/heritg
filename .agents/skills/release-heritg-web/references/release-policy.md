@@ -52,6 +52,9 @@ Before production promotion:
   installation, offline restart,
   local persistence, import, and export work.
 - Security headers and immutable hashed-asset caching are present.
+- The candidate passes the complete synthetic `HTGSHR02` lifecycle through
+  its own `/api/v1` rewrite: allocation, production-origin Storage CORS,
+  encrypted upload, activation, download, local decryption, and revocation.
 - The user explicitly approves promotion.
 
 Before publication:

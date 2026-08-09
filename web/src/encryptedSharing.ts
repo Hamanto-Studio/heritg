@@ -1,4 +1,10 @@
-import { exportCanonicalHeritgArchive, importHeritgArchive } from "./heritgArchive";
+import {
+  exportCanonicalHeritgArchive,
+  importHeritgArchive,
+  sharedViewFor,
+  type SharedViewPolicy
+} from "./heritgArchive";
+import { personAge } from "./lifeSummary";
 import type { AppData } from "./types";
 
 export const SHARE_ENVELOPE_VERSION = "HTGSHR02";
@@ -16,6 +22,17 @@ const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/;
 type Fetch = typeof fetch;
 
 export type SharePhase = "exporting" | "allocating" | "encrypting" | "uploading" | "activating";
+export type ShareDataSelection = Pick<
+  SharedViewPolicy,
+  "birthDates" | "relationshipDates" | "photos" | "ages"
+>;
+
+export const DEFAULT_SHARE_DATA_SELECTION: ShareDataSelection = {
+  birthDates: true,
+  relationshipDates: true,
+  photos: true,
+  ages: true
+};
 
 export class SharePasswordRequiredError extends Error {
   constructor() {
@@ -38,6 +55,7 @@ export interface CreateShareOptions {
   origin?: string;
   onProgress?: (phase: SharePhase) => void;
   signal?: AbortSignal;
+  selection?: ShareDataSelection;
 }
 
 export interface CreatedShare {
@@ -51,6 +69,7 @@ export interface LoadedShare {
   data: AppData;
   shareId: string;
   expiresAt: string;
+  sharedView?: SharedViewPolicy;
 }
 
 interface Allocation {
@@ -210,6 +229,36 @@ const encryptArchive = async (archive: Uint8Array, shareId: string, password: st
   return envelope;
 };
 
+export const prepareEncryptedShareData = (
+  data: AppData,
+  treeId: string,
+  selection: ShareDataSelection = DEFAULT_SHARE_DATA_SELECTION,
+  now = new Date()
+): { data: AppData; sharedView: SharedViewPolicy } => {
+  const ageByPersonId: Record<string, number> = {};
+  const people = data.people.map((person) => {
+    if (person.treeId !== treeId) return person;
+    if (selection.ages && !selection.birthDates) {
+      const age = personAge(person, now);
+      if (age !== undefined) ageByPersonId[person.id] = age;
+    }
+    return {
+      ...person,
+      birthDate: selection.birthDates ? person.birthDate : undefined,
+      photoDataUrl: selection.photos ? person.photoDataUrl : undefined
+    };
+  });
+  const relationships = data.relationships.map((relationship) =>
+    relationship.treeId !== treeId || selection.relationshipDates
+      ? relationship
+      : { ...relationship, marriageDate: undefined, divorceDate: undefined }
+  );
+  return {
+    data: { ...data, people, relationships },
+    sharedView: { ...selection, ageByPersonId }
+  };
+};
+
 export async function createEncryptedShare(
   data: AppData,
   treeId: string,
@@ -225,7 +274,17 @@ export async function createEncryptedShare(
     throw new Error("Choose an expiry between 1 and 90 days.");
   }
   options.onProgress?.("exporting");
-  const archive = await exportCanonicalHeritgArchive(data, treeId);
+  const prepared = prepareEncryptedShareData(
+    data,
+    treeId,
+    options.selection ?? DEFAULT_SHARE_DATA_SELECTION
+  );
+  const archive = await exportCanonicalHeritgArchive(
+    prepared.data,
+    treeId,
+    new Date(),
+    { sharedView: prepared.sharedView }
+  );
   const ciphertextBytes = archive.byteLength + SHARE_MAGIC.byteLength + SHARE_PASSWORD_SALT_BYTES + SHARE_NONCE_BYTES + SHARE_TAG_BYTES;
   if (ciphertextBytes > MAX_SHARE_ENVELOPE_BYTES) {
     throw new Error("This family archive is too large to share. Keep the encrypted share under 32 MiB.");
@@ -352,10 +411,12 @@ export async function loadEncryptedShare(
   } catch {
     throw new ShareDecryptionError();
   }
+  const data = await importHeritgArchive(archive);
   return {
-    data: await importHeritgArchive(archive),
+    data,
     shareId: parsed.shareId,
-    expiresAt: grant.shareExpiresAt
+    expiresAt: grant.shareExpiresAt,
+    sharedView: sharedViewFor(data)
   };
 }
 

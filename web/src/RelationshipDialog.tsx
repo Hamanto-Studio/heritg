@@ -77,6 +77,7 @@ interface RelationshipDialogProps {
   t: Translator;
   onClose: () => void;
   onSave: (input: RelationshipDraftInput) => void;
+  focusMarriageDate?: boolean;
 }
 
 export function RelationshipDialog({
@@ -88,7 +89,8 @@ export function RelationshipDialog({
   language,
   t,
   onClose,
-  onSave
+  onSave,
+  focusMarriageDate = false
 }: RelationshipDialogProps) {
   const editing = Boolean(relationship && relative);
   const currentRole = relationship && relative
@@ -146,6 +148,7 @@ export function RelationshipDialog({
     <div className="relationship-date-fields">
       <DatePickerField
         className="relationship-date-field"
+        initiallyOpen={focusMarriageDate}
         label={t("marriageDateOptional")}
         language={language}
         max={formatIsoDate(new Date())}
@@ -188,9 +191,9 @@ export function RelationshipDialog({
           <div><span>{t("familyMember")}</span><strong>{relative.displayName}</strong></div>
         </div>
       ) : null}
+      {relationshipDates}
       <RelationshipRolePicker onSelect={chooseRole} selectedRole={role} t={t} />
       {genderNotice}
-      {relationshipDates}
     </div>
   );
 
