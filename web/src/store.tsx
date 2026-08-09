@@ -139,6 +139,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const mountedRef = useRef(false);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
+  const queueSave = (next: AppData) => {
+    saveQueueRef.current = saveQueueRef.current
+      .catch(() => undefined)
+      .then(() => saveAppData(next))
+      .catch((reason: unknown) => {
+        if (mountedRef.current) setError(asError(reason));
+      });
+  };
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -168,12 +177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoading || !data) return;
-    saveQueueRef.current = saveQueueRef.current
-      .catch(() => undefined)
-      .then(() => saveAppData(data))
-      .catch((reason: unknown) => {
-        if (mountedRef.current) setError(asError(reason));
-      });
+    queueSave(dataRef.current ?? data);
   }, [data, isLoading]);
 
   function commit<T>(change: (current: AppData) => [AppData, T]): T {
@@ -364,7 +368,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   function setViewport(treeId: string, viewport: ViewportState) {
-    commit((current) => [setViewportInData(current, treeId, viewport), undefined]);
+    const current = dataRef.current;
+    if (!current) throw new Error("The family data store is not ready.");
+    const next = setViewportInData(current, treeId, viewport);
+    if (next === current) return;
+    dataRef.current = next;
+    queueSave(next);
   }
 
   function replaceData(replacement: unknown) {

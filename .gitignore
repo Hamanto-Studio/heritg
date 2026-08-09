@@ -45,3 +45,4 @@ captures/
 .externalNativeBuild/
 .cxx/
 .vercel/
+*.ged

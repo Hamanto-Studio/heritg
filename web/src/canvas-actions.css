@@ -11,8 +11,10 @@
 }
 
 .canvas-empty-anchor {
+  left: 50%;
   pointer-events: none;
   position: absolute;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 3;
 }
@@ -21,12 +23,21 @@
   pointer-events: auto;
 }
 
+.canvas-actions-scene {
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform-origin: 0 0;
+  visibility: hidden;
+  will-change: transform;
+}
+
 .canvas-action-group {
   align-items: center;
   display: flex;
   pointer-events: none;
   position: absolute;
-  transform: translateY(-50%) scale(var(--canvas-action-scale, 1));
+  transform: translateY(-50%) scale(var(--canvas-action-compensation, 1));
   transform-origin: left center;
   z-index: 2;
 }
@@ -41,6 +52,7 @@
   pointer-events: auto;
   position: absolute;
   touch-action: manipulation;
+  transform: translate(-50%, -50%) scale(var(--canvas-hit-scale, 1));
   z-index: 1;
 }
 
@@ -51,7 +63,7 @@
 
 .canvas-action-group[data-side="left"] {
   flex-direction: row-reverse;
-  transform: translate(-100%, -50%) scale(var(--canvas-action-scale, 1));
+  transform: translate(-100%, -50%) scale(var(--canvas-action-compensation, 1));
   transform-origin: right center;
 }
 

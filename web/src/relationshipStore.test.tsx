@@ -105,6 +105,37 @@ afterEach(async () => {
 });
 
 describe("atomic relationship store actions", () => {
+  it("persists viewport changes without publishing a graph update", async () => {
+    const before = currentData();
+    dbMocks.saveAppData.mockClear();
+
+    act(() => {
+      currentActions().setViewport("tree-a", { scrollX: 10, scrollY: 20, zoom: 1.5 });
+    });
+
+    expect(currentData()).toBe(before);
+    await vi.waitFor(() => expect(dbMocks.saveAppData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        viewports: { "tree-a": { scrollX: 10, scrollY: 20, zoom: 1.5 } }
+      })
+    ));
+  });
+
+  it("does not overwrite a newer viewport after a published update", async () => {
+    dbMocks.saveAppData.mockClear();
+
+    act(() => {
+      currentActions().renameTree("tree-a", "Renamed tree");
+      currentActions().setViewport("tree-a", { scrollX: 30, scrollY: 40, zoom: 2 });
+    });
+
+    await vi.waitFor(() => {
+      const saved = dbMocks.saveAppData.mock.calls.at(-1)?.[0];
+      expect(saved?.trees[0].title).toBe("Renamed tree");
+      expect(saved?.viewports["tree-a"]).toEqual({ scrollX: 30, scrollY: 40, zoom: 2 });
+    });
+  });
+
   it("creates a relative and both active co-parent edges atomically", () => {
     let relativeId = "";
     act(() => {

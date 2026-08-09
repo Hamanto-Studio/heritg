@@ -54,17 +54,20 @@ export function App() {
   const t = createTranslator(data?.language ?? "en");
   const activeTree = data?.trees.find((tree) => tree.id === data.selectedTreeId)
     ?? data?.trees[0];
+  const activeTreeId = activeTree?.id;
+  const allPeople = data?.people;
+  const allRelationships = data?.relationships;
   const people = useMemo(
-    () => data && activeTree
-      ? data.people.filter((person) => person.treeId === activeTree.id)
+    () => allPeople && activeTreeId
+      ? allPeople.filter((person) => person.treeId === activeTreeId)
       : [],
-    [activeTree, data]
+    [activeTreeId, allPeople]
   );
   const relationships = useMemo(
-    () => data && activeTree
-      ? data.relationships.filter((relationship) => relationship.treeId === activeTree.id)
+    () => allRelationships && activeTreeId
+      ? allRelationships.filter((relationship) => relationship.treeId === activeTreeId)
       : [],
-    [activeTree, data]
+    [activeTreeId, allRelationships]
   );
   const selectedPerson = people.find((person) => person.id === activeTree?.lastSelectedPersonId);
   const generationLimits = activeTree
