@@ -52,8 +52,19 @@ not change merely because an application version changes.
 6. Obtain explicit confirmation before promoting the tested deployment.
 7. Verify the landing page and encryption announcement at
    `https://family.heritg.us/` and `https://family.heritg.us/blog/e2e-encryption/`,
-   plus the application at `https://heritg.us/`, then create `<platform>-<version>` and
-   the matching GitHub Release.
+   plus the application at `https://heritg.us/`.
+8. Create and push the immutable `web-<version>` tag on the exact promoted
+   commit, then publish its GitHub Release at
+   `https://github.com/Hamanto-Studio/heritg/releases/new` using the exact Web
+   changelog section.
+9. Verify the published release and provide its URL together with the
+   production URL. A production deployment is not complete until this release
+   record exists.
+
+Every version deployed to production must have exactly one matching GitHub
+Release titled `Heritg Web <version>`. If GitHub publication fails after Vercel
+promotion, do not redeploy: keep the release task open and retry the tag/release
+publication for the already verified commit.
 
 The Vercel project is `heritg`. It deploys from the repository root, installs
 and builds only `web/` with Node.js 22, and publishes `web/dist/`. It has no
