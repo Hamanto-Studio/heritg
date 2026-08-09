@@ -142,7 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const dataRef = useRef<AppData | null>(null);
   const mountedRef = useRef(false);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const deferredSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const deferredSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const skipNextAutomaticSaveRef = useRef(false);
 
   const queueSave = (next: AppData) => {

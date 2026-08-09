@@ -373,21 +373,9 @@ const personSkeletons = (
   return values;
 };
 
-export function projectLayoutToScene(
-  layout: TreeLayout,
-  selectedPersonId?: string,
-  language: AppData["language"] = "en",
-  suppliedPlan?: ConnectionPlan,
-  resolveAvatar: AvatarImageResolver = circularAvatarData
-): HeritgExcalidrawScene {
-  const people = [...layout.people].sort(
-    (left, right) =>
-      left.generation - right.generation ||
-      left.y - right.y ||
-      left.x - right.x ||
-      compareText(left.id, right.id)
-  );
-  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+export const projectConnectionPlanToElements = (
+  plan: ConnectionPlan
+): OrderedExcalidrawElement[] => {
   const skeletons: ExcalidrawElementSkeleton[] = [];
   for (const family of plan.families) {
     const familyKey = encodedId(family.id);
@@ -475,14 +463,39 @@ export function projectLayoutToScene(
       skeletons.push(...plannedLabelSkeletons(route.relationship, route.label));
     }
   }
+  return convertToExcalidrawElements(skeletons, { regenerateIds: false });
+};
+
+export function projectLayoutToScene(
+  layout: TreeLayout,
+  selectedPersonId?: string,
+  language: AppData["language"] = "en",
+  suppliedPlan?: ConnectionPlan,
+  resolveAvatar: AvatarImageResolver = circularAvatarData,
+  suppliedConnectionElements?: readonly OrderedExcalidrawElement[]
+): HeritgExcalidrawScene {
+  const people = [...layout.people].sort(
+    (left, right) =>
+      left.generation - right.generation ||
+      left.y - right.y ||
+      left.x - right.x ||
+      compareText(left.id, right.id)
+  );
+  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+  const connectionElements = suppliedConnectionElements ??
+    projectConnectionPlanToElements(plan);
 
   const files: BinaryFiles = {};
+  const personSkeletonValues: ExcalidrawElementSkeleton[] = [];
   for (const person of people) {
-    skeletons.push(...personSkeletons(
+    personSkeletonValues.push(...personSkeletons(
       person, files, selectedPersonId, language, resolveAvatar
     ));
   }
-  const elements = convertToExcalidrawElements(skeletons, { regenerateIds: false });
+  const personElements = convertToExcalidrawElements(
+    personSkeletonValues, { regenerateIds: false }
+  );
+  const elements = [...connectionElements, ...personElements];
   const contentBounds: SceneBounds =
     elements.length === 0 ? [0, 0, 0, 0] : getCommonBounds(elements);
   const padding = elements.length === 0 ? 0 : 32;

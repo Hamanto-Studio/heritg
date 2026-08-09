@@ -18,7 +18,7 @@ prefix.
 
 ### Fixed
 
-- Made person selection respond immediately by avoiding forced camera movement, repeated photo processing, and foreground archive encryption.
+- Made person selection respond immediately on large trees by reusing family geometry and connectors, indexing kinship calculations, and moving photo processing and archive encryption out of the interaction path.
 
 ### iOS
 

@@ -29,8 +29,9 @@ import { buildChartSvg, chartSvgToPng } from "./chartExport";
 import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { Translator } from "./i18n";
+import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
-import { projectLayoutToScene } from "./scene";
+import { projectConnectionPlanToElements, projectLayoutToScene } from "./scene";
 import type {
   AppData,
   FamilyRelationship,
@@ -330,21 +331,57 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const [touchNavigation, setTouchNavigation] = useState(() =>
     window.matchMedia("(pointer: coarse)").matches
   );
-  const layout = useMemo(
-    () => createTreeLayout(people, relationships, selectedPersonId, generationLimits, language),
-    [generationLimits, language, people, relationships, selectedPersonId]
+  const selectionFiltersLayout = generationLimits.ancestors !== null ||
+    generationLimits.descendants !== null;
+  const layoutSelectionId = selectionFiltersLayout ? selectedPersonId : undefined;
+  const geometryLayout = useMemo(
+    () => createTreeLayout(
+      people,
+      relationships,
+      layoutSelectionId,
+      generationLimits,
+      language
+    ),
+    [generationLimits, language, layoutSelectionId, people, relationships]
   );
+  const layout = useMemo(() => {
+    if (selectionFiltersLayout || !selectedPersonId) return geometryLayout;
+    const labels = deriveKinshipLabels(selectedPersonId, people, relationships, language);
+    return {
+      ...geometryLayout,
+      people: geometryLayout.people.map((person) => ({
+        ...person,
+        role: labels[person.id] ?? ""
+      }))
+    };
+  }, [geometryLayout, language, people, relationships, selectedPersonId, selectionFiltersLayout]);
+  const routingLayout = useMemo(() => ({
+    ...geometryLayout,
+    people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
+  }), [geometryLayout]);
   const connectionPlan = useMemo(
     () => createConnectionPlan(
-      layout, language, readOnly ? undefined : selectedPersonId, !readOnly
+      routingLayout,
+      language,
+      undefined,
+      !readOnly && people.length <= 24
     ),
-    [language, layout, readOnly, selectedPersonId]
+    [language, people.length, readOnly, routingLayout]
+  );
+  const connectionElements = useMemo(
+    () => projectConnectionPlanToElements(connectionPlan),
+    [connectionPlan]
   );
   const scene = useMemo(
     () => projectLayoutToScene(
-      layout, selectedPersonId, language, connectionPlan, resolveAvatar
+      layout,
+      selectedPersonId,
+      language,
+      connectionPlan,
+      resolveAvatar,
+      connectionElements
     ),
-    [connectionPlan, language, layout, resolveAvatar, selectedPersonId]
+    [connectionElements, connectionPlan, language, layout, resolveAvatar, selectedPersonId]
   );
 
   useEffect(() => {
