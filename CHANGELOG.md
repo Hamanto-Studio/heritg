@@ -16,6 +16,10 @@ prefix.
 - Moved backup and chart exports into Share, made active share links copyable again, and improved password visibility, validation, and shared-link spacing.
 - Displayed the current Web version at the bottom of Settings.
 
+### Fixed
+
+- Made person selection respond immediately by avoiding forced camera movement, repeated photo processing, and foreground archive encryption.
+
 ### iOS
 
 - No unreleased changes yet.

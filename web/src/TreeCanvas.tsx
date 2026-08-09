@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { downloadBlob, safeFilename } from "./images";
+import { createCircularAvatarCache } from "./avatar";
 import { buildChartSvg, chartSvgToPng } from "./chartExport";
 import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
@@ -323,6 +324,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const pendingViewport = useRef<ViewportState | undefined>(undefined);
   const viewportCallback = useRef(onViewportChange);
   const didInitialMobileFit = useRef(false);
+  const registeredFileIds = useRef(new Set<string>());
+  const resolveAvatar = useMemo(() => createCircularAvatarCache(), []);
   const spacePanActive = useRef(false);
   const [touchNavigation, setTouchNavigation] = useState(() =>
     window.matchMedia("(pointer: coarse)").matches
@@ -338,8 +341,10 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     [language, layout, readOnly, selectedPersonId]
   );
   const scene = useMemo(
-    () => projectLayoutToScene(layout, selectedPersonId, language, connectionPlan),
-    [connectionPlan, language, layout, selectedPersonId]
+    () => projectLayoutToScene(
+      layout, selectedPersonId, language, connectionPlan, resolveAvatar
+    ),
+    [connectionPlan, language, layout, resolveAvatar, selectedPersonId]
   );
 
   useEffect(() => {
@@ -404,10 +409,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
 
   const togglePerson = (personId: string) => {
     if (personId === selectedPersonId) onDeselectPerson();
-    else {
-      onSelectPerson(personId);
-      focusPerson(personId);
-    }
+    else onSelectPerson(personId);
   };
 
   const fitAll = () => {
@@ -503,7 +505,13 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
 
   useEffect(() => {
     if (!api) return;
-    api.addFiles(Object.values(scene.files));
+    const newFiles = Object.entries(scene.files)
+      .filter(([fileId]) => !registeredFileIds.current.has(fileId))
+      .map(([, file]) => file);
+    if (newFiles.length) {
+      api.addFiles(newFiles);
+      Object.keys(scene.files).forEach((fileId) => registeredFileIds.current.add(fileId));
+    }
     api.updateScene({
       elements: scene.elements,
       appState: {

@@ -142,6 +142,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const dataRef = useRef<AppData | null>(null);
   const mountedRef = useRef(false);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const deferredSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const skipNextAutomaticSaveRef = useRef(false);
 
   const queueSave = (next: AppData) => {
     saveQueueRef.current = saveQueueRef.current
@@ -181,6 +183,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoading || !data) return;
+    if (skipNextAutomaticSaveRef.current) {
+      skipNextAutomaticSaveRef.current = false;
+      return;
+    }
+    if (deferredSaveTimerRef.current) {
+      clearTimeout(deferredSaveTimerRef.current);
+      deferredSaveTimerRef.current = undefined;
+    }
     queueSave(dataRef.current ?? data);
   }, [data, isLoading]);
 
@@ -305,7 +315,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   function selectPerson(personId?: string) {
-    commit((current) => [selectPersonInData(current, personId), undefined]);
+    const current = dataRef.current;
+    if (!current) throw new Error("The family data store is not ready.");
+    const next = selectPersonInData(current, personId);
+    if (next === current) return;
+    dataRef.current = next;
+    skipNextAutomaticSaveRef.current = true;
+    setData(next);
+    if (deferredSaveTimerRef.current) clearTimeout(deferredSaveTimerRef.current);
+    deferredSaveTimerRef.current = setTimeout(() => {
+      deferredSaveTimerRef.current = undefined;
+      const latest = dataRef.current;
+      if (latest) queueSave(latest);
+    }, 800);
   }
 
   function addRelationship(

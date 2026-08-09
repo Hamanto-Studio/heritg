@@ -16,7 +16,6 @@ import {
   ZoomOut
 } from "lucide-react";
 import {
-  startTransition,
   useEffect,
   useMemo,
   useRef,
@@ -106,8 +105,8 @@ export function App() {
 
   const selectAndFocus = (personId: string) => {
     setGenerationOpen(false);
-    startTransition(() => actions.selectPerson(personId));
-    setTimeout(() => canvasRef.current?.focusPerson(personId), 60);
+    actions.selectPerson(personId);
+    requestAnimationFrame(() => canvasRef.current?.focusPerson(personId));
   };
 
   const addRelativeTo = (personId: string) => {
