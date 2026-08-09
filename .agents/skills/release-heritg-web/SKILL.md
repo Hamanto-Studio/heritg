@@ -55,7 +55,12 @@ still validates metadata, changelog structure, workflows, and Vercel policy.
    sample data only: onboarding, canvas, deep route, `.heritg` import/export,
    IndexedDB persistence, installation, and offline restart.
 5. Run the production verifier against any publicly reachable candidate URL.
-   Protected preview URLs may require Vercel-authenticated browser verification.
+   It performs a complete synthetic `HTGSHR02` allocation, encrypted upload,
+   activation, download, decryption, and revocation while checking production
+   Storage CORS. This is a mandatory compatibility gate, not an optional smoke
+   test. Use `--cors-origin https://heritg.us` when the candidate has a preview
+   hostname. Protected preview URLs may require Vercel-authenticated browser
+   verification.
 
 ## Promote and publish
 
@@ -72,6 +77,7 @@ After approval:
    `npm --prefix web run deploy:promote -- <candidate-url>`. The command must
    keep `web/vercel.json` attached so the API, health, and SPA rewrites are
    present in the production deployment. Do not run a bare `vercel promote`.
+   Never promote a candidate whose complete encrypted-sharing smoke test failed.
 2. Verify the GitHub Pages landing site and `https://heritg.us/` with:
 
    ```sh

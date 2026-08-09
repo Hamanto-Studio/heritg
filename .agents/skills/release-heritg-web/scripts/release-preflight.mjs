@@ -107,13 +107,17 @@ const requiredFiles = [
   ".github/workflows/web-ci.yml",
   ".github/workflows/secret-scan.yml",
   ".github/workflows/commit-policy.yml",
-  "web/vercel.json"
+  "web/vercel.json",
+  "web/scripts/promote-production.mjs"
 ];
 for (const file of requiredFiles) {
   if (!existsSync(resolve(repositoryRoot, file))) fail(`required release file is missing: ${file}`);
 }
 
 const vercel = readJson(resolve(webDirectory, "vercel.json"));
+if (webPackage.scripts?.["deploy:promote"] !== "node scripts/promote-production.mjs") {
+  fail("Web production promotion must use the guarded promotion script");
+}
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
     vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {
   fail("web/vercel.json must build the Web package from the repository deployment root");

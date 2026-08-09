@@ -14,7 +14,7 @@ prefix.
 
 #### Fixed
 
-- Preserved Vercel API and security routing during production promotion and added release checks for sharing-service health and validation routes.
+- Preserved Vercel API and security routing during production promotion and made a complete encrypted-share lifecycle test mandatory before promotion.
 
 ### iOS
 
