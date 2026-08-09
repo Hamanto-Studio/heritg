@@ -8,6 +8,18 @@ prefix.
 
 ### Web
 
+- No unreleased changes yet.
+
+### iOS
+
+- No unreleased changes yet.
+
+### Android
+
+- No unreleased changes yet.
+
+## [web-0.3.0] - 2026-08-09
+
 ### Changed
 
 - Added a guided square photo crop for person and relative profiles, with corrected circular avatar alignment.
@@ -19,14 +31,6 @@ prefix.
 ### Fixed
 
 - Made person selection respond immediately on large trees by reusing family geometry and connectors, indexing kinship calculations, and moving photo processing and archive encryption out of the interaction path.
-
-### iOS
-
-- No unreleased changes yet.
-
-### Android
-
-- No unreleased changes yet.
 
 ## [web-0.2.2] - 2026-08-06
 
@@ -107,4 +111,6 @@ prefix.
 [web-0.1.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.1.0
 [web-0.2.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.0
 [web-0.2.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.1
+[web-0.2.2]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.2
+[web-0.3.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.3.0
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0
