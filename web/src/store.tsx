@@ -36,6 +36,7 @@ export interface RelationshipDraftInput {
   relativePersonId: string;
   role: DirectRole;
   marriageDate?: string;
+  divorceDate?: string;
 }
 
 export interface AppActions {
@@ -50,7 +51,8 @@ export interface AppActions {
     input: NewPersonInput,
     role: DirectRole,
     marriageDate?: string,
-    coParentId?: string
+    coParentId?: string,
+    divorceDate?: string
   ): string;
   updatePerson(personId: string, changes: PersonChanges): void;
   savePerson(
@@ -65,14 +67,16 @@ export interface AppActions {
     personId: string,
     relativePersonId: string,
     role: DirectRole,
-    marriageDate?: string
+    marriageDate?: string,
+    divorceDate?: string
   ): string;
   linkRelative(
     targetPersonId: string,
     relativePersonId: string,
     role: DirectRole,
     marriageDate?: string,
-    coParentId?: string
+    coParentId?: string,
+    divorceDate?: string
   ): void;
   removeRelationship(relationshipId: string): void;
   setLanguage(language: AppLanguage): void;
@@ -226,7 +230,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     input: NewPersonInput,
     role: DirectRole,
     marriageDate?: string,
-    coParentId?: string
+    coParentId?: string,
+    divorceDate?: string
   ) {
     const personId = newId();
     const relationshipId = newId();
@@ -247,7 +252,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         personId,
         role,
         marriageDate,
-        { id: relationshipId }
+        { id: relationshipId },
+        divorceDate
       );
       if (coParentId !== undefined && coParentRelationshipId) {
         next = addRelationshipToData(
@@ -286,7 +292,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           addition.relativePersonId,
           addition.role,
           addition.marriageDate,
-          { id: relationshipIds[index] }
+          { id: relationshipIds[index] },
+          addition.divorceDate
         );
       });
       return [next, undefined];
@@ -305,7 +312,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     personId: string,
     relativePersonId: string,
     role: DirectRole,
-    marriageDate?: string
+    marriageDate?: string,
+    divorceDate?: string
   ) {
     const id = newId();
     return commit((current) => [
@@ -315,7 +323,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         relativePersonId,
         role,
         marriageDate,
-        { id }
+        { id },
+        divorceDate
       ),
       id
     ]);
@@ -326,7 +335,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     relativePersonId: string,
     role: DirectRole,
     marriageDate?: string,
-    coParentId?: string
+    coParentId?: string,
+    divorceDate?: string
   ) {
     const relationshipId = newId();
     const coParentRelationshipId = coParentId === undefined ? undefined : newId();
@@ -340,7 +350,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         relativePersonId,
         role,
         marriageDate,
-        { id: relationshipId }
+        { id: relationshipId },
+        divorceDate
       );
       if (coParentId !== undefined && coParentRelationshipId) {
         next = addRelationshipToData(

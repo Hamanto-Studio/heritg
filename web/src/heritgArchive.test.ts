@@ -170,6 +170,32 @@ describe("cross-platform .heritg archive", () => {
     expect(restored.relationships[0]?.id).toBe("relationship-alpha-beta");
   });
 
+  it("round-trips additive schema-v1 divorce dates for former unions", async () => {
+    const source = structuredClone(syntheticData);
+    source.relationships[0].subtype = "formerSpouse";
+    source.relationships[0].divorceDate = "2021-07-08";
+
+    const archive = await exportHeritgArchive(source, "tree-synthetic", "archive-pass");
+    const zip = await openEnvelopeForCompatibilityTest(archive, "archive-pass");
+    const files = decodeHeritgZip(zip);
+    const relationshipRecord = JSON.parse(
+      new TextDecoder().decode(files.get("relationships.jsonl"))
+    );
+    expect(relationshipRecord).toMatchObject({
+      schemaVersion: 1,
+      subtype: "formerSpouse",
+      marriageDate: "2010-06-20",
+      divorceDate: "2021-07-08"
+    });
+
+    const restored = await importHeritgArchive(archive, "archive-pass");
+    expect(restored.relationships[0].divorceDate).toBe("2021-07-08");
+
+    source.relationships[0].divorceDate = "2009-01-01";
+    await expect(exportHeritgArchive(source, "tree-synthetic", "archive-pass"))
+      .rejects.toThrow(/earlier than marriageDate/i);
+  });
+
   it("rejects identifier collisions atomically when importing into existing data", async () => {
     const archive = await exportHeritgArchive(syntheticData, "tree-synthetic", "");
     await expect(importHeritgArchive(archive, "", { into: syntheticData })).rejects.toThrow(/identifier/i);

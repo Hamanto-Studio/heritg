@@ -228,4 +228,20 @@ describe("atomic relationship store actions", () => {
     expect(currentData().relationships.some((relationship) => relationship.id === "child-link"))
       .toBe(false);
   });
+
+  it("passes divorce dates through atomic relationship actions", () => {
+    act(() => {
+      currentActions().addRelationship(
+        "child", "former", "formerPartner", "2012-01-02", "2020-03-04"
+      );
+    });
+    expect(currentData().relationships.find((relationship) =>
+      relationship.fromPersonId === "child" || relationship.toPersonId === "child"
+    )).toBeDefined();
+    expect(currentData().relationships).toContainEqual(expect.objectContaining({
+      subtype: "formerPartner",
+      marriageDate: "2012-01-02",
+      divorceDate: "2020-03-04"
+    }));
+  });
 });
