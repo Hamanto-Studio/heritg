@@ -4,7 +4,11 @@ import {
   sharedViewFor,
   type SharedViewPolicy
 } from "./heritgArchive";
-import { personAge } from "./lifeSummary";
+import {
+  DEFAULT_EXPORT_PRIVACY_SELECTION,
+  prepareDataForExport,
+  type ExportPrivacySelection
+} from "./exportPrivacy";
 import type { AppData } from "./types";
 
 export const SHARE_ENVELOPE_VERSION = "HTGSHR02";
@@ -22,17 +26,8 @@ const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/;
 type Fetch = typeof fetch;
 
 export type SharePhase = "exporting" | "allocating" | "encrypting" | "uploading" | "activating";
-export type ShareDataSelection = Pick<
-  SharedViewPolicy,
-  "birthDates" | "relationshipDates" | "photos" | "ages"
->;
-
-export const DEFAULT_SHARE_DATA_SELECTION: ShareDataSelection = {
-  birthDates: true,
-  relationshipDates: true,
-  photos: true,
-  ages: true
-};
+export type ShareDataSelection = ExportPrivacySelection;
+export const DEFAULT_SHARE_DATA_SELECTION = DEFAULT_EXPORT_PRIVACY_SELECTION;
 
 export class SharePasswordRequiredError extends Error {
   constructor() {
@@ -235,27 +230,10 @@ export const prepareEncryptedShareData = (
   selection: ShareDataSelection = DEFAULT_SHARE_DATA_SELECTION,
   now = new Date()
 ): { data: AppData; sharedView: SharedViewPolicy } => {
-  const ageByPersonId: Record<string, number> = {};
-  const people = data.people.map((person) => {
-    if (person.treeId !== treeId) return person;
-    if (selection.ages && !selection.birthDates) {
-      const age = personAge(person, now);
-      if (age !== undefined) ageByPersonId[person.id] = age;
-    }
-    return {
-      ...person,
-      birthDate: selection.birthDates ? person.birthDate : undefined,
-      photoDataUrl: selection.photos ? person.photoDataUrl : undefined
-    };
-  });
-  const relationships = data.relationships.map((relationship) =>
-    relationship.treeId !== treeId || selection.relationshipDates
-      ? relationship
-      : { ...relationship, marriageDate: undefined, divorceDate: undefined }
-  );
+  const prepared = prepareDataForExport(data, treeId, selection, now);
   return {
-    data: { ...data, people, relationships },
-    sharedView: { ...selection, ageByPersonId }
+    data: prepared.data,
+    sharedView: { ...selection, ageByPersonId: prepared.ageByPersonId }
   };
 };
 

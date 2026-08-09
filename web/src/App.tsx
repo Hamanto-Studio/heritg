@@ -469,8 +469,8 @@ export function App() {
       {activeTree && rightPanel === "share" ? (
         <SharePanel
           data={data}
-          exportPng={() => canvasRef.current?.exportPng() ?? Promise.reject(new Error("Canvas is not ready."))}
-          exportSvg={() => canvasRef.current?.exportSvg() ?? Promise.reject(new Error("Canvas is not ready."))}
+          exportPng={(privacy) => canvasRef.current?.exportPng(privacy) ?? Promise.reject(new Error("Canvas is not ready."))}
+          exportSvg={(privacy) => canvasRef.current?.exportSvg(privacy) ?? Promise.reject(new Error("Canvas is not ready."))}
           onClose={() => setRightPanel(undefined)}
           onCopied={() => setToast(t("shareLinkCopied"))}
           onError={setOperationError}

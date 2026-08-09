@@ -6,6 +6,7 @@ import { exportHeritgArchive } from "./heritgArchive";
 import { PasswordField } from "./PasswordField";
 import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
 import { archivePasswordIsReady, archivePasswordMeetsRequirements } from "./SettingsDialog";
+import type { ExportPrivacySelection } from "./exportPrivacy";
 import {
   createEncryptedShare,
   DEFAULT_SHARE_DATA_SELECTION,
@@ -30,8 +31,8 @@ interface SharePanelProps {
   onError: (message: string) => void;
   onCopied: () => void;
   onExported: () => void;
-  exportPng: () => Promise<void>;
-  exportSvg: () => Promise<void>;
+  exportPng: (privacy: ExportPrivacySelection) => Promise<void>;
+  exportSvg: (privacy: ExportPrivacySelection) => Promise<void>;
 }
 
 const phaseKey = (phase: SharePhase) => `sharePhase${phase[0].toUpperCase()}${phase.slice(1)}` as
@@ -351,7 +352,11 @@ export function SharePanel({
             <Download aria-hidden="true" size={16} /> {t("downloadEncryptedBackup")}
           </button>
           <button className="button secondary" onClick={() => performExport(() => {
-            downloadText(exportGedcom(data, tree.id), safeFilename(tree.title, "ged"), "text/plain;charset=utf-8");
+            downloadText(
+              exportGedcom(data, tree.id, shareSelection),
+              safeFilename(tree.title, "ged"),
+              "text/plain;charset=utf-8"
+            );
           })} type="button">
             <Download aria-hidden="true" size={16} /> {t("downloadGedcom")}
           </button>
@@ -367,10 +372,10 @@ export function SharePanel({
           </div>
         </div>
         <div className="settings-actions">
-          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(exportPng)} type="button">
+          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(() => exportPng(shareSelection))} type="button">
             <Download aria-hidden="true" size={16} /> {t("exportPng")}
           </button>
-          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(exportSvg)} type="button">
+          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(() => exportSvg(shareSelection))} type="button">
             <Download aria-hidden="true" size={16} /> {t("exportSvg")}
           </button>
         </div>

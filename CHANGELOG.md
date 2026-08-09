@@ -11,6 +11,7 @@ prefix.
 #### Changed
 
 - Added direct marriage-date editing from partner rows, moved relationship dates above role choices, and added controls for excluding birth dates, relationship dates, photos, or ages from encrypted shares.
+- Applied the same privacy choices to GEDCOM, PNG, and SVG exports, and increased large-family PNG resolution with a memory-bounded HD renderer.
 
 #### Fixed
 

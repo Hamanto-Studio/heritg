@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { circularAvatarData, createCircularAvatarCache } from "./avatar";
-import { buildChartSvg } from "./chartExport";
+import { buildChartSvg, pngExportDimensions } from "./chartExport";
 import { formatDisplayDate } from "./i18n";
 import { LAYOUT_METRICS } from "./layout";
 import type { FamilyRelationship, PositionedPerson, TreeLayout } from "./types";
@@ -120,7 +120,49 @@ describe("canvas avatar projection", () => {
 
     const english = buildChartSvg(marriedLayout, "Family", person.id, "en").svg;
     const indonesian = buildChartSvg(marriedLayout, "Family", person.id, "id").svg;
+    const withoutRelationshipDates = buildChartSvg(
+      marriedLayout,
+      "Family",
+      person.id,
+      "en",
+      undefined,
+      { birthDates: true, relationshipDates: false, photos: true, ages: true }
+    ).svg;
     expect(english).toContain(`Married ${formatDisplayDate("2020-01-02", "en")}`);
     expect(indonesian).toContain(`Menikah ${formatDisplayDate("2020-01-02", "id")}`);
+    expect(withoutRelationshipDates).not.toContain(`Married ${formatDisplayDate("2020-01-02", "en")}`);
+  });
+
+  it("omits unchecked personal details from SVG and PNG source", () => {
+    const privateLayout: TreeLayout = {
+      ...layout,
+      people: [{
+        ...person,
+        photoDataUrl: "data:image/png;base64,cHJpdmF0ZS1waG90bw=="
+      }]
+    };
+    const svg = buildChartSvg(privateLayout, "Family", person.id, "en", undefined, {
+      birthDates: false,
+      relationshipDates: false,
+      photos: false,
+      ages: false
+    }).svg;
+
+    expect(svg).toContain("A Person With A Longer Name");
+    expect(svg).not.toContain("private-photo");
+    expect(svg).not.toContain("Born ");
+    expect(svg).not.toContain("age ");
+  });
+
+  it("renders large PNG exports above the old 4096-pixel ceiling", () => {
+    expect(pngExportDimensions({ width: 1_000, height: 500 })).toEqual({
+      width: 2_000,
+      height: 1_000,
+      scale: 2
+    });
+    const large = pngExportDimensions({ width: 6_000, height: 3_000 });
+    expect(large.width).toBeGreaterThan(11_000);
+    expect(large.height).toBeGreaterThan(5_500);
+    expect(large.width * large.height).toBeLessThanOrEqual(64 * 1024 * 1024);
   });
 });

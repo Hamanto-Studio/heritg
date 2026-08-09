@@ -8,10 +8,17 @@ import {
 import { personLifeTop } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
+import {
+  DEFAULT_EXPORT_PRIVACY_SELECTION,
+  type ExportPrivacySelection
+} from "./exportPrivacy";
 import type { AppData, PositionedPerson, TreeLayout } from "./types";
 
 const PADDING = 56;
 const FOOTER_HEIGHT = 52;
+const PNG_TARGET_SCALE = 2;
+const PNG_MAX_DIMENSION = 16_384;
+const PNG_MAX_PIXELS = 64 * 1024 * 1024;
 
 const escapeXml = (value: string) => value
   .replaceAll("&", "&amp;")
@@ -43,7 +50,8 @@ const personNode = (
   offsetX: number,
   offsetY: number,
   selectedPersonId: string | undefined,
-  language: AppData["language"]
+  language: AppData["language"],
+  privacy: ExportPrivacySelection
 ) => {
   const avatarX = person.x + offsetX;
   const avatarY = person.y + offsetY;
@@ -52,10 +60,13 @@ const personNode = (
   const clipId = `photo-${person.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
   const innerRadius = LAYOUT_METRICS.innerAvatarDiameter / 2;
   const name = compactText(person.displayName || "Unnamed person", 34);
-  const avatar = person.photoDataUrl
+  const avatar = privacy.photos && person.photoDataUrl
     ? `<defs><clipPath id="${clipId}"><circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}"/></clipPath></defs><image href="${escapeXml(person.photoDataUrl)}" x="${avatarX - innerRadius}" y="${avatarY - innerRadius}" width="${LAYOUT_METRICS.innerAvatarDiameter}" height="${LAYOUT_METRICS.innerAvatarDiameter}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`
     : `<circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}" fill="${selected ? "#f3eadf" : "#ede5d8"}"/><text x="${avatarX}" y="${avatarY + 8}" text-anchor="middle" font-size="24" font-weight="700" fill="#302b25">${escapeXml(person.displayName.charAt(0).toUpperCase() || "?")}</text>`;
-  const life = personLifeSummary(person, language);
+  const life = personLifeSummary(person, language, new Date(), {
+    showBirthDate: privacy.birthDates,
+    showAge: privacy.ages
+  });
   return `<g>
     <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${selected ? "#f3eadf" : "#fffdf8"}" stroke="${selected ? "#a8875b" : "#d8ccbc"}" stroke-width="${selected ? 2 : 1}"/>
     ${avatar}
@@ -76,10 +87,21 @@ export function buildChartSvg(
   title: string,
   selectedPersonId?: string,
   language: AppData["language"] = "en",
-  suppliedPlan?: ConnectionPlan
+  suppliedPlan?: ConnectionPlan,
+  privacy: ExportPrivacySelection = DEFAULT_EXPORT_PRIVACY_SELECTION
 ): ChartSvg {
   if (!layout.people.length) throw new Error("Add a person before exporting this chart.");
-  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+  const exportLayout = privacy.relationshipDates ? layout : {
+    ...layout,
+    relationships: layout.relationships.map((relationship) => ({
+      ...relationship,
+      marriageDate: undefined,
+      divorceDate: undefined
+    }))
+  };
+  const plan = privacy.relationshipDates && suppliedPlan
+    ? suppliedPlan
+    : createConnectionPlan(exportLayout, language);
   const minX = plan.bounds.x;
   const maxX = plan.bounds.x + plan.bounds.width;
   const minY = plan.bounds.y;
@@ -119,7 +141,7 @@ export function buildChartSvg(
     `<g data-relationship-label="${escapeXml(route.id)}"><rect x="${route.label.rect.x + offsetX}" y="${route.label.rect.y + offsetY}" width="${route.label.rect.width}" height="${route.label.rect.height}" rx="12" fill="#fffdf8"/><text x="${route.label.center.x + offsetX}" y="${route.label.center.y + offsetY + 4}" text-anchor="middle" font-size="12" font-weight="500" fill="#796f63">${escapeXml(route.label.text)}</text></g>`
   ] : []).join("");
   const nodes = layout.people.map((person) =>
-    personNode(person, offsetX, offsetY, selectedPersonId, language)
+    personNode(person, offsetX, offsetY, selectedPersonId, language, privacy)
   ).join("");
   const exported = new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date());
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -132,7 +154,21 @@ export function buildChartSvg(
   return { svg, width, height };
 }
 
+export const pngExportDimensions = (
+  chart: Pick<ChartSvg, "width" | "height">
+): { width: number; height: number; scale: number } => {
+  const dimensionScale = PNG_MAX_DIMENSION / Math.max(chart.width, chart.height);
+  const areaScale = Math.sqrt(PNG_MAX_PIXELS / Math.max(1, chart.width * chart.height));
+  const scale = Math.min(PNG_TARGET_SCALE, dimensionScale, areaScale);
+  return {
+    width: Math.max(1, Math.floor(chart.width * scale)),
+    height: Math.max(1, Math.floor(chart.height * scale)),
+    scale
+  };
+};
+
 export async function chartSvgToPng(chart: ChartSvg): Promise<Blob> {
+  await document.fonts?.ready;
   const source = new Blob([chart.svg], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(source);
   try {
@@ -143,10 +179,10 @@ export async function chartSvgToPng(chart: ChartSvg): Promise<Blob> {
       image.onerror = () => reject(new Error("The family chart could not be rendered."));
       image.src = url;
     });
-    const scale = Math.min(2, 4096 / Math.max(chart.width, chart.height));
+    const dimensions = pngExportDimensions(chart);
     const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(chart.width * scale));
-    canvas.height = Math.max(1, Math.round(chart.height * scale));
+    canvas.width = dimensions.width;
+    canvas.height = dimensions.height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas export is not available in this browser.");
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
