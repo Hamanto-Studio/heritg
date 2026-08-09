@@ -10,6 +10,7 @@ import {
 import { saveAppData } from "./db";
 import { createTranslator } from "./i18n";
 import { mergeImportedData } from "./portability";
+import { PasswordField } from "./PasswordField";
 import { useAppStore } from "./store";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import type { AppData, ViewportState } from "./types";
@@ -143,21 +144,21 @@ export function SharedTreeApp() {
         <h1>{t("sharedPasswordTitle")}</h1>
         <p>{t("sharedPasswordDetail")}</p>
         <form aria-busy={isUnlocking} className="shared-password-form" onSubmit={unlockShare}>
-          <label className="field">
-            {t("sharedPassword")}
-            <input
-              autoComplete="current-password"
-              autoFocus
-              disabled={isUnlocking}
-              onChange={(event) => {
-                setSharePassword(event.target.value);
-                setPasswordError(undefined);
-              }}
-              type="password"
-              value={sharePassword}
-            />
-          </label>
-          {passwordError ? <p className="danger-text" role="alert">{passwordError}</p> : null}
+          <PasswordField
+            autoComplete="current-password"
+            autoFocus
+            disabled={isUnlocking}
+            error={passwordError}
+            hideLabel={t("hidePassword")}
+            id="shared-tree-password"
+            label={t("sharedPassword")}
+            onChange={(value) => {
+              setSharePassword(value);
+              setPasswordError(undefined);
+            }}
+            showLabel={t("showPassword")}
+            value={sharePassword}
+          />
           <button className="button primary" disabled={!sharePassword || isUnlocking} type="submit">
             {isUnlocking ? t("sharedLoading") : t("unlockShared")}
           </button>

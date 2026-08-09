@@ -237,11 +237,21 @@ export const parentPortY = (person: PositionedPerson) =>
 export const relationshipLabelText = (
   relationship: FamilyRelationship,
   language: AppData["language"]
-) => relationship.kind === "partner" && relationship.marriageDate
-  ? createTranslator(language)("marriedOn", {
+) => {
+  if (relationship.kind !== "partner") return undefined;
+  const parts: string[] = [];
+  if (relationship.marriageDate) {
+    parts.push(createTranslator(language)("marriedOn", {
       date: formatDisplayDate(relationship.marriageDate, language)
-    })
-  : undefined;
+    }));
+  }
+  if (relationship.divorceDate) {
+    parts.push(createTranslator(language)("divorcedOn", {
+      date: formatDisplayDate(relationship.divorceDate, language)
+    }));
+  }
+  return parts.length ? parts.join(" · ") : undefined;
+};
 
 export const relationshipLabelRect = (text: string, center: RoutePoint): RouteRect => {
   const width = Math.max(44, Math.min(240, text.length * 6.2 + 14));

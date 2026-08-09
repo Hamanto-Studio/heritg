@@ -458,12 +458,7 @@
 }
 
 .canvas-host .excalidraw .undo-redo-buttons {
-  filter: sepia(0.12);
-}
-
-.canvas-host .excalidraw .undo-redo-buttons .ToolIcon {
-  min-height: 44px;
-  min-width: 44px;
+  display: none !important;
 }
 
 .workspace-header {
@@ -527,6 +522,13 @@
   gap: 10px;
   position: absolute;
   right: max(18px, env(safe-area-inset-right, 0px));
+  z-index: 13;
+}
+
+.canvas-visibility-toggle {
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  left: max(18px, env(safe-area-inset-left, 0px));
+  position: absolute;
   z-index: 13;
 }
 
@@ -688,6 +690,10 @@
   position: absolute;
   right: max(80px, calc(env(safe-area-inset-right, 0px) + 62px));
   z-index: 13;
+}
+
+.shared-password-form + .shared-state-actions {
+  margin-top: 22px;
 }
 
 .privacy-button {

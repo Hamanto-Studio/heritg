@@ -42,6 +42,8 @@ export interface ParsedGedcomPerson {
 export interface ParsedGedcomFamily {
   parents: string[]; children: string[]; married: boolean;
   marriageDate?: string;
+  divorced: boolean;
+  divorceDate?: string;
 }
 export type ParsedGedcom = { people: ParsedGedcomPerson[]; families: ParsedGedcomFamily[] };
 export type GedcomImportOptions = { title?: string; language?: AppData["language"]; idFactory?: IdFactory; now?: Date | string };
@@ -95,6 +97,15 @@ const dateValue = (value: unknown, label: string): string => {
 };
 const optionalDate = (value: unknown, label: string): string | undefined =>
   value === undefined ? undefined : dateValue(value, label);
+const optionalCalendarDate = (value: unknown, label: string): string | undefined => {
+  if (value === undefined) return undefined;
+  const result = textValue(value, label, 10);
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(result);
+  if (!parts || !validDateParts(Number(parts[1]), Number(parts[2]), Number(parts[3]))) {
+    invalid(`${label} must use YYYY-MM-DD.`);
+  }
+  return result;
+};
 const nativeDateValue = (value: unknown, label: string, dateOnly = false): string => {
   if (!(value instanceof Date) || !Number.isFinite(value.getTime())) invalid(`${label} must be a valid date.`);
   const iso = (value as Date).toISOString();
@@ -171,15 +182,25 @@ export function validateAppData(value: unknown): AppData {
   });
   const relationships = arrayValue(root.relationships, "data.relationships").map((entry, index): FamilyRelationship => {
     const item = objectValue(entry, `relationship ${index}`);
+    const subtype = enumValue(item.subtype, SUBTYPES, `relationship ${index}.subtype`);
+    const marriageDate = optionalDate(item.marriageDate, `relationship ${index}.marriageDate`);
+    const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
+    const divorceDate = isFormer
+      ? optionalCalendarDate(item.divorceDate, `relationship ${index}.divorceDate`)
+      : undefined;
+    if (marriageDate && divorceDate && divorceDate < marriageDate.slice(0, 10)) {
+      invalid(`relationship ${index}.divorceDate cannot be earlier than marriageDate.`);
+    }
     return {
       id: idValue(item.id, `relationship ${index}.id`),
       treeId: idValue(item.treeId, `relationship ${index}.treeId`),
       fromPersonId: idValue(item.fromPersonId, `relationship ${index}.fromPersonId`),
       toPersonId: idValue(item.toPersonId, `relationship ${index}.toPersonId`),
       kind: enumValue(item.kind, KINDS, `relationship ${index}.kind`),
-      subtype: enumValue(item.subtype, SUBTYPES, `relationship ${index}.subtype`),
+      subtype,
       createdAt: dateValue(item.createdAt, `relationship ${index}.createdAt`),
-      marriageDate: optionalDate(item.marriageDate, `relationship ${index}.marriageDate`)
+      marriageDate,
+      ...(divorceDate ? { divorceDate } : {})
     };
   });
   if (trees.length + people.length + relationships.length > MAX_RECORDS) invalid("there are too many records.");
@@ -347,15 +368,20 @@ export function importNativeHeritgArchive(
   });
   const relationships = arrayValue(payload.relationships, "archive.relationships").map((entry, index): FamilyRelationship => {
     const item = objectValue(entry, `archive.relationship ${index}`);
+    const subtype = enumValue(item.subtypeRaw, SUBTYPES, `archive.relationship ${index}.subtypeRaw`);
+    const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
     return {
       id: idValue(item.id, `archive.relationship ${index}.id`),
       treeId: idValue(item.treeID, `archive.relationship ${index}.treeID`),
       fromPersonId: idValue(item.fromPersonID, `archive.relationship ${index}.fromPersonID`),
       toPersonId: idValue(item.toPersonID, `archive.relationship ${index}.toPersonID`),
       kind: enumValue(item.kindRaw, KINDS, `archive.relationship ${index}.kindRaw`),
-      subtype: enumValue(item.subtypeRaw, SUBTYPES, `archive.relationship ${index}.subtypeRaw`),
+      subtype,
       createdAt: nativeDateValue(item.createdAt, `archive.relationship ${index}.createdAt`),
-      marriageDate: optionalNativeDate(item.marriageDate, `archive.relationship ${index}.marriageDate`, true)
+      marriageDate: optionalNativeDate(item.marriageDate, `archive.relationship ${index}.marriageDate`, true),
+      divorceDate: isFormer
+        ? optionalNativeDate(item.divorceDate, `archive.relationship ${index}.divorceDate`, true)
+        : undefined
     };
   });
   const imported = validateAppData({
@@ -406,7 +432,7 @@ export function parseGedcom(source: string): ParsedGedcom {
   const sourceIds = new Set<string>();
   let currentPerson: ParsedGedcomPerson | undefined;
   let currentFamily: ParsedGedcomFamily | undefined;
-  let event: "birth" | "death" | "address" | "marriage" | undefined;
+  let event: "birth" | "death" | "address" | "marriage" | "divorce" | undefined;
   let referenceCount = 0;
   const lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
   if (lines.length > MAX_RECORDS * 4) invalid("GEDCOM has too many lines.");
@@ -431,7 +457,7 @@ export function parseGedcom(source: string): ParsedGedcom {
           currentPerson = { sourceId: xref, displayName: "Unnamed person", gender: "unspecified", birthDatePrecision: "exact", city: "" };
           people.push(currentPerson);
         } else {
-          currentFamily = { parents: [], children: [], married: false };
+          currentFamily = { parents: [], children: [], married: false, divorced: false };
           families.push(currentFamily);
         }
         if (people.length + families.length > MAX_RECORDS) invalid("GEDCOM has too many records.");
@@ -464,8 +490,13 @@ export function parseGedcom(source: string): ParsedGedcom {
       } else if (level === 1 && tag === "MARR") {
         currentFamily.married = true;
         event = "marriage";
+      } else if (level === 1 && tag === "DIV") {
+        currentFamily.divorced = true;
+        event = "divorce";
       } else if (level === 2 && tag === "DATE" && event === "marriage") {
         currentFamily.marriageDate = parseGedcomDate(value)?.date;
+      } else if (level === 2 && tag === "DATE" && event === "divorce") {
+        currentFamily.divorceDate = parseGedcomDate(value)?.date;
       }
     }
   }
@@ -494,6 +525,8 @@ interface ExportFamily {
   children: string[];
   married: boolean;
   marriageDate?: string;
+  divorced?: boolean;
+  divorceDate?: string;
 }
 
 export function exportGedcom(data: AppData, treeId = data.selectedTreeId): string {
@@ -527,6 +560,8 @@ export function exportGedcom(data: AppData, treeId = data.selectedTreeId): strin
     const family = families.get(key) ?? { parents, children: [], married: false };
     family.married ||= Boolean(relationship.marriageDate) || relationship.subtype === "spouse" || relationship.subtype === "formerSpouse";
     family.marriageDate ??= relationship.marriageDate;
+    family.divorced ||= relationship.subtype === "formerPartner" || relationship.subtype === "formerSpouse";
+    family.divorceDate ??= relationship.divorceDate;
     families.set(key, family);
   }
   for (const family of families.values()) {
@@ -556,6 +591,11 @@ export function exportGedcom(data: AppData, treeId = data.selectedTreeId): strin
     if (family.married) {
       lines.push("1 MARR");
       const date = family.marriageDate && formatGedcomDate(family.marriageDate);
+      if (date) lines.push(`2 DATE ${date}`);
+    }
+    if (family.divorced) {
+      lines.push("1 DIV");
+      const date = family.divorceDate && formatGedcomDate(family.divorceDate);
       if (date) lines.push(`2 DATE ${date}`);
     }
   });
@@ -589,17 +629,35 @@ export function importGedcom(source: string, options: GedcomImportOptions = {}):
   }));
   const relationships: FamilyRelationship[] = [];
   const signatures = new Set<string>();
-  const appendRelationship = (from: string, to: string, kind: RelationshipKind, subtype: RelationshipSubtype, marriageDate?: string) => {
+  const appendRelationship = (
+    from: string,
+    to: string,
+    kind: RelationshipKind,
+    subtype: RelationshipSubtype,
+    marriageDate?: string,
+    divorceDate?: string
+  ) => {
     const signature = kind === "partner" ? `${kind}|${[from, to].sort().join("|")}` : `${kind}|${from}|${to}`;
     if (signatures.has(signature)) return;
     signatures.add(signature);
     if (relationships.length >= MAX_RECORDS) invalid("GEDCOM creates too many relationships.");
-    relationships.push({ id: nextId(factory, used), treeId, fromPersonId: from, toPersonId: to, kind, subtype, createdAt, marriageDate });
+    relationships.push({
+      id: nextId(factory, used), treeId, fromPersonId: from, toPersonId: to,
+      kind, subtype, createdAt, marriageDate, divorceDate
+    });
   };
   for (const family of parsed.families) {
     const parents = family.parents.map((id) => personIds.get(id)!);
     const children = family.children.map((id) => personIds.get(id)!);
-    if (parents.length === 2) appendRelationship(parents[0], parents[1], "partner", family.married ? "spouse" : "partner", family.marriageDate);
+    if (parents.length === 2) {
+      const subtype: RelationshipSubtype = family.divorced
+        ? family.married ? "formerSpouse" : "formerPartner"
+        : family.married ? "spouse" : "partner";
+      appendRelationship(
+        parents[0], parents[1], "partner", subtype,
+        family.marriageDate, family.divorceDate
+      );
+    }
     for (const parent of parents) for (const child of children) appendRelationship(parent, child, "parent", "biologicalParent");
   }
   const title = cleanGedcomValue(options.title ?? "Imported Family Tree") || "Imported Family Tree";

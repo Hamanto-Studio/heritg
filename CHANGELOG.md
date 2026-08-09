@@ -10,7 +10,15 @@ prefix.
 
 ### Changed
 
-- No unreleased changes yet.
+- Added a guided square photo crop for person and relative profiles, with corrected circular avatar alignment.
+- Improved relationship editing with photo-aware person pickers, co-parent portraits, earlier marriage-date placement, and Web-only former-partner divorce dates.
+- Added a focus control that hides canvas actions, moved All People beside the zoom controls, and removed the drawing library's undo and redo buttons.
+- Moved backup and chart exports into Share, made active share links copyable again, and improved password visibility, validation, and shared-link spacing.
+- Displayed the current Web version at the bottom of Settings.
+
+### Fixed
+
+- Made person selection respond immediately on large trees by reusing family geometry and connectors, indexing kinship calculations, and moving photo processing and archive encryption out of the interaction path.
 
 ### iOS
 

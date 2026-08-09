@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { circularAvatarData } from "./avatar";
+import { circularAvatarData, createCircularAvatarCache } from "./avatar";
 import { buildChartSvg } from "./chartExport";
 import { formatDisplayDate } from "./i18n";
 import { LAYOUT_METRICS } from "./layout";
@@ -41,9 +41,23 @@ describe("canvas avatar projection", () => {
     );
 
     expect(photo).toBeDefined();
-    expect(decodeURIComponent(photo!.dataURL.split(",", 2)[1])).toContain(
+    const encoded = photo!.dataURL.split(",", 2)[1];
+    const decoded = new TextDecoder().decode(
+      Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0))
+    );
+    expect(decoded).toContain(
       '<clipPath id="avatar-clip"><circle'
     );
+  });
+
+  it("reuses an encoded profile photo across selection renders", () => {
+    const source = "data:image/jpeg;base64,/9j/2Q==";
+    const resolveAvatar = createCircularAvatarCache();
+    const first = resolveAvatar(source, LAYOUT_METRICS.innerAvatarDiameter);
+    const second = resolveAvatar(source, LAYOUT_METRICS.innerAvatarDiameter);
+
+    expect(second).toBe(first);
+    expect(second?.fingerprint).toBe(first?.fingerprint);
   });
 
   it("exports circular nodes instead of rounded cards", () => {

@@ -307,17 +307,33 @@ describe("relationship validation", () => {
     );
   });
 
-  it("stores marriage dates only for partner, spouse, and former roles", () => {
+  it("stores divorce dates only for former unions and validates their chronology", () => {
     let data = family();
     data = addRelationship(data, "child", "father", "formerHusband", "2000-01-02", {
       id: "former-spouses"
-    });
+    }, "2010-03-04");
     data = addRelationship(data, "child", "father", "fosterBrother", "2001-02-03", {
       id: "foster-siblings"
-    });
+    }, "2011-04-05");
 
     expect(data.relationships[0].marriageDate).toBe("2000-01-02");
+    expect(data.relationships[0].divorceDate).toBe("2010-03-04");
     expect(data.relationships[1]).not.toHaveProperty("marriageDate");
+    expect(data.relationships[1]).not.toHaveProperty("divorceDate");
+
+    const active = addRelationship(family(), "child", "father", "wife", "2000-01-02", {
+      id: "active-spouses"
+    }, "2010-03-04");
+    expect(active.relationships[0]).not.toHaveProperty("divorceDate");
+
+    expect(() => addRelationship(
+      family(), "child", "father", "formerPartner", "2010-01-02",
+      { id: "invalid-order" }, "2009-12-31"
+    )).toThrow(/earlier than marriage/i);
+    expect(() => addRelationship(
+      family(), "child", "father", "formerPartner", undefined,
+      { id: "invalid-format" }, "2010-2-03"
+    )).toThrow(/YYYY-MM-DD/i);
   });
 });
 

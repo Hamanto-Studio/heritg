@@ -87,6 +87,7 @@ export interface FamilyRelationship {
   subtype: RelationshipSubtype;
   createdAt: string;
   marriageDate?: string;
+  divorceDate?: string;
 }
 
 export interface ViewportState {
@@ -132,6 +133,7 @@ export interface RelativeDraft {
   birthDate?: string;
   city: string;
   marriageDate?: string;
+  divorceDate?: string;
   photoDataUrl?: string;
   coParentId?: string;
 }

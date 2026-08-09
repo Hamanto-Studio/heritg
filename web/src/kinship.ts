@@ -11,6 +11,7 @@ const ancestrySubtypes = new Set<RelationshipSubtype>([
   "adoptiveParent"
 ]);
 const activeUnionSubtypes = new Set<RelationshipSubtype>(["partner", "spouse"]);
+const emptyIds = new Set<string>();
 
 const compareText = (left: string, right: string) =>
   left < right ? -1 : left > right ? 1 : 0;
@@ -27,6 +28,81 @@ const relationshipOrder = (
     compareText(left.subtype, right.subtype) ||
     compareText(left.id, right.id)
   );
+};
+
+interface KinshipIndex {
+  peopleById: Map<string, Person>;
+  relationshipsByPair: Map<string, FamilyRelationship[]>;
+  parents: Map<string, Set<string>>;
+  children: Map<string, Set<string>>;
+  activePartners: Map<string, Set<string>>;
+  explicitSiblings: Set<string>;
+  ancestors: Map<string, Map<string, number>>;
+}
+
+const pairKey = (firstId: string, secondId: string) => {
+  const [first, second] = compareText(firstId, secondId) <= 0
+    ? [firstId, secondId]
+    : [secondId, firstId];
+  return `${first.length}:${first}${second.length}:${second}`;
+};
+
+const addIndexedId = (values: Map<string, Set<string>>, key: string, value: string) => {
+  const ids = values.get(key) ?? new Set<string>();
+  ids.add(value);
+  values.set(key, ids);
+};
+
+const createKinshipIndex = (
+  people: readonly Person[],
+  relationships: readonly FamilyRelationship[]
+): KinshipIndex => {
+  const index: KinshipIndex = {
+    peopleById: new Map(people.map((person) => [person.id, person])),
+    relationshipsByPair: new Map(),
+    parents: new Map(),
+    children: new Map(),
+    activePartners: new Map(),
+    explicitSiblings: new Set(),
+    ancestors: new Map()
+  };
+  for (const relationship of relationships) {
+    const key = pairKey(relationship.fromPersonId, relationship.toPersonId);
+    const pairRelationships = index.relationshipsByPair.get(key) ?? [];
+    pairRelationships.push(relationship);
+    index.relationshipsByPair.set(key, pairRelationships);
+    if (relationship.kind === "parent" && ancestrySubtypes.has(relationship.subtype)) {
+      addIndexedId(index.parents, relationship.toPersonId, relationship.fromPersonId);
+      addIndexedId(index.children, relationship.fromPersonId, relationship.toPersonId);
+    } else if (relationship.kind === "partner" && activeUnionSubtypes.has(relationship.subtype)) {
+      addIndexedId(index.activePartners, relationship.fromPersonId, relationship.toPersonId);
+      addIndexedId(index.activePartners, relationship.toPersonId, relationship.fromPersonId);
+    } else if (relationship.kind === "sibling") {
+      index.explicitSiblings.add(key);
+    }
+  }
+  for (const values of index.relationshipsByPair.values()) values.sort(relationshipOrder);
+  return index;
+};
+
+const indexedIds = (values: Map<string, Set<string>>, personId: string) =>
+  values.get(personId) ?? emptyIds;
+
+const indexedAncestorDistances = (personId: string, index: KinshipIndex) => {
+  const cached = index.ancestors.get(personId);
+  if (cached) return cached;
+  const distances = new Map<string, number>();
+  const queue: Array<[string, number]> = [[personId, 0]];
+  for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+    const [currentId, distance] = queue[queueIndex];
+    for (const parentId of indexedIds(index.parents, currentId)) {
+      if (parentId === personId || distances.has(parentId)) continue;
+      distances.set(parentId, distance + 1);
+      queue.push([parentId, distance + 1]);
+    }
+  }
+  index.ancestors.set(personId, distances);
+  return distances;
 };
 
 const gendered = (
@@ -86,17 +162,20 @@ const directSiblingLabel = (gender: Gender, subtype: RelationshipSubtype) => {
 function directRelationshipLabelEnglish(
   person: Person,
   relativeToPersonId: string,
-  relationships: readonly FamilyRelationship[]
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
 ): string | undefined {
-  const relationship = relationships
-    .filter(
-      (candidate) =>
-        (candidate.fromPersonId === person.id &&
-          candidate.toPersonId === relativeToPersonId) ||
-        (candidate.toPersonId === person.id &&
-          candidate.fromPersonId === relativeToPersonId)
-    )
-    .sort(relationshipOrder)[0];
+  const relationship = index
+    ? index.relationshipsByPair.get(pairKey(person.id, relativeToPersonId))?.[0]
+    : relationships
+      .filter(
+        (candidate) =>
+          (candidate.fromPersonId === person.id &&
+            candidate.toPersonId === relativeToPersonId) ||
+          (candidate.toPersonId === person.id &&
+            candidate.fromPersonId === relativeToPersonId)
+      )
+      .sort(relationshipOrder)[0];
 
   if (!relationship) return undefined;
   if (relationship.kind === "parent") {
@@ -276,29 +355,42 @@ const activePartnerIds = (
 const areSiblings = (
   firstId: string,
   secondId: string,
-  relationships: readonly FamilyRelationship[]
-) => relationships.some((relationship) => relationship.kind === "sibling" &&
-  new Set([relationship.fromPersonId, relationship.toPersonId]).size === 2 &&
-  [relationship.fromPersonId, relationship.toPersonId].includes(firstId) &&
-  [relationship.fromPersonId, relationship.toPersonId].includes(secondId)) ||
-  [...parentIds(firstId, relationships)].some((id) => parentIds(secondId, relationships).has(id));
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
+) => index
+  ? index.explicitSiblings.has(pairKey(firstId, secondId)) ||
+    [...indexedIds(index.parents, firstId)].some((id) =>
+      indexedIds(index.parents, secondId).has(id)
+    )
+  : relationships.some((relationship) => relationship.kind === "sibling" &&
+    new Set([relationship.fromPersonId, relationship.toPersonId]).size === 2 &&
+    [relationship.fromPersonId, relationship.toPersonId].includes(firstId) &&
+    [relationship.fromPersonId, relationship.toPersonId].includes(secondId)) ||
+    [...parentIds(firstId, relationships)].some((id) => parentIds(secondId, relationships).has(id));
 
 const stepLabel = (
   person: Person,
   relativeToPersonId: string,
-  relationships: readonly FamilyRelationship[]
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
 ) => {
-  const referenceParents = parentIds(relativeToPersonId, relationships);
-  if ([...referenceParents].some((id) => activePartnerIds(id, relationships).has(person.id))) {
+  const parentsFor = (personId: string) => index
+    ? indexedIds(index.parents, personId)
+    : parentIds(personId, relationships);
+  const partnersFor = (personId: string) => index
+    ? indexedIds(index.activePartners, personId)
+    : activePartnerIds(personId, relationships);
+  const referenceParents = parentsFor(relativeToPersonId);
+  if ([...referenceParents].some((id) => partnersFor(id).has(person.id))) {
     return gendered(person.gender, "Stepfather", "Stepmother", "Step-parent");
   }
-  const referencePartners = activePartnerIds(relativeToPersonId, relationships);
-  if ([...referencePartners].some((id) => parentIds(person.id, relationships).has(id))) {
+  const referencePartners = partnersFor(relativeToPersonId);
+  if ([...referencePartners].some((id) => parentsFor(person.id).has(id))) {
     return gendered(person.gender, "Stepson", "Stepdaughter", "Stepchild");
   }
   for (const parentId of referenceParents) {
-    for (const stepParentId of activePartnerIds(parentId, relationships)) {
-      if (parentIds(person.id, relationships).has(stepParentId)) {
+    for (const stepParentId of partnersFor(parentId)) {
+      if (parentsFor(person.id).has(stepParentId)) {
         return gendered(person.gender, "Stepbrother", "Stepsister", "Stepsibling");
       }
     }
@@ -310,23 +402,33 @@ const inLawLabel = (
   person: Person,
   relativeToPersonId: string,
   people: readonly Person[],
-  relationships: readonly FamilyRelationship[]
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
 ) => {
-  const referencePartners = activePartnerIds(relativeToPersonId, relationships);
-  if ([...referencePartners].some((id) => parentIds(id, relationships).has(person.id))) {
+  const parentsFor = (personId: string) => index
+    ? indexedIds(index.parents, personId)
+    : parentIds(personId, relationships);
+  const childrenFor = (personId: string) => index
+    ? indexedIds(index.children, personId)
+    : childIds(personId, relationships);
+  const partnersFor = (personId: string) => index
+    ? indexedIds(index.activePartners, personId)
+    : activePartnerIds(personId, relationships);
+  const referencePartners = partnersFor(relativeToPersonId);
+  if ([...referencePartners].some((id) => parentsFor(id).has(person.id))) {
     return gendered(person.gender, "Father-in-law", "Mother-in-law", "Parent-in-law");
   }
-  const referenceChildren = childIds(relativeToPersonId, relationships);
-  if ([...referenceChildren].some((id) => activePartnerIds(id, relationships).has(person.id))) {
+  const referenceChildren = childrenFor(relativeToPersonId);
+  if ([...referenceChildren].some((id) => partnersFor(id).has(person.id))) {
     return gendered(person.gender, "Son-in-law", "Daughter-in-law", "Child-in-law");
   }
-  if ([...referencePartners].some((id) => areSiblings(person.id, id, relationships)) ||
-      [...activePartnerIds(person.id, relationships)].some((id) =>
-        areSiblings(id, relativeToPersonId, relationships))) {
+  if ([...referencePartners].some((id) => areSiblings(person.id, id, relationships, index)) ||
+      [...partnersFor(person.id)].some((id) =>
+        areSiblings(id, relativeToPersonId, relationships, index))) {
     return gendered(person.gender, "Brother-in-law", "Sister-in-law", "Sibling-in-law");
   }
   for (const partnerId of referencePartners) {
-    const label = lineageLabelEnglish(person.id, partnerId, people, relationships);
+    const label = lineageLabelEnglish(person.id, partnerId, people, relationships, index);
     if (label) return `${label} by marriage`;
   }
   return undefined;
@@ -336,19 +438,19 @@ function lineageLabelEnglish(
   personId: string,
   relativeToPersonId: string,
   people: readonly Person[],
-  relationships: readonly FamilyRelationship[]
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
 ): string | undefined {
-  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const peopleById = index?.peopleById ?? new Map(people.map((person) => [person.id, person]));
   const person = peopleById.get(personId);
   if (!person || !peopleById.has(relativeToPersonId) || personId === relativeToPersonId) return undefined;
 
-  const validIds = new Set(peopleById.keys());
-  const personAncestors = ancestorDistances(personId, validIds, relationships);
-  const referenceAncestors = ancestorDistances(
-    relativeToPersonId,
-    validIds,
-    relationships
-  );
+  const personAncestors = index
+    ? indexedAncestorDistances(personId, index)
+    : ancestorDistances(personId, new Set(peopleById.keys()), relationships);
+  const referenceAncestors = index
+    ? indexedAncestorDistances(relativeToPersonId, index)
+    : ancestorDistances(relativeToPersonId, new Set(peopleById.keys()), relationships);
 
   const ancestorDistance = referenceAncestors.get(personId);
   if (ancestorDistance !== undefined) {
@@ -406,20 +508,25 @@ function kinshipLabelEnglish(
   personId: string,
   relativeToPersonId: string,
   people: readonly Person[],
-  relationships: readonly FamilyRelationship[]
+  relationships: readonly FamilyRelationship[],
+  index?: KinshipIndex
 ): string | undefined {
-  const peopleById = new Map(people.map((person) => [person.id, person]));
+  const peopleById = index?.peopleById ?? new Map(people.map((person) => [person.id, person]));
   const person = peopleById.get(personId);
   if (!person || !peopleById.has(relativeToPersonId)) return undefined;
   if (personId === relativeToPersonId) return "You";
 
-  const direct = directRelationshipLabel(person, relativeToPersonId, relationships);
+  const direct = directRelationshipLabelEnglish(
+    person, relativeToPersonId, relationships, index
+  );
   if (direct) return direct;
-  const lineage = lineageLabelEnglish(personId, relativeToPersonId, people, relationships);
+  const lineage = lineageLabelEnglish(
+    personId, relativeToPersonId, people, relationships, index
+  );
   if (lineage) return lineage;
-  const step = stepLabel(person, relativeToPersonId, relationships);
+  const step = stepLabel(person, relativeToPersonId, relationships, index);
   if (step) return step;
-  return inLawLabel(person, relativeToPersonId, people, relationships);
+  return inLawLabel(person, relativeToPersonId, people, relationships, index);
 }
 
 export function kinshipLabel(
@@ -439,12 +546,17 @@ export function deriveKinshipLabels(
   relationships: readonly FamilyRelationship[],
   language: AppData["language"] = "en"
 ): Record<string, string> {
+  const index = createKinshipIndex(people, relationships);
   return [...people]
     .sort((left, right) => compareText(left.id, right.id))
     .reduce<Record<string, string>>((labels, person) => {
       labels[person.id] =
-        kinshipLabel(person.id, selectedPersonId, people, relationships, language) ??
-        localizedLabel("Family member", language);
+        localizedLabel(
+          kinshipLabelEnglish(
+            person.id, selectedPersonId, people, relationships, index
+          ) ?? "Family member",
+          language
+        );
       return labels;
     }, {});
 }

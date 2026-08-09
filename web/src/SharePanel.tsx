@@ -1,7 +1,11 @@
-import { Copy, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { Copy, Download, FileImage, HardDrive, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
+import { exportHeritgArchive } from "./heritgArchive";
+import { PasswordField } from "./PasswordField";
+import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
+import { archivePasswordIsReady, archivePasswordMeetsRequirements } from "./SettingsDialog";
 import {
   createEncryptedShare,
   revokeEncryptedShare,
@@ -23,6 +27,9 @@ interface SharePanelProps {
   onClose: () => void;
   onError: (message: string) => void;
   onCopied: () => void;
+  onExported: () => void;
+  exportPng: () => Promise<void>;
+  exportSvg: () => Promise<void>;
 }
 
 const phaseKey = (phase: SharePhase) => `sharePhase${phase[0].toUpperCase()}${phase.slice(1)}` as
@@ -35,7 +42,10 @@ export function SharePanel({
   t,
   onClose,
   onError,
-  onCopied
+  onCopied,
+  onExported,
+  exportPng,
+  exportSvg
 }: SharePanelProps) {
   const [expiryDays, setExpiryDays] = useState(30);
   const [sharePassword, setSharePassword] = useState("");
@@ -44,6 +54,8 @@ export function SharePanel({
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
   const [revokingId, setRevokingId] = useState<string>();
+  const [archivePassword, setArchivePassword] = useState("");
+  const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
   const operationRef = useRef<AbortController | undefined>(undefined);
   const treeShares = useMemo(
     () => managedShares.filter((share) => share.treeId === tree.id),
@@ -130,6 +142,17 @@ export function SharePanel({
       .finally(() => setRevokingId(undefined));
   };
 
+  const copyManagedLink = (share: ManagedShare) => {
+    const url = new URL(`/s/${encodeURIComponent(share.shareId)}`, window.location.origin).toString();
+    void navigator.clipboard.writeText(url).then(onCopied).catch(() => onError(t("shareCopyFailed")));
+  };
+
+  const performExport = (operation: () => void | Promise<void>) => {
+    void Promise.resolve().then(operation).then(onExported).catch((reason: unknown) =>
+      onError(reason instanceof Error ? reason.message : t("errorTitle"))
+    );
+  };
+
   const progress = phase ? t(phaseKey(phase)) : undefined;
   const passwordRequirementsMet = sharePasswordMeetsRequirements(sharePassword);
   const passwordReady = sharePasswordIsReady(sharePassword, sharePasswordConfirmation);
@@ -139,9 +162,16 @@ export function SharePanel({
   const passwordMismatchError = sharePasswordConfirmation.length > 0 && sharePassword !== sharePasswordConfirmation
     ? t("sharePasswordsMismatch")
     : undefined;
+  const archivePasswordRequirementError = archivePassword.length > 0 && !archivePasswordMeetsRequirements(archivePassword)
+    ? t("archivePasswordRequirements")
+    : undefined;
+  const archivePasswordMismatchError = archivePasswordConfirmation.length > 0 && archivePassword !== archivePasswordConfirmation
+    ? t("archivePasswordsMismatch")
+    : undefined;
+  const archivePasswordReady = archivePasswordIsReady(archivePassword, archivePasswordConfirmation);
 
   return (
-    <SidePanel closeLabel={t("close")} onClose={onClose} title={t("shareTree")}>
+    <SidePanel closeLabel={t("close")} onClose={onClose} title={t("shareAndExport")}>
       <div className="share-panel-intro">
         <span className="share-panel-icon"><Link2 aria-hidden="true" size={23} /></span>
         <div>
@@ -160,44 +190,41 @@ export function SharePanel({
         <span>{t("shareWarning")}</span>
       </p>
 
-      <label className="field share-password">
-        {t("sharePassword")}
-        <input
-          aria-describedby={passwordRequirementError ? "share-password-help share-password-error" : "share-password-help"}
-          aria-invalid={Boolean(passwordRequirementError)}
-          autoComplete="new-password"
-          disabled={Boolean(phase)}
-          onChange={(event) => setSharePassword(event.target.value)}
-          type="password"
-          value={sharePassword}
-        />
-        <small id="share-password-help">{t("sharePasswordHelp", { count: SHARE_PASSWORD_MIN_LENGTH })}</small>
-        {passwordRequirementError ? <small className="danger-text" id="share-password-error">{passwordRequirementError}</small> : null}
-      </label>
-      <label className="field share-password">
-        {t("confirmSharePassword")}
-        <input
-          aria-describedby={passwordMismatchError ? "share-password-confirmation-error" : undefined}
-          aria-invalid={Boolean(passwordMismatchError)}
-          autoComplete="new-password"
-          disabled={Boolean(phase)}
-          onChange={(event) => setSharePasswordConfirmation(event.target.value)}
-          type="password"
-          value={sharePasswordConfirmation}
-        />
-        {passwordMismatchError ? <small className="danger-text" id="share-password-confirmation-error">{passwordMismatchError}</small> : null}
-      </label>
+      <PasswordField
+        autoComplete="new-password"
+        disabled={Boolean(phase) || !peopleCount}
+        error={passwordRequirementError}
+        help={t("sharePasswordHelp", { count: SHARE_PASSWORD_MIN_LENGTH })}
+        hideLabel={t("hidePassword")}
+        id="share-password"
+        label={t("sharePassword")}
+        onChange={setSharePassword}
+        showLabel={t("showPassword")}
+        value={sharePassword}
+      />
+      <PasswordField
+        autoComplete="new-password"
+        disabled={Boolean(phase) || !peopleCount}
+        error={passwordMismatchError}
+        hideLabel={t("hidePassword")}
+        id="share-password-confirmation"
+        label={t("confirmSharePassword")}
+        onChange={setSharePasswordConfirmation}
+        showLabel={t("showPassword")}
+        value={sharePasswordConfirmation}
+      />
 
       <label className="field share-expiry">
         {t("shareExpiry")}
-        <select disabled={Boolean(phase)} onChange={(event) => setExpiryDays(Number(event.target.value))} value={expiryDays}>
+        <select disabled={Boolean(phase) || !peopleCount} onChange={(event) => setExpiryDays(Number(event.target.value))} value={expiryDays}>
           <option value={7}>{t("shareSevenDays")}</option>
           <option value={30}>{t("shareThirtyDays")}</option>
           <option value={90}>{t("shareNinetyDays")}</option>
         </select>
       </label>
 
-      <button className="button primary full share-create" disabled={Boolean(phase) || !passwordReady} onClick={createShare} type="button">
+      {!peopleCount ? <p className="share-unavailable">{t("shareNeedsPerson")}</p> : null}
+      <button className="button primary full share-create" disabled={Boolean(phase) || !peopleCount || !passwordReady} onClick={createShare} type="button">
         <Link2 aria-hidden="true" size={17} /> {progress ?? t("createShareLink")}
       </button>
       {progress ? <p className="share-progress" role="status">{progress}</p> : null}
@@ -227,21 +254,96 @@ export function SharePanel({
           <div className="managed-share-list">
             {treeShares.map((share) => (
               <div className="managed-share-row" key={share.shareId}>
-                <span><strong>{t("sharedSnapshot")}</strong><small>{t("shareExpires", { date: formatDate(share.expiresAt) })}</small></span>
-                <button
-                  aria-label={`${t("revokeShare")}: ${formatDate(share.expiresAt)}`}
-                  className="icon-button quiet small danger-text"
-                  disabled={revokingId === share.shareId}
-                  onClick={() => revoke(share)}
-                  type="button"
-                >
-                  <Trash2 aria-hidden="true" size={16} />
-                </button>
+                <span><strong>{share.treeTitle || t("sharedSnapshot")}</strong><small>{t("shareExpires", { date: formatDate(share.expiresAt) })}</small></span>
+                <input aria-label={t("shareLink")} readOnly value={new URL(`/s/${encodeURIComponent(share.shareId)}`, window.location.origin).toString()} />
+                <div className="managed-share-actions">
+                  <button aria-label={t("copyShareLink")} className="icon-button quiet small" onClick={() => copyManagedLink(share)} type="button">
+                    <Copy aria-hidden="true" size={16} />
+                  </button>
+                  <button
+                    aria-label={`${t("revokeShare")}: ${formatDate(share.expiresAt)}`}
+                    className="icon-button quiet small danger-text"
+                    disabled={revokingId === share.shareId}
+                    onClick={() => revoke(share)}
+                    type="button"
+                  >
+                    <Trash2 aria-hidden="true" size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </section>
       ) : null}
+
+      <section className="share-export-section" aria-labelledby="backup-export-title">
+        <div className="settings-card-header">
+          <HardDrive aria-hidden="true" size={23} />
+          <div>
+            <h3 id="backup-export-title">{t("backupExport")}</h3>
+            <p className="settings-detail">{t("backupDetail")}</p>
+          </div>
+        </div>
+        <PasswordField
+          autoComplete="new-password"
+          error={archivePasswordRequirementError}
+          help={t("archivePasswordHelp")}
+          hideLabel={t("hidePassword")}
+          id="archive-password"
+          label={t("archivePasswordOptional")}
+          maxLength={1024}
+          onChange={setArchivePassword}
+          showLabel={t("showPassword")}
+          value={archivePassword}
+        />
+        <PasswordField
+          autoComplete="new-password"
+          error={archivePasswordMismatchError}
+          hideLabel={t("hidePassword")}
+          id="archive-password-confirmation"
+          label={t("confirmArchivePassword")}
+          maxLength={1024}
+          onChange={setArchivePasswordConfirmation}
+          showLabel={t("showPassword")}
+          value={archivePasswordConfirmation}
+        />
+        <div className="settings-actions">
+          <button className="button secondary" disabled={!archivePasswordReady} onClick={() => performExport(async () => {
+            const archive = await exportHeritgArchive(data, tree.id, archivePassword);
+            downloadBlob(
+              new Blob([archive.slice().buffer as ArrayBuffer], { type: "application/vnd.heritg.family-archive" }),
+              safeFilename(tree.title, "heritg")
+            );
+            setArchivePassword("");
+            setArchivePasswordConfirmation("");
+          })} type="button">
+            <Download aria-hidden="true" size={16} /> {t("downloadEncryptedBackup")}
+          </button>
+          <button className="button secondary" onClick={() => performExport(() => {
+            downloadText(exportGedcom(data, tree.id), safeFilename(tree.title, "ged"), "text/plain;charset=utf-8");
+          })} type="button">
+            <Download aria-hidden="true" size={16} /> {t("downloadGedcom")}
+          </button>
+        </div>
+      </section>
+
+      <section className="share-export-section" aria-labelledby="chart-export-title">
+        <div className="settings-card-header">
+          <FileImage aria-hidden="true" size={23} />
+          <div>
+            <h3 id="chart-export-title">{t("exportChart")}</h3>
+            <p className="settings-detail">{t("chartDetail")}</p>
+          </div>
+        </div>
+        <div className="settings-actions">
+          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(exportPng)} type="button">
+            <Download aria-hidden="true" size={16} /> {t("exportPng")}
+          </button>
+          <button className="button secondary" disabled={!peopleCount} onClick={() => performExport(exportSvg)} type="button">
+            <Download aria-hidden="true" size={16} /> {t("exportSvg")}
+          </button>
+        </div>
+      </section>
     </SidePanel>
   );
 }

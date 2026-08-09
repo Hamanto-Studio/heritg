@@ -11,7 +11,7 @@ import type {
   OrderedExcalidrawElement
 } from "@excalidraw/excalidraw/element/types";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
-import { circularAvatarData } from "./avatar";
+import { circularAvatarData, type AvatarImageResolver } from "./avatar";
 import {
   CONNECTOR_STYLE,
   branchJunctions,
@@ -223,7 +223,8 @@ const personSkeletons = (
   person: PositionedPerson,
   files: BinaryFiles,
   selectedPersonId: string | undefined,
-  language: AppData["language"]
+  language: AppData["language"],
+  resolveAvatar: AvatarImageResolver
 ): ExcalidrawElementSkeleton[] => {
   const key = encodedId(person.id);
   const groupIds = [`heritg:person:${key}`];
@@ -257,9 +258,9 @@ const personSkeletons = (
     } as ExcalidrawElementSkeleton
   ];
 
-  const photo = circularAvatarData(person.photoDataUrl, innerSize);
+  const photo = resolveAvatar(person.photoDataUrl, innerSize);
   if (photo) {
-    const fileId = `heritg:person:${key}:photo-${stableNumber(photo.dataURL)}` as FileId;
+    const fileId = `heritg:person:${key}:photo-${photo.fingerprint}` as FileId;
     const created = Date.parse(person.createdAt);
     files[fileId] = {
       id: fileId,
@@ -372,20 +373,9 @@ const personSkeletons = (
   return values;
 };
 
-export function projectLayoutToScene(
-  layout: TreeLayout,
-  selectedPersonId?: string,
-  language: AppData["language"] = "en",
-  suppliedPlan?: ConnectionPlan
-): HeritgExcalidrawScene {
-  const people = [...layout.people].sort(
-    (left, right) =>
-      left.generation - right.generation ||
-      left.y - right.y ||
-      left.x - right.x ||
-      compareText(left.id, right.id)
-  );
-  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+export const projectConnectionPlanToElements = (
+  plan: ConnectionPlan
+): OrderedExcalidrawElement[] => {
   const skeletons: ExcalidrawElementSkeleton[] = [];
   for (const family of plan.families) {
     const familyKey = encodedId(family.id);
@@ -473,12 +463,39 @@ export function projectLayoutToScene(
       skeletons.push(...plannedLabelSkeletons(route.relationship, route.label));
     }
   }
+  return convertToExcalidrawElements(skeletons, { regenerateIds: false });
+};
+
+export function projectLayoutToScene(
+  layout: TreeLayout,
+  selectedPersonId?: string,
+  language: AppData["language"] = "en",
+  suppliedPlan?: ConnectionPlan,
+  resolveAvatar: AvatarImageResolver = circularAvatarData,
+  suppliedConnectionElements?: readonly OrderedExcalidrawElement[]
+): HeritgExcalidrawScene {
+  const people = [...layout.people].sort(
+    (left, right) =>
+      left.generation - right.generation ||
+      left.y - right.y ||
+      left.x - right.x ||
+      compareText(left.id, right.id)
+  );
+  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+  const connectionElements = suppliedConnectionElements ??
+    projectConnectionPlanToElements(plan);
 
   const files: BinaryFiles = {};
+  const personSkeletonValues: ExcalidrawElementSkeleton[] = [];
   for (const person of people) {
-    skeletons.push(...personSkeletons(person, files, selectedPersonId, language));
+    personSkeletonValues.push(...personSkeletons(
+      person, files, selectedPersonId, language, resolveAvatar
+    ));
   }
-  const elements = convertToExcalidrawElements(skeletons, { regenerateIds: false });
+  const personElements = convertToExcalidrawElements(
+    personSkeletonValues, { regenerateIds: false }
+  );
+  const elements = [...connectionElements, ...personElements];
   const contentBounds: SceneBounds =
     elements.length === 0 ? [0, 0, 0, 0] : getCommonBounds(elements);
   const padding = elements.length === 0 ? 0 : 32;

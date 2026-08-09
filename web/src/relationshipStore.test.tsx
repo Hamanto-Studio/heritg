@@ -97,6 +97,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   if (root) await act(async () => root?.unmount());
   container?.remove();
   root = undefined;
@@ -105,6 +106,21 @@ afterEach(async () => {
 });
 
 describe("atomic relationship store actions", () => {
+  it("publishes selection immediately and persists it after the interaction", async () => {
+    vi.useFakeTimers();
+    dbMocks.saveAppData.mockClear();
+
+    act(() => currentActions().selectPerson("target"));
+
+    expect(currentData().trees[0].lastSelectedPersonId).toBe("target");
+    expect(dbMocks.saveAppData).not.toHaveBeenCalled();
+
+    await act(async () => vi.advanceTimersByTimeAsync(800));
+    expect(dbMocks.saveAppData).toHaveBeenCalledWith(expect.objectContaining({
+      trees: [expect.objectContaining({ lastSelectedPersonId: "target" })]
+    }));
+  });
+
   it("persists viewport changes without publishing a graph update", async () => {
     const before = currentData();
     dbMocks.saveAppData.mockClear();
@@ -227,5 +243,21 @@ describe("atomic relationship store actions", () => {
     )).toMatchObject({ subtype: "adoptiveParent" });
     expect(currentData().relationships.some((relationship) => relationship.id === "child-link"))
       .toBe(false);
+  });
+
+  it("passes divorce dates through atomic relationship actions", () => {
+    act(() => {
+      currentActions().addRelationship(
+        "child", "former", "formerPartner", "2012-01-02", "2020-03-04"
+      );
+    });
+    expect(currentData().relationships.find((relationship) =>
+      relationship.fromPersonId === "child" || relationship.toPersonId === "child"
+    )).toBeDefined();
+    expect(currentData().relationships).toContainEqual(expect.objectContaining({
+      subtype: "formerPartner",
+      marriageDate: "2012-01-02",
+      divorceDate: "2020-03-04"
+    }));
   });
 });

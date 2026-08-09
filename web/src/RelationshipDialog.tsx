@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import type { MessageKey, Translator } from "./i18n";
+import { PersonPicker } from "./PersonPicker";
 import {
   ROLE_GROUPS,
   directRoleDefaults,
@@ -103,6 +104,9 @@ export function RelationshipDialog({
   const [marriageDate, setMarriageDate] = useState(
     initialDraft ? initialDraft.marriageDate ?? "" : relationship?.marriageDate ?? ""
   );
+  const [divorceDate, setDivorceDate] = useState(
+    initialDraft ? initialDraft.divorceDate ?? "" : relationship?.divorceDate ?? ""
+  );
   const candidates = people
     .filter((person) => person.treeId === target.treeId && person.id !== target.id)
     .sort((left, right) => left.displayName.localeCompare(right.displayName));
@@ -110,6 +114,7 @@ export function RelationshipDialog({
   const roleGenderMismatch = role && selectedRelative &&
     directRoleDefaults(role).gender !== "unspecified" &&
     directRoleDefaults(role).gender !== selectedRelative.gender;
+  const formerPartnerRole = role === "formerPartner" || role === "formerHusband" || role === "formerWife";
   const genderNotice = roleGenderMismatch ? (
     <p className="relationship-gender-notice">
       {t("roleGenderNotice", {
@@ -121,6 +126,8 @@ export function RelationshipDialog({
 
   const chooseRole = (value: DirectRole) => {
     setRole(value);
+    if (!isPartnerRole(value)) setMarriageDate("");
+    if (value !== "formerPartner" && value !== "formerHusband" && value !== "formerWife") setDivorceDate("");
     if (!editing) setStep("person");
   };
 
@@ -129,10 +136,37 @@ export function RelationshipDialog({
     onSave({
       relativePersonId,
       role,
-      ...(isPartnerRole(role) && marriageDate ? { marriageDate } : {})
+      ...(isPartnerRole(role) && marriageDate ? { marriageDate } : {}),
+      ...(formerPartnerRole && divorceDate ? { divorceDate } : {})
     });
     onClose();
   };
+
+  const relationshipDates = role && isPartnerRole(role) ? (
+    <div className="relationship-date-fields">
+      <DatePickerField
+        className="relationship-date-field"
+        label={t("marriageDateOptional")}
+        language={language}
+        max={formatIsoDate(new Date())}
+        onChange={setMarriageDate}
+        t={t}
+        value={marriageDate}
+      />
+      {formerPartnerRole ? (
+        <DatePickerField
+          className="relationship-date-field"
+          label={t("divorceDateOptional")}
+          language={language}
+          max={formatIsoDate(new Date())}
+          min={marriageDate || undefined}
+          onChange={setDivorceDate}
+          t={t}
+          value={divorceDate}
+        />
+      ) : null}
+    </div>
+  ) : null;
 
   const roleStep = (
     <div className="relationship-wizard">
@@ -156,17 +190,7 @@ export function RelationshipDialog({
       ) : null}
       <RelationshipRolePicker onSelect={chooseRole} selectedRole={role} t={t} />
       {genderNotice}
-      {role && isPartnerRole(role) ? (
-        <DatePickerField
-          className="relationship-date-field"
-          label={t("marriageDateOptional")}
-          language={language}
-          max={formatIsoDate(new Date())}
-          onChange={setMarriageDate}
-          t={t}
-          value={marriageDate}
-        />
-      ) : null}
+      {relationshipDates}
     </div>
   );
 
@@ -180,26 +204,16 @@ export function RelationshipDialog({
         <h3>{t("chooseFamilyMember")}</h3>
         <p>{t("linkPersonDescription", { role: role ? t(role) : "", name: target.displayName })}</p>
       </div>
-      <label className="field">
-        {t("selectPerson")}
-        <select autoFocus onChange={(event) => setRelativePersonId(event.target.value)} value={relativePersonId}>
-          <option value="">{t("selectPersonPlaceholder")}</option>
-          {candidates.map((person) => (
-            <option key={person.id} value={person.id}>{person.displayName}</option>
-          ))}
-        </select>
-      </label>
+      {relationshipDates}
+      <PersonPicker
+        label={t("selectPerson")}
+        language={language}
+        onSelect={setRelativePersonId}
+        people={candidates}
+        selectedId={relativePersonId}
+        t={t}
+      />
       {genderNotice}
-      {role && isPartnerRole(role) ? (
-        <DatePickerField
-          label={t("marriageDateOptional")}
-          language={language}
-          max={formatIsoDate(new Date())}
-          onChange={setMarriageDate}
-          t={t}
-          value={marriageDate}
-        />
-      ) : null}
       {!candidates.length ? <p className="relationship-unavailable">{t("noPeopleAvailableToLink")}</p> : null}
     </div>
   );

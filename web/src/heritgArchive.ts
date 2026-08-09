@@ -461,6 +461,7 @@ async function archiveEntries(data: AppData, treeId: string, exportedAt: Date | 
     id: relationship.id,
     kind: relationship.kind,
     ...(relationship.marriageDate ? { marriageDate: relationship.marriageDate } : {}),
+    ...(relationship.divorceDate ? { divorceDate: relationship.divorceDate } : {}),
     schemaVersion: SCHEMA_VERSION,
     subtype: relationship.subtype,
     toPersonId: relationship.toPersonId,
@@ -625,15 +626,25 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
   }
   const relationships: FamilyRelationship[] = relationshipRecords.map((record, index) => {
     if (record.schemaVersion !== SCHEMA_VERSION) fail(`relationship ${index} schema is unsupported.`);
+    const subtype = text(record.subtype, `relationship ${index}.subtype`) as RelationshipSubtype;
+    const marriageDate = calendarDate(record.marriageDate, `relationship ${index}.marriageDate`);
+    const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
+    const divorceDate = isFormer
+      ? calendarDate(record.divorceDate, `relationship ${index}.divorceDate`)
+      : undefined;
+    if (marriageDate && divorceDate && divorceDate < marriageDate) {
+      fail(`relationship ${index} divorce date is earlier than its marriage date.`);
+    }
     return {
       id: text(record.id, `relationship ${index}.id`),
       treeId: text(record.treeId, `relationship ${index}.treeId`),
       fromPersonId: text(record.fromPersonId, `relationship ${index}.fromPersonId`),
       toPersonId: text(record.toPersonId, `relationship ${index}.toPersonId`),
       kind: text(record.kind, `relationship ${index}.kind`) as RelationshipKind,
-      subtype: text(record.subtype, `relationship ${index}.subtype`) as RelationshipSubtype,
+      subtype,
       createdAt: exactArchiveInstant(record.createdAt, `relationship ${index}.createdAt`),
-      marriageDate: calendarDate(record.marriageDate, `relationship ${index}.marriageDate`)
+      marriageDate,
+      divorceDate
     };
   });
   const imported = validateAppData({

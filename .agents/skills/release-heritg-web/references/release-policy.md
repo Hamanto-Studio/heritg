@@ -60,6 +60,16 @@ Before publication:
 - The user explicitly approves the exact tag and release notes.
 - Tag target equals the promoted commit.
 
+After every production promotion:
+
+- Publish exactly one GitHub Release for the deployed Web version.
+- Use `web-<version>` for both the immutable tag and release target.
+- Use `Heritg Web <version>` as the release title.
+- Copy the release body from the exact matching `CHANGELOG.md` section.
+- Verify the release URL and tag target before declaring deployment complete.
+- If GitHub is temporarily unavailable, leave the release task explicitly
+  incomplete and retry publication without rebuilding or redeploying Vercel.
+
 ## Vercel and Cloudflare
 
 Use Vercel Hobby only for personal/non-commercial hosting. Do not add analytics,
@@ -88,6 +98,9 @@ confirmation before:
 2. Promoting a deployment to production.
 3. Creating or pushing the release tag.
 4. Publishing the GitHub Release.
+
+Approval to publish the tag and GitHub Release may be requested as one gate,
+but publication is mandatory for every version that reaches production.
 
 If a preview fails, fix and create a new preview. If production fails, promote
 the last known good deployment or use Vercel rollback, verify the canonical

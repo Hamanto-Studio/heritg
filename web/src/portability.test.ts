@@ -11,7 +11,8 @@ import {
   importNativeHeritgArchive,
   parseGedcom,
   parseHeritgBackup,
-  safeFilename
+  safeFilename,
+  validateAppData
 } from "./portability";
 
 const timestamp = "2026-08-01T10:00:00.000Z";
@@ -208,6 +209,22 @@ describe("HERITG JSON backups", () => {
     backup.data.relationships[0].toPersonId = "person-missing";
     expect(() => importHeritgBackup(JSON.stringify(backup))).toThrow(/endpoint/i);
   });
+
+  it("keeps valid former-union divorce dates and clears them from other roles", () => {
+    const source = structuredClone(appData);
+    source.relationships[0].subtype = "formerSpouse";
+    source.relationships[0].divorceDate = "2020-04-05";
+    source.relationships[1].divorceDate = "2022-01-01";
+
+    const clean = validateAppData(source);
+    expect(clean.relationships[0].divorceDate).toBe("2020-04-05");
+    expect(clean.relationships[1]).not.toHaveProperty("divorceDate");
+
+    source.relationships[0].divorceDate = "1990-01-01";
+    expect(() => validateAppData(source)).toThrow(/earlier than marriageDate/i);
+    source.relationships[0].divorceDate = "2020-4-05";
+    expect(() => validateAppData(source)).toThrow(/YYYY-MM-DD/i);
+  });
 });
 
 describe("native HERITG archives", () => {
@@ -267,7 +284,8 @@ describe("GEDCOM 7 portability", () => {
         parents: ["I1", "I2"],
         children: ["I3"],
         married: true,
-        marriageDate: "1995-06-10"
+        marriageDate: "1995-06-10",
+        divorced: false
       }
     ]);
 
@@ -303,6 +321,43 @@ describe("GEDCOM 7 portability", () => {
         expect.objectContaining({ fromPersonId: "ged-mother", toPersonId: "ged-child", kind: "parent" })
       ])
     );
+  });
+
+  it("exports and imports GEDCOM divorce events as former relationships", () => {
+    const source = structuredClone(appData);
+    source.relationships[0].subtype = "formerSpouse";
+    source.relationships[0].divorceDate = "2020-04-05";
+
+    const gedcom = exportGedcom(source, "tree-original");
+    expect(gedcom).toContain("1 DIV\r\n2 DATE 5 APR 2020");
+    expect(parseGedcom(gedcom).families[0]).toMatchObject({
+      married: true,
+      divorced: true,
+      marriageDate: "1995-06-10",
+      divorceDate: "2020-04-05"
+    });
+
+    const imported = importGedcom(gedcom, {
+      now: timestamp,
+      idFactory: sequence(
+        "div-tree", "div-father", "div-mother", "div-child",
+        "div-partners", "div-father-child", "div-mother-child"
+      )
+    });
+    expect(imported.relationships[0]).toMatchObject({
+      subtype: "formerSpouse",
+      marriageDate: "1995-06-10",
+      divorceDate: "2020-04-05"
+    });
+
+    const formerPartnerGedcom = gedcom.replace("1 MARR\r\n2 DATE 10 JUN 1995\r\n", "");
+    expect(importGedcom(formerPartnerGedcom, {
+      now: timestamp,
+      idFactory: sequence(
+        "partner-tree", "partner-father", "partner-mother", "partner-child",
+        "partner-link", "partner-father-child", "partner-mother-child"
+      )
+    }).relationships[0].subtype).toBe("formerPartner");
   });
 
   it("rejects broken family references and makes safe filenames", () => {

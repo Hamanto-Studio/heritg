@@ -87,6 +87,34 @@ const validateLifeDates = (birthDate?: string, deathDate?: string) => {
     throw new DomainError("invalidData", "Death date cannot be earlier than birth date.");
   }
 };
+const validCalendarDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+const relationshipDates = (
+  subtype: RelationshipSubtype,
+  marriageDate?: string,
+  divorceDate?: string
+) => {
+  const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
+  if (!isFormer || !divorceDate) {
+    return marriageDate ? { marriageDate } : {};
+  }
+  if (!validCalendarDate(divorceDate)) {
+    throw new DomainError("invalidData", "Divorce date must use YYYY-MM-DD.");
+  }
+  if (marriageDate && Number.isFinite(Date.parse(marriageDate))) {
+    const marriageDay = new Date(marriageDate).toISOString().slice(0, 10);
+    if (divorceDate < marriageDay) {
+      throw new DomainError("invalidData", "Divorce date cannot be earlier than marriage date.");
+    }
+  }
+  return {
+    ...(marriageDate ? { marriageDate } : {}),
+    divorceDate
+  };
+};
 export const localizedDefaultTreeTitle = (language: AppLanguage) =>
   language === "id" ? "Silsilah Keluarga Saya" : "My Family Tree";
 
@@ -304,7 +332,8 @@ const relationshipSignature = (
 export function addRelationship(
   data: AppData, personId: string, relativePersonId: string, role: DirectRole,
   marriageDate?: string,
-  meta: DomainMeta = {}
+  meta: DomainMeta = {},
+  divorceDate?: string
 ): AppData {
   if (personId === relativePersonId) throw new DomainError("selfRelationship");
   const person = findPerson(data, personId);
@@ -337,7 +366,9 @@ export function addRelationship(
     kind: endpoints.kind,
     subtype: endpoints.subtype,
     createdAt: now,
-    ...(isPartnerRole(role) && marriageDate ? { marriageDate } : {})
+    ...(isPartnerRole(role)
+      ? relationshipDates(endpoints.subtype, marriageDate, divorceDate)
+      : {})
   };
   return touchTree(
     { ...data, relationships: [...data.relationships, relationship] },

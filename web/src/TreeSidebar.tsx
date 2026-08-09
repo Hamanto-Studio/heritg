@@ -17,6 +17,7 @@ import {
   heritgArchiveProtection,
   importHeritgArchive
 } from "./heritgArchive";
+import { PasswordField } from "./PasswordField";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
@@ -303,18 +304,18 @@ export function TreeSidebar({
         >
           <p className="dialog-copy">{pendingArchive.name}</p>
           <p className="dialog-copy">{t("encryptedArchiveHelp")}</p>
-          <label className="field">
-            {t("archivePassword")}
-            <input
-              autoFocus
-              autoComplete="current-password"
-              maxLength={1024}
-              onChange={(event) => setArchivePassword(event.target.value)}
-              onKeyDown={(event) => { if (event.key === "Enter") void unlockArchive(); }}
-              type="password"
-              value={archivePassword}
-            />
-          </label>
+          <PasswordField
+            autoComplete="current-password"
+            autoFocus
+            hideLabel={t("hidePassword")}
+            id="archive-import-password"
+            label={t("archivePassword")}
+            maxLength={1024}
+            onChange={setArchivePassword}
+            onKeyDown={(event) => { if (event.key === "Enter") void unlockArchive(); }}
+            showLabel={t("showPassword")}
+            value={archivePassword}
+          />
           <ErrorNotice message={archiveError} />
         </Modal>
       ) : null}

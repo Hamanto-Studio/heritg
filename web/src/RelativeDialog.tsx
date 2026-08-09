@@ -1,8 +1,10 @@
-import { Link2, UserPlus } from "lucide-react";
+import { ImagePlus, Link2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import type { Translator } from "./i18n";
+import { PersonPicker } from "./PersonPicker";
+import { PhotoCropDialog } from "./PhotoCropDialog";
 import { RelationshipRolePicker } from "./RelationshipDialog";
 import {
   allowsCoParent,
@@ -11,7 +13,7 @@ import {
 } from "./relationshipRoles";
 import type { AppActions } from "./store";
 import type { AppData, DirectRole, FamilyRelationship, Person } from "./types";
-import { ErrorNotice, Modal } from "./ui";
+import { ErrorNotice, Modal, PersonAvatar } from "./ui";
 
 interface RelativeDialogProps {
   target: Person;
@@ -45,7 +47,10 @@ export function RelativeDialog({
   const [birthDate, setBirthDate] = useState("");
   const [city, setCity] = useState("");
   const [marriageDate, setMarriageDate] = useState("");
+  const [divorceDate, setDivorceDate] = useState("");
   const [coParentId, setCoParentId] = useState("");
+  const [photoDataUrl, setPhotoDataUrl] = useState<string>();
+  const [photoToCrop, setPhotoToCrop] = useState<File>();
   const [error, setError] = useState<string>();
 
   const candidates = people
@@ -70,6 +75,7 @@ export function RelativeDialog({
   const roleGenderMismatch = role && selectedExisting &&
     directRoleDefaults(role).gender !== "unspecified" &&
     directRoleDefaults(role).gender !== selectedExisting.gender;
+  const formerPartnerRole = role === "formerPartner" || role === "formerHusband" || role === "formerWife";
 
   const chooseMethod = (value: AddMethod) => {
     if (value !== method) {
@@ -84,6 +90,7 @@ export function RelativeDialog({
   const chooseRole = (value: DirectRole) => {
     setRole(value);
     if (!isPartnerRole(value)) setMarriageDate("");
+    if (value !== "formerPartner" && value !== "formerHusband" && value !== "formerWife") setDivorceDate("");
     if (!allowsCoParent(value)) setCoParentId("");
     setError(undefined);
     setStep("details");
@@ -109,11 +116,13 @@ export function RelativeDialog({
             displayName: name,
             gender: directRoleDefaults(role).gender,
             birthDate: birthDate || undefined,
-            city
+            city,
+            photoDataUrl
           },
           role,
           partnerDate,
-          selectedCoParentId
+          selectedCoParentId,
+          formerPartnerRole && divorceDate ? divorceDate : undefined
         );
       } else {
         if (!relativePersonId) throw new Error(t("selectPerson"));
@@ -122,7 +131,8 @@ export function RelativeDialog({
           relativePersonId,
           role,
           partnerDate,
-          selectedCoParentId
+          selectedCoParentId,
+          formerPartnerRole && divorceDate ? divorceDate : undefined
         );
       }
 
@@ -200,8 +210,68 @@ export function RelativeDialog({
         <span>{t("relationship")}</span><strong>{t(role)}</strong>
       </div>
 
+      {isPartnerRole(role) ? (
+        <div className="relationship-date-fields">
+          <DatePickerField
+            label={t("marriageDateOptional")}
+            language={language}
+            max={formatIsoDate(new Date())}
+            onChange={setMarriageDate}
+            t={t}
+            value={marriageDate}
+          />
+          {formerPartnerRole ? (
+            <DatePickerField
+              label={t("divorceDateOptional")}
+              language={language}
+              max={formatIsoDate(new Date())}
+              min={marriageDate || undefined}
+              onChange={setDivorceDate}
+              t={t}
+              value={divorceDate}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
       {method === "new" ? (
         <div className="relative-create-fields">
+          <div className="photo-editor compact">
+            <PersonAvatar person={{
+              id: "new-relative",
+              treeId: target.treeId,
+              displayName: name,
+              gender: directRoleDefaults(role).gender,
+              createdAt: "",
+              birthDatePrecision: "exact",
+              notes: "",
+              addressLine: "",
+              city,
+              province: "",
+              country: "",
+              postalCode: "",
+              photoDataUrl
+            }} size={68} />
+            <div className="photo-actions">
+              <label className="button secondary file-button">
+                <ImagePlus aria-hidden="true" size={17} /> {t("choosePhoto")}
+                <input
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (file) setPhotoToCrop(file);
+                  }}
+                  type="file"
+                />
+              </label>
+              {photoDataUrl ? (
+                <button className="text-button danger-text" onClick={() => setPhotoDataUrl(undefined)} type="button">
+                  {t("removePhoto")}
+                </button>
+              ) : null}
+            </div>
+          </div>
           <label className="field full">
             {t("name")}
             <input autoFocus autoComplete="name" maxLength={240} onChange={(event) => setName(event.target.value)} required value={name} />
@@ -226,21 +296,18 @@ export function RelativeDialog({
           </details>
         </div>
       ) : (
-        <label className="field">
-          {t("selectPerson")}
-          <select
-            autoFocus
-            onChange={(event) => {
-              setExistingPersonId(event.target.value);
-              if (coParentId === event.target.value) setCoParentId("");
+        <div>
+          <PersonPicker
+            label={t("selectPerson")}
+            language={language}
+            onSelect={(personId) => {
+              setExistingPersonId(personId);
+              if (coParentId === personId) setCoParentId("");
             }}
-            value={existingPersonId}
-          >
-            <option value="">{t("selectPersonPlaceholder")}</option>
-            {candidates.map((person) => (
-              <option key={person.id} value={person.id}>{person.displayName}</option>
-            ))}
-          </select>
+            people={candidates}
+            selectedId={existingPersonId}
+            t={t}
+          />
           {roleGenderMismatch ? (
             <p className="relationship-gender-notice">
               {t("roleGenderNotice", {
@@ -249,38 +316,29 @@ export function RelativeDialog({
               })}
             </p>
           ) : null}
-        </label>
+        </div>
       )}
 
-      {isPartnerRole(role) ? (
-        <DatePickerField
-          label={t("marriageDateOptional")}
-          language={language}
-          max={formatIsoDate(new Date())}
-          onChange={setMarriageDate}
-          t={t}
-          value={marriageDate}
-        />
-      ) : null}
-
       {allowsCoParent(role) && coParents.length ? (
-        <label className="field">
-          {t("coParentOptional")}
-          <select onChange={(event) => setCoParentId(event.target.value)} value={coParentId}>
-            <option value="">{t("noCoParent")}</option>
-            {coParents.map((person) => (
-              <option key={person.id} value={person.id}>{person.displayName}</option>
-            ))}
-          </select>
-        </label>
+        <PersonPicker
+          label={t("coParentOptional")}
+          language={language}
+          noneLabel={t("noCoParent")}
+          onSelect={setCoParentId}
+          people={coParents}
+          selectedId={coParentId}
+          t={t}
+        />
       ) : null}
       <ErrorNotice message={error} />
     </div>
   ) : null;
 
   return (
+    <>
     <Modal
       closeLabel={t("close")}
+      inactive={Boolean(photoToCrop)}
       footer={step === "method" ? (
         <button className="button secondary" onClick={onClose} type="button">{t("cancel")}</button>
       ) : step === "role" ? (
@@ -307,5 +365,21 @@ export function RelativeDialog({
     >
       {step === "method" ? methodStep : step === "role" ? roleStep : detailsStep}
     </Modal>
+    {photoToCrop ? (
+      <PhotoCropDialog
+        file={photoToCrop}
+        onCancel={() => setPhotoToCrop(undefined)}
+        onConfirm={(photo) => {
+          setPhotoDataUrl(photo);
+          setPhotoToCrop(undefined);
+        }}
+        onError={(message) => {
+          setError(message);
+          setPhotoToCrop(undefined);
+        }}
+        t={t}
+      />
+    ) : null}
+    </>
   );
 }

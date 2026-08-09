@@ -62,6 +62,10 @@ still validates metadata, changelog structure, workflows, and Vercel policy.
 Pause for explicit user confirmation immediately before promotion. State the
 candidate URL, version, commit, and canonical hostname.
 
+A production deployment is not complete until its immutable tag and GitHub
+Release have been published. Never finish a production-release task after only
+promoting or verifying Vercel.
+
 After approval:
 
 1. Promote the exact tested deployment; do not rebuild an untested commit.
@@ -72,11 +76,18 @@ After approval:
      https://heritg.us/ --expect-version <version>
    ```
 
-3. Pause again before creating and pushing `web-<version>` or publishing its
-   GitHub Release. Show the exact changelog notes first.
-4. Create an annotated immutable tag on the promoted commit, push the permanent
-   release branch and tag, and create the GitHub Release from the exact
-   `CHANGELOG.md` section. Do not generate release notes from raw commits.
+3. Show the exact tag and changelog notes, then obtain explicit confirmation
+   before publishing the release record.
+4. Create an annotated immutable tag on the promoted commit and push the
+   permanent release branch and tag.
+5. Immediately create the GitHub Release from the exact `CHANGELOG.md` section.
+   Title it `Heritg Web <version>` and target `web-<version>`. Do not generate
+   release notes from raw commits.
+6. Verify the release exists with `gh release view web-<version>`, confirm its
+   tag targets the promoted commit, and give the user both the production URL
+   and GitHub Release URL. If publication fails, report the deployment as
+   incomplete and resume from this step; never create a second deployment just
+   to retry release publication.
 
 ## Handle DNS and rollback
 
