@@ -57,6 +57,11 @@ export interface HeritgExcalidrawScene {
   contentBounds: SceneBounds;
   bounds: SceneBounds;
 }
+export interface SceneLifeSummaryOptions {
+  showBirthDate: boolean;
+  showAge: boolean;
+  ageByPersonId?: Readonly<Record<string, number>>;
+}
 type LinearPoint = ExcalidrawLinearElement["points"][number];
 const linearPoint = (x: number, y: number) => [x, y] as unknown as LinearPoint;
 const compareText = (left: string, right: string) =>
@@ -224,7 +229,8 @@ const personSkeletons = (
   files: BinaryFiles,
   selectedPersonId: string | undefined,
   language: AppData["language"],
-  resolveAvatar: AvatarImageResolver
+  resolveAvatar: AvatarImageResolver,
+  lifeSummaryOptions?: SceneLifeSummaryOptions
 ): ExcalidrawElementSkeleton[] => {
   const key = encodedId(person.id);
   const groupIds = [`heritg:person:${key}`];
@@ -352,7 +358,11 @@ const personSkeletons = (
       groupIds
     ));
   }
-  const life = personLifeSummary(person, language);
+  const life = personLifeSummary(person, language, new Date(), lifeSummaryOptions ? {
+    showBirthDate: lifeSummaryOptions.showBirthDate,
+    showAge: lifeSummaryOptions.showAge,
+    ageOverride: lifeSummaryOptions.ageByPersonId?.[person.id]
+  } : undefined);
   if (life) {
     values.push(
       textSkeleton(
@@ -472,7 +482,8 @@ export function projectLayoutToScene(
   language: AppData["language"] = "en",
   suppliedPlan?: ConnectionPlan,
   resolveAvatar: AvatarImageResolver = circularAvatarData,
-  suppliedConnectionElements?: readonly OrderedExcalidrawElement[]
+  suppliedConnectionElements?: readonly OrderedExcalidrawElement[],
+  lifeSummaryOptions?: SceneLifeSummaryOptions
 ): HeritgExcalidrawScene {
   const people = [...layout.people].sort(
     (left, right) =>
@@ -489,7 +500,7 @@ export function projectLayoutToScene(
   const personSkeletonValues: ExcalidrawElementSkeleton[] = [];
   for (const person of people) {
     personSkeletonValues.push(...personSkeletons(
-      person, files, selectedPersonId, language, resolveAvatar
+      person, files, selectedPersonId, language, resolveAvatar, lifeSummaryOptions
     ));
   }
   const personElements = convertToExcalidrawElements(

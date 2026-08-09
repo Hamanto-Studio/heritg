@@ -830,41 +830,61 @@
 .share-scope small { color: var(--subtle); line-height: 1.4; }
 
 .share-included {
+  border: 0;
   margin-top: 20px;
-}
-
-.share-included h3 {
-  font-size: 0.84rem;
-  margin: 0 0 10px;
-}
-
-.share-included ul {
-  display: grid;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
+  min-width: 0;
   padding: 0;
 }
 
-.share-included li {
-  align-items: center;
-  color: var(--subtle);
-  display: grid;
-  font-size: 0.8rem;
-  gap: 9px;
-  grid-template-columns: 24px minmax(0, 1fr);
-  line-height: 1.4;
+.share-included legend {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 0;
 }
 
-.share-included-check {
+.share-included > p {
+  color: var(--subtle);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  margin: 5px 0 11px;
+}
+
+.share-included-options {
+  display: grid;
+  gap: 8px;
+}
+
+.share-included-options label {
   align-items: center;
-  background: color-mix(in srgb, var(--add) 14%, var(--base));
-  border-radius: 50%;
-  color: #4f6d3d;
-  display: inline-flex;
-  height: 24px;
-  justify-content: center;
-  width: 24px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.82rem;
+  gap: 10px;
+  line-height: 1.4;
+  min-height: 42px;
+  padding: 8px 11px;
+}
+
+.share-included-options label:hover {
+  border-color: var(--brand);
+}
+
+.share-included-options input {
+  accent-color: var(--brand-deep);
+  flex: 0 0 auto;
+  height: 18px;
+  margin: 0;
+  width: 18px;
+}
+
+.share-included:disabled .share-included-options label {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .share-warning {

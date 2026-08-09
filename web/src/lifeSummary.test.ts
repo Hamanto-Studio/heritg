@@ -35,4 +35,17 @@ describe("person life summary", () => {
     }, "en", now))
       .toBe("1940-2020 · age 79");
   });
+
+  it("can disclose birth dates and calculated ages independently", () => {
+    const person = { birthDate: "1990-08-01", birthDatePrecision: "exact" as const };
+    expect(personLifeSummary(person, "en", now, { showBirthDate: true, showAge: false }))
+      .toBe("Born Aug 1, 1990");
+    expect(personLifeSummary({ birthDatePrecision: "year" }, "en", now, {
+      showBirthDate: false,
+      showAge: true,
+      ageOverride: 36
+    })).toBe("Age 36");
+    expect(personLifeSummary(person, "en", now, { showBirthDate: false, showAge: false }))
+      .toBeUndefined();
+  });
 });

@@ -31,7 +31,11 @@ import type { ControlPlacement } from "./connectionGeometry";
 import type { Translator } from "./i18n";
 import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
-import { projectConnectionPlanToElements, projectLayoutToScene } from "./scene";
+import {
+  projectConnectionPlanToElements,
+  projectLayoutToScene,
+  type SceneLifeSummaryOptions
+} from "./scene";
 import type {
   AppData,
   FamilyRelationship,
@@ -69,6 +73,7 @@ interface TreeCanvasProps {
   emptyContent?: ReactNode;
   readOnly?: boolean;
   actionsVisible?: boolean;
+  lifeSummaryOptions?: SceneLifeSummaryOptions;
 }
 
 type CanvasViewport = Pick<AppState, "scrollX" | "scrollY" | "zoom">;
@@ -317,7 +322,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   onViewportChange,
   emptyContent,
   readOnly = false,
-  actionsVisible = true
+  actionsVisible = true,
+  lifeSummaryOptions
 }, ref) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI>();
   const canvasHost = useRef<HTMLDivElement>(null);
@@ -379,9 +385,10 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       language,
       connectionPlan,
       resolveAvatar,
-      connectionElements
+      connectionElements,
+      lifeSummaryOptions
     ),
-    [connectionElements, connectionPlan, language, layout, resolveAvatar, selectedPersonId]
+    [connectionElements, connectionPlan, language, layout, lifeSummaryOptions, resolveAvatar, selectedPersonId]
   );
 
   useEffect(() => {

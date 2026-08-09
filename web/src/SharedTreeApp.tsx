@@ -190,6 +190,11 @@ export function SharedTreeApp() {
           generationLimits={unlimitedGenerationLimits}
           initialViewport={viewportRef.current}
           language={language}
+          lifeSummaryOptions={loaded.sharedView ? {
+            showAge: loaded.sharedView.ages,
+            showBirthDate: loaded.sharedView.birthDates,
+            ageByPersonId: loaded.sharedView.ageByPersonId
+          } : undefined}
           onAddRelative={() => undefined}
           onCanvasInteract={() => undefined}
           onDeselectPerson={() => setSelectedPersonId(undefined)}

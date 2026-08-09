@@ -1,12 +1,13 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 
-import { exportCanonicalHeritgArchive } from "./heritgArchive";
+import { exportCanonicalHeritgArchive, importHeritgArchive, sharedViewFor } from "./heritgArchive";
 import {
   createEncryptedShare,
   encryptedShareTestHelpers,
   loadEncryptedShare,
   parseEncryptedShareLocation,
+  prepareEncryptedShareData,
   SHARE_ENVELOPE_VERSION,
   ShareDecryptionError,
   SharePasswordRequiredError,
@@ -52,6 +53,57 @@ const response = (value: unknown, status = 200, headers?: HeadersInit) => new Re
 });
 
 describe("password-protected share protocol", () => {
+  it("removes unchecked personal details before encryption", async () => {
+    const source = structuredClone(syntheticData);
+    source.people[0].photoDataUrl = "data:image/png;base64,iVBORw0KGgoBAgM=";
+    source.people.push({
+      ...source.people[0],
+      id: "person-share-partner",
+      displayName: "Synthetic Partner",
+      birthDate: undefined,
+      photoDataUrl: undefined
+    });
+    source.relationships.push({
+      id: "relationship-share-fixture",
+      treeId: "tree-share-fixture",
+      fromPersonId: "person-share-fixture",
+      toPersonId: "person-share-partner",
+      kind: "partner",
+      subtype: "formerPartner",
+      createdAt: "2026-08-03T00:00:00.000Z",
+      marriageDate: "2020-01-02",
+      divorceDate: "2021-02-03"
+    });
+    const prepared = prepareEncryptedShareData(source, "tree-share-fixture", {
+      birthDates: false,
+      relationshipDates: false,
+      photos: false,
+      ages: true
+    }, new Date("2026-08-03T00:00:00.000Z"));
+
+    expect(prepared.data.people[0]).toMatchObject({
+      birthDate: undefined,
+      photoDataUrl: undefined
+    });
+    expect(prepared.data.relationships[0]).toMatchObject({
+      marriageDate: undefined,
+      divorceDate: undefined
+    });
+    expect(prepared.sharedView.ageByPersonId).toEqual({ "person-share-fixture": 26 });
+
+    const archive = await exportCanonicalHeritgArchive(
+      prepared.data,
+      "tree-share-fixture",
+      "2026-08-03T00:00:00.000Z",
+      { sharedView: prepared.sharedView }
+    );
+    const restored = await importHeritgArchive(archive);
+    expect(restored.people[0]).toMatchObject({ birthDate: undefined, photoDataUrl: undefined });
+    expect(restored.relationships[0]?.marriageDate).toBeUndefined();
+    expect(restored.relationships[0]?.divorceDate).toBeUndefined();
+    expect(sharedViewFor(restored)?.ageByPersonId).toEqual({ "person-share-fixture": 26 });
+  });
+
   it("rejects legacy fragment-key links before contacting the API", () => {
     expect(parseEncryptedShareLocation(`/s/${shareId}`, "")).toEqual({ shareId });
     expect(() => parseEncryptedShareLocation(`/s/${shareId}`, "#k=legacy-key"))
