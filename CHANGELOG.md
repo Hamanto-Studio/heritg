@@ -10,7 +10,7 @@ prefix.
 
 #### Changed
 
-- Added direct marriage-date editing from partner rows and moved relationship dates above role choices.
+- Added direct marriage-date editing from partner rows, moved relationship dates above role choices, and listed the personal details included in encrypted shares.
 
 #### Fixed
 

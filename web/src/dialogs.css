@@ -829,6 +829,44 @@
 .share-scope strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .share-scope small { color: var(--subtle); line-height: 1.4; }
 
+.share-included {
+  margin-top: 20px;
+}
+
+.share-included h3 {
+  font-size: 0.84rem;
+  margin: 0 0 10px;
+}
+
+.share-included ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.share-included li {
+  align-items: center;
+  color: var(--subtle);
+  display: grid;
+  font-size: 0.8rem;
+  gap: 9px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  line-height: 1.4;
+}
+
+.share-included-check {
+  align-items: center;
+  background: color-mix(in srgb, var(--add) 14%, var(--base));
+  border-radius: 50%;
+  color: #4f6d3d;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
 .share-warning {
   align-items: flex-start;
   color: var(--brand-deep);
@@ -836,7 +874,7 @@
   font-size: 0.82rem;
   gap: 8px;
   line-height: 1.45;
-  margin: 18px 0;
+  margin: 20px 0 18px;
 }
 
 .share-warning svg {

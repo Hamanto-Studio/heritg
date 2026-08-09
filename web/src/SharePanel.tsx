@@ -1,4 +1,4 @@
-import { Copy, Download, FileImage, HardDrive, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
+import { Check, Copy, Download, FileImage, HardDrive, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
@@ -184,6 +184,23 @@ export function SharePanel({
         <UsersRound aria-hidden="true" size={19} />
         <span><strong>{tree.title}</strong><small>{t("shareScopeDetail", { count: peopleCount })}</small></span>
       </div>
+
+      <section className="share-included" aria-labelledby="share-included-title">
+        <h3 id="share-included-title">{t("shareIncludedTitle")}</h3>
+        <ul>
+          {[
+            t("shareIncludesBirthDates"),
+            t("shareIncludesRelationshipDates"),
+            t("shareIncludesPhotos"),
+            t("shareIncludesAges")
+          ].map((item) => (
+            <li key={item}>
+              <span className="share-included-check"><Check aria-hidden="true" size={14} /></span>
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <p className="share-warning">
         <ShieldCheck aria-hidden="true" size={18} />
