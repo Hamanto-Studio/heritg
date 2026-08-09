@@ -8,7 +8,13 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+#### Changed
+
+- Added direct marriage-date editing from partner rows and moved relationship dates above role choices.
+
+#### Fixed
+
+- Preserved Vercel API and security routing during production promotion and added release checks for sharing-service health and validation routes.
 
 ### iOS
 

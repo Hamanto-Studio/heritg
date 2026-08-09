@@ -68,7 +68,10 @@ promoting or verifying Vercel.
 
 After approval:
 
-1. Promote the exact tested deployment; do not rebuild an untested commit.
+1. Promote the exact tested deployment with
+   `npm --prefix web run deploy:promote -- <candidate-url>`. The command must
+   keep `web/vercel.json` attached so the API, health, and SPA rewrites are
+   present in the production deployment. Do not run a bare `vercel promote`.
 2. Verify the GitHub Pages landing site and `https://heritg.us/` with:
 
    ```sh

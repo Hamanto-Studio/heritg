@@ -16,7 +16,7 @@
     "release:check": "node ../.agents/skills/release-heritg-web/scripts/release-preflight.mjs --ci",
     "release:verify": "node ../.agents/skills/release-heritg-web/scripts/verify-production.mjs",
     "deploy:preview": "npx --yes vercel@58.4.4 deploy --cwd .. --local-config web/vercel.json",
-    "deploy:promote": "npx --yes vercel@58.4.4 promote"
+    "deploy:promote": "npx --yes vercel@58.4.4 promote --cwd .. --local-config web/vercel.json"
   },
   "dependencies": {
     "@daypicker/react": "10.0.1",

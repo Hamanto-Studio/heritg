@@ -80,6 +80,45 @@ try {
   const deepHtml = await deepRoute.text();
   if (!deepHtml.includes('<div id="root"></div>')) failures.push("SPA deep-link fallback did not return the app shell");
 
+  const health = await request("health");
+  try {
+    const healthBody = await health.json();
+    if (healthBody.status !== "ok") failures.push("health endpoint did not report ok");
+  } catch {
+    failures.push("health endpoint did not return JSON");
+  }
+  const ready = await request("ready");
+  try {
+    const readyBody = await ready.json();
+    if (readyBody.status !== "ready") failures.push("ready endpoint did not report ready");
+  } catch {
+    failures.push("ready endpoint did not return JSON");
+  }
+
+  const apiProbeUrl = new URL("/api/v1/share-uploads", appBase.origin);
+  const apiProbe = await fetch(apiProbeUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{}",
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  checked.push(`${apiProbe.status} ${apiProbeUrl.pathname} (expected validation response)`);
+  if (apiProbe.status !== 400) {
+    failures.push(`${apiProbeUrl.pathname} returned ${apiProbe.status}; expected backend validation status 400`);
+  } else {
+    try {
+      const apiProbeBody = await apiProbe.json();
+      if (apiProbeBody?.error?.code !== "invalid_request") {
+        failures.push("sharing API validation probe returned an unexpected error code");
+      }
+    } catch {
+      failures.push("sharing API validation probe did not return JSON");
+    }
+  }
+
   const assetPaths = [...html.matchAll(/(?:src|href)="([^"]*\/assets\/[^"]+)"/g)].map((match) => match[1]);
   if (assetPaths.length === 0) failures.push("no hashed Vite assets were found in the app shell");
   const assetBodies = [];
