@@ -246,8 +246,9 @@ export const relationshipLabelText = (
     }));
   }
   if (relationship.divorceDate) {
-    const date = formatDisplayDate(relationship.divorceDate, language);
-    parts.push(language === "id" ? `Bercerai ${date}` : `Divorced ${date}`);
+    parts.push(createTranslator(language)("divorcedOn", {
+      date: formatDisplayDate(relationship.divorceDate, language)
+    }));
   }
   return parts.length ? parts.join(" · ") : undefined;
 };

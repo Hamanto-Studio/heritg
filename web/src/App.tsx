@@ -1,5 +1,7 @@
 import {
   CircleHelp,
+  Eye,
+  EyeOff,
   FolderOpen,
   Hand,
   Maximize2,
@@ -45,6 +47,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>();
   const [generationOpen, setGenerationOpen] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [generationLimitsByTree, setGenerationLimitsByTree] = useState<Record<string, GenerationLimits>>({});
   const [editingPerson, setEditingPerson] = useState<Person | "new">();
   const [relativeTarget, setRelativeTarget] = useState<Person>();
@@ -77,8 +80,8 @@ export function App() {
     () => availableGenerationLevels(people, relationships, selectedPerson?.id),
     [people, relationships, selectedPerson?.id]
   );
-  const showTreeOnboarding = !sidebarOpen && (!activeTree || !people.length);
-  const showSettingsOnboarding = Boolean(activeTree && !people.length && !rightPanel);
+  const showTreeOnboarding = controlsVisible && !sidebarOpen && (!activeTree || !people.length);
+  const showSettingsOnboarding = Boolean(controlsVisible && activeTree && !people.length && !rightPanel);
 
   useEffect(() => {
     document.documentElement.lang = data?.language === "id" ? "id" : "en";
@@ -192,7 +195,7 @@ export function App() {
       />
 
       <main className="workspace">
-        <button
+        {controlsVisible ? <button
           aria-controls="tree-navigation"
           aria-describedby={showTreeOnboarding ? "tree-menu-onboarding" : undefined}
           aria-expanded={sidebarOpen}
@@ -202,7 +205,7 @@ export function App() {
           type="button"
         >
           <Menu aria-hidden="true" size={19} />
-        </button>
+        </button> : null}
 
         {showTreeOnboarding ? (
           <div className="tree-pane-hint" id="tree-menu-onboarding" role="note">
@@ -238,6 +241,7 @@ export function App() {
               ref={canvasRef}
               relationships={relationships}
               selectedPersonId={selectedPerson?.id}
+              actionsVisible={controlsVisible}
               t={t}
               treeId={activeTree.id}
               treeTitle={activeTree.title}
@@ -248,12 +252,11 @@ export function App() {
                 <h2>{activeTree.title}</h2>
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
-              <div className="workspace-tools">
+              {controlsVisible ? <div className="workspace-tools">
                 {__SHARING_ENABLED__ ? (
                   <button
                     aria-label={t("shareTree")}
                     className="button secondary workspace-share-button"
-                    disabled={!people.length}
                     onClick={() => {
                       setGenerationOpen(false);
                       setRightPanel("share");
@@ -264,17 +267,6 @@ export function App() {
                     <span>{t("share")}</span>
                   </button>
                 ) : null}
-                <button
-                  aria-label={t("allPeople")}
-                  className="icon-button"
-                  onClick={() => {
-                    setGenerationOpen(false);
-                    setRightPanel("people");
-                  }}
-                  type="button"
-                >
-                  <UsersRound aria-hidden="true" size={19} />
-                </button>
                 <button
                   aria-describedby={showSettingsOnboarding ? "settings-menu-onboarding" : undefined}
                   aria-label={t("settings")}
@@ -287,10 +279,21 @@ export function App() {
                 >
                   <Settings2 aria-hidden="true" size={19} />
                 </button>
-              </div>
+              </div> : null}
             </header>
 
-            <div className="canvas-controls" aria-label={t("canvasControls")} role="toolbar">
+            {controlsVisible ? <div className="canvas-controls" aria-label={t("canvasControls")} role="toolbar">
+              <button
+                aria-label={t("allPeople")}
+                className="icon-button"
+                onClick={() => {
+                  setGenerationOpen(false);
+                  setRightPanel("people");
+                }}
+                type="button"
+              >
+                <UsersRound aria-hidden="true" size={19} />
+              </button>
               <div className="tree-menu-wrap">
                 <button
                   aria-expanded={generationOpen && Boolean(selectedPerson)}
@@ -351,7 +354,7 @@ export function App() {
               >
                 <Maximize2 aria-hidden="true" size={18} />
               </button>
-            </div>
+            </div> : null}
 
             {showSettingsOnboarding ? (
               <div className="tree-pane-hint settings-pane-hint" id="settings-menu-onboarding" role="note">
@@ -363,7 +366,7 @@ export function App() {
               </div>
             ) : null}
 
-            <div className="canvas-utilities" aria-label={t("helpPrivacyHint")} role="toolbar">
+            {controlsVisible ? <div className="canvas-utilities" aria-label={t("helpPrivacyHint")} role="toolbar">
               <button aria-label={`${t("privacyProtection")}: ${t("protected")}`} className="privacy-button" onClick={() => setRightPanel("privacy")} type="button">
                 <ShieldCheck aria-hidden="true" size={18} />
                 <span>{t("protected")}</span>
@@ -371,7 +374,23 @@ export function App() {
               <button aria-label={t("help")} className="icon-button" onClick={() => setRightPanel("help")} type="button">
                 <CircleHelp aria-hidden="true" size={18} />
               </button>
-            </div>
+            </div> : null}
+
+            <button
+              aria-label={controlsVisible ? t("hideCanvasControls") : t("showCanvasControls")}
+              aria-pressed={!controlsVisible}
+              className="icon-button canvas-visibility-toggle"
+              onClick={() => {
+                setControlsVisible((visible) => {
+                  if (visible) dismissCanvasPanels();
+                  return !visible;
+                });
+              }}
+              title={controlsVisible ? t("hideCanvasControls") : t("showCanvasControls")}
+              type="button"
+            >
+              {controlsVisible ? <Eye aria-hidden="true" size={18} /> : <EyeOff aria-hidden="true" size={18} />}
+            </button>
 
             {showSettingsOnboarding ? (
               <div className="canvas-controls-hint onboarding-hint" role="note">
@@ -443,22 +462,20 @@ export function App() {
         <SettingsDialog
           actions={actions}
           data={data}
-          exportPng={() => canvasRef.current?.exportPng() ?? Promise.reject(new Error("Canvas is not ready."))}
-          exportSvg={() => canvasRef.current?.exportSvg() ?? Promise.reject(new Error("Canvas is not ready."))}
           onClose={() => setRightPanel(undefined)}
-          onError={setOperationError}
-          onExported={() => setToast(t("exported"))}
           t={t}
-          tree={activeTree}
         />
       ) : null}
 
       {activeTree && rightPanel === "share" ? (
         <SharePanel
           data={data}
+          exportPng={() => canvasRef.current?.exportPng() ?? Promise.reject(new Error("Canvas is not ready."))}
+          exportSvg={() => canvasRef.current?.exportSvg() ?? Promise.reject(new Error("Canvas is not ready."))}
           onClose={() => setRightPanel(undefined)}
           onCopied={() => setToast(t("shareLinkCopied"))}
           onError={setOperationError}
+          onExported={() => setToast(t("exported"))}
           peopleCount={people.length}
           t={t}
           tree={activeTree}

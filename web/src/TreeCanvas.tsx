@@ -66,6 +66,7 @@ interface TreeCanvasProps {
   onViewportChange: (viewport: ViewportState) => void;
   emptyContent?: ReactNode;
   readOnly?: boolean;
+  actionsVisible?: boolean;
 }
 
 type CanvasViewport = Pick<AppState, "scrollX" | "scrollY" | "zoom">;
@@ -87,6 +88,7 @@ interface CanvasActionsProps {
   onTogglePerson: (personId: string) => void;
   onWheelNavigation: (event: WheelEvent) => void;
   emptyContent?: ReactNode;
+  actionsVisible: boolean;
 }
 
 const personIdFromHit = (pointerDownState: PointerDownState) => {
@@ -126,7 +128,8 @@ function CanvasActions({
   onEditPerson,
   onTogglePerson,
   onWheelNavigation,
-  emptyContent
+  emptyContent,
+  actionsVisible
 }: CanvasActionsProps) {
   const actionsRef = useRef<HTMLDivElement>(null);
   const sceneLayerRef = useRef<HTMLDivElement>(null);
@@ -229,7 +232,7 @@ function CanvasActions({
       <div className="canvas-actions-scene" ref={sceneLayerRef}>
         {people.map((person) => {
           const selected = person.id === selectedPersonId;
-          const showActions = people.length <= 24 || selected;
+          const showActions = actionsVisible && (people.length <= 24 || selected);
           const side = controlsByPerson.get(person.id)?.side ?? (person.x <= 0 ? "left" : "right");
           const anchorX = person.x + (side === "left" ? -1 : 1) *
             (LAYOUT_METRICS.avatarRadius + 12);
@@ -311,7 +314,8 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   onCanvasInteract,
   onViewportChange,
   emptyContent,
-  readOnly = false
+  readOnly = false,
+  actionsVisible = true
 }, ref) {
   const [api, setApi] = useState<ExcalidrawImperativeAPI>();
   const canvasHost = useRef<HTMLDivElement>(null);
@@ -632,6 +636,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
           selectedPersonId={selectedPersonId}
           t={t}
           emptyContent={emptyContent}
+          actionsVisible={actionsVisible}
         />
       )}
     </div>

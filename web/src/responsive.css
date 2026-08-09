@@ -42,6 +42,11 @@
     right: max(12px, env(safe-area-inset-right, 0px));
   }
 
+  .canvas-visibility-toggle {
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+  }
+
   .canvas-controls-hint {
     bottom: 208px;
     right: max(56px, calc(env(safe-area-inset-right, 0px) + 46px));
@@ -49,6 +54,9 @@
 }
 
 @media (max-width: 620px) {
+  .relationship-date-fields { grid-template-columns: 1fr; }
+  .relationship-date-fields > :only-child { grid-column: auto; }
+  .photo-crop-viewport { border-radius: 15px; }
   .shared-header { align-items: flex-start; }
   .shared-title { max-width: none; }
   .shared-header-actions { flex: 0 0 auto; }

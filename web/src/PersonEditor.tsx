@@ -2,8 +2,8 @@ import { ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-reac
 import { useState } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
-import { processImage } from "./images";
 import { formatDisplayDate, type Translator } from "./i18n";
+import { PhotoCropDialog } from "./PhotoCropDialog";
 import { RelationshipDialog } from "./RelationshipDialog";
 import { roleForRelationship } from "./relationshipRoles";
 import type { AppActions, RelationshipDraftInput } from "./store";
@@ -63,8 +63,9 @@ export function PersonEditor({
   const [city, setCity] = useState(person?.city ?? "");
   const [notes, setNotes] = useState(person?.notes ?? "");
   const [photoDataUrl, setPhotoDataUrl] = useState(person?.photoDataUrl);
+  const [photoToCrop, setPhotoToCrop] = useState<File>();
   const [error, setError] = useState<string>();
-  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const processingPhoto = Boolean(photoToCrop);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [openRelationshipDialog, setOpenRelationshipDialog] = useState<OpenRelationshipDialog>();
@@ -105,7 +106,7 @@ export function PersonEditor({
   );
   const dirty = profileDirty || relationshipsDirty;
   const nestedDialogOpen = Boolean(
-    openRelationshipDialog || confirmingDelete || confirmingDiscard
+    openRelationshipDialog || confirmingDelete || confirmingDiscard || photoToCrop
   );
 
   const personChanges = {
@@ -154,16 +155,9 @@ export function PersonEditor({
     else onClose();
   };
 
-  const readPhoto = async (file: File) => {
-    setProcessingPhoto(true);
+  const readPhoto = (file: File) => {
     setError(undefined);
-    try {
-      setPhotoDataUrl(await processImage(file));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("errorTitle"));
-    } finally {
-      setProcessingPhoto(false);
-    }
+    setPhotoToCrop(file);
   };
 
   const removeRelationship = (relationshipId: string) => {
@@ -190,7 +184,8 @@ export function PersonEditor({
   ) => {
     const originalRole = roleForRelationship(relationship, person!.id, relative);
     const unchanged = draft.role === originalRole &&
-      (draft.marriageDate ?? "") === (relationship.marriageDate ?? "");
+      (draft.marriageDate ?? "") === (relationship.marriageDate ?? "") &&
+      (draft.divorceDate ?? "") === (relationship.divorceDate ?? "");
     setRelationshipEdits((current) => {
       const next = { ...current };
       if (unchanged) delete next[relationship.id];
@@ -249,7 +244,7 @@ export function PersonEditor({
                   onChange={(event) => {
                     const file = event.target.files?.[0];
                     event.target.value = "";
-                    if (file) void readPhoto(file);
+                    if (file) readPhoto(file);
                   }}
                   type="file"
                 />
@@ -369,6 +364,7 @@ export function PersonEditor({
                   const removed = removedRelationshipIds.has(relationship.id);
                   const role = draft?.role ?? roleForRelationship(relationship, person.id, relative);
                   const date = draft ? draft.marriageDate : relationship.marriageDate;
+                  const divorceDate = draft ? draft.divorceDate : relationship.divorceDate;
                   return (
                     <div className={`relationship-row ${removed ? "pending-removal" : ""}`} key={relationship.id}>
                       <PersonAvatar person={relative} />
@@ -376,6 +372,7 @@ export function PersonEditor({
                         <strong>{relative.displayName}</strong>
                         <span>{t(role)}</span>
                         {date ? <span>{t("marriedOn", { date: formatDisplayDate(date, language) })}</span> : null}
+                        {divorceDate ? <span>{t("divorcedOn", { date: formatDisplayDate(divorceDate, language) })}</span> : null}
                         {removed ? <em className="relationship-status removal">{t("pendingRemoval")}</em> : null}
                         {!removed && draft ? <em className="relationship-status">{t("pendingChange")}</em> : null}
                       </div>
@@ -417,6 +414,7 @@ export function PersonEditor({
                         <strong>{relative.displayName}</strong>
                         <span>{t(draft.role)}</span>
                         {draft.marriageDate ? <span>{t("marriedOn", { date: formatDisplayDate(draft.marriageDate, language) })}</span> : null}
+                        {draft.divorceDate ? <span>{t("divorcedOn", { date: formatDisplayDate(draft.divorceDate, language) })}</span> : null}
                         <em className="relationship-status">{t("pendingLink")}</em>
                       </div>
                       <button
@@ -509,6 +507,22 @@ export function PersonEditor({
           }}
           t={t}
           title={t("removePersonQuestion", { name: person.displayName })}
+        />
+      ) : null}
+
+      {photoToCrop ? (
+        <PhotoCropDialog
+          file={photoToCrop}
+          onCancel={() => setPhotoToCrop(undefined)}
+          onConfirm={(photo) => {
+            setPhotoDataUrl(photo);
+            setPhotoToCrop(undefined);
+          }}
+          onError={(message) => {
+            setError(message);
+            setPhotoToCrop(undefined);
+          }}
+          t={t}
         />
       ) : null}
     </>

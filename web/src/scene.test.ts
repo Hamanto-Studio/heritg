@@ -41,7 +41,11 @@ describe("canvas avatar projection", () => {
     );
 
     expect(photo).toBeDefined();
-    expect(decodeURIComponent(photo!.dataURL.split(",", 2)[1])).toContain(
+    const encoded = photo!.dataURL.split(",", 2)[1];
+    const decoded = new TextDecoder().decode(
+      Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0))
+    );
+    expect(decoded).toContain(
       '<clipPath id="avatar-clip"><circle'
     );
   });
