@@ -278,6 +278,124 @@ describe("deterministic family layout", () => {
     expect(leftIndices[1] - leftIndices[0]).toBe(1);
     expect(rightIndices[1] - rightIndices[0]).toBe(1);
     expect(leftIndices[1] < rightIndices[0] || rightIndices[1] < leftIndices[0]).toBe(true);
+    const positioned = new Map(value.people.map((person) => [person.id, person]));
+    const parentCenter = (firstId: string, secondId: string) =>
+      ((positioned.get(firstId)?.x ?? 0) + (positioned.get(secondId)?.x ?? 0)) / 2;
+    expect(positioned.get("left-child")?.x).toBe(parentCenter("left-father", "left-mother"));
+    expect(positioned.get("right-child")?.x).toBe(parentCenter("right-father", "right-mother"));
+    expect(createConnectionPlan(value).crossings).toEqual([]);
+  });
+
+  it("adds extra horizontal space between children from different families", () => {
+    const familyPeople = [
+      person("left-father", "male"), person("left-mother", "female"),
+      person("right-father", "male"), person("right-mother", "female"),
+      person("left-child-a"), person("left-child-b"),
+      person("right-child-a"), person("right-child-b")
+    ];
+    const familyRelationships = [
+      parent("left-father", "left-child-a"),
+      parent("left-mother", "left-child-a"),
+      parent("left-father", "left-child-b"),
+      parent("left-mother", "left-child-b"),
+      parent("right-father", "right-child-a"),
+      parent("right-mother", "right-child-a"),
+      parent("right-father", "right-child-b"),
+      parent("right-mother", "right-child-b")
+    ];
+
+    const row = createTreeLayout(familyPeople, familyRelationships).people
+      .filter(({ generation }) => generation === 1)
+      .sort((left, right) => left.x - right.x);
+    const gaps = row.slice(1).map((person, index) => person.x - row[index].x);
+
+    expect(gaps).toEqual([
+      LAYOUT_METRICS.horizontalSpacing,
+      LAYOUT_METRICS.horizontalSpacing + LAYOUT_METRICS.familyGap,
+      LAYOUT_METRICS.horizontalSpacing
+    ]);
+  });
+
+  it("adds extra horizontal space between a married child and their siblings", () => {
+    const familyPeople = [
+      person("father", "male"), person("mother", "female"),
+      person("married-child"), person("spouse"), person("single-child")
+    ];
+    const familyRelationships = [
+      parent("father", "married-child"),
+      parent("mother", "married-child"),
+      parent("father", "single-child"),
+      parent("mother", "single-child"),
+      partner("married-child", "spouse")
+    ];
+
+    const row = createTreeLayout(familyPeople, familyRelationships).people
+      .filter(({ generation }) => generation === 1)
+      .sort((left, right) => left.x - right.x);
+    const gaps = row.slice(1).map((person, index) => person.x - row[index].x);
+
+    expect(gaps.sort((left, right) => left - right)).toEqual([
+      LAYOUT_METRICS.horizontalSpacing,
+      LAYOUT_METRICS.horizontalSpacing + LAYOUT_METRICS.familyGap
+    ]);
+  });
+
+  it("expands descendant families from their parent anchors without recentering the row", () => {
+    const branchPeople = [
+      person("left-parent-a"), person("left-parent-b"),
+      person("right-parent-a"), person("right-parent-b"),
+      person("left-child"), person("left-partner-a"), person("left-partner-b"),
+      person("right-child"), person("right-spouse")
+    ];
+    const branchRelationships = [
+      parent("left-parent-a", "left-child"),
+      parent("left-parent-b", "left-child"),
+      partner("left-child", "left-partner-a", "left-partnership-a"),
+      partner("left-child", "left-partner-b", "left-partnership-b"),
+      parent("right-parent-a", "right-child"),
+      parent("right-parent-b", "right-child"),
+      partner("right-child", "right-spouse", "right-partnership")
+    ];
+    const coordinates = (values: typeof branchPeople, edges: typeof branchRelationships) =>
+      Object.fromEntries(createTreeLayout(values, edges).people.map(({ id, x }) => [id, x]));
+
+    const first = coordinates(branchPeople, branchRelationships);
+    const second = coordinates([...branchPeople].reverse(), [...branchRelationships].reverse());
+
+    expect(first).toMatchObject({
+      "left-parent-a": -490,
+      "left-parent-b": -230,
+      "right-parent-a": 490,
+      "right-parent-b": 750,
+      "left-child": -360,
+      "left-partner-a": -100,
+      "left-partner-b": 160,
+      "right-child": 620,
+      "right-spouse": 880
+    });
+    expect(second).toEqual(first);
+  });
+
+  it("orders couples on the same side as their own parents", () => {
+    const branchPeople = [
+      person("left-parent-a"), person("left-parent-b"),
+      person("right-parent-a"), person("right-parent-b"),
+      person("z-left-child"), person("a-right-child")
+    ];
+    const branchRelationships = [
+      parent("left-parent-a", "z-left-child"),
+      parent("left-parent-b", "z-left-child"),
+      parent("right-parent-a", "a-right-child"),
+      parent("right-parent-b", "a-right-child"),
+      partner("z-left-child", "a-right-child", "child-partnership")
+    ];
+
+    const value = createTreeLayout(branchPeople, branchRelationships);
+    const positioned = new Map(value.people.map((person) => [person.id, person]));
+
+    expect(positioned.get("z-left-child")?.x).toBeLessThan(
+      positioned.get("a-right-child")?.x ?? Number.NEGATIVE_INFINITY
+    );
     expect(createConnectionPlan(value).crossings).toEqual([]);
   });
 

@@ -71,7 +71,9 @@ interface TreeCanvasProps {
 type CanvasViewport = Pick<AppState, "scrollX" | "scrollY" | "zoom">;
 type CanvasTransform = CanvasViewport
   & Pick<AppState, "offsetLeft" | "offsetTop">
-  & { hostLeft: number; hostTop: number; hostWidth: number; hostHeight: number };
+  & { hostLeft: number; hostTop: number };
+
+type CanvasHostBounds = Pick<DOMRect, "left" | "top">;
 
 interface CanvasActionsProps {
   api?: ExcalidrawImperativeAPI;
@@ -83,6 +85,7 @@ interface CanvasActionsProps {
   onAddRelative: (personId: string) => void;
   onEditPerson: (personId: string) => void;
   onTogglePerson: (personId: string) => void;
+  onWheelNavigation: (event: WheelEvent) => void;
   emptyContent?: ReactNode;
 }
 
@@ -97,11 +100,10 @@ const zoomValue = (value: number) => value as NormalizedZoomValue;
 
 const readCanvasTransform = (
   api: ExcalidrawImperativeAPI,
-  host: HTMLDivElement,
+  bounds: CanvasHostBounds,
   viewport?: CanvasViewport
 ): CanvasTransform => {
   const appState = api.getAppState();
-  const bounds = host.getBoundingClientRect();
   return {
     scrollX: viewport?.scrollX ?? appState.scrollX,
     scrollY: viewport?.scrollY ?? appState.scrollY,
@@ -109,9 +111,7 @@ const readCanvasTransform = (
     offsetLeft: appState.offsetLeft,
     offsetTop: appState.offsetTop,
     hostLeft: bounds.left,
-    hostTop: bounds.top,
-    hostWidth: bounds.width,
-    hostHeight: bounds.height
+    hostTop: bounds.top
   };
 };
 
@@ -125,24 +125,79 @@ function CanvasActions({
   onAddRelative,
   onEditPerson,
   onTogglePerson,
+  onWheelNavigation,
   emptyContent
 }: CanvasActionsProps) {
-  const [transform, setTransform] = useState<CanvasTransform>();
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const sceneLayerRef = useRef<HTMLDivElement>(null);
+  const controlsByPerson = useMemo(
+    () => new Map(controls.map((control) => [control.personId, control])),
+    [controls]
+  );
+
+  useEffect(() => {
+    const actions = actionsRef.current;
+    if (!actions) return;
+    actions.addEventListener("wheel", onWheelNavigation, { passive: false });
+    return () => actions.removeEventListener("wheel", onWheelNavigation);
+  }, [onWheelNavigation]);
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!api || !host) return;
-    let resizeFrame: number | undefined;
-    const update = (viewport?: CanvasViewport) => {
-      setTransform(readCanvasTransform(api, host, viewport));
+    const sceneLayer = sceneLayerRef.current;
+    if (!api || !host || !sceneLayer) return;
+    let frame: number | undefined;
+    let bounds = host.getBoundingClientRect();
+    let pendingViewport: CanvasViewport | undefined;
+    let refreshBounds = false;
+    let navigationTimer: number | undefined;
+    let navigating = false;
+    const update = () => {
+      frame = undefined;
+      if (navigating) return;
+      if (refreshBounds) {
+        bounds = host.getBoundingClientRect();
+        refreshBounds = false;
+      }
+      const transform = readCanvasTransform(api, bounds, pendingViewport);
+      pendingViewport = undefined;
+      const origin = sceneCoordsToViewportCoords({ sceneX: 0, sceneY: 0 }, transform);
+      const zoom = transform.zoom.value;
+      const actionScale = Math.min(1, Math.max(0.34, zoom));
+      sceneLayer.style.transform = `translate3d(${origin.x - transform.hostLeft}px, ${origin.y - transform.hostTop}px, 0) scale(${zoom})`;
+      sceneLayer.style.visibility = "visible";
+      sceneLayer.style.setProperty("--canvas-hit-scale", String(Math.max(1, 44 / (LAYOUT_METRICS.avatarDiameter * zoom))));
+      sceneLayer.style.setProperty("--canvas-action-compensation", String(actionScale / zoom));
     };
-    const scheduleResizeUpdate = () => {
-      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
-      resizeFrame = requestAnimationFrame(() => update());
+    const scheduleUpdate = (viewport?: CanvasViewport, resized = false) => {
+      if (viewport) pendingViewport = viewport;
+      refreshBounds ||= resized;
+      if (navigating) return;
+      if (frame === undefined) frame = requestAnimationFrame(update);
     };
     const unsubscribe = api.onScrollChange((scrollX, scrollY, zoom) => {
-      update({ scrollX, scrollY, zoom });
+      pendingViewport = { scrollX, scrollY, zoom };
+      if (sceneLayer.querySelector(":focus-visible")) {
+        navigating = false;
+        if (navigationTimer !== undefined) window.clearTimeout(navigationTimer);
+        scheduleUpdate(pendingViewport);
+        return;
+      }
+      navigating = true;
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+        frame = undefined;
+      }
+      if (sceneLayer.style.visibility !== "hidden") {
+        sceneLayer.style.visibility = "hidden";
+      }
+      if (navigationTimer !== undefined) window.clearTimeout(navigationTimer);
+      navigationTimer = window.setTimeout(() => {
+        navigating = false;
+        scheduleUpdate(pendingViewport);
+      }, 80);
     });
+    const scheduleResizeUpdate = () => scheduleUpdate(undefined, true);
     const observer = new ResizeObserver(scheduleResizeUpdate);
     observer.observe(host);
     window.addEventListener("resize", scheduleResizeUpdate);
@@ -153,30 +208,10 @@ function CanvasActions({
       observer.disconnect();
       window.removeEventListener("resize", scheduleResizeUpdate);
       window.clearTimeout(settledUpdate);
-      if (resizeFrame !== undefined) cancelAnimationFrame(resizeFrame);
+      if (navigationTimer !== undefined) window.clearTimeout(navigationTimer);
+      if (frame !== undefined) cancelAnimationFrame(frame);
     };
   }, [api, hostRef]);
-
-  if (!transform) return null;
-  const hideUnselectedActions = Boolean(selectedPersonId) &&
-    people.length > 24 && transform.zoom.value < 0.16;
-  const hitSize = Math.max(44, LAYOUT_METRICS.avatarDiameter * transform.zoom.value);
-  const actionScale = Math.min(1, Math.max(0.34, transform.zoom.value));
-  const controlsByPerson = new Map(controls.map((control) => [control.personId, control]));
-  const screenPeople = people.map((person) => {
-    const center = sceneCoordsToViewportCoords({
-      sceneX: person.x,
-      sceneY: person.y
-    }, transform);
-    const centerX = center.x - transform.hostLeft;
-    const centerY = center.y - transform.hostTop;
-    return {
-      person,
-      centerX,
-      centerY
-    };
-  });
-  const sceneOrigin = sceneCoordsToViewportCoords({ sceneX: 0, sceneY: 0 }, transform);
 
   return (
     <div
@@ -184,82 +219,77 @@ function CanvasActions({
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
+      ref={actionsRef}
     >
       {emptyContent ? (
-        <div
-          className="canvas-empty-anchor"
-          style={{
-            left: sceneOrigin.x - transform.hostLeft + transform.hostWidth / 2,
-            top: sceneOrigin.y - transform.hostTop + transform.hostHeight / 2
-          }}
-        >
+        <div className="canvas-empty-anchor">
           {emptyContent}
         </div>
       ) : null}
-      {screenPeople.map(({ person, centerX, centerY }) => {
-        const selected = person.id === selectedPersonId;
-        const showActions = !hideUnselectedActions || selected;
-        const side = controlsByPerson.get(person.id)?.side ?? (person.x <= 0 ? "left" : "right");
-        const anchor = sceneCoordsToViewportCoords({
-          sceneX: person.x + (side === "left" ? -1 : 1) *
-            (LAYOUT_METRICS.avatarRadius + 12),
-          sceneY: person.y
-        }, transform);
-        const addLabel = t("addRelativeTo", { name: person.displayName });
-        const editLabel = t("editPerson", { name: person.displayName });
-        return (
-          <Fragment key={person.id}>
-            <button
-              aria-label={person.displayName}
-              aria-pressed={selected}
-              className="canvas-person-hit"
-              data-canvas-person={person.id}
-              onClick={() => onTogglePerson(person.id)}
-              style={{
-                height: hitSize,
-                left: centerX - hitSize / 2,
-                top: centerY - hitSize / 2,
-                width: hitSize
-              }}
-              type="button"
-            />
-            {showActions ? <div
-              className="canvas-action-group"
-              data-side={side}
-              style={{
-                "--canvas-action-scale": actionScale,
-                left: anchor.x - transform.hostLeft,
-                top: anchor.y - transform.hostTop
-              } as CSSProperties}
-            >
+      <div className="canvas-actions-scene" ref={sceneLayerRef}>
+        {people.map((person) => {
+          const selected = person.id === selectedPersonId;
+          const showActions = people.length <= 24 || selected;
+          const side = controlsByPerson.get(person.id)?.side ?? (person.x <= 0 ? "left" : "right");
+          const anchorX = person.x + (side === "left" ? -1 : 1) *
+            (LAYOUT_METRICS.avatarRadius + 12);
+          const addLabel = showActions
+            ? t("addRelativeTo", { name: person.displayName })
+            : "";
+          const editLabel = selected ? t("editPerson", { name: person.displayName }) : "";
+          return (
+            <Fragment key={person.id}>
               <button
-                aria-label={addLabel}
-                className="canvas-action-button add"
-                data-canvas-action="add"
-                data-person-id={person.id}
-                onClick={() => onAddRelative(person.id)}
-                title={addLabel}
+                aria-label={person.displayName}
+                aria-pressed={selected}
+                className="canvas-person-hit"
+                data-canvas-person={person.id}
+                onClick={() => onTogglePerson(person.id)}
+                style={{
+                  height: LAYOUT_METRICS.avatarDiameter,
+                  left: person.x,
+                  top: person.y,
+                  width: LAYOUT_METRICS.avatarDiameter
+                }}
                 type="button"
+              />
+              {showActions ? <div
+                className="canvas-action-group"
+                data-side={side}
+                style={{
+                  left: anchorX,
+                  top: person.y
+                } as CSSProperties}
               >
-                <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
-              </button>
-              {selected ? (
                 <button
-                  aria-label={editLabel}
-                  className="canvas-action-button edit"
-                  data-canvas-action="edit"
+                  aria-label={addLabel}
+                  className="canvas-action-button add"
+                  data-canvas-action="add"
                   data-person-id={person.id}
-                  onClick={() => onEditPerson(person.id)}
-                  title={editLabel}
+                  onClick={() => onAddRelative(person.id)}
+                  title={addLabel}
                   type="button"
                 >
-                  <Pencil aria-hidden="true" size={14} strokeWidth={2.4} />
+                  <Plus aria-hidden="true" size={16} strokeWidth={2.6} />
                 </button>
-              ) : null}
-            </div> : null}
-          </Fragment>
-        );
-      })}
+                {selected ? (
+                  <button
+                    aria-label={editLabel}
+                    className="canvas-action-button edit"
+                    data-canvas-action="edit"
+                    data-person-id={person.id}
+                    onClick={() => onEditPerson(person.id)}
+                    title={editLabel}
+                    type="button"
+                  >
+                    <Pencil aria-hidden="true" size={14} strokeWidth={2.4} />
+                  </button>
+                ) : null}
+              </div> : null}
+            </Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -298,8 +328,10 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     [generationLimits, language, people, relationships, selectedPersonId]
   );
   const connectionPlan = useMemo(
-    () => createConnectionPlan(layout, language),
-    [language, layout]
+    () => createConnectionPlan(
+      layout, language, readOnly ? undefined : selectedPersonId, !readOnly
+    ),
+    [language, layout, readOnly, selectedPersonId]
   );
   const scene = useMemo(
     () => projectLayoutToScene(layout, selectedPersonId, language, connectionPlan),
@@ -410,6 +442,42 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
   const zoomIn = () => zoomBy(0.1);
   const zoomOut = () => zoomBy(-0.1);
 
+  const handleOverlayWheel = (event: WheelEvent) => {
+    if (!api) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const appState = api.getAppState();
+    const currentZoom = appState.zoom.value;
+    if (event.ctrlKey || event.metaKey) {
+      const nextZoom = Math.min(
+        1.8,
+        Math.max(0.08, currentZoom * Math.pow(2, -event.deltaY / 100))
+      );
+      const pointerX = event.clientX - appState.offsetLeft;
+      const pointerY = event.clientY - appState.offsetTop;
+      api.updateScene({
+        appState: {
+          scrollX: appState.scrollX + pointerX * (1 / nextZoom - 1 / currentZoom),
+          scrollY: appState.scrollY + pointerY * (1 / nextZoom - 1 / currentZoom),
+          zoom: { value: zoomValue(nextZoom) }
+        },
+        captureUpdate: CaptureUpdateAction.EVENTUALLY
+      });
+      return;
+    }
+    const horizontalDelta = event.shiftKey && event.deltaX === 0
+      ? event.deltaY
+      : event.deltaX;
+    const verticalDelta = event.shiftKey && event.deltaX === 0 ? 0 : event.deltaY;
+    api.updateScene({
+      appState: {
+        scrollX: appState.scrollX - horizontalDelta / currentZoom,
+        scrollY: appState.scrollY - verticalDelta / currentZoom
+      },
+      captureUpdate: CaptureUpdateAction.EVENTUALLY
+    });
+  };
+
   const exportPng = async () => {
     downloadBlob(
       await chartSvgToPng(buildChartSvg(
@@ -511,7 +579,6 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
       className="canvas-host"
       aria-label={treeTitle}
       onPointerDownCapture={onCanvasInteract}
-      onWheelCapture={onCanvasInteract}
       ref={canvasHost}
       role="region"
     >
@@ -560,6 +627,7 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
           onAddRelative={onAddRelative}
           onEditPerson={onEditPerson}
           onTogglePerson={togglePerson}
+          onWheelNavigation={handleOverlayWheel}
           people={layout.people}
           selectedPersonId={selectedPersonId}
           t={t}

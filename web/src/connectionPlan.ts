@@ -10,6 +10,7 @@ import {
   pointsEqual,
   relationshipLabelText,
   routeIsClear,
+  segmentIntersectsRect,
   segmentOrientation,
   segmentsForPoints,
   type ControlPlacement,
@@ -27,6 +28,8 @@ import {
 } from "./obstacleRouter";
 import { LAYOUT_METRICS } from "./layout";
 import type { AppData, FamilyRelationship, PositionedPerson, TreeLayout } from "./types";
+
+export const FAMILY_RAIL_SPACING = 32;
 
 export interface PlannedFamilyRoute {
   id: string;
@@ -110,17 +113,23 @@ const makeControls = (layout: TreeLayout, peopleById: ReadonlyMap<string, Positi
 
 const makeNodeObstacles = (
   layout: TreeLayout,
-  controls: readonly ControlPlacement[]
+  controls: readonly ControlPlacement[],
+  selectedPersonId?: string,
+  controlsVisible = true
 ): RouteObstacle[] => {
   const controlsById = new Map(controls.map((control) => [control.personId, control]));
   return [...layout.people].sort((left, right) => compareText(left.id, right.id)).flatMap((person) => {
     const control = controlsById.get(person.id)!;
-    return [
+    const nodeObstacles: RouteObstacle[] = [
       { kind: "avatar", ownerId: person.id, rect: avatarRect(person) },
-      { kind: "nodeLabel", ownerId: person.id, rect: nodeLabelRect(person) },
+      { kind: "nodeLabel", ownerId: person.id, rect: nodeLabelRect(person) }
+    ];
+    return !controlsVisible || (layout.people.length > 24 && person.id !== selectedPersonId)
+      ? nodeObstacles : [
+      ...nodeObstacles,
       { kind: "addControl", ownerId: person.id, rect: controlRect(control.addCenter) },
       { kind: "editControl", ownerId: person.id, rect: controlRect(control.editCenter) }
-    ] satisfies RouteObstacle[];
+    ];
   });
 };
 
@@ -142,11 +151,17 @@ const familySegments = (
   parentPorts: readonly RoutePoint[],
   children: readonly RoutePoint[],
   parentJoinY: number,
-  childRailY: number,
-  trunkX: number
+  childRailOffset: number,
+  parentTrunkX: number,
+  continuationTrunkX: number
 ) => {
-  const parentXs = [...parentPorts.map(({ x }) => x), trunkX];
-  const childXs = [...children.map(({ x }) => x), trunkX];
+  const parentXs = [...parentPorts.map(({ x }) => x), parentTrunkX];
+  const childRows = [...new Set(children.map(({ y }) => y))]
+    .sort((left, right) => left - right)
+    .map((childY) => ({
+      children: children.filter(({ y }) => y === childY),
+      railY: childY - LAYOUT_METRICS.avatarRadius - childRailOffset
+    }));
   return [
     ...parentPorts.map((port, index) => ({
       start: { x: port.x, y: parents[index].y },
@@ -156,15 +171,28 @@ const familySegments = (
       start: { x: Math.min(...parentXs), y: parentJoinY },
       end: { x: Math.max(...parentXs), y: parentJoinY }
     },
-    { start: { x: trunkX, y: parentJoinY }, end: { x: trunkX, y: childRailY } },
-    {
-      start: { x: Math.min(...childXs), y: childRailY },
-      end: { x: Math.max(...childXs), y: childRailY }
-    },
-    ...children.map((child) => ({
-      start: { x: child.x, y: childRailY },
-      end: { x: child.x, y: child.y - LAYOUT_METRICS.avatarRadius }
-    }))
+    { start: { x: parentTrunkX, y: parentJoinY }, end: { x: parentTrunkX, y: childRows[0].railY } },
+    ...(childRows.length > 1 ? [{
+      start: { x: continuationTrunkX, y: childRows[0].railY },
+      end: { x: continuationTrunkX, y: childRows.at(-1)!.railY }
+    }] : []),
+    ...childRows.flatMap(({ children: rowChildren, railY }, rowIndex) => {
+      const childXs = [
+        ...rowChildren.map(({ x }) => x),
+        rowIndex === 0 ? parentTrunkX : continuationTrunkX,
+        ...(rowIndex === 0 && childRows.length > 1 ? [continuationTrunkX] : [])
+      ];
+      return [
+        {
+          start: { x: Math.min(...childXs), y: railY },
+          end: { x: Math.max(...childXs), y: railY }
+        },
+        ...rowChildren.map((child) => ({
+          start: { x: child.x, y: railY },
+          end: { x: child.x, y: child.y - LAYOUT_METRICS.avatarRadius }
+        }))
+      ];
+    })
   ].filter((segment) => segmentOrientation(segment));
 };
 
@@ -212,7 +240,7 @@ const buildFamilies = (
       parentPorts: parents.map((parent) => ({ x: parent.x, y: parentPortY(parent) })),
       children: children.map(({ x, y }) => ({ x, y })),
       interval: [Math.min(...coordinates), Math.max(...coordinates)],
-      band: `${Math.round(average(parents.map(({ y }) => y)))}:${Math.round(average(children.map(({ y }) => y)))}`,
+      band: `${Math.round(average(parents.map(({ y }) => y)))}`,
       segments: [],
       baseSegments: [],
       junctions: [],
@@ -242,7 +270,8 @@ const buildFamilies = (
     values.sort((left, right) => compareText(left.id, right.id));
     values.forEach((family, index) => {
       const parentIndex = family.parentIds.indexOf(parentId);
-      family.parentPorts[parentIndex].x += (index - (values.length - 1) / 2) * 12;
+      family.parentPorts[parentIndex].x +=
+        (index - (values.length - 1) / 2) * FAMILY_RAIL_SPACING;
     });
   }
   for (const family of families) {
@@ -259,10 +288,13 @@ const buildFamilies = (
     const childTopY = Math.min(...family.children.map(({ y }) => y - LAYOUT_METRICS.avatarRadius));
     const availableHeight = Math.max(childTopY - parentStartY - 32, 0);
     const spacing = family.laneCount > 1
-      ? Math.max(2, Math.min(12, availableHeight / ((family.laneCount - 1) * 2)))
+      ? Math.max(2, Math.min(
+        FAMILY_RAIL_SPACING,
+        availableHeight / ((family.laneCount - 1) * 2)
+      ))
       : 0;
     const parentJoinY = parentStartY + 8 + family.laneIndex * spacing;
-    const childRailY = childTopY - 8 - (family.laneCount - 1 - family.laneIndex) * spacing;
+    const childRailOffset = 8 + (family.laneCount - 1 - family.laneIndex) * spacing;
     const baseTrunkX = average(family.parentPorts.map(({ x }) => x));
     const nearestChildX = [...family.children].sort((left, right) =>
       Math.abs(left.x - baseTrunkX) - Math.abs(right.x - baseTrunkX) || left.x - right.x
@@ -273,13 +305,61 @@ const buildFamilies = (
       (family.children.length === 1 || Math.abs(nearestChildX - baseTrunkX) <= ROUTE_CLEARANCE + 4);
     const trunkX = aligns ? nearestChildX :
       baseTrunkX + (family.laneIndex - (family.laneCount - 1) / 2) * 8;
+    let continuationTrunkX = trunkX;
+    if (new Set(family.children.map(({ y }) => y)).size > 1) {
+      const childXs = [...new Set(family.children.map(({ x }) => x))].sort((left, right) => left - right);
+      const internalChannels = childXs.slice(0, -1).flatMap((left, index) => {
+        const right = childXs[index + 1];
+        return right - left > LAYOUT_METRICS.labelWidth + ROUTE_CLEARANCE * 2
+          ? [(left + right) / 2]
+          : [];
+      });
+      const outerClearance = LAYOUT_METRICS.labelWidth / 2 + ROUTE_CLEARANCE * 2;
+      const clearChannels = [
+        ...internalChannels,
+        childXs[0] - outerClearance,
+        childXs.at(-1)! + outerClearance
+      ];
+      if (clearChannels.length > 0) {
+        const deepestRailY = Math.max(...family.children.map(({ y }) =>
+          y - LAYOUT_METRICS.avatarRadius - childRailOffset
+        ));
+        const obstacleSafeChannels = clearChannels.filter((x) =>
+          nodeObstacles.every((obstacle) => !segmentIntersectsRect({
+              start: { x, y: parentJoinY },
+              end: { x, y: deepestRailY }
+            }, obstacle.rect)
+          )
+        );
+        continuationTrunkX = (obstacleSafeChannels.length > 0 ? obstacleSafeChannels : clearChannels)
+          .sort((left, right) =>
+          Math.abs(left - baseTrunkX) - Math.abs(right - baseTrunkX) || left - right
+          )[0];
+      }
+    }
     family.baseSegments = familySegments(
-      family.parentCenters, family.parentPorts, family.children, parentJoinY, childRailY, trunkX
+      family.parentCenters, family.parentPorts, family.children, parentJoinY, childRailOffset,
+      trunkX, continuationTrunkX
     );
     family.segments = family.baseSegments;
-    family.junctions = [{ x: trunkX, y: parentJoinY }, { x: trunkX, y: childRailY }];
+    family.junctions = [
+      { x: trunkX, y: parentJoinY },
+      ...[...new Set(family.children.map(({ y }) =>
+        y - LAYOUT_METRICS.avatarRadius - childRailOffset
+      ))].sort((left, right) => left - right).flatMap((y, index) => index === 0
+        ? [{ x: trunkX, y }, ...(continuationTrunkX !== trunkX ? [{ x: continuationTrunkX, y }] : [])]
+        : [{ x: continuationTrunkX, y }])
+    ];
   }
-  return families.sort((left, right) => compareText(left.id, right.id));
+  return families.sort((left, right) =>
+    average(left.parentCenters.map(({ y }) => y)) -
+      average(right.parentCenters.map(({ y }) => y)) ||
+    average(left.children.map(({ y }) => y)) -
+      average(right.children.map(({ y }) => y)) ||
+    left.interval[0] - right.interval[0] ||
+    left.interval[1] - right.interval[1] ||
+    compareText(left.id, right.id)
+  );
 };
 
 const segmentsTouch = (left: RouteSegment, right: RouteSegment) => {
@@ -331,7 +411,11 @@ const routeFamilies = (
     let didFail = false;
     for (const segment of splitAtAttachmentPoints(family.baseSegments)) {
       const route = preferredRoute(
-        segment.start, segment.end, obstacles, endpointIds, [...occupied, ...routed]
+        segment.start,
+        segment.end,
+        obstacles,
+        endpointIds,
+        [...occupied, ...routed]
       );
       if (!route) {
         didFail = true;
@@ -344,7 +428,13 @@ const routeFamilies = (
     } else {
       const relaxed: RouteSegment[] = [];
       for (const segment of splitAtAttachmentPoints(family.baseSegments)) {
-        const route = preferredRoute(segment.start, segment.end, obstacles, endpointIds, relaxed);
+        const route = preferredRoute(
+          segment.start,
+          segment.end,
+          obstacles,
+          endpointIds,
+          relaxed
+        );
         if (!route) {
           relaxed.length = 0;
           break;
@@ -395,11 +485,15 @@ const planBounds = (
 
 export function createConnectionPlan(
   layout: TreeLayout,
-  language: AppData["language"] = "en"
+  language: AppData["language"] = "en",
+  selectedPersonId?: string,
+  controlsVisible = true
 ): ConnectionPlan {
   const peopleById = new Map(layout.people.map((person) => [person.id, person]));
   const controls = makeControls(layout, peopleById);
-  const obstacles: RouteObstacle[] = makeNodeObstacles(layout, controls);
+  const obstacles: RouteObstacle[] = makeNodeObstacles(
+    layout, controls, selectedPersonId, controlsVisible
+  );
   const failures: string[] = [];
   const familyDrafts = buildFamilies(layout, peopleById, obstacles);
   const occupied = routeFamilies(familyDrafts, obstacles, failures);

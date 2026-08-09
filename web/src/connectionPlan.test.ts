@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import { buildChartSvg } from "./chartExport";
-import { createConnectionPlan, segmentsFormConnectedNetwork } from "./connectionPlan";
+import {
+  createConnectionPlan,
+  segmentsFormConnectedNetwork
+} from "./connectionPlan";
 import {
   collinearlyOverlaps,
   hasCollinearOverlap,
@@ -10,12 +13,25 @@ import {
   routeIsClear,
   segmentOrientation
 } from "./connectionGeometry";
+import { createTreeLayout } from "./layout";
+import { obstacleCollisions } from "./obstacleRouter";
+import { importGedcom } from "./portability";
 import type {
   FamilyRelationship,
   PositionedPerson,
   RelationshipKind,
   TreeLayout
 } from "./types";
+
+const fileSystem = (globalThis as typeof globalThis & {
+  process?: {
+    getBuiltinModule?: (id: "fs") => {
+      readFileSync: (path: string, encoding: "utf8") => string;
+    };
+  };
+}).process?.getBuiltinModule?.("fs");
+if (!fileSystem) throw new Error("Node filesystem is unavailable to integration tests.");
+const hamantoGed = fileSystem.readFileSync("../example/hamanto.ged", "utf8");
 
 const person = (id: string, x: number, y: number): PositionedPerson => ({
   id,
@@ -60,6 +76,86 @@ const parent = (from: string, to: string) =>
   relationship(`${from}-${to}`, from, to, "parent");
 
 describe("family connection planning", () => {
+  it("keeps the complete example tree readable without routing failures", () => {
+    let nextId = 0;
+    const data = importGedcom(hamantoGed, {
+      idFactory: () => `id-${String(nextId++).padStart(3, "0")}`,
+      now: "2026-08-09T00:00:00.000Z"
+    });
+    const tree = data.trees[0];
+    const treeLayout = createTreeLayout(
+      data.people,
+      data.relationships,
+      tree.lastSelectedPersonId
+    );
+    const plan = createConnectionPlan(treeLayout, "en", tree.lastSelectedPersonId);
+    const positionedByName = new Map(
+      treeLayout.people.map((person) => [person.displayName, person])
+    );
+    const childrenOf = (...parentNames: string[]) => {
+      const parentIds = new Set(parentNames.map((name) => positionedByName.get(name)?.id));
+      const childIds = new Set(data.relationships
+        .filter((relationship) =>
+          relationship.kind === "parent" && parentIds.has(relationship.fromPersonId)
+        )
+        .map((relationship) => relationship.toPersonId));
+      return treeLayout.people.filter((person) => childIds.has(person.id));
+    };
+    const nearestChildren = (children: PositionedPerson[]) => {
+      const generation = Math.min(...children.map((person) => person.generation));
+      return children.filter((person) => person.generation === generation);
+    };
+    const yatmin = positionedByName.get("Yatmin")!;
+    const binem = positionedByName.get("Binem")!;
+    const yatminCenter = (yatmin.x + binem.x) / 2;
+    const yatminChildren = nearestChildren(childrenOf("Yatmin", "Binem"));
+    const ismailChildren = nearestChildren(childrenOf("Ismail", "Nasiah"));
+    const familyFor = (...parentNames: string[]) => {
+      const parentIds = new Set(parentNames.map((name) => positionedByName.get(name)!.id));
+      return plan.families.find((family) =>
+        family.parentIds.length === parentIds.size &&
+        family.parentIds.every((id) => parentIds.has(id))
+      )!;
+    };
+    const familiesCross = (first: typeof plan.families[number], second: typeof plan.families[number]) =>
+      first.segments.some((left) => second.segments.some((right) => {
+        const horizontal = segmentOrientation(left) === "horizontal" ? left
+          : segmentOrientation(right) === "horizontal" ? right : undefined;
+        const vertical = segmentOrientation(left) === "vertical" ? left
+          : segmentOrientation(right) === "vertical" ? right : undefined;
+        return Boolean(horizontal && vertical &&
+          vertical.start.x > Math.min(horizontal.start.x, horizontal.end.x) &&
+          vertical.start.x < Math.max(horizontal.start.x, horizontal.end.x) &&
+          horizontal.start.y > Math.min(vertical.start.y, vertical.end.y) &&
+          horizontal.start.y < Math.max(vertical.start.y, vertical.end.y));
+      }));
+
+    expect(treeLayout.people).toHaveLength(44);
+    expect(plan.families).toHaveLength(10);
+    expect(plan.families.every(({ segments }) =>
+      segmentsFormConnectedNetwork(segments)
+    )).toBe(true);
+    expect(yatminCenter).toBe(
+      (Math.min(...yatminChildren.map((person) => person.x)) +
+        Math.max(...yatminChildren.map((person) => person.x))) / 2
+    );
+    expect(yatminCenter).toBeGreaterThan(
+      Math.max(...ismailChildren.map((person) => person.x))
+    );
+    expect(familiesCross(
+      familyFor("Yatmin", "Binem"),
+      familyFor("Ismail", "Nasiah")
+    )).toBe(false);
+    const yatminFamily = familyFor("Yatmin", "Binem");
+    expect(obstacleCollisions(
+      yatminFamily.segments,
+      plan.obstacles,
+      new Set(yatminFamily.parentIds.concat(yatminFamily.childIds))
+    )).toEqual([]);
+    expect(plan.failures).toEqual([]);
+    expect(plan.isValid).toBe(true);
+  });
+
   it("uses one connected bus for siblings with the same parents", () => {
     const value = layout(
       [
@@ -126,6 +222,20 @@ describe("family connection planning", () => {
     expect(plan.isValid).toBe(true);
   });
 
+  it("does not reserve action controls for a read-only tree", () => {
+    const value = layout(
+      [person("parent", 0, 0), person("child", 0, 260)],
+      [parent("parent", "child")]
+    );
+
+    const plan = createConnectionPlan(value, "en", undefined, false);
+
+    expect(plan.obstacles.some(({ kind }) =>
+      kind === "addControl" || kind === "editControl"
+    )).toBe(false);
+    expect(plan.isValid).toBe(true);
+  });
+
   it("routes a generation-skipping family around an intermediate person", () => {
     const value = layout(
       [person("parent", 0, 0), person("blocker", 0, 260), person("child", 0, 520)],
@@ -176,7 +286,7 @@ describe("family connection planning", () => {
     expect(plan.isValid).toBe(true);
   });
 
-  it("does not create reversed or overlapping segments inside one family", () => {
+  it("uses one family bus for children on different generations", () => {
     const people = [
       person("p0", -650, 0), person("p1", -390, 0),
       person("p3", 130, 0), person("p4", 390, 0),
@@ -188,12 +298,48 @@ describe("family connection planning", () => {
       parent("p1", "c5"), parent("p4", "c5")
     ];
     const plan = createConnectionPlan(layout(people, relationships));
+    const combinedFamilies = plan.families.filter(({ parentIds }) =>
+      parentIds.length === 2 && parentIds.includes("p1") && parentIds.includes("p4")
+    );
 
+    expect(combinedFamilies).toHaveLength(1);
+    expect(new Set(combinedFamilies[0].childIds)).toEqual(new Set(["c1", "c5"]));
+    expect(segmentsFormConnectedNetwork(combinedFamilies[0].segments)).toBe(true);
     expect(plan.families.every(({ segments }) => !segments.some((segment, index) =>
       segments.slice(index + 1).some((other) => collinearlyOverlaps(segment, other))
     ))).toBe(true);
-    expect(plan.failures).toEqual(["family:2:p1|2:p4"]);
-    expect(plan.isValid).toBe(false);
+    for (let index = 0; index < plan.families.length; index += 1) {
+      for (let other = index + 1; other < plan.families.length; other += 1) {
+        expect(hasCollinearOverlap(
+          plan.families[index].segments,
+          plan.families[other].segments
+        )).toBe(false);
+      }
+    }
+    expect(plan.failures).toEqual([]);
+    expect(plan.isValid).toBe(true);
+  });
+
+  it("moves a multi-generation trunk away from children sharing one column", () => {
+    const people = [
+      person("parent-a", -130, 0), person("parent-b", 130, 0),
+      person("near-child", 0, 260), person("deep-child", 0, 520)
+    ];
+    const plan = createConnectionPlan(layout(people, [
+      parent("parent-a", "near-child"), parent("parent-b", "near-child"),
+      parent("parent-a", "deep-child"), parent("parent-b", "deep-child")
+    ]));
+    const family = plan.families[0];
+
+    expect(segmentsFormConnectedNetwork(family.segments)).toBe(true);
+    expect(obstacleCollisions(
+      family.segments,
+      plan.obstacles,
+      new Set(family.parentIds.concat(family.childIds))
+    ).filter(({ obstacle }) => obstacle.kind === "avatar" || obstacle.kind === "nodeLabel"))
+      .toEqual([]);
+    expect(plan.failures).toEqual([]);
+    expect(plan.isValid).toBe(true);
   });
 
   it("assigns separate obstacle-safe routes to several partners", () => {

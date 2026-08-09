@@ -15,6 +15,7 @@ import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import type { AppData, ViewportState } from "./types";
 
 const initialViewport: ViewportState = { scrollX: 0, scrollY: 0, zoom: 1 };
+const unlimitedGenerationLimits = { ancestors: null, descendants: null } as const;
 
 export function SharedTreeApp() {
   const store = useAppStore();
@@ -26,7 +27,7 @@ export function SharedTreeApp() {
   const [passwordError, setPasswordError] = useState<string>();
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [selectedPersonId, setSelectedPersonId] = useState<string>();
-  const [viewport, setViewport] = useState(initialViewport);
+  const viewportRef = useRef(initialViewport);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
@@ -185,15 +186,17 @@ export function SharedTreeApp() {
     <div className="shared-app-shell">
       <main className="shared-workspace">
         <TreeCanvas
-          generationLimits={{ ancestors: null, descendants: null }}
-          initialViewport={viewport}
+          generationLimits={unlimitedGenerationLimits}
+          initialViewport={viewportRef.current}
           language={language}
           onAddRelative={() => undefined}
           onCanvasInteract={() => undefined}
           onDeselectPerson={() => setSelectedPersonId(undefined)}
           onEditPerson={() => undefined}
           onSelectPerson={setSelectedPersonId}
-          onViewportChange={setViewport}
+          onViewportChange={(nextViewport) => {
+            viewportRef.current = nextViewport;
+          }}
           people={people}
           readOnly
           ref={canvasRef}
