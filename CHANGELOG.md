@@ -8,14 +8,7 @@ prefix.
 
 ### Web
 
-#### Changed
-
-- Added direct marriage-date editing from partner rows, moved relationship dates above role choices, and added controls for excluding birth dates, relationship dates, photos, or ages from encrypted shares.
-- Applied the same privacy choices to GEDCOM, PNG, and SVG exports, and increased large-family PNG resolution with a memory-bounded HD renderer.
-
-#### Fixed
-
-- Preserved Vercel API and security routing during production promotion and made a complete encrypted-share lifecycle test mandatory before promotion.
+- No unreleased changes yet.
 
 ### iOS
 
@@ -24,6 +17,17 @@ prefix.
 ### Android
 
 - No unreleased changes yet.
+
+## [web-0.3.1] - 2026-08-10
+
+### Changed
+
+- Added direct marriage-date editing from partner rows, moved relationship dates above role choices, and added controls for excluding birth dates, relationship dates, photos, or ages from encrypted shares.
+- Applied the same privacy choices to GEDCOM, PNG, and SVG exports, and increased large-family PNG resolution with a memory-bounded HD renderer.
+
+### Fixed
+
+- Preserved Vercel API and security routing during production promotion and made a complete encrypted-share lifecycle test mandatory before promotion.
 
 ## [web-0.3.0] - 2026-08-09
 
