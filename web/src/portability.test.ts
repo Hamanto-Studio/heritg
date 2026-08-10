@@ -360,6 +360,21 @@ describe("GEDCOM 7 portability", () => {
     }).relationships[0].subtype).toBe("formerPartner");
   });
 
+  it("applies export privacy choices to GEDCOM dates while retaining family connections", () => {
+    const gedcom = exportGedcom(appData, "tree-original", {
+      birthDates: false,
+      relationshipDates: false,
+      photos: false,
+      ages: false
+    });
+
+    expect(gedcom).toContain("1 NAME Parent Example One");
+    expect(gedcom).toContain("1 CHIL @I3@");
+    expect(gedcom).toContain("1 MARR");
+    expect(gedcom).not.toContain("1 BIRT");
+    expect(gedcom).not.toContain("2 DATE 10 JUN 1995");
+  });
+
   it("rejects broken family references and makes safe filenames", () => {
     const broken = "0 HEAD\n1 GEDC\n2 VERS 7.0\n0 @I1@ INDI\n1 NAME Person\n0 @F1@ FAM\n1 CHIL @I2@\n0 TRLR\n";
     expect(() => parseGedcom(broken)).toThrow(/missing person/i);

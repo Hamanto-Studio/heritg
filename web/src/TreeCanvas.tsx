@@ -28,6 +28,7 @@ import { createCircularAvatarCache } from "./avatar";
 import { buildChartSvg, chartSvgToPng } from "./chartExport";
 import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
+import type { ExportPrivacySelection } from "./exportPrivacy";
 import type { Translator } from "./i18n";
 import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
@@ -50,8 +51,8 @@ export interface TreeCanvasHandle {
   focusPerson: (personId: string) => void;
   zoomIn: () => void;
   zoomOut: () => void;
-  exportPng: () => Promise<void>;
-  exportSvg: () => Promise<void>;
+  exportPng: (privacy: ExportPrivacySelection) => Promise<void>;
+  exportSvg: (privacy: ExportPrivacySelection) => Promise<void>;
 }
 
 interface TreeCanvasProps {
@@ -528,17 +529,19 @@ export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function
     });
   };
 
-  const exportPng = async () => {
+  const exportPng = async (privacy: ExportPrivacySelection) => {
     downloadBlob(
       await chartSvgToPng(buildChartSvg(
-        layout, treeTitle, selectedPersonId, language, connectionPlan
+        layout, treeTitle, selectedPersonId, language, connectionPlan, privacy
       )),
       safeFilename(treeTitle, "png")
     );
   };
 
-  const exportSvg = async () => {
-    const chart = buildChartSvg(layout, treeTitle, selectedPersonId, language, connectionPlan);
+  const exportSvg = async (privacy: ExportPrivacySelection) => {
+    const chart = buildChartSvg(
+      layout, treeTitle, selectedPersonId, language, connectionPlan, privacy
+    );
     downloadBlob(
       new Blob([chart.svg], { type: "image/svg+xml;charset=utf-8" }),
       safeFilename(treeTitle, "svg")

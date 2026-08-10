@@ -2,6 +2,11 @@ import { encodeBase64, parsePlistDictionary } from "rork-plist";
 
 import { newId } from "./types";
 import { downloadBlob, downloadText, safeFilename } from "./images";
+import {
+  DEFAULT_EXPORT_PRIVACY_SELECTION,
+  prepareDataForExport,
+  type ExportPrivacySelection
+} from "./exportPrivacy";
 import type { AppData, FamilyRelationship, FamilyTree, Gender, Person, RelationshipKind, RelationshipSubtype } from "./types";
 export { downloadBlob, downloadText, safeFilename };
 export const HERITG_FORMAT = "heritg-web-backup";
@@ -529,8 +534,13 @@ interface ExportFamily {
   divorceDate?: string;
 }
 
-export function exportGedcom(data: AppData, treeId = data.selectedTreeId): string {
-  const clean = validateAppData(data);
+export function exportGedcom(
+  data: AppData,
+  treeId = data.selectedTreeId,
+  privacy: ExportPrivacySelection = DEFAULT_EXPORT_PRIVACY_SELECTION
+): string {
+  if (!treeId) return invalid("a valid tree is required for GEDCOM export.");
+  const clean = validateAppData(prepareDataForExport(data, treeId, privacy).data);
   const tree = clean.trees.find((item) => item.id === treeId);
   if (!tree) return invalid("a valid tree is required for GEDCOM export.");
   const people = clean.people.filter((person) => person.treeId === tree.id);
