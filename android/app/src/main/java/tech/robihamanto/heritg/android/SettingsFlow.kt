@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -31,9 +34,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -215,6 +220,19 @@ private fun ExportScreen(
     var working by uiState.state(prefix + "working") { false }
     var error by uiState.state<String?>(prefix + "error") { null }
     var generatedArchive by uiState.state<GeneratedShare?>(prefix + "generatedArchive") { null }
+    var exportSheet by uiState.state<GeneratedShare?>(prefix + "exportSheet") { null }
+    var exportSheetIsTransient by uiState.state(prefix + "exportSheetTransient") { true }
+    var downloadTarget by uiState.state<GeneratedShare?>(prefix + "downloadTarget") { null }
+    var downloadTargetIsTransient by uiState.state(prefix + "downloadTargetTransient") { true }
+    val downloadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("*/*")) { uri ->
+        val pending = downloadTarget
+        downloadTarget = null
+        if (pending != null) uiState.launch {
+            if (uri != null) runCatching { LocalFiles.download(context, uri, pending.bytes) }
+                .onFailure { error = context.localizedError(it) }
+            if (downloadTargetIsTransient) pending.clearMemory()
+        }
+    }
     val passwordMismatch = stringResource(R.string.passwords_mismatch)
     val passwordRequirements = stringResource(R.string.password_requirements)
     val passwordMeetsRequirements = remember(password) { ArchivePasswordPolicy.accepts(password) }
@@ -233,18 +251,22 @@ private fun ExportScreen(
     val base = remember(tree.title) {
         tree.title.replace(Regex("[^A-Za-z0-9]+"), "-").trim('-').ifEmpty { "Heritg-Family-Tree" } + "-${LocalDate.now()}"
     }
+    fun offerExport(share: GeneratedShare, transient: Boolean) {
+        exportSheetIsTransient = transient
+        exportSheet = share
+    }
+    fun closeExportSheet() {
+        if (exportSheetIsTransient) exportSheet?.clearMemory()
+        exportSheet = null
+    }
     fun prepare(name: String, mime: String, block: () -> ByteArray) {
         working = true; error = null
         uiState.launch {
-            var bytes: ByteArray? = null
             try {
                 val generated = withContext(Dispatchers.Default) { block() }
-                bytes = generated
-                LocalFiles.share(context, generated, name, mime)
+                offerExport(GeneratedShare(generated, name, mime), transient = true)
             } catch (failure: Throwable) {
                 error = context.localizedError(failure)
-            } finally {
-                bytes?.fill(0)
             }
             working = false
         }
@@ -353,18 +375,58 @@ private fun ExportScreen(
             Text(if (working) stringResource(R.string.creating_backup) else stringResource(R.string.create_backup))
         }
         if (working) CircularProgressIndicator(Modifier.testTag("settings.exportProgress"))
-        generatedArchive?.let { share -> OutlinedButton(onClick = {
-            uiState.launch {
-                runCatching { LocalFiles.share(context, share.bytes, share.name, share.mime) }
-                    .onFailure { error = context.localizedError(it) }
-            }
-        }, modifier = Modifier.fillMaxWidth().testTag("settings.shareHeritg")) {
+        generatedArchive?.let { share -> OutlinedButton(onClick = { offerExport(share, transient = false) },
+            modifier = Modifier.fillMaxWidth().testTag("settings.shareHeritg")) {
             Text(stringResource(R.string.share_backup))
         } }
         error?.let { message -> Text(message, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.focusRequester(errorFocus).focusable()
                 .semantics { liveRegion = LiveRegionMode.Assertive; this.error(message) }.testTag("settings.exportError")) }
         Spacer(Modifier.height(32.dp))
+    }
+    exportSheet?.let { share -> ExportOptionsSheet(
+        name = share.name,
+        onClose = ::closeExportSheet,
+        onShare = {
+            uiState.launch {
+                runCatching { LocalFiles.share(context, share.bytes, share.name, share.mime) }
+                    .onFailure { error = context.localizedError(it) }
+                closeExportSheet()
+            }
+        },
+        onDownload = {
+            downloadTarget = share
+            downloadTargetIsTransient = exportSheetIsTransient
+            downloadLauncher.launch(share.name)
+            exportSheet = null
+        },
+    ) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExportOptionsSheet(name: String, onClose: () -> Unit, onShare: () -> Unit, onDownload: () -> Unit) {
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onClose, sheetState = state, containerColor = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Spacer(Modifier.height(12.dp))
+            ExportOptionRow(R.drawable.ic_share, stringResource(R.string.share), "settings.exportSheet.share", onShare)
+            ExportOptionRow(R.drawable.ic_download, stringResource(R.string.download), "settings.exportSheet.download", onDownload)
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun ExportOptionRow(icon: Int, label: String, tag: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).sizeIn(minHeight = 56.dp).testTag(tag),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(icon), contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.width(16.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
