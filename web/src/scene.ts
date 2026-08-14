@@ -30,6 +30,7 @@ import type {
   AppData,
   FamilyRelationship,
   PositionedPerson,
+  SceneLifeSummaryOptions,
   TreeLayout
 } from "./types";
 export const HERITG_SCENE_COLORS = {
@@ -57,11 +58,7 @@ export interface HeritgExcalidrawScene {
   contentBounds: SceneBounds;
   bounds: SceneBounds;
 }
-export interface SceneLifeSummaryOptions {
-  showBirthDate: boolean;
-  showAge: boolean;
-  ageByPersonId?: Readonly<Record<string, number>>;
-}
+export type { SceneLifeSummaryOptions } from "./types";
 type LinearPoint = ExcalidrawLinearElement["points"][number];
 const linearPoint = (x: number, y: number) => [x, y] as unknown as LinearPoint;
 const compareText = (left: string, right: string) =>

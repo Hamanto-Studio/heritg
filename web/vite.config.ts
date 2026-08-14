@@ -6,12 +6,15 @@ import packageJson from "./package.json";
 const buildEnvironment = (globalThis as {
   process?: { env?: Record<string, string | undefined> };
 }).process?.env;
+const useExcalidrawFallback = buildEnvironment?.HERITG_CANVAS_RENDERER === "excalidraw" ||
+  buildEnvironment?.VITE_HERITG_CANVAS_RENDERER === "excalidraw";
 
 export default defineConfig({
   base: "/",
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
-    __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false")
+    __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false"),
+    __EXCALIDRAW_FALLBACK__: JSON.stringify(useExcalidrawFallback)
   },
   plugins: [
     react(),
@@ -60,7 +63,7 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ["@excalidraw/excalidraw"]
+    include: useExcalidrawFallback ? ["@excalidraw/excalidraw"] : []
   },
   test: {
     environment: "jsdom"

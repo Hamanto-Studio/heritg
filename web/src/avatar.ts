@@ -20,7 +20,7 @@ const stableNumber = (value: string) => {
   return (hash >>> 1) || 1;
 };
 
-const validImage = (value: string | undefined) => Boolean(value?.match(
+export const isValidAvatarImage = (value: string | undefined) => Boolean(value?.match(
   /^data:(image\/(?:svg\+xml|png|jpe?g|gif|webp|bmp|x-icon|avif|jfif))(?:;[^,]*)?,/i
 ));
 
@@ -44,7 +44,7 @@ export const circularAvatarData = (
   value: string | undefined,
   size: number
 ): AvatarImageData | undefined => {
-  if (!validImage(value)) return undefined;
+  if (!isValidAvatarImage(value)) return undefined;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><defs><clipPath id="avatar-clip"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}"/></clipPath></defs><image href="${escapeXml(value!)}" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatar-clip)"/></svg>`;
   return {
     dataURL: `data:image/svg+xml;base64,${base64Utf8(svg)}` as DataURL,
@@ -56,7 +56,7 @@ export const circularAvatarData = (
 export const createCircularAvatarCache = (): AvatarImageResolver => {
   const values = new Map<number, Map<string, AvatarImageData>>();
   return (value, size) => {
-    if (!validImage(value)) return undefined;
+    if (!isValidAvatarImage(value)) return undefined;
     const sizeCache = values.get(size) ?? new Map<string, AvatarImageData>();
     values.set(size, sizeCache);
     const cached = sizeCache.get(value!);

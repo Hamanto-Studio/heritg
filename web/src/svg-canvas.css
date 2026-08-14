@@ -1,0 +1,93 @@
+.svg-canvas-host {
+  background: #f5f5f3;
+  cursor: default;
+  overflow: hidden;
+  position: relative;
+}
+
+.svg-canvas-host[data-space-pan="true"] {
+  cursor: grab;
+}
+
+.svg-tree-canvas {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  width: 100%;
+}
+
+.svg-tree-scene {
+  transform-box: view-box;
+  transform-origin: 0 0;
+  visibility: hidden;
+  will-change: transform;
+}
+
+.svg-connector {
+  fill: none;
+  pointer-events: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.svg-connector.family,
+.svg-connector.parent {
+  stroke: #9c825f;
+}
+
+.svg-connector.partner {
+  stroke: #b47c76;
+}
+
+.svg-connector.sibling {
+  stroke: #78956c;
+  stroke-dasharray: 6 7;
+}
+
+.svg-relationship-label {
+  pointer-events: none;
+}
+
+.svg-relationship-label rect {
+  fill: #f5f5f3;
+}
+
+.svg-relationship-label text,
+.svg-person-life,
+.svg-person-role {
+  fill: #796f63;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.svg-person {
+  cursor: pointer;
+}
+
+.svg-person-name,
+.svg-person-initial,
+.svg-person-life,
+.svg-person-role {
+  pointer-events: none;
+}
+
+.svg-person-name,
+.svg-person-initial {
+  fill: #302b25;
+  font-weight: 700;
+}
+
+.svg-person-initial {
+  font-size: 24px;
+}
+
+.svg-person-role {
+  font-size: 13px;
+}
+
+.svg-person-life {
+  font-size: 11px;
+}
