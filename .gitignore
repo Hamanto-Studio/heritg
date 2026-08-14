@@ -24,7 +24,7 @@ xcuserdata/
 *.cer
 *.mobileprovision
 AuthKey_*.p8
-fastlane/report.xml
+**/fastlane/report.xml
 fastlane/screenshots/
 GoogleService-Info.plist
 google-services.json
