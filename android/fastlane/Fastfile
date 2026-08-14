@@ -1,0 +1,46 @@
+default_platform(:android)
+
+def require_release_environment
+  required = %w[
+    ANDROID_KEYSTORE_PATH
+    ANDROID_KEYSTORE_PASSWORD
+    ANDROID_KEY_ALIAS
+    ANDROID_KEY_PASSWORD
+    ANDROID_VERSION_CODE
+    ANDROID_VERSION_NAME
+  ]
+  missing = required.select { |name| ENV[name].to_s.empty? }
+  UI.user_error!("Missing release environment: #{missing.join(', ')}") unless missing.empty?
+end
+
+platform :android do
+  desc "Build a signed release Android App Bundle"
+  lane :build_release do
+    require_release_environment
+    gradle(task: "clean bundleRelease", project_dir: File.expand_path("..", __dir__))
+
+    aab = File.expand_path("../app/build/outputs/bundle/release/app-release.aab", __dir__)
+    UI.user_error!("Release bundle was not generated at #{aab}") unless File.exist?(aab)
+    sh("jarsigner", "-verify", aab)
+  end
+
+  desc "Upload a signed bundle to the Play internal testing track"
+  lane :internal do
+    require_release_environment
+    if ENV["SUPPLY_JSON_KEY"].to_s.empty? && ENV["SUPPLY_JSON_KEY_DATA"].to_s.empty?
+      UI.user_error!("Set SUPPLY_JSON_KEY or SUPPLY_JSON_KEY_DATA for Play authentication")
+    end
+
+    build_release
+    upload_to_play_store(
+      package_name: "tech.robihamanto.heritg.android",
+      aab: File.expand_path("../app/build/outputs/bundle/release/app-release.aab", __dir__),
+      track: "internal",
+      release_status: ENV.fetch("PLAY_RELEASE_STATUS", "draft"),
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end
