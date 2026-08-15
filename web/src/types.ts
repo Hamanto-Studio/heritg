@@ -125,6 +125,12 @@ export interface TreeLayout {
   height: number;
 }
 
+export interface SceneLifeSummaryOptions {
+  showBirthDate: boolean;
+  showAge: boolean;
+  ageByPersonId?: Readonly<Record<string, number>>;
+}
+
 export interface RelativeDraft {
   mode: "new" | "existing";
   role: DirectRole;
