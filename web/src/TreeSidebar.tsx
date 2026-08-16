@@ -10,7 +10,7 @@ import {
   Upload,
   X
 } from "lucide-react";
-import { useDeferredValue, useRef, useState } from "react";
+import { useDeferredValue, useState } from "react";
 
 import {
   HeritgArchivePasswordError,
@@ -67,7 +67,6 @@ export function TreeSidebar({
   const [archivePassword, setArchivePassword] = useState("");
   const [archiveError, setArchiveError] = useState<string>();
   const [isUnlocking, setIsUnlocking] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const trees = [...data.trees]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .filter((tree) => tree.title.toLocaleLowerCase().includes(deferredQuery));
@@ -258,22 +257,20 @@ export function TreeSidebar({
           } type="button">
             <Plus aria-hidden="true" size={17} /> {t("newTree")}
           </button>
-          <button className="button secondary full" onClick={() => inputRef.current?.click()} type="button">
+          <label className="button secondary full import-file-control">
             <Upload aria-hidden="true" size={17} /> {t("importFile")}
-          </button>
-          <input
-            accept=".heritg,.json,.ged,.gedcom,application/json,text/plain"
-            hidden
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) void readImport(file).catch((error: unknown) =>
-                onError(error instanceof Error ? error.message : t("errorTitle"))
-              );
-            }}
-            ref={inputRef}
-            type="file"
-          />
+            <input
+              aria-label={t("importFile")}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void readImport(file).catch((error: unknown) =>
+                  onError(error instanceof Error ? error.message : t("errorTitle"))
+                );
+              }}
+              type="file"
+            />
+          </label>
         </div>
         <div className="sidebar-utilities">
           <button onClick={() => { onShowPrivacy(); onClose(); }} type="button">

@@ -18,6 +18,12 @@ prefix.
 
 - No unreleased changes yet.
 
+## [web-0.4.1] - 2026-08-16
+
+### Fixed
+
+- Restored `.ged`, `.gedcom`, and `.heritg` file selection and import on iPhone and iPad.
+
 ## [web-0.4.0] - 2026-08-15
 
 ### Changed
@@ -131,4 +137,5 @@ prefix.
 [web-0.2.2]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.2
 [web-0.3.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.3.0
 [web-0.4.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.0
+[web-0.4.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.1
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0
