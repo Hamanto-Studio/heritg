@@ -1,4 +1,5 @@
 import { deriveKinshipLabels } from "./kinship";
+import { deriveBirthOrders } from "./birthOrder";
 import type {
   AppData,
   FamilyRelationship,
@@ -178,6 +179,14 @@ const buildGenerationMap = (
         queue.splice(index + 1, queue.length - index - 1, ...queue.slice(index + 1).sort(compareText));
       }
     }
+  }
+  for (const current of [...queue].reverse()) {
+    const childLevels = [...(outgoing.get(current) ?? [])]
+      .map((child) => levels.get(child))
+      .filter((level): level is number => level !== undefined);
+    if (childLevels.length === 0) continue;
+    const latestValidLevel = Math.min(...childLevels) - 1;
+    levels.set(current, Math.max(levels.get(current) ?? 0, latestValidLevel));
   }
 
   return new Map(ids.map((id) => [id, levels.get(groups.find(id)) ?? 0]));
@@ -391,8 +400,52 @@ const orderRow = (
     members.sort((left, right) =>
       memberParentX(left.id) - memberParentX(right.id) || comparePeople(left, right)
     );
+    const stableRank = new Map(members.map((person, index) => [person.id, index]));
+    const partnerGroups = new StableGroups(memberIds);
+    const partnerDegree = new Map<string, number>();
+    for (const relationship of relationships) {
+      if (
+        relationship.kind !== "partner" ||
+        !memberIds.has(relationship.fromPersonId) ||
+        !memberIds.has(relationship.toPersonId)
+      ) continue;
+      partnerGroups.union(relationship.fromPersonId, relationship.toPersonId);
+      partnerDegree.set(
+        relationship.fromPersonId,
+        (partnerDegree.get(relationship.fromPersonId) ?? 0) + 1
+      );
+      partnerDegree.set(
+        relationship.toPersonId,
+        (partnerDegree.get(relationship.toPersonId) ?? 0) + 1
+      );
+    }
+    const partnerComponents = [...partnerGroups.values().values()]
+      .map((ids) => ids.map((id) => peopleById.get(id)!)
+        .sort((left, right) =>
+          (stableRank.get(left.id) ?? 0) - (stableRank.get(right.id) ?? 0)
+        ))
+      .sort((left, right) =>
+        (stableRank.get(left[0].id) ?? 0) - (stableRank.get(right[0].id) ?? 0)
+      );
+    members.splice(0, members.length, ...partnerComponents.flatMap((component) => {
+      const hub = [...component].sort((left, right) =>
+        (partnerDegree.get(right.id) ?? 0) - (partnerDegree.get(left.id) ?? 0) ||
+        (stableRank.get(left.id) ?? 0) - (stableRank.get(right.id) ?? 0)
+      )[0];
+      if (!hub || (partnerDegree.get(hub.id) ?? 0) <= 1) return component;
+      const ordered = component.filter((person) => person.id !== hub.id);
+      ordered.splice(Math.floor((ordered.length + 1) / 2), 0, hub);
+      return ordered;
+    }));
+    const memberIndex = new Map(members.map((person, index) => [person.id, index]));
     const parentPositions = parentRelationships
-      .map((relationship) => positioned.get(relationship.fromPersonId)?.x)
+      .map((relationship) => {
+        const parentX = positioned.get(relationship.fromPersonId)?.x;
+        const childIndex = memberIndex.get(relationship.toPersonId);
+        return parentX === undefined || childIndex === undefined
+          ? undefined
+          : parentX - childIndex * LAYOUT_METRICS.horizontalSpacing;
+      })
       .filter((value): value is number => value !== undefined);
     const familyKeys = new Set(
       members.flatMap((person) => {
@@ -458,6 +511,7 @@ export function createTreeLayout(
   const validIds = new Set(orderedPeople.map((person) => person.id));
   const orderedRelationships = normalizedRelationships(relationships, validIds);
   const generations = buildGenerationMap(orderedPeople, orderedRelationships);
+  const birthOrders = deriveBirthOrders(orderedPeople, orderedRelationships);
   const visible = visibleIds(
     selectedPersonId,
     validIds,
@@ -470,7 +524,7 @@ export function createTreeLayout(
     return { people: [], relationships: [], width: 0, height: 0, bounds: emptyBounds() };
   }
 
-  const labels = selectedPersonId
+  const labels = selectedPersonId && visiblePeople.length > 1
     ? deriveKinshipLabels(selectedPersonId, orderedPeople, orderedRelationships, language)
     : undefined;
   const rows = new Map<number, Person[]>();
@@ -508,7 +562,8 @@ export function createTreeLayout(
           x,
           y: (generation - minimumGeneration) * LAYOUT_METRICS.generationSpacing,
           role: labels?.[person.id] ?? "",
-          generation
+          generation,
+          birthOrder: birthOrders.get(person.id)
         };
         positioned.set(person.id, value);
         resultPeople.push(value);
@@ -554,6 +609,30 @@ export function createTreeLayout(
       });
       nextX = startX + currentMembers.length * LAYOUT_METRICS.horizontalSpacing;
     });
+    for (let blockIndex = blocks.length - 2; blockIndex >= 0; blockIndex -= 1) {
+      const block = blocks[blockIndex];
+      const nextBlock = blocks[blockIndex + 1];
+      const sharesParentFamily = [...block.familyKeys]
+        .some((key) => nextBlock.familyKeys.has(key));
+      if (!sharesParentFamily) continue;
+      const memberIds = new Set(block.members.map((person) => person.id));
+      const hasDirectDescendants = orderedRelationships.some((relationship) =>
+        relationship.kind === "parent" &&
+        memberIds.has(relationship.fromPersonId) &&
+        (positioned.get(relationship.toPersonId)?.generation ?? generation) > generation
+      );
+      if (hasDirectDescendants) continue;
+      const currentMembers = block.members.map((person) => positioned.get(person.id)!);
+      const nextStart = positioned.get(nextBlock.members[0].id)!.x;
+      const gap = needsFamilyGap(block, nextBlock) ? LAYOUT_METRICS.familyGap : 0;
+      const compactStart = nextStart - gap -
+        currentMembers.length * LAYOUT_METRICS.horizontalSpacing;
+      const shift = compactStart - currentMembers[0].x;
+      if (shift <= 0) continue;
+      currentMembers.forEach((person) => {
+        person.x += shift;
+      });
+    }
   }
 
   const visibleRelationships = orderedRelationships.filter((relationship) => {

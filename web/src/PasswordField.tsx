@@ -1,5 +1,40 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Check, Eye, EyeOff, X } from "lucide-react";
 import { useState, type KeyboardEventHandler } from "react";
+
+import type { PasswordRequirementsState } from "./passwordPolicy";
+
+export function PasswordRequirementList({
+  label,
+  requirements,
+  items,
+  highlightUnmet = false
+}: {
+  label: string;
+  requirements: PasswordRequirementsState;
+  items: readonly (readonly [keyof PasswordRequirementsState, string])[];
+  highlightUnmet?: boolean;
+}) {
+  return (
+    <div aria-label={label} aria-live="polite" className="password-requirements">
+      {items.map(([key, itemLabel]) => {
+        const met = requirements[key];
+        return (
+          <div
+            className="password-requirement"
+            data-highlight-unmet={highlightUnmet}
+            data-met={met}
+            key={key}
+          >
+            <span aria-hidden="true" className="password-requirement-icon">
+              {met ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={2.5} />}
+            </span>
+            <span>{itemLabel}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function PasswordField({
   label,

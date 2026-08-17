@@ -12,6 +12,7 @@ import type {
 } from "@excalidraw/excalidraw/element/types";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { circularAvatarData, type AvatarImageResolver } from "./avatar";
+import { BIRTH_ORDER_BADGE } from "./birthOrder";
 import {
   CONNECTOR_STYLE,
   branchJunctions,
@@ -26,6 +27,7 @@ import {
 } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
+import { personAvatarAppearance } from "./personAvatarAppearance";
 import type {
   AppData,
   FamilyRelationship,
@@ -35,9 +37,6 @@ import type {
 } from "./types";
 export const HERITG_SCENE_COLORS = {
   canvas: "#f5f5f3",
-  avatar: "#fffdf8",
-  selectedAvatar: "#f3eadf",
-  recessed: "#ede5d8",
   text: "#302b25",
   subtleText: "#796f63",
   line: "#d8ccbc",
@@ -104,6 +103,7 @@ const personData = (person: PositionedPerson) => ({
   heritgType: "person",
   entityType: "person",
   personId: person.id,
+  gender: person.gender,
   role: person.role,
   generation: person.generation
 });
@@ -234,6 +234,7 @@ const personSkeletons = (
   const link = `#heritg-person=${key}`;
   const data = personData(person);
   const selected = person.id === selectedPersonId;
+  const appearance = personAvatarAppearance(person.gender);
   const showRole = Boolean(selectedPersonId && person.role);
   const avatarSize = LAYOUT_METRICS.avatarDiameter;
   const innerSize = LAYOUT_METRICS.innerAvatarDiameter;
@@ -249,10 +250,8 @@ const personSkeletons = (
       y: avatarY,
       width: avatarSize,
       height: avatarSize,
-      strokeColor: selected ? HERITG_SCENE_COLORS.brand : HERITG_SCENE_COLORS.line,
-      backgroundColor: selected
-        ? HERITG_SCENE_COLORS.selectedAvatar
-        : HERITG_SCENE_COLORS.avatar,
+      strokeColor: selected ? HERITG_SCENE_COLORS.brand : appearance.stroke,
+      backgroundColor: appearance.fill,
       fillStyle: "solid",
       strokeWidth: selected ? 2 : 1,
       strokeStyle: "solid",
@@ -297,7 +296,7 @@ const personSkeletons = (
       width: innerSize,
       height: innerSize,
       strokeColor: "transparent",
-      backgroundColor: selected ? HERITG_SCENE_COLORS.selectedAvatar : HERITG_SCENE_COLORS.recessed,
+      backgroundColor: appearance.fill,
       fillStyle: "solid",
       strokeWidth: 1,
       strokeStyle: "solid",
@@ -322,6 +321,39 @@ const personSkeletons = (
         textAlign: "center",
         verticalAlign: "middle"
       } as ExcalidrawElementSkeleton
+    );
+  }
+  if (person.birthOrder) {
+    const badgeX = person.x - BIRTH_ORDER_BADGE.offset;
+    const badgeY = person.y - BIRTH_ORDER_BADGE.offset;
+    values.push(
+      {
+        type: "ellipse",
+        x: badgeX - BIRTH_ORDER_BADGE.radius,
+        y: badgeY - BIRTH_ORDER_BADGE.radius,
+        width: BIRTH_ORDER_BADGE.radius * 2,
+        height: BIRTH_ORDER_BADGE.radius * 2,
+        strokeColor: appearance.stroke,
+        backgroundColor: HERITG_SCENE_COLORS.canvas,
+        fillStyle: "solid",
+        strokeWidth: 2,
+        strokeStyle: "solid",
+        opacity: 100,
+        ...elementIdentity(`heritg:person:${key}:birth-order-badge`, link, data, groupIds)
+      } as ExcalidrawElementSkeleton,
+      textSkeleton(
+        `heritg:person:${key}:birth-order`,
+        String(person.birthOrder),
+        badgeX,
+        badgeY,
+        10,
+        BIRTH_ORDER_BADGE.radius * 2,
+        BIRTH_ORDER_BADGE.radius * 2,
+        HERITG_SCENE_COLORS.text,
+        link,
+        data,
+        groupIds
+      )
     );
   }
 

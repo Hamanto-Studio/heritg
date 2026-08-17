@@ -1,4 +1,4 @@
-import { Pencil, Plus } from "lucide-react";
+import { LoaderCircle, Pencil, Plus } from "lucide-react";
 import {
   Fragment,
   forwardRef,
@@ -20,14 +20,15 @@ import {
   type SceneRect
 } from "./canvasViewport";
 import { buildChartSvg, chartSvgToPng } from "./chartExport";
-import { createConnectionPlan } from "./connectionPlan";
+import { birthOrderLabel } from "./birthOrder";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { TreeCanvasHandle, TreeCanvasProps } from "./ExcalidrawTreeCanvas";
 import { downloadBlob, safeFilename } from "./images";
 import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import { SvgTreeScene } from "./SvgTreeScene";
-import type { ViewportState } from "./types";
+import type { TreeLayout, ViewportState } from "./types";
+import { useTreePreparation } from "./useTreePreparation";
 
 const OVERVIEW_ENTER_ZOOM = 0.3;
 const OVERVIEW_EXIT_ZOOM = 0.42;
@@ -86,6 +87,7 @@ function SvgCanvasActions({
   actionsVisible,
   controls,
   emptyContent,
+  language,
   onAddRelative,
   onEditPerson,
   onTogglePerson,
@@ -94,7 +96,7 @@ function SvgCanvasActions({
   selectedPersonId,
   t
 }: Pick<TreeCanvasProps,
-  "actionsVisible" | "emptyContent" | "onAddRelative" | "onEditPerson" | "selectedPersonId" | "t"
+  "actionsVisible" | "emptyContent" | "language" | "onAddRelative" | "onEditPerson" | "selectedPersonId" | "t"
 > & {
   controls: ControlPlacement[];
   onTogglePerson: (personId: string) => void;
@@ -125,7 +127,11 @@ function SvgCanvasActions({
           return (
             <Fragment key={person.id}>
               <button
-                aria-label={person.displayName}
+                aria-label={[
+                  person.displayName,
+                  t(person.gender),
+                  person.birthOrder ? birthOrderLabel(person.birthOrder, language) : undefined
+                ].filter(Boolean).join(", ")}
                 aria-pressed={selected}
                 className="canvas-person-hit"
                 data-canvas-person={person.id}
@@ -136,6 +142,7 @@ function SvgCanvasActions({
                   top: person.y,
                   width: LAYOUT_METRICS.avatarDiameter
                 }}
+                title={person.birthOrder ? birthOrderLabel(person.birthOrder, language) : undefined}
                 type="button"
               />
               {showActions ? (
@@ -224,18 +231,33 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const selectionFiltersLayout = generationLimits.ancestors !== null ||
     generationLimits.descendants !== null;
   const layoutSelectionId = selectionFiltersLayout ? selectedPersonId : undefined;
-  const geometryLayout = useMemo(
-    () => createTreeLayout(
-      people,
-      relationships,
-      layoutSelectionId,
-      generationLimits,
-      language
-    ),
-    [generationLimits, language, layoutSelectionId, people, relationships]
-  );
+  const { result: preparedTree, isPreparing } = useTreePreparation({
+    people,
+    relationships,
+    layoutSelectionId,
+    generationLimits,
+    language,
+    controlsVisible: !readOnly && people.length <= 24
+  });
+  const geometryLayout = useMemo<TreeLayout>(() => {
+    if (!preparedTree) return { people: [], relationships: [], width: 0, height: 0 };
+    const peopleById = new Map(people.map((person) => [person.id, person]));
+    return {
+      ...preparedTree.geometryLayout,
+      people: preparedTree.geometryLayout.people.map((positioned) => ({
+        ...(peopleById.get(positioned.id) ?? positioned),
+        x: positioned.x,
+        y: positioned.y,
+        role: positioned.role,
+        generation: positioned.generation,
+        birthOrder: positioned.birthOrder
+      }))
+    };
+  }, [people, preparedTree]);
   const layout = useMemo(() => {
-    if (selectionFiltersLayout || !selectedPersonId) return geometryLayout;
+    if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
+      return geometryLayout;
+    }
     const labels = deriveKinshipLabels(selectedPersonId, people, relationships, language);
     return {
       ...geometryLayout,
@@ -245,19 +267,16 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
       }))
     };
   }, [geometryLayout, language, people, relationships, selectedPersonId, selectionFiltersLayout]);
-  const routingLayout = useMemo(() => ({
-    ...geometryLayout,
-    people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
-  }), [geometryLayout]);
-  const connectionPlan = useMemo(
-    () => createConnectionPlan(
-      routingLayout,
-      language,
-      undefined,
-      !readOnly && people.length <= 24
-    ),
-    [language, people.length, readOnly, routingLayout]
-  );
+  const connectionPlan = preparedTree?.connectionPlan ?? {
+    families: [],
+    nonParentRoutes: [],
+    obstacles: [],
+    controls: [],
+    crossings: [],
+    bounds: { x: 0, y: 0, width: 0, height: 0 },
+    failures: [],
+    isValid: true
+  };
 
   const shouldRenderOverview = (zoom: number) =>
     overviewRef.current ? zoom < OVERVIEW_EXIT_ZOOM : zoom < OVERVIEW_ENTER_ZOOM;
@@ -417,6 +436,10 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     const initializeOrResize = () => {
       const mobile = window.innerWidth <= 840;
       if (!initialized.current) {
+        if (isPreparing) {
+          updateTransforms(viewport.current);
+          return;
+        }
         initialized.current = true;
         if (!mobile && initialViewport && layout.people.length) {
           applyViewport(initialViewport, false, false);
@@ -445,7 +468,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     return () => observer.disconnect();
   // The observer intentionally reads the latest imperative viewport methods.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connectionPlan.bounds, initialViewport, layout.people.length]);
+  }, [connectionPlan.bounds, initialViewport, isPreparing, layout.people.length]);
 
   useEffect(() => {
     updateTransforms(viewport.current);
@@ -678,6 +701,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         actionsVisible={!readOnly && actionsVisible}
         controls={readOnly ? [] : connectionPlan.controls}
         emptyContent={emptyContent}
+        language={language}
         onAddRelative={onAddRelative}
         onEditPerson={onEditPerson}
         onTogglePerson={togglePerson}
@@ -686,6 +710,12 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         selectedPersonId={selectedPersonId}
         t={t}
       />
+      {isPreparing ? (
+        <div aria-live="polite" className="canvas-preparing" role="status">
+          <LoaderCircle aria-hidden="true" className="button-loader" size={20} />
+          <span>{t("preparingTree")}</span>
+        </div>
+      ) : null}
     </div>
   );
 });

@@ -114,14 +114,20 @@ describe("direct relationship roles", () => {
     }
   );
 
-  it("groups all 34 roles once using the iOS categories", () => {
+  it("keeps sibling roles out of the visible relationship groups", () => {
     expect(ROLE_GROUPS.map((group) => group.id)).toEqual([
-      "common", "parents", "partners", "children", "siblings"
+      "common", "parents", "partners", "children"
+    ]);
+    expect(ROLE_GROUPS[0].roles).toEqual([
+      "father", "mother", "son", "daughter", "wife", "husband"
     ]);
     const groupedRoles = ROLE_GROUPS.flatMap((group) => group.roles);
-    expect(groupedRoles).toHaveLength(34);
-    expect(new Set(groupedRoles).size).toBe(34);
-    expect(new Set(groupedRoles)).toEqual(new Set(cases.map(([role]) => role)));
+    const visibleRoles = cases
+      .filter(([, , kind]) => kind !== "sibling")
+      .map(([role]) => role);
+    expect(groupedRoles).toHaveLength(visibleRoles.length);
+    expect(new Set(groupedRoles).size).toBe(groupedRoles.length);
+    expect(new Set(groupedRoles)).toEqual(new Set(visibleRoles));
   });
 
   it("limits co-parenting to non-step child roles and dates to union roles", () => {

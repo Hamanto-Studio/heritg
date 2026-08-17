@@ -13,7 +13,7 @@ import {
   routeIsClear,
   segmentOrientation
 } from "./connectionGeometry";
-import { createTreeLayout } from "./layout";
+import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import { obstacleCollisions } from "./obstacleRouter";
 import { importGedcom } from "./portability";
 import type {
@@ -38,7 +38,6 @@ const hamantoGed = (() => {
     return undefined;
   }
 })();
-
 const person = (id: string, x: number, y: number): PositionedPerson => ({
   id,
   treeId: "tree",
@@ -82,6 +81,29 @@ const parent = (from: string, to: string) =>
   relationship(`${from}-${to}`, from, to, "parent");
 
 describe("family connection planning", () => {
+  it("places a person shared by two partner relationships between both partners", () => {
+    const people = [
+      person("shared-partner", 0, 0),
+      person("first-partner", 0, 0),
+      person("second-partner", 0, 0)
+    ];
+    const relationships = [
+      relationship("partner-one", "shared-partner", "first-partner", "partner"),
+      relationship("partner-two", "shared-partner", "second-partner", "partner")
+    ];
+    const treeLayout = createTreeLayout(people, relationships);
+    const positionedById = new Map(treeLayout.people.map((value) => [value.id, value]));
+    const sharedPartner = positionedById.get("shared-partner")!;
+    const partners = [positionedById.get("first-partner")!, positionedById.get("second-partner")!]
+      .sort((left, right) => left.x - right.x);
+
+    expect(partners[0].x).toBe(sharedPartner.x - LAYOUT_METRICS.horizontalSpacing);
+    expect(partners[1].x).toBe(sharedPartner.x + LAYOUT_METRICS.horizontalSpacing);
+    expect(partners[0].y).toBe(sharedPartner.y);
+    expect(partners[1].y).toBe(sharedPartner.y);
+    expect(createConnectionPlan(treeLayout, "en", undefined, false).failures).toEqual([]);
+  });
+
   it.skipIf(!hamantoGed)("keeps the complete example tree readable without routing failures", () => {
     let nextId = 0;
     const data = importGedcom(hamantoGed!, {
@@ -187,6 +209,27 @@ describe("family connection planning", () => {
     expect(segmentsFormConnectedNetwork(family.segments)).toBe(true);
     expect(plan.failures).toEqual([]);
     expect(plan.isValid).toBe(true);
+  });
+
+  it("omits sibling routes already shown by a family bus", () => {
+    const value = layout(
+      [
+        person("parent-a", -130, 0), person("parent-b", 130, 0),
+        person("child-a", -260, 260), person("child-b", 0, 260),
+        person("sibling-without-parents", 260, 260)
+      ],
+      [
+        parent("parent-a", "child-a"), parent("parent-b", "child-a"),
+        parent("parent-a", "child-b"), parent("parent-b", "child-b"),
+        relationship("redundant-siblings", "child-a", "child-b", "sibling"),
+        relationship("sibling-only", "child-b", "sibling-without-parents", "sibling")
+      ]
+    );
+
+    const plan = createConnectionPlan(value, "en", undefined, false);
+
+    expect(plan.nonParentRoutes.map(({ id }) => id)).toEqual(["sibling-only"]);
+    expect(value.relationships.some(({ id }) => id === "redundant-siblings")).toBe(true);
   });
 
   it("gives a shared parent separate ports and lanes for remarriage families", () => {

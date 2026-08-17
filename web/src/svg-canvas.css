@@ -25,6 +25,26 @@
   will-change: transform;
 }
 
+.canvas-preparing {
+  align-items: center;
+  background: rgb(255 255 255 / 88%);
+  border: 1px solid rgb(48 43 37 / 10%);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgb(48 43 37 / 10%);
+  color: #62594f;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 650;
+  gap: 8px;
+  left: 50%;
+  padding: 9px 14px;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+}
+
 .svg-connector {
   fill: none;
   pointer-events: none;

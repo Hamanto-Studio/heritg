@@ -6,11 +6,15 @@ import { createTreeLayout } from "./layout";
 import { SvgTreeScene } from "./SvgTreeScene";
 import type { FamilyRelationship, Person } from "./types";
 
-const person = (id: string, displayName: string): Person => ({
+const person = (
+  id: string,
+  displayName: string,
+  gender: Person["gender"] = "unspecified"
+): Person => ({
   id,
   treeId: "tree",
   displayName,
-  gender: "unspecified",
+  gender,
   createdAt: "2026-01-01T00:00:00.000Z",
   birthDatePrecision: "year",
   notes: "",
@@ -74,5 +78,40 @@ describe("SvgTreeScene", () => {
     expect(markup).toContain('data-person-id="parent"');
     expect(markup).not.toContain("svg-person-name");
     expect(markup).not.toContain("svg-person-initial");
+  });
+
+  it("renders distinct gender fills while selection remains a separate outline", () => {
+    const genderPeople = [
+      person("female", "Female Example", "female"),
+      person("male", "Male Example", "male"),
+      person("unspecified", "Unspecified Example")
+    ];
+    const baseGenderLayout = createTreeLayout(genderPeople, []);
+    const genderLayout = {
+      ...baseGenderLayout,
+      people: baseGenderLayout.people.map((value) =>
+        value.id === "female" ? { ...value, birthOrder: 1 } : value
+      )
+    };
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgTreeScene
+          connectionPlan={createConnectionPlan(genderLayout)}
+          language="en"
+          layout={genderLayout}
+          overview={false}
+          selectedPersonId="female"
+        />
+      </svg>
+    );
+
+    expect(markup).toContain('data-gender="female"');
+    expect(markup).toContain('fill="#f4e4e8"');
+    expect(markup).toContain('data-gender="male"');
+    expect(markup).toContain('fill="#e2ebf2"');
+    expect(markup).toContain('data-gender="unspecified"');
+    expect(markup).toContain('fill="#ede5d8"');
+    expect(markup).toContain('stroke="#9c825f"');
+    expect(markup).toContain('data-birth-order="1"');
   });
 });

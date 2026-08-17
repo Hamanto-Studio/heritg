@@ -61,7 +61,7 @@ export const DIRECT_ROLE_DEFAULTS: Readonly<Record<DirectRole, DirectRoleDefault
 export const directRoleDefaults = (role: DirectRole): DirectRoleDefaults =>
   DIRECT_ROLE_DEFAULTS[role];
 
-export type RoleGroupId = "common" | "parents" | "partners" | "children" | "siblings";
+export type RoleGroupId = "common" | "parents" | "partners" | "children";
 
 export interface RoleGroup {
   readonly id: RoleGroupId;
@@ -71,7 +71,7 @@ export interface RoleGroup {
 export const ROLE_GROUPS = [
   {
     id: "common",
-    roles: ["father", "mother", "son", "daughter", "brother", "sister", "partner"]
+    roles: ["father", "mother", "son", "daughter", "wife", "husband"]
   },
   {
     id: "parents",
@@ -82,20 +82,13 @@ export const ROLE_GROUPS = [
   },
   {
     id: "partners",
-    roles: ["husband", "wife", "formerPartner", "formerHusband", "formerWife"]
+    roles: ["partner", "formerPartner", "formerHusband", "formerWife"]
   },
   {
     id: "children",
     roles: [
       "stepson", "stepdaughter", "adoptiveSon", "adoptiveDaughter",
       "fosterSon", "fosterDaughter", "ward"
-    ]
-  },
-  {
-    id: "siblings",
-    roles: [
-      "halfBrother", "halfSister", "stepbrother", "stepsister",
-      "adoptiveBrother", "adoptiveSister", "fosterBrother", "fosterSister"
     ]
   }
 ] as const satisfies readonly RoleGroup[];

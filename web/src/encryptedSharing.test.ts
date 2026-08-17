@@ -11,7 +11,8 @@ import {
   SHARE_ENVELOPE_VERSION,
   ShareDecryptionError,
   SharePasswordRequiredError,
-  sharePasswordMeetsRequirements
+  sharePasswordMeetsRequirements,
+  sharePasswordRequirements
 } from "./encryptedSharing";
 import type { AppData } from "./types";
 
@@ -138,7 +139,7 @@ describe("password-protected share protocol", () => {
     const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
       fetchImpl,
       origin: "https://heritg.us",
-      password: "SharePassword123"
+      password: "SharePassword123!"
     });
 
     expect(calls.map((call) => call.url)).toEqual([
@@ -147,14 +148,22 @@ describe("password-protected share protocol", () => {
       "/api/v1/share-uploads/complete"
     ]);
     expect(created.url).toBe(`https://heritg.us/s/${shareId}`);
-    expect(JSON.stringify(calls)).not.toContain("SharePassword123");
+    expect(JSON.stringify(calls)).not.toContain("SharePassword123!");
     expect(JSON.parse(String(calls[0]?.body))).toMatchObject({ envelopeVersion: SHARE_ENVELOPE_VERSION, expiryDays: 30 });
   });
 
   it("requires a strong password before allocating a new share", async () => {
-    expect(sharePasswordMeetsRequirements("Abc12345")).toBe(true);
+    expect(sharePasswordMeetsRequirements("Abc12345")).toBe(false);
+    expect(sharePasswordMeetsRequirements("Abc1234!")).toBe(true);
     expect(sharePasswordMeetsRequirements("Åbcdef1?")).toBe(true);
     expect(sharePasswordMeetsRequirements("Abc1234")).toBe(false);
+    expect(sharePasswordRequirements("lowercase")).toEqual({
+      minimumLength: true,
+      lowercase: true,
+      uppercase: false,
+      number: false,
+      special: false
+    });
     await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { password: "short" }))
       .rejects.toThrow(/at least 8 characters/i);
   });
@@ -206,7 +215,7 @@ describe("password-protected share protocol", () => {
       return response({}, 500);
     }) as unknown as typeof fetch;
 
-    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl, password: "SharePassword123" }))
+    await expect(createEncryptedShare(syntheticData, "tree-share-fixture", { fetchImpl, password: "SharePassword123!" }))
       .rejects.toThrow(/upload was rejected/i);
     expect(calls).toEqual([
       "/api/v1/share-uploads",

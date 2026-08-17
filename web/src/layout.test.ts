@@ -5,7 +5,8 @@ import {
   LAYOUT_METRICS,
   availableGenerationLevels,
   createTreeLayout,
-  filterByGeneration
+  filterByGeneration,
+  getGenerationMap
 } from "./layout";
 import type {
   FamilyRelationship,
@@ -83,7 +84,8 @@ describe("kinship labels", () => {
       parent("daughter", "grandson")
     ];
 
-    expect(kinshipLabel("focus", "focus", people, relationships)).toBe("You");
+    expect(kinshipLabel("focus", "focus", people, relationships)).toBe("Selected person");
+    expect(kinshipLabel("focus", "focus", people, relationships, "id")).toBe("Orang terpilih");
     expect(kinshipLabel("father", "focus", people, relationships)).toBe("Father");
     expect(kinshipLabel("grandmother", "focus", people, relationships)).toBe(
       "Grandmother"
@@ -193,6 +195,7 @@ describe("deterministic family layout", () => {
       minY: -LAYOUT_METRICS.avatarRadius,
       maxY: LAYOUT_METRICS.nodeBottom
     });
+    expect(layout.people[0].role).toBe("");
   });
 
   it("shows kinship roles only while a person is selected", () => {
@@ -202,7 +205,7 @@ describe("deterministic family layout", () => {
     const selected = createTreeLayout(values, relationships, "focus");
 
     expect(unselected.people.every(({ role }) => role === "")).toBe(true);
-    expect(selected.people.find(({ id }) => id === "focus")?.role).toBe("You");
+    expect(selected.people.find(({ id }) => id === "focus")?.role).toBe("Selected person");
     expect(selected.people.find(({ id }) => id === "parent")?.role).toBe("Father");
   });
 
@@ -252,6 +255,30 @@ describe("deterministic family layout", () => {
     );
     expect(layout.bounds.width).toBe(layout.width);
     expect(layout.bounds.height).toBe(layout.height);
+  });
+
+  it("compacts a shallow ancestry branch when partners merge at a deeper generation", () => {
+    const branchPeople = [
+      person("deep-grandparent"), person("deep-parent"), person("deep-partner"),
+      person("shallow-parent"), person("shallow-partner")
+    ];
+    const branchRelationships = [
+      parent("deep-grandparent", "deep-parent"),
+      parent("deep-parent", "deep-partner"),
+      parent("shallow-parent", "shallow-partner"),
+      partner("deep-partner", "shallow-partner", "merged-partnership")
+    ];
+    const generations = getGenerationMap(branchPeople, branchRelationships);
+
+    expect(generations["deep-grandparent"]).toBe(0);
+    expect(generations["deep-parent"]).toBe(1);
+    expect(generations["shallow-parent"]).toBe(1);
+    expect(generations["deep-partner"]).toBe(2);
+    expect(generations["shallow-partner"]).toBe(2);
+    expect(getGenerationMap(
+      [...branchPeople].reverse(),
+      [...branchRelationships].reverse()
+    )).toEqual(generations);
   });
 
   it("keeps separate co-parent couples adjacent without interleaving their branches", () => {
@@ -340,6 +367,34 @@ describe("deterministic family layout", () => {
     ]);
   });
 
+  it("keeps an independent spouse pair together inside a shared co-parent row", () => {
+    const familyPeople = [
+      person("adoptive-father", "male"), person("adoptive-father-wife", "female"),
+      person("stepfather", "male"), person("mother", "female"),
+      person("father", "male"), person("child", "female")
+    ];
+    const familyRelationships = [
+      partner("adoptive-father", "adoptive-father-wife", "adoptive-union"),
+      partner("stepfather", "mother", "step-union"),
+      partner("father", "mother", "parent-union"),
+      parent("adoptive-father", "child", "adoptive-parent", "adoptiveParent"),
+      parent("stepfather", "child", "step-parent", "stepParent"),
+      parent("mother", "child"),
+      parent("father", "child")
+    ];
+    const coordinates = (people: typeof familyPeople, edges: typeof familyRelationships) =>
+      Object.fromEntries(createTreeLayout(people, edges).people.map(({ id, x }) => [id, x]));
+
+    const first = coordinates(familyPeople, familyRelationships);
+    const second = coordinates([...familyPeople].reverse(), [...familyRelationships].reverse());
+
+    expect(second).toEqual(first);
+    expect(Math.abs(first["adoptive-father"] - first["adoptive-father-wife"]))
+      .toBe(LAYOUT_METRICS.horizontalSpacing);
+    expect(Math.abs(first.stepfather - first.mother)).toBe(LAYOUT_METRICS.horizontalSpacing);
+    expect(Math.abs(first.father - first.mother)).toBe(LAYOUT_METRICS.horizontalSpacing);
+  });
+
   it("expands descendant families from their parent anchors without recentering the row", () => {
     const branchPeople = [
       person("left-parent-a"), person("left-parent-b"),
@@ -362,18 +417,19 @@ describe("deterministic family layout", () => {
     const first = coordinates(branchPeople, branchRelationships);
     const second = coordinates([...branchPeople].reverse(), [...branchRelationships].reverse());
 
-    expect(first).toMatchObject({
-      "left-parent-a": -490,
-      "left-parent-b": -230,
-      "right-parent-a": 490,
-      "right-parent-b": 750,
-      "left-child": -360,
-      "left-partner-a": -100,
-      "left-partner-b": 160,
-      "right-child": 620,
-      "right-spouse": 880
-    });
     expect(second).toEqual(first);
+    expect(first["left-child"]).toBe((first["left-parent-a"] + first["left-parent-b"]) / 2);
+    expect(first["right-child"]).toBe((first["right-parent-a"] + first["right-parent-b"]) / 2);
+    const leftPartnerPositions = [first["left-partner-a"], first["left-partner-b"]]
+      .sort((left, right) => left - right);
+    expect(leftPartnerPositions[0]).toBe(first["left-child"] - LAYOUT_METRICS.horizontalSpacing);
+    expect(leftPartnerPositions[1]).toBe(first["left-child"] + LAYOUT_METRICS.horizontalSpacing);
+    expect(Math.abs(first["right-spouse"] - first["right-child"])).toBe(
+      LAYOUT_METRICS.horizontalSpacing
+    );
+    expect(Math.max(...leftPartnerPositions, first["left-child"])).toBeLessThan(
+      Math.min(first["right-child"], first["right-spouse"])
+    );
   });
 
   it("orders couples on the same side as their own parents", () => {

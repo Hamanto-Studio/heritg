@@ -24,6 +24,8 @@ import type { AppData, FamilyTree } from "./types";
 import type { Translator } from "./i18n";
 import { ConfirmDialog, ErrorNotice, Modal } from "./ui";
 
+const GEDCOM_FILE_SUFFIX = /\.(?:ged|gedcom)(?:\.txt)?$/i;
+
 type EditState =
   | { kind: "create"; value: string }
   | { kind: "rename"; tree: FamilyTree; value: string };
@@ -115,9 +117,9 @@ export function TreeSidebar({
       }
     } else if (lowerName.endsWith(".json")) {
       actions.replaceData(importHeritgBackup(await file.text(), { into: data }));
-    } else if (lowerName.endsWith(".ged") || lowerName.endsWith(".gedcom")) {
+    } else if (GEDCOM_FILE_SUFFIX.test(lowerName)) {
       const imported = importGedcom(await file.text(), {
-        title: file.name.replace(/\.(?:ged|gedcom)$/i, ""),
+        title: file.name.replace(GEDCOM_FILE_SUFFIX, ""),
         language: data.language
       });
       actions.replaceData(validateAppData({
