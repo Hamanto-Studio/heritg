@@ -1,5 +1,5 @@
 import { ImagePlus, Link2, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import type { Translator } from "./i18n";
@@ -13,7 +13,7 @@ import {
 } from "./relationshipRoles";
 import type { AppActions } from "./store";
 import type { AppData, DirectRole, FamilyRelationship, Person } from "./types";
-import { ErrorNotice, Modal, PersonAvatar } from "./ui";
+import { ButtonLoader, ErrorNotice, Modal, PersonAvatar } from "./ui";
 
 interface RelativeDialogProps {
   target: Person;
@@ -52,6 +52,8 @@ export function RelativeDialog({
   const [photoDataUrl, setPhotoDataUrl] = useState<string>();
   const [photoToCrop, setPhotoToCrop] = useState<File>();
   const [error, setError] = useState<string>();
+  const [isSaving, startTransition] = useTransition();
+  const saving = useRef(false);
 
   const candidates = people
     .filter((person) => person.treeId === target.treeId && person.id !== target.id)
@@ -97,51 +99,55 @@ export function RelativeDialog({
   };
 
   const save = () => {
-    if (!method || !role) return;
+    if (!method || !role || saving.current) return;
+    saving.current = true;
     setError(undefined);
-    try {
-      const partnerDate = isPartnerRole(role) && marriageDate
-        ? marriageDate
-        : undefined;
-      const selectedCoParentId = allowsCoParent(role) && coParentId
-        ? coParentId
-        : undefined;
-      let relativePersonId = existingPersonId;
+    startTransition(() => {
+      try {
+        const partnerDate = isPartnerRole(role) && marriageDate
+          ? marriageDate
+          : undefined;
+        const selectedCoParentId = allowsCoParent(role) && coParentId
+          ? coParentId
+          : undefined;
+        let relativePersonId = existingPersonId;
 
-      if (method === "new") {
-        relativePersonId = actions.createRelative(
-          target.treeId,
-          target.id,
-          {
-            displayName: name,
-            gender: directRoleDefaults(role).gender,
-            birthDate: birthDate || undefined,
-            city,
-            photoDataUrl
-          },
-          role,
-          partnerDate,
-          selectedCoParentId,
-          formerPartnerRole && divorceDate ? divorceDate : undefined
-        );
-      } else {
-        if (!relativePersonId) throw new Error(t("selectPerson"));
-        actions.linkRelative(
-          target.id,
-          relativePersonId,
-          role,
-          partnerDate,
-          selectedCoParentId,
-          formerPartnerRole && divorceDate ? divorceDate : undefined
-        );
+        if (method === "new") {
+          relativePersonId = actions.createRelative(
+            target.treeId,
+            target.id,
+            {
+              displayName: name,
+              gender: directRoleDefaults(role).gender,
+              birthDate: birthDate || undefined,
+              city,
+              photoDataUrl
+            },
+            role,
+            partnerDate,
+            selectedCoParentId,
+            formerPartnerRole && divorceDate ? divorceDate : undefined
+          );
+        } else {
+          if (!relativePersonId) throw new Error(t("selectPerson"));
+          actions.linkRelative(
+            target.id,
+            relativePersonId,
+            role,
+            partnerDate,
+            selectedCoParentId,
+            formerPartnerRole && divorceDate ? divorceDate : undefined
+          );
+        }
+
+        actions.selectPerson(target.id);
+        onSaved(relativePersonId);
+        onClose();
+      } catch (reason) {
+        saving.current = false;
+        setError(reason instanceof Error ? reason.message : t("errorTitle"));
       }
-
-      actions.selectPerson(target.id);
-      onSaved(relativePersonId);
-      onClose();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("errorTitle"));
-    }
+    });
   };
 
   const progress = (current: number) => (
@@ -348,18 +354,20 @@ export function RelativeDialog({
         </>
       ) : (
         <>
-          <button className="button secondary" onClick={() => setStep("role")} type="button">{t("back")}</button>
+          <button className="button secondary" disabled={isSaving} onClick={() => setStep("role")} type="button">{t("back")}</button>
           <button
+            aria-busy={isSaving || undefined}
             className="button add"
-            disabled={method === "new" ? !name.trim() : !existingPersonId}
+            disabled={isSaving || (method === "new" ? !name.trim() : !existingPersonId)}
             onClick={save}
             type="button"
           >
+            {isSaving ? <ButtonLoader /> : null}
             {method === "new" ? t("addRelative") : t("linkPerson")}
           </button>
         </>
       )}
-      onClose={onClose}
+      onClose={() => { if (!isSaving) onClose(); }}
       size="medium"
       title={t("addRelativeTo", { name: target.displayName })}
     >

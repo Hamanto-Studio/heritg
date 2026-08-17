@@ -524,6 +524,34 @@
   padding: 8px 10px;
 }
 
+.password-requirements {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.password-requirement {
+  align-items: center;
+  color: var(--subtle);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 7px;
+}
+
+.password-requirement[data-highlight-unmet="true"][data-met="false"] { color: #9a4c41; }
+.password-requirement[data-met="true"] { color: #39745a; }
+.password-requirement-icon {
+  align-items: center;
+  background: color-mix(in srgb, currentColor 11%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 50%;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
+}
+
 .file-button input {
   height: 1px;
   opacity: 0;
@@ -574,12 +602,12 @@
   padding: 10px 12px;
 }
 
-.relationship-row strong,
-.relationship-row span {
+.relationship-row-copy > strong,
+.relationship-row-copy > span {
   display: block;
 }
 
-.relationship-row span {
+.relationship-row-copy > span {
   color: var(--subtle);
   font-size: 0.75rem;
   margin-top: 2px;

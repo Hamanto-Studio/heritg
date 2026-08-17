@@ -1,5 +1,5 @@
 import { CalendarDays, ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
 import { formatDisplayDate, type Translator } from "./i18n";
@@ -8,7 +8,7 @@ import { RelationshipDialog } from "./RelationshipDialog";
 import { isPartnerRole, roleForRelationship } from "./relationshipRoles";
 import type { AppActions, RelationshipDraftInput } from "./store";
 import type { AppData, FamilyRelationship, Gender, Person } from "./types";
-import { ConfirmDialog, ErrorNotice, Modal, PersonAvatar } from "./ui";
+import { ButtonLoader, ConfirmDialog, ErrorNotice, Modal, PersonAvatar } from "./ui";
 
 interface PersonEditorProps {
   treeId: string;
@@ -72,6 +72,8 @@ export function PersonEditor({
   const [removedRelationshipIds, setRemovedRelationshipIds] = useState<Set<string>>(() => new Set());
   const [relationshipEdits, setRelationshipEdits] = useState<Record<string, RelationshipDraftInput>>({});
   const [pendingLinks, setPendingLinks] = useState<RelationshipDraftInput[]>([]);
+  const [isSaving, startTransition] = useTransition();
+  const saving = useRef(false);
 
   const relatives = person
     ? connectedRelationships(person.id, people, relationships)
@@ -125,32 +127,38 @@ export function PersonEditor({
   };
 
   const save = () => {
+    if (saving.current) return;
+    saving.current = true;
     setError(undefined);
-    try {
-      if (person) {
-        const editedRelationshipIds = Object.keys(relationshipEdits);
-        const removals = [...new Set([
-          ...removedRelationshipIds,
-          ...editedRelationshipIds
-        ])];
-        const additions = [
-          ...editedRelationshipIds.map((id) => relationshipEdits[id]),
-          ...pendingLinks
-        ];
-        actions.savePerson(person.id, personChanges, removals, additions);
-        onSaved(person.id);
-      } else {
-        const id = actions.createPerson(treeId, personChanges);
-        actions.selectPerson(id);
-        onSaved(id);
+    startTransition(() => {
+      try {
+        if (person) {
+          const editedRelationshipIds = Object.keys(relationshipEdits);
+          const removals = [...new Set([
+            ...removedRelationshipIds,
+            ...editedRelationshipIds
+          ])];
+          const additions = [
+            ...editedRelationshipIds.map((id) => relationshipEdits[id]),
+            ...pendingLinks
+          ];
+          actions.savePerson(person.id, personChanges, removals, additions);
+          onSaved(person.id);
+        } else {
+          const id = actions.createPerson(treeId, personChanges);
+          actions.selectPerson(id);
+          onSaved(id);
+        }
+        onClose();
+      } catch (reason) {
+        saving.current = false;
+        setError(reason instanceof Error ? reason.message : t("errorTitle"));
       }
-      onClose();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("errorTitle"));
-    }
+    });
   };
 
   const requestClose = () => {
+    if (isSaving) return;
     if (dirty) setConfirmingDiscard(true);
     else onClose();
   };
@@ -206,13 +214,15 @@ export function PersonEditor({
         title={person ? t("editPerson", { name: person.displayName }) : t("startFamilyTree")}
         footer={
           <>
-            <button className="button secondary" onClick={requestClose} type="button">{t("cancel")}</button>
+            <button className="button secondary" disabled={isSaving} onClick={requestClose} type="button">{t("cancel")}</button>
             <button
+              aria-busy={isSaving || undefined}
               className="button primary"
-              disabled={processingPhoto || (person ? !dirty : !name.trim())}
+              disabled={isSaving || processingPhoto || (person ? !dirty : !name.trim())}
               form="person-editor-form"
               type="submit"
             >
+              {isSaving ? <ButtonLoader /> : null}
               {person ? t("save") : t("addPerson")}
             </button>
           </>
@@ -368,7 +378,7 @@ export function PersonEditor({
                   return (
                     <div className={`relationship-row ${removed ? "pending-removal" : ""}`} key={relationship.id}>
                       <PersonAvatar person={relative} />
-                      <div>
+                      <div className="relationship-row-copy">
                         <strong>{relative.displayName}</strong>
                         <span>{t(role)}</span>
                         {date ? <span>{t("marriedOn", { date: formatDisplayDate(date, language) })}</span> : null}
@@ -425,7 +435,7 @@ export function PersonEditor({
                   return relative ? (
                     <div className="relationship-row pending-link" key={`pending-${draft.relativePersonId}`}>
                       <PersonAvatar person={relative} />
-                      <div>
+                      <div className="relationship-row-copy">
                         <strong>{relative.displayName}</strong>
                         <span>{t(draft.role)}</span>
                         {draft.marriageDate ? <span>{t("marriedOn", { date: formatDisplayDate(draft.marriageDate, language) })}</span> : null}

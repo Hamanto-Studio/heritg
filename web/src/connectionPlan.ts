@@ -500,6 +500,9 @@ export function createConnectionPlan(
   const nonParentRoutes: PlannedNonParentRoute[] = [];
   for (const relationship of layout.relationships.filter(({ kind }) => kind !== "parent")
     .sort((left, right) => compareText(left.id, right.id))) {
+    if (relationship.kind === "sibling" && familyDrafts.some(({ childIds }) =>
+      childIds.includes(relationship.fromPersonId) && childIds.includes(relationship.toPersonId)
+    )) continue;
     const from = peopleById.get(relationship.fromPersonId);
     const to = peopleById.get(relationship.toPersonId);
     if (!from || !to) continue;

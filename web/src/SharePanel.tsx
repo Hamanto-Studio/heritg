@@ -3,24 +3,23 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
 import { exportHeritgArchive } from "./heritgArchive";
-import { PasswordField } from "./PasswordField";
+import { PasswordField, PasswordRequirementList } from "./PasswordField";
 import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
-import { archivePasswordIsReady, archivePasswordMeetsRequirements } from "./SettingsDialog";
+import { archivePasswordIsReady, archivePasswordRequirements } from "./SettingsDialog";
 import type { ExportPrivacySelection } from "./exportPrivacy";
 import {
   createEncryptedShare,
   DEFAULT_SHARE_DATA_SELECTION,
   revokeEncryptedShare,
   sharePasswordIsReady,
-  sharePasswordMeetsRequirements,
-  SHARE_PASSWORD_MIN_LENGTH,
+  sharePasswordRequirements,
   type CreatedShare,
   type ShareDataSelection,
   type SharePhase
 } from "./encryptedSharing";
 import type { Translator } from "./i18n";
 import type { AppData, FamilyTree } from "./types";
-import { SidePanel } from "./ui";
+import { ButtonLoader, SidePanel } from "./ui";
 
 interface SharePanelProps {
   data: AppData;
@@ -62,7 +61,9 @@ export function SharePanel({
   const [revokingId, setRevokingId] = useState<string>();
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
   const operationRef = useRef<AbortController | undefined>(undefined);
+  const sharingRef = useRef(false);
   const treeShares = useMemo(
     () => managedShares.filter((share) => share.treeId === tree.id),
     [managedShares, tree.id]
@@ -87,7 +88,7 @@ export function SharePanel({
   ).format(new Date(value));
 
   const createShare = () => {
-    operationRef.current?.abort();
+    if (operationRef.current) return;
     const controller = new AbortController();
     operationRef.current = controller;
     setCreatedShare(undefined);
@@ -129,11 +130,18 @@ export function SharePanel({
   };
 
   const shareLink = () => {
-    if (!createdShare || typeof navigator.share !== "function") return;
-    void navigator.share({ title: tree.title, url: createdShare.url }).catch((reason: unknown) => {
-      if (reason instanceof DOMException && reason.name === "AbortError") return;
-      onError(t("shareCopyFailed"));
-    });
+    if (!createdShare || typeof navigator.share !== "function" || sharingRef.current) return;
+    sharingRef.current = true;
+    setIsSharing(true);
+    void navigator.share({ title: tree.title, url: createdShare.url })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === "AbortError") return;
+        onError(t("shareCopyFailed"));
+      })
+      .finally(() => {
+        sharingRef.current = false;
+        setIsSharing(false);
+      });
   };
 
   const revoke = (share: ManagedShare) => {
@@ -161,21 +169,16 @@ export function SharePanel({
   };
 
   const progress = phase ? t(phaseKey(phase)) : undefined;
-  const passwordRequirementsMet = sharePasswordMeetsRequirements(sharePassword);
   const passwordReady = sharePasswordIsReady(sharePassword, sharePasswordConfirmation);
-  const passwordRequirementError = sharePassword.length > 0 && !passwordRequirementsMet
-    ? t("sharePasswordRequirements", { count: SHARE_PASSWORD_MIN_LENGTH })
-    : undefined;
+  const shareRequirements = sharePasswordRequirements(sharePassword);
   const passwordMismatchError = sharePasswordConfirmation.length > 0 && sharePassword !== sharePasswordConfirmation
     ? t("sharePasswordsMismatch")
-    : undefined;
-  const archivePasswordRequirementError = archivePassword.length > 0 && !archivePasswordMeetsRequirements(archivePassword)
-    ? t("archivePasswordRequirements")
     : undefined;
   const archivePasswordMismatchError = archivePasswordConfirmation.length > 0 && archivePassword !== archivePasswordConfirmation
     ? t("archivePasswordsMismatch")
     : undefined;
   const archivePasswordReady = archivePasswordIsReady(archivePassword, archivePasswordConfirmation);
+  const archiveRequirements = archivePasswordRequirements(archivePassword);
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("shareAndExport")}>
@@ -225,14 +228,24 @@ export function SharePanel({
       <PasswordField
         autoComplete="new-password"
         disabled={Boolean(phase) || !peopleCount}
-        error={passwordRequirementError}
-        help={t("sharePasswordHelp", { count: SHARE_PASSWORD_MIN_LENGTH })}
         hideLabel={t("hidePassword")}
         id="share-password"
         label={t("sharePassword")}
         onChange={setSharePassword}
         showLabel={t("showPassword")}
         value={sharePassword}
+      />
+      <PasswordRequirementList
+        highlightUnmet={sharePassword.length > 0}
+        items={[
+          ["minimumLength", t("archivePasswordMinimumLength")],
+          ["lowercase", t("archivePasswordLowercase")],
+          ["uppercase", t("archivePasswordUppercase")],
+          ["number", t("archivePasswordNumber")],
+          ["special", t("archivePasswordSpecial")]
+        ]}
+        label={t("archivePasswordChecklist")}
+        requirements={shareRequirements}
       />
       <PasswordField
         autoComplete="new-password"
@@ -256,8 +269,8 @@ export function SharePanel({
       </label>
 
       {!peopleCount ? <p className="share-unavailable">{t("shareNeedsPerson")}</p> : null}
-      <button className="button primary full share-create" disabled={Boolean(phase) || !peopleCount || !passwordReady} onClick={createShare} type="button">
-        <Link2 aria-hidden="true" size={17} /> {progress ?? t("createShareLink")}
+      <button aria-busy={Boolean(phase) || undefined} className="button primary full share-create" disabled={Boolean(phase) || !peopleCount || !passwordReady} onClick={createShare} type="button">
+        {phase ? <ButtonLoader size={17} /> : <Link2 aria-hidden="true" size={17} />} {progress ?? t("createShareLink")}
       </button>
       {progress ? <p className="share-progress" role="status">{progress}</p> : null}
 
@@ -269,7 +282,9 @@ export function SharePanel({
           <div className="share-result-actions">
             <button className="button primary" onClick={copyLink} type="button"><Copy aria-hidden="true" size={16} /> {t("copyShareLink")}</button>
             {typeof navigator.share === "function" ? (
-              <button className="button secondary" onClick={shareLink} type="button"><Send aria-hidden="true" size={16} /> {t("shareLink")}</button>
+              <button aria-busy={isSharing || undefined} className="button secondary" disabled={isSharing} onClick={shareLink} type="button">
+                {isSharing ? <ButtonLoader /> : <Send aria-hidden="true" size={16} />} {t("shareLink")}
+              </button>
             ) : null}
           </div>
           <small>{t("shareLinkNotSaved")}</small>
@@ -318,27 +333,45 @@ export function SharePanel({
         </div>
         <PasswordField
           autoComplete="new-password"
-          error={archivePasswordRequirementError}
           help={t("archivePasswordHelp")}
           hideLabel={t("hidePassword")}
           id="archive-password"
           label={t("archivePasswordOptional")}
           maxLength={1024}
-          onChange={setArchivePassword}
+          onChange={(value) => {
+            setArchivePassword(value);
+            if (!value) setArchivePasswordConfirmation("");
+          }}
           showLabel={t("showPassword")}
           value={archivePassword}
         />
-        <PasswordField
-          autoComplete="new-password"
-          error={archivePasswordMismatchError}
-          hideLabel={t("hidePassword")}
-          id="archive-password-confirmation"
-          label={t("confirmArchivePassword")}
-          maxLength={1024}
-          onChange={setArchivePasswordConfirmation}
-          showLabel={t("showPassword")}
-          value={archivePasswordConfirmation}
-        />
+        {archivePassword ? (
+          <>
+            <PasswordRequirementList
+              highlightUnmet
+              items={[
+                ["minimumLength", t("archivePasswordMinimumLength")],
+                ["lowercase", t("archivePasswordLowercase")],
+                ["uppercase", t("archivePasswordUppercase")],
+                ["number", t("archivePasswordNumber")],
+                ["special", t("archivePasswordSpecial")]
+              ]}
+              label={t("archivePasswordChecklist")}
+              requirements={archiveRequirements}
+            />
+            <PasswordField
+              autoComplete="new-password"
+              error={archivePasswordMismatchError}
+              hideLabel={t("hidePassword")}
+              id="archive-password-confirmation"
+              label={t("confirmArchivePassword")}
+              maxLength={1024}
+              onChange={setArchivePasswordConfirmation}
+              showLabel={t("showPassword")}
+              value={archivePasswordConfirmation}
+            />
+          </>
+        ) : null}
         <div className="settings-actions">
           <button className="button secondary" disabled={!archivePasswordReady} onClick={() => performExport(async () => {
             const archive = await exportHeritgArchive(data, tree.id, archivePassword);
@@ -355,7 +388,7 @@ export function SharePanel({
             downloadText(
               exportGedcom(data, tree.id, shareSelection),
               safeFilename(tree.title, "ged"),
-              "text/plain;charset=utf-8"
+              "application/x-gedcom;charset=utf-8"
             );
           })} type="button">
             <Download aria-hidden="true" size={16} /> {t("downloadGedcom")}

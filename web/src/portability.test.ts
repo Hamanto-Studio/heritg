@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 import { buildPlist } from "rork-plist";
+import { deriveKinshipLabels } from "./kinship";
 import type { AppData } from "./types";
 import {
   HERITG_FORMAT,
@@ -267,6 +268,7 @@ describe("GEDCOM 7 portability", () => {
     expect(gedcom).toContain("2 CITY Example City");
     expect(gedcom).toMatch(/1 HUSB @I\d+@/);
     expect(gedcom).toMatch(/1 WIFE @I\d+@/);
+    expect(gedcom).toContain("1 _HERITG_SUBTYPE spouse");
     expect(gedcom).toContain("1 CHIL @I3@");
     expect(gedcom).toContain("1 MARR\r\n2 DATE 10 JUN 1995");
 
@@ -280,13 +282,14 @@ describe("GEDCOM 7 portability", () => {
       city: "Second Example City"
     });
     expect(parsed.families).toEqual([
-      {
+      expect.objectContaining({
         parents: ["I1", "I2"],
         children: ["I3"],
         married: true,
         marriageDate: "1995-06-10",
-        divorced: false
-      }
+        divorced: false,
+        partnerSubtype: "spouse"
+      })
     ]);
 
     const imported = importGedcom(gedcom, {
@@ -350,14 +353,123 @@ describe("GEDCOM 7 portability", () => {
       divorceDate: "2020-04-05"
     });
 
-    const formerPartnerGedcom = gedcom.replace("1 MARR\r\n2 DATE 10 JUN 1995\r\n", "");
-    expect(importGedcom(formerPartnerGedcom, {
+    const formerSpouseWithoutMarriageEvent = gedcom.replace("1 MARR\r\n2 DATE 10 JUN 1995\r\n", "");
+    expect(importGedcom(formerSpouseWithoutMarriageEvent, {
       now: timestamp,
       idFactory: sequence(
         "partner-tree", "partner-father", "partner-mother", "partner-child",
         "partner-link", "partner-father-child", "partner-mother-child"
       )
-    }).relationships[0].subtype).toBe("formerPartner");
+    }).relationships[0].subtype).toBe("formerSpouse");
+  });
+
+  it("preserves every HERITG partner subtype independently of event dates", () => {
+    const cases = [
+      ["partner", "1995-06-10", undefined],
+      ["spouse", undefined, undefined],
+      ["formerPartner", "1995-06-10", "2020-04-05"],
+      ["formerSpouse", undefined, "2020-04-05"]
+    ] as const;
+
+    for (const [subtype, marriageDate, divorceDate] of cases) {
+      const source = structuredClone(appData);
+      source.relationships[0].subtype = subtype;
+      source.relationships[0].marriageDate = marriageDate;
+      source.relationships[0].divorceDate = divorceDate;
+      const gedcom = exportGedcom(source, "tree-original");
+      let nextId = 0;
+      const imported = importGedcom(gedcom, {
+        now: timestamp,
+        idFactory: () => `${subtype}-${nextId++}`
+      });
+
+      expect(gedcom).toContain(`1 _HERITG_SUBTYPE ${subtype}`);
+      expect(imported.relationships.find(({ kind }) => kind === "partner")?.subtype)
+        .toBe(subtype);
+    }
+  });
+
+  it("recovers spouses from legacy HERITG HUSB and WIFE records only", () => {
+    const gedcom = (source: string) => [
+      "0 HEAD", "1 GEDC", "2 VERS 7.0", "1 CHAR UTF-8", `1 SOUR ${source}`,
+      "0 @I1@ INDI", "1 NAME Husband", "1 SEX M",
+      "0 @I2@ INDI", "1 NAME Wife", "1 SEX F",
+      "0 @F1@ FAM", "1 HUSB @I1@", "1 WIFE @I2@", "0 TRLR", ""
+    ].join("\r\n");
+    const importSubtype = (source: string) => {
+      let nextId = 0;
+      return importGedcom(gedcom(source), {
+        now: timestamp,
+        idFactory: () => `${source}-${nextId++}`
+      }).relationships[0].subtype;
+    };
+
+    expect(importSubtype("HERITG-WEB")).toBe("spouse");
+    expect(importSubtype("Heritg")).toBe("spouse");
+    expect(importSubtype("OTHER-APP")).toBe("partner");
+  });
+
+  it("preserves a mother and stepfather without turning both into biological parents", () => {
+    const source = structuredClone(appData);
+    source.people.push({
+      ...source.people[0],
+      id: "person-stepfather",
+      displayName: "Stepfather Example",
+      birthDate: undefined,
+      deathDate: undefined,
+      city: "",
+      photoDataUrl: undefined
+    });
+    source.relationships.push(
+      {
+        id: "relationship-mother-stepfather",
+        treeId: "tree-original",
+        fromPersonId: "person-mother",
+        toPersonId: "person-stepfather",
+        kind: "partner",
+        subtype: "spouse",
+        createdAt: timestamp
+      },
+      {
+        id: "relationship-stepfather-child",
+        treeId: "tree-original",
+        fromPersonId: "person-stepfather",
+        toPersonId: "person-child",
+        kind: "parent",
+        subtype: "stepParent",
+        createdAt: timestamp
+      }
+    );
+
+    const gedcom = exportGedcom(source, "tree-original");
+    expect(gedcom).toMatch(/1 ASSO @I3@\r\n2 RELA stepParent/);
+
+    const imported = importGedcom(gedcom, {
+      language: "en",
+      now: timestamp
+    });
+    const peopleByName = new Map(imported.people.map((person) => [person.displayName, person]));
+    const child = peopleByName.get("Child Example")!;
+    const mother = peopleByName.get("Parent Example Two")!;
+    const stepfather = peopleByName.get("Stepfather Example")!;
+    const labels = deriveKinshipLabels(child.id, imported.people, imported.relationships, "en");
+
+    expect(imported.relationships).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        fromPersonId: mother.id,
+        toPersonId: child.id,
+        kind: "parent",
+        subtype: "biologicalParent"
+      }),
+      expect.objectContaining({
+        fromPersonId: stepfather.id,
+        toPersonId: child.id,
+        kind: "parent",
+        subtype: "stepParent"
+      })
+    ]));
+    expect(labels[mother.id]).toBe("Mother");
+    expect(labels[stepfather.id]).toBe("Stepfather");
   });
 
   it("applies export privacy choices to GEDCOM dates while retaining family connections", () => {

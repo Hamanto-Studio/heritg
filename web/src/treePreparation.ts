@@ -1,0 +1,63 @@
+import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
+import { createTreeLayout } from "./layout";
+import type { AppData, FamilyRelationship, GenerationLimits, Person, TreeLayout } from "./types";
+
+export interface TreePreparationRequest {
+  requestKey: string;
+  people: Person[];
+  relationships: FamilyRelationship[];
+  layoutSelectionId?: string;
+  generationLimits: GenerationLimits;
+  language: AppData["language"];
+  controlsVisible: boolean;
+}
+
+export interface TreePreparationResult {
+  requestKey: string;
+  geometryLayout: TreeLayout;
+  connectionPlan: ConnectionPlan;
+}
+
+export function prepareTree({
+  requestKey,
+  people,
+  relationships,
+  layoutSelectionId,
+  generationLimits,
+  language,
+  controlsVisible
+}: TreePreparationRequest): TreePreparationResult {
+  const geometryLayout = createTreeLayout(
+    people,
+    relationships,
+    layoutSelectionId,
+    generationLimits,
+    language
+  );
+  const routingLayout = {
+    ...geometryLayout,
+    people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
+  };
+  return {
+    requestKey,
+    geometryLayout,
+    connectionPlan: createConnectionPlan(routingLayout, language, undefined, controlsVisible)
+  };
+}
+
+export const personForTreePreparation = (person: Person): Person => ({
+  id: person.id,
+  treeId: person.treeId,
+  displayName: person.displayName,
+  gender: person.gender,
+  createdAt: person.createdAt,
+  birthDate: person.birthDate,
+  deathDate: person.deathDate,
+  birthDatePrecision: person.birthDatePrecision,
+  notes: "",
+  addressLine: "",
+  city: "",
+  province: "",
+  country: "",
+  postalCode: ""
+});

@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import { isValidAvatarImage } from "./avatar";
+import { BIRTH_ORDER_BADGE, birthOrderLabel } from "./birthOrder";
 import type { ConnectionPlan } from "./connectionPlan";
 import { personLifeTop } from "./connectionGeometry";
 import {
@@ -11,6 +12,7 @@ import {
 } from "./connectorStyle";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
+import { personAvatarAppearance } from "./personAvatarAppearance";
 import type {
   AppData,
   PositionedPerson,
@@ -29,9 +31,6 @@ interface SvgTreeSceneProps {
 
 const SCENE_COLORS = {
   canvas: "#f5f5f3",
-  avatar: "#fffdf8",
-  selectedAvatar: "#f3eadf",
-  recessed: "#ede5d8",
   text: "#302b25",
   subtleText: "#796f63",
   line: "#d8ccbc",
@@ -68,6 +67,7 @@ const PersonNode = ({
   const innerRadius = LAYOUT_METRICS.innerAvatarDiameter / 2;
   const clipId = `${clipPrefix}-${encodeURIComponent(person.id).replaceAll("%", "-")}`;
   const hasPhoto = isValidAvatarImage(person.photoDataUrl);
+  const appearance = personAvatarAppearance(person.gender);
   const name = compactText(person.displayName, 34);
   const life = personLifeSummary(person, language, new Date(), lifeSummaryOptions ? {
     showBirthDate: lifeSummaryOptions.showBirthDate,
@@ -76,20 +76,20 @@ const PersonNode = ({
   } : undefined);
 
   return (
-    <g className="svg-person" data-person-id={person.id}>
+    <g className="svg-person" data-gender={person.gender} data-person-id={person.id}>
       <circle
         cx={person.x}
         cy={person.y}
-        fill={selected ? SCENE_COLORS.selectedAvatar : SCENE_COLORS.avatar}
+        fill={appearance.fill}
         r={LAYOUT_METRICS.avatarRadius}
-        stroke={selected ? SCENE_COLORS.brand : SCENE_COLORS.line}
+        stroke={selected ? SCENE_COLORS.brand : appearance.stroke}
         strokeWidth={selected ? 2 : 1}
       />
       {!overview ? <>
         <circle
           cx={person.x}
           cy={person.y}
-          fill={selected ? SCENE_COLORS.selectedAvatar : SCENE_COLORS.recessed}
+          fill={appearance.fill}
           r={innerRadius}
         />
         <text
@@ -117,6 +117,30 @@ const PersonNode = ({
             y={person.y - innerRadius}
           />
         </> : null}
+        {person.birthOrder ? (
+          <g className="svg-birth-order" data-birth-order={person.birthOrder}>
+            <title>{birthOrderLabel(person.birthOrder, language)}</title>
+            <circle
+              cx={person.x - BIRTH_ORDER_BADGE.offset}
+              cy={person.y - BIRTH_ORDER_BADGE.offset}
+              fill={SCENE_COLORS.canvas}
+              r={BIRTH_ORDER_BADGE.radius}
+              stroke={appearance.stroke}
+              strokeWidth={2}
+            />
+            <text
+              dominantBaseline="central"
+              fill={SCENE_COLORS.text}
+              fontSize={10}
+              fontWeight={700}
+              textAnchor="middle"
+              x={person.x - BIRTH_ORDER_BADGE.offset}
+              y={person.y - BIRTH_ORDER_BADGE.offset}
+            >
+              {person.birthOrder}
+            </text>
+          </g>
+        ) : null}
       </> : null}
       {!overview ? <>
         <text

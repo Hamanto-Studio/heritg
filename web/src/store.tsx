@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { loadAppData, saveAppData } from "./db";
+import { publishActiveFamilyDebugContext } from "./debugContext";
 import {
   addRelationship as addRelationshipToData,
   createInitialAppData,
@@ -192,6 +193,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       deferredSaveTimerRef.current = undefined;
     }
     queueSave(dataRef.current ?? data);
+  }, [data, isLoading]);
+
+  useEffect(() => {
+    if (isLoading || !data || !__DEBUG_CONTEXT_ENABLED__) return;
+    void publishActiveFamilyDebugContext(data).catch((reason: unknown) => {
+      console.warn("Unable to update the local family debug context.", reason);
+    });
   }, [data, isLoading]);
 
   function commit<T>(change: (current: AppData) => [AppData, T]): T {

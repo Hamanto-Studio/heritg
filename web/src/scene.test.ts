@@ -22,7 +22,7 @@ const person: PositionedPerson = {
   postalCode: "",
   x: 0,
   y: 0,
-  role: "You",
+  role: "Selected person",
   generation: 0
 };
 
@@ -72,8 +72,8 @@ describe("canvas avatar projection", () => {
     const withoutSelection = buildChartSvg(layout, "Family").svg;
     const withSelection = buildChartSvg(layout, "Family", person.id).svg;
 
-    expect(withoutSelection).not.toContain(">You</text>");
-    expect(withSelection).toContain(">You</text>");
+    expect(withoutSelection).not.toContain(">Selected person</text>");
+    expect(withSelection).toContain(">Selected person</text>");
   });
 
   it("exports birth dates according to their stored precision", () => {
@@ -138,6 +138,7 @@ describe("canvas avatar projection", () => {
       ...layout,
       people: [{
         ...person,
+        birthOrder: 1,
         photoDataUrl: "data:image/png;base64,cHJpdmF0ZS1waG90bw=="
       }]
     };
@@ -150,6 +151,7 @@ describe("canvas avatar projection", () => {
 
     expect(svg).toContain("A Person With A Longer Name");
     expect(svg).not.toContain("private-photo");
+    expect(svg).not.toContain("data-birth-order");
     expect(svg).not.toContain("Born ");
     expect(svg).not.toContain("age ");
   });
