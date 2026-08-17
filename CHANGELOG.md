@@ -18,6 +18,18 @@ prefix.
 
 - No unreleased changes yet.
 
+## [web-0.4.1] - 2026-08-16
+
+### Fixed
+
+- Restored `.ged`, `.gedcom`, and `.heritg` file selection and import on iPhone and iPad.
+
+## [web-0.4.0] - 2026-08-15
+
+### Changed
+
+- Replaced the embedded drawing engine with a lightweight native family-tree canvas for smoother navigation on large trees and a substantially smaller offline installation.
+
 ## [web-0.3.1] - 2026-08-10
 
 ### Changed
@@ -124,4 +136,6 @@ prefix.
 [web-0.2.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.1
 [web-0.2.2]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.2.2
 [web-0.3.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.3.0
+[web-0.4.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.0
+[web-0.4.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.1
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0
