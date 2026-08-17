@@ -9,6 +9,7 @@ import {
   prepareDataForExport,
   type ExportPrivacySelection
 } from "./exportPrivacy";
+import { passwordRequirements } from "./passwordPolicy";
 import type { AppData } from "./types";
 
 export const SHARE_ENVELOPE_VERSION = "HTGSHR02";
@@ -107,11 +108,11 @@ const deriveShareKey = async (password: string, salt: Uint8Array, usage: KeyUsag
   }
 };
 
-export const sharePasswordMeetsRequirements = (password: string) => {
-  const normalized = password.normalize("NFC");
-  return [...normalized].length >= SHARE_PASSWORD_MIN_LENGTH &&
-    /\p{Lu}/u.test(normalized) && /\p{Ll}/u.test(normalized) && /\p{Nd}/u.test(normalized);
-};
+export const sharePasswordRequirements = (password: string) =>
+  passwordRequirements(password, SHARE_PASSWORD_MIN_LENGTH);
+
+export const sharePasswordMeetsRequirements = (password: string) =>
+  Object.values(sharePasswordRequirements(password)).every(Boolean);
 
 export const sharePasswordIsReady = (password: string, confirmation: string) =>
   password === confirmation && sharePasswordMeetsRequirements(password);
@@ -245,7 +246,7 @@ export async function createEncryptedShare(
   const fetchImpl = options.fetchImpl ?? fetch;
   const password = options.password;
   if (!sharePasswordMeetsRequirements(password)) {
-    throw new Error(`Use a share password with at least ${SHARE_PASSWORD_MIN_LENGTH} characters, including uppercase, lowercase, and a number.`);
+    throw new Error(`Use a share password with at least ${SHARE_PASSWORD_MIN_LENGTH} characters, including uppercase, lowercase, a number, and a special character.`);
   }
   const expiryDays = options.expiryDays ?? 30;
   if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 90) {

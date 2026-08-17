@@ -18,6 +18,30 @@ prefix.
 
 - No unreleased changes yet.
 
+## [web-0.5.0] - 2026-08-17
+
+### Added
+
+- Added automatic birth-order badges, gender-aware avatars, and accessible labels across the family canvas and chart exports.
+- Added live progress feedback for tree preparation and save, share, and language operations, plus clear password-requirement checklists.
+
+### Changed
+
+- Moved family-tree layout and connector preparation into a background worker so switching large trees no longer blocks interaction.
+- Made it clearer that a tree can start with any family member, renamed self-relative labels to “Selected person,” and focused the relationship picker on the most common roles.
+- Expanded GEDCOM portability for partner subtypes and biological, adoptive, foster, guardian, step, and sibling relationships.
+
+### Fixed
+
+- Improved complex layouts with multiple spouses, shared co-parents, uneven ancestry, merged branches, and shallow sibling branches.
+- Removed redundant sibling connectors and prevented repeated save, link-creation, and system-share actions.
+- Improved mobile GEDCOM filename compatibility, relationship avatar fallbacks, and profile-image handling in chart exports.
+
+### Security
+
+- Required uppercase, lowercase, numeric, and special characters in new encrypted-share and password-protected backup passwords.
+- Kept inferred birth order private when birth dates are excluded from chart exports and validated embedded image data before rendering it.
+
 ## [web-0.4.1] - 2026-08-16
 
 ### Fixed

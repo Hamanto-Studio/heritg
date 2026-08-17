@@ -1,8 +1,10 @@
 import { Globe2, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { Translator } from "./i18n";
+import { passwordRequirements } from "./passwordPolicy";
 import type { AppActions } from "./store";
 import type { AppData } from "./types";
-import { SidePanel } from "./ui";
+import { ButtonLoader, SidePanel } from "./ui";
 
 interface SettingsDialogProps {
   data: AppData;
@@ -11,14 +13,10 @@ interface SettingsDialogProps {
   onClose: () => void;
 }
 
-export const archivePasswordMeetsRequirements = (password: string) => {
-  if (password.length === 0) return true;
-  const normalized = password.normalize("NFC");
-  return [...normalized].length >= 8 &&
-    /\p{Lu}/u.test(normalized) &&
-    /\p{Ll}/u.test(normalized) &&
-    /\p{Nd}/u.test(normalized);
-};
+export const archivePasswordRequirements = (password: string) => passwordRequirements(password);
+
+export const archivePasswordMeetsRequirements = (password: string) =>
+  password.length === 0 || Object.values(archivePasswordRequirements(password)).every(Boolean);
 
 export const archivePasswordIsReady = (password: string, confirmation: string) =>
   password === confirmation && archivePasswordMeetsRequirements(password);
@@ -29,6 +27,21 @@ export function SettingsDialog({
   t,
   onClose
 }: SettingsDialogProps) {
+  const [pendingLanguage, setPendingLanguage] = useState<AppData["language"]>();
+  const [isPending, startTransition] = useTransition();
+  const changingLanguage = useRef(false);
+
+  useEffect(() => {
+    if (!isPending) changingLanguage.current = false;
+  }, [isPending]);
+
+  const changeLanguage = (language: AppData["language"]) => {
+    if (language === data.language || changingLanguage.current) return;
+    changingLanguage.current = true;
+    setPendingLanguage(language);
+    startTransition(() => actions.setLanguage(language));
+  };
+
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
       <div className="settings-intro">
@@ -49,18 +62,24 @@ export function SettingsDialog({
           <div className="language-options">
             <button
               aria-pressed={data.language === "en"}
+              aria-busy={isPending && pendingLanguage === "en" || undefined}
               className={data.language === "en" ? "selected" : ""}
-              onClick={() => actions.setLanguage("en")}
+              disabled={isPending}
+              onClick={() => changeLanguage("en")}
               type="button"
             >
+              {isPending && pendingLanguage === "en" ? <ButtonLoader /> : null}
               {t("english")}
             </button>
             <button
               aria-pressed={data.language === "id"}
+              aria-busy={isPending && pendingLanguage === "id" || undefined}
               className={data.language === "id" ? "selected" : ""}
-              onClick={() => actions.setLanguage("id")}
+              disabled={isPending}
+              onClick={() => changeLanguage("id")}
               type="button"
             >
+              {isPending && pendingLanguage === "id" ? <ButtonLoader /> : null}
               {t("indonesian")}
             </button>
           </div>

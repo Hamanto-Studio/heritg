@@ -203,7 +203,7 @@ function directRelationshipLabelEnglish(
 }
 
 const INDONESIAN_LABELS: Record<string, string> = {
-  "You": "Anda",
+  "Selected person": "Orang terpilih",
   "Father": "Ayah", "Mother": "Ibu", "Parent": "Orang tua",
   "Son": "Putra", "Daughter": "Putri", "Child": "Anak",
   "Brother": "Saudara laki-laki", "Sister": "Saudara perempuan", "Sibling": "Saudara",
@@ -514,7 +514,7 @@ function kinshipLabelEnglish(
   const peopleById = index?.peopleById ?? new Map(people.map((person) => [person.id, person]));
   const person = peopleById.get(personId);
   if (!person || !peopleById.has(relativeToPersonId)) return undefined;
-  if (personId === relativeToPersonId) return "You";
+  if (personId === relativeToPersonId) return "Selected person";
 
   const direct = directRelationshipLabelEnglish(
     person, relativeToPersonId, relationships, index

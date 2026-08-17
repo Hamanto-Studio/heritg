@@ -1,8 +1,14 @@
-import { X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
+import { isValidAvatarImage } from "./avatar";
+import { personAvatarAppearance } from "./personAvatarAppearance";
 import type { Person } from "./types";
 import type { Translator } from "./i18n";
+
+export function ButtonLoader({ size = 16 }: { size?: number }) {
+  return <LoaderCircle aria-hidden="true" className="button-loader" focusable="false" size={size} />;
+}
 
 export function Modal({
   title,
@@ -164,9 +170,20 @@ export function SidePanel({
 }
 
 export function PersonAvatar({ person, size = 44 }: { person: Person; size?: number }) {
+  const appearance = personAvatarAppearance(person.gender);
   return (
-    <span className="person-avatar" style={{ width: size, height: size }} aria-hidden="true">
-      {person.photoDataUrl ? (
+    <span
+      aria-hidden="true"
+      className="person-avatar"
+      data-gender={person.gender}
+      style={{
+        backgroundColor: appearance.fill,
+        borderColor: appearance.stroke,
+        height: size,
+        width: size
+      }}
+    >
+      {isValidAvatarImage(person.photoDataUrl) ? (
         <img alt="" src={person.photoDataUrl} />
       ) : (
         <span>{person.displayName.trim().charAt(0).toUpperCase() || "?"}</span>

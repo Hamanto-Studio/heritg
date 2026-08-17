@@ -18,8 +18,7 @@ const ROLE_GROUP_LABELS = {
   common: "roleGroupCommon",
   parents: "roleGroupParents",
   partners: "roleGroupPartners",
-  children: "roleGroupChildren",
-  siblings: "roleGroupSiblings"
+  children: "roleGroupChildren"
 } as const satisfies Record<(typeof ROLE_GROUPS)[number]["id"], MessageKey>;
 
 const roleIcon = (role: DirectRole) => {

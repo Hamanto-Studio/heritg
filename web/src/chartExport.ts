@@ -8,6 +8,9 @@ import {
 import { personLifeTop } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
 import { personLifeSummary } from "./lifeSummary";
+import { isValidAvatarImage } from "./avatar";
+import { BIRTH_ORDER_BADGE, birthOrderLabel } from "./birthOrder";
+import { personAvatarAppearance } from "./personAvatarAppearance";
 import {
   DEFAULT_EXPORT_PRIVACY_SELECTION,
   type ExportPrivacySelection
@@ -56,20 +59,25 @@ const personNode = (
   const avatarX = person.x + offsetX;
   const avatarY = person.y + offsetY;
   const selected = person.id === selectedPersonId;
+  const appearance = personAvatarAppearance(person.gender);
   const showRole = Boolean(selectedPersonId && person.role);
   const clipId = `photo-${person.id.replace(/[^A-Za-z0-9_-]/g, "")}`;
   const innerRadius = LAYOUT_METRICS.innerAvatarDiameter / 2;
   const name = compactText(person.displayName || "Unnamed person", 34);
-  const avatar = privacy.photos && person.photoDataUrl
-    ? `<defs><clipPath id="${clipId}"><circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}"/></clipPath></defs><image href="${escapeXml(person.photoDataUrl)}" x="${avatarX - innerRadius}" y="${avatarY - innerRadius}" width="${LAYOUT_METRICS.innerAvatarDiameter}" height="${LAYOUT_METRICS.innerAvatarDiameter}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`
-    : `<circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}" fill="${selected ? "#f3eadf" : "#ede5d8"}"/><text x="${avatarX}" y="${avatarY + 8}" text-anchor="middle" font-size="24" font-weight="700" fill="#302b25">${escapeXml(person.displayName.charAt(0).toUpperCase() || "?")}</text>`;
+  const avatar = privacy.photos && isValidAvatarImage(person.photoDataUrl)
+    ? `<defs><clipPath id="${clipId}"><circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}"/></clipPath></defs><image href="${escapeXml(person.photoDataUrl!)}" x="${avatarX - innerRadius}" y="${avatarY - innerRadius}" width="${LAYOUT_METRICS.innerAvatarDiameter}" height="${LAYOUT_METRICS.innerAvatarDiameter}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})"/>`
+    : `<circle cx="${avatarX}" cy="${avatarY}" r="${innerRadius}" fill="${appearance.fill}"/><text x="${avatarX}" y="${avatarY + 8}" text-anchor="middle" font-size="24" font-weight="700" fill="#302b25">${escapeXml(person.displayName.charAt(0).toUpperCase() || "?")}</text>`;
   const life = personLifeSummary(person, language, new Date(), {
     showBirthDate: privacy.birthDates,
     showAge: privacy.ages
   });
-  return `<g>
-    <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${selected ? "#f3eadf" : "#fffdf8"}" stroke="${selected ? "#a8875b" : "#d8ccbc"}" stroke-width="${selected ? 2 : 1}"/>
+  const birthOrderBadge = privacy.birthDates && person.birthOrder
+    ? `<g data-birth-order="${person.birthOrder}"><title>${escapeXml(birthOrderLabel(person.birthOrder, language))}</title><circle cx="${avatarX - BIRTH_ORDER_BADGE.offset}" cy="${avatarY - BIRTH_ORDER_BADGE.offset}" r="${BIRTH_ORDER_BADGE.radius}" fill="#f5f5f3" stroke="${appearance.stroke}" stroke-width="2"/><text x="${avatarX - BIRTH_ORDER_BADGE.offset}" y="${avatarY - BIRTH_ORDER_BADGE.offset + 3.5}" text-anchor="middle" font-size="10" font-weight="700" fill="#302b25">${person.birthOrder}</text></g>`
+    : "";
+  return `<g data-person-id="${escapeXml(person.id)}" data-gender="${person.gender}">
+    <circle cx="${avatarX}" cy="${avatarY}" r="${LAYOUT_METRICS.avatarRadius}" fill="${appearance.fill}" stroke="${selected ? "#a8875b" : appearance.stroke}" stroke-width="${selected ? 2 : 1}"/>
     ${avatar}
+    ${birthOrderBadge}
     <text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.labelTop + 15}" text-anchor="middle" font-size="${nameFontSize(name)}" font-weight="700" fill="#302b25">${escapeXml(name)}</text>
     ${showRole ? `<text x="${avatarX}" y="${avatarY + LAYOUT_METRICS.roleTop + 13}" text-anchor="middle" font-size="13" fill="${selected ? "#a8875b" : "#796f63"}">${escapeXml(compactText(person.role, 28))}</text>` : ""}
     ${life ? `<text x="${avatarX}" y="${avatarY + personLifeTop(showRole) + 12}" text-anchor="middle" font-size="11" fill="#796f63">${escapeXml(life)}</text>` : ""}

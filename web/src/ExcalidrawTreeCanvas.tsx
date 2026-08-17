@@ -362,7 +362,9 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
     [generationLimits, language, layoutSelectionId, people, relationships]
   );
   const layout = useMemo(() => {
-    if (selectionFiltersLayout || !selectedPersonId) return geometryLayout;
+    if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
+      return geometryLayout;
+    }
     const labels = deriveKinshipLabels(selectedPersonId, people, relationships, language);
     return {
       ...geometryLayout,

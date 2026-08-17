@@ -116,6 +116,7 @@ export interface PositionedPerson extends Person {
   y: number;
   role: string;
   generation: number;
+  birthOrder?: number;
 }
 
 export interface TreeLayout {

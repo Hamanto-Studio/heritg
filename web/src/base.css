@@ -94,6 +94,18 @@ p {
   transition: background 120ms ease, box-shadow 120ms ease, transform 120ms ease;
 }
 
+.button-loader {
+  animation: button-loader-spin 800ms linear infinite;
+  color: currentColor;
+  flex: 0 0 auto;
+}
+
+@keyframes button-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .button:not(:disabled):active,
 .icon-button:not(:disabled):active {
   transform: scale(0.97);
@@ -200,7 +212,7 @@ p {
 .person-avatar {
   align-items: center;
   background: var(--recessed);
-  border: 1px solid var(--line);
+  border: 2px solid var(--line);
   border-radius: 50%;
   color: var(--brand-deep);
   display: inline-flex;
@@ -253,6 +265,10 @@ p {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .button-loader {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {
