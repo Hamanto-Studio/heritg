@@ -24,6 +24,13 @@ prefix.
 - Refreshed the internal testing build for the current offline family-tree,
   encrypted archive, GEDCOM, and chart-export compatibility checks.
 
+## [web-0.6.2] - 2026-08-18
+
+### Fixed
+
+- Kept married and unmarried child connectors equally clear of family rails and
+  preserved straight terminal stems in the canvas and chart exports.
+
 ## [web-0.6.1] - 2026-08-18
 
 ### Added

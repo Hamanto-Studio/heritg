@@ -1,4 +1,5 @@
 import {
+  CHILD_RAIL_CLEARANCE,
   ROUTE_CLEARANCE,
   ROUTE_EPSILON,
   avatarRect,
@@ -294,7 +295,7 @@ const buildFamilies = (
       ))
       : 0;
     const parentJoinY = parentStartY + 8 + family.laneIndex * spacing;
-    const childRailOffset = 8 + (family.laneCount - 1 - family.laneIndex) * spacing;
+    const childRailOffset = CHILD_RAIL_CLEARANCE;
     const baseTrunkX = average(family.parentPorts.map(({ x }) => x));
     const nearestChildX = [...family.children].sort((left, right) =>
       Math.abs(left.x - baseTrunkX) - Math.abs(right.x - baseTrunkX) || left.x - right.x

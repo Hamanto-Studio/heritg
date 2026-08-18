@@ -48,14 +48,22 @@ describe("modern connector rendering", () => {
   });
 
   it("creates controlled rounded corners without moving connector endpoints", () => {
-    const points = [{ x: 0, y: 0 }, { x: 0, y: 40 }, { x: 80, y: 40 }];
+    const points = [{ x: 0, y: 0 }, { x: 0, y: 60 }, { x: 80, y: 60 }];
     const sampled = roundedConnectorPoints(points);
     const svgPath = roundedConnectorPath(points);
 
     expect(sampled[0]).toEqual(points[0]);
     expect(sampled.at(-1)).toEqual(points.at(-1));
-    expect(sampled).toContainEqual({ x: 0, y: 28 });
-    expect(sampled).toContainEqual({ x: 12, y: 40 });
-    expect(svgPath).toBe("M 0 0 L 0 28 Q 0 40 12 40 L 80 40");
+    expect(sampled).toContainEqual({ x: 0, y: 48 });
+    expect(sampled).toContainEqual({ x: 12, y: 60 });
+    expect(svgPath).toBe("M 0 0 L 0 48 Q 0 60 12 60 L 80 60");
+  });
+
+  it("keeps a short terminal child stem clear of corner rounding", () => {
+    const points = [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 40 }];
+
+    expect(roundedConnectorPoints(points)).toEqual(points);
+    expect(roundedConnectorPath(points)).toBe("M 0 0 L 80 0 L 80 40");
+    expect(roundedConnectorPath([...points].reverse())).toBe("M 80 40 L 80 0 L 0 0");
   });
 });
