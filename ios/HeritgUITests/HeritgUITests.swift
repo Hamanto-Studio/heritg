@@ -13,6 +13,23 @@ final class HeritgUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportGEDCOMPresentsFilePicker() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ui_testing", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let importGEDCOM = element("trees.import", in: app)
+        XCTAssertTrue(importGEDCOM.waitForExistence(timeout: 10))
+        importGEDCOM.tap()
+
+        let cancelPicker = app.buttons["Cancel"].firstMatch
+        guard cancelPicker.waitForExistence(timeout: 5) else {
+            XCTFail("Tapping Import GEDCOM did not present the system file picker.\n\(app.debugDescription)")
+            return
+        }
+    }
+
+    @MainActor
     func testAppStoreScreenshots() throws {
         let app = XCUIApplication()
         setupSnapshot(app)
@@ -135,14 +152,14 @@ final class HeritgUITests: XCTestCase {
             NSPredicate(format: "identifier BEGINSWITH 'person.node.'")
         ).firstMatch
         XCTAssertTrue(personNode.waitForExistence(timeout: 10))
-        XCTAssertEqual(personNode.value as? String, "Anda")
+        XCTAssertEqual(personNode.value as? String, "Orang terpilih")
 
         let toggleControls = element("tree.toggleControls", in: app)
         XCTAssertTrue(toggleControls.waitForExistence(timeout: 5))
         XCTAssertEqual(toggleControls.label, "Sembunyikan kontrol")
         XCTAssertEqual(toggleControls.value as? String, "Ditampilkan")
 
-        let addButton = app.descendants(matching: .any).matching(
+        let addButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
         ).firstMatch
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))
@@ -165,8 +182,65 @@ final class HeritgUITests: XCTestCase {
         XCTAssertEqual(fatherNode.value as? String, "Ayah")
     }
 
+    @MainActor
+    func testTreeActionsOpenTheirIntendedDestination() throws {
+        let app = XCUIApplication()
+        app.launchArguments += [
+            "-ui_testing",
+            "-AppleLanguages", "(en)",
+            "-appLanguage", "en",
+        ]
+        app.launch()
+
+        let createTree = element("trees.create", in: app)
+        XCTAssertTrue(createTree.waitForExistence(timeout: 10))
+        createTree.tap()
+        let treeNameField = app.alerts.textFields.firstMatch
+        XCTAssertTrue(treeNameField.waitForExistence(timeout: 5))
+        treeNameField.typeText("Action Test")
+        app.buttons["trees.create.confirm"].firstMatch.tap()
+
+        let createFirstPerson = element("tree.createFirstPerson", in: app)
+        XCTAssertTrue(createFirstPerson.waitForExistence(timeout: 10))
+        createFirstPerson.tap()
+        element("firstPerson.nameField", in: app).typeText("Rina")
+        element("firstPerson.save", in: app).tap()
+
+        let personNode = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'person.node.'")
+        ).firstMatch
+        XCTAssertTrue(personNode.waitForExistence(timeout: 10))
+        personNode.tap()
+        let personName = app.textFields["person.nameField"].firstMatch
+        XCTAssertTrue(personName.waitForExistence(timeout: 5))
+        XCTAssertEqual(personName.value as? String, "Rina")
+        element("person.close", in: app).tap()
+
+        let zoomOut = element("tree.zoomOut", in: app)
+        for _ in 0..<6 { zoomOut.tap() }
+
+        let editButton = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'person.edit.'")
+        ).firstMatch
+        XCTAssertTrue(editButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(editButton.isHittable, "Edit button is not hittable.\n\(app.debugDescription)")
+        editButton.tap()
+        let editedPersonName = app.textFields["person.nameField"].firstMatch
+        XCTAssertTrue(editedPersonName.waitForExistence(timeout: 5))
+        XCTAssertEqual(editedPersonName.value as? String, "Rina")
+        element("person.close", in: app).tap()
+
+        let addButton = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
+        ).firstMatch
+        XCTAssertTrue(addButton.waitForExistence(timeout: 5))
+        addButton.tap()
+        XCTAssertTrue(app.buttons["relationship.action.add"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("person.close", in: app).exists)
+    }
+
     private func addRelative(role: String, name: String, in app: XCUIApplication) {
-        let addButton = app.descendants(matching: .any).matching(
+        let addButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
         ).firstMatch
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))

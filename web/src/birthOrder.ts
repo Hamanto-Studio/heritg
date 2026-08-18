@@ -75,5 +75,10 @@ export function deriveBirthOrders(
     }
     ordered.forEach((value, index) => orders.set(value.id, index + 1));
   }
+  for (const person of people) {
+    if (person.birthOrderOverride !== undefined) {
+      orders.set(person.id, person.birthOrderOverride);
+    }
+  }
   return orders;
 }

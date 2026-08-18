@@ -8,7 +8,7 @@ enum KinshipResolver {
         relationships: [RelationshipSnapshot]
     ) -> String? {
         guard personID != referenceID else {
-            return AppLanguage.localized("You")
+            return AppLanguage.localized("Selected person")
         }
         let peopleByID = Dictionary(uniqueKeysWithValues: people.map { ($0.id, $0) })
         guard let person = peopleByID[personID], peopleByID[referenceID] != nil else { return nil }
@@ -280,7 +280,7 @@ enum KinshipResolver {
         }
     }
 
-    private static func relationshipOrder(
+    nonisolated private static func relationshipOrder(
         _ lhs: RelationshipSnapshot,
         _ rhs: RelationshipSnapshot
     ) -> Bool {

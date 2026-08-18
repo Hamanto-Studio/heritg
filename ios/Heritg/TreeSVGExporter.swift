@@ -15,7 +15,9 @@ struct TreeRasterExportSize: Equatable {
     init(layout: TreeLayoutResult, showsRelationshipLabels: Bool) {
         let plan = TreeConnectionPlan.make(
             from: layout,
-            showsRelationshipLabels: showsRelationshipLabels
+            showsRelationshipLabels: showsRelationshipLabels,
+            controlsVisible: false,
+            sourcePersonCount: layout.nodes.count
         )
         let bounds = plan.drawingBounds(including: layout.nodes)
         let logicalWidth = max(bounds.width, 1)
@@ -40,7 +42,9 @@ enum TreeSVGExporter {
     ) -> Data {
         let plan = TreeConnectionPlan.make(
             from: layout,
-            showsRelationshipLabels: showsRelationshipLabels
+            showsRelationshipLabels: showsRelationshipLabels,
+            controlsVisible: false,
+            sourcePersonCount: layout.nodes.count
         )
         let bounds = plan.drawingBounds(including: layout.nodes)
         let footerHeight: CGFloat = 56
@@ -67,9 +71,10 @@ enum TreeSVGExporter {
                 svg += line(segment.start, segment.end)
             }
         }
-        for edge in plan.nonParentEdges {
-            let endpoints = nonParentEndpoints(edge)
-            svg += line(endpoints.start, endpoints.end)
+        for route in plan.nonParentRoutes {
+            for segment in route.segments {
+                svg += line(segment.start, segment.end)
+            }
         }
         svg += "</g>\n"
 
@@ -87,15 +92,16 @@ enum TreeSVGExporter {
             )
         }
 
-        for edge in layout.edges {
-            guard let label = edge.marriageLabel else { continue }
-            let midpoint = CGPoint(
-                x: (edge.from.x + edge.to.x) / 2,
-                y: (edge.from.y + edge.to.y) / 2
+        for route in plan.nonParentRoutes {
+            guard let label = route.label else { continue }
+            svg += "<rect x=\"\(number(label.rect.minX))\" y=\"\(number(label.rect.minY))\" width=\"\(number(label.rect.width))\" height=\"\(number(label.rect.height))\" rx=\"10\" fill=\"#ffffff\"/>\n"
+            svg += text(
+                label.text,
+                x: label.center.x,
+                y: label.center.y + 4,
+                size: 12,
+                color: "#777777"
             )
-            let width = textWidth(label, fontSize: 12, weight: .medium) + 14
-            svg += "<rect x=\"\(number(midpoint.x - width / 2))\" y=\"\(number(midpoint.y - 10))\" width=\"\(number(width))\" height=\"20\" rx=\"10\" fill=\"#ffffff\"/>\n"
-            svg += text(label, x: midpoint.x, y: midpoint.y + 4, size: 12, color: "#777777")
         }
 
         for (index, node) in layout.nodes.enumerated() {
@@ -190,16 +196,6 @@ enum TreeSVGExporter {
     ) -> String {
         let extra = attributes.map { " \($0)" } ?? ""
         return "<line x1=\"\(number(start.x))\" y1=\"\(number(start.y))\" x2=\"\(number(end.x))\" y2=\"\(number(end.y))\"\(extra)/>\n"
-    }
-
-    private static func nonParentEndpoints(_ edge: TreeEdgeLayout) -> (start: CGPoint, end: CGPoint) {
-        guard edge.from.x != edge.to.x else { return (edge.from, edge.to) }
-        let left = edge.from.x < edge.to.x ? edge.from : edge.to
-        let right = edge.from.x < edge.to.x ? edge.to : edge.from
-        return (
-            CGPoint(x: left.x + TreeVisualMetrics.avatarRadius, y: left.y),
-            CGPoint(x: right.x - TreeVisualMetrics.avatarRadius, y: right.y)
-        )
     }
 
     private static func textWidth(

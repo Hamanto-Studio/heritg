@@ -6,9 +6,9 @@
 //
 
 import SwiftUI
-import SwiftData
+import CoreData
 
-enum AppLanguage: String, CaseIterable, Identifiable {
+nonisolated enum AppLanguage: String, CaseIterable, Identifiable {
     case english = "en"
     case indonesian = "id"
 
@@ -45,25 +45,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 @main
 struct HeritgApp: App {
     @AppStorage("appLanguage") private var languageCode = AppLanguage.deviceDefault.rawValue
-
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            FamilyTree.self,
-            Person.self,
-            FamilyRelationship.self,
-        ])
-        let modelConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui_testing"),
-            cloudKitDatabase: .none
-        )
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    private let persistenceController = PersistenceController.shared
 
     var body: some Scene {
         WindowGroup {
@@ -73,7 +55,10 @@ struct HeritgApp: App {
                     \.locale,
                     AppLanguage(rawValue: languageCode)?.locale ?? AppLanguage.english.locale
                 )
+                .environment(
+                    \.managedObjectContext,
+                    persistenceController.container.viewContext
+                )
         }
-        .modelContainer(sharedModelContainer)
     }
 }

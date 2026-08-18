@@ -7,19 +7,21 @@ struct FamilyTreeLibraryView: View {
     let relationships: [FamilyRelationship]
     let selectedTreeID: String?
     let allowsDismiss: Bool
+    @Binding var isProcessingImport: Bool
     let onSelect: (FamilyTree) -> Void
     let onCreate: (String) throws -> FamilyTree
     let onRename: (FamilyTree, String) throws -> Void
     let onDelete: (FamilyTree) throws -> Void
     let onExport: (FamilyTree) -> Void
-    let onImport: (Data, String) throws -> FamilyTree
+    let onImport: @MainActor (Data, String) async throws -> Void
+    let onImportError: @MainActor (String) -> Void
     let onImportArchive: (HeritgArchivePayload) throws -> FamilyTree
 
     @Environment(\.dismiss) private var dismiss
     @State private var searchText = ""
     @State private var isCreatingTree = false
-    @State private var isImportingTree = false
-    @State private var isImportingArchive = false
+    @State private var isImportingFile = false
+    @State private var importKind = ImportKind.gedcom
     @State private var pendingArchiveImport: PendingArchiveImport?
     @State private var newTreeName = String(
         localized: "My Family Tree",
@@ -31,10 +33,9 @@ struct FamilyTreeLibraryView: View {
     @State private var operationError: String?
 
     private var filteredTrees: [FamilyTree] {
-        let sorted = trees.sorted { $0.updatedAt > $1.updatedAt }
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return sorted }
-        return sorted.filter { $0.title.localizedCaseInsensitiveContains(query) }
+        guard !query.isEmpty else { return trees }
+        return trees.filter { $0.title.localizedCaseInsensitiveContains(query) }
     }
 
     var body: some View {
@@ -61,11 +62,13 @@ struct FamilyTreeLibraryView: View {
                             isCreatingTree = true
                         }
                         Button("Import GEDCOM", systemImage: "square.and.arrow.down") {
-                            isImportingTree = true
+                            beginImport(.gedcom)
                         }
+                        .accessibilityIdentifier("trees.importGEDCOMMenu")
                         Button("Restore Heritg Backup", systemImage: "lock.open") {
-                            isImportingArchive = true
+                            beginImport(.heritgArchive)
                         }
+                        .accessibilityIdentifier("trees.importHeritgMenu")
                     }
                     .accessibilityIdentifier("trees.add")
                 }
@@ -97,16 +100,10 @@ struct FamilyTreeLibraryView: View {
             Text(operationError ?? "")
         }
         .fileImporter(
-            isPresented: $isImportingTree,
-            allowedContentTypes: gedcomTypes,
+            isPresented: $isImportingFile,
+            allowedContentTypes: [.item],
             allowsMultipleSelection: false,
-            onCompletion: importGEDCOM
-        )
-        .fileImporter(
-            isPresented: $isImportingArchive,
-            allowedContentTypes: [.heritgArchive, .data],
-            allowsMultipleSelection: false,
-            onCompletion: loadArchive
+            onCompletion: importFile
         )
         .sheet(item: $pendingArchiveImport) { pendingImport in
             ArchiveImportPasswordView(pendingImport: pendingImport) { payload in
@@ -189,12 +186,12 @@ struct FamilyTreeLibraryView: View {
             .buttonStyle(HeritgButtonStyle(variant: .primary))
             .accessibilityIdentifier("trees.create")
             Button("Import GEDCOM", systemImage: "square.and.arrow.down") {
-                isImportingTree = true
+                beginImport(.gedcom)
             }
             .buttonStyle(HeritgButtonStyle(variant: .secondary))
             .accessibilityIdentifier("trees.import")
             Button("Restore Heritg Backup", systemImage: "lock.open") {
-                isImportingArchive = true
+                beginImport(.heritgArchive)
             }
             .buttonStyle(HeritgButtonStyle(variant: .secondary))
             .accessibilityIdentifier("trees.importHeritg")
@@ -254,16 +251,6 @@ struct FamilyTreeLibraryView: View {
         )
     }
 
-    private var gedcomTypes: [UTType] {
-        var types = [UTType.plainText]
-        for fileExtension in ["ged", "gedcom"] {
-            if let type = UTType(filenameExtension: fileExtension), !types.contains(type) {
-                types.append(type)
-            }
-        }
-        return types
-    }
-
     private func treeSummary(_ tree: FamilyTree) -> String {
         let count = people.count { $0.treeID == tree.id }
         return String(
@@ -284,6 +271,25 @@ struct FamilyTreeLibraryView: View {
     private func open(_ tree: FamilyTree) {
         onSelect(tree)
         if allowsDismiss { dismiss() }
+    }
+
+    private func beginImport(_ kind: ImportKind) {
+        guard !isProcessingImport else { return }
+        importKind = kind
+        // A document picker presented while the toolbar menu is dismissing is
+        // ignored on iOS 16 through 18, so wait for that transition to finish.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            isImportingFile = true
+        }
+    }
+
+    private func importFile(_ result: Result<[URL], Error>) {
+        switch importKind {
+        case .gedcom:
+            importGEDCOM(result)
+        case .heritgArchive:
+            loadArchive(result)
+        }
     }
 
     private func createTree() {
@@ -318,25 +324,42 @@ struct FamilyTreeLibraryView: View {
     private func importGEDCOM(_ result: Result<[URL], Error>) {
         do {
             guard let url = try result.get().first else { return }
+            guard ["ged", "gedcom", "txt"].contains(url.pathExtension.lowercased()) else {
+                throw GEDCOMImportError.unsupportedFileType
+            }
+            isProcessingImport = true
+            if allowsDismiss { dismiss() }
+            Task {
+                defer { isProcessingImport = false }
+                do {
+                    let data = try await readGEDCOMFile(url)
+                    try await onImport(data, url.lastPathComponent)
+                } catch {
+                    onImportError(error.localizedDescription)
+                }
+            }
+        } catch {
+            onImportError(error.localizedDescription)
+        }
+    }
+
+    private func readGEDCOMFile(_ url: URL) async throws -> Data {
+        try await Task.detached(priority: .userInitiated) {
             let isAccessing = url.startAccessingSecurityScopedResource()
             defer { if isAccessing { url.stopAccessingSecurityScopedResource() } }
             let fileSize = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
             guard fileSize <= GEDCOMImporter.maximumBytes else {
                 throw GEDCOMImportError.fileTooLarge
             }
-            let data = try Data(contentsOf: url, options: .mappedIfSafe)
-            let tree = try onImport(data, url.lastPathComponent)
-            open(tree)
-        } catch {
-            operationError = error.localizedDescription
-        }
+            return try Data(contentsOf: url, options: .mappedIfSafe)
+        }.value
     }
 
     private func loadArchive(_ result: Result<[URL], Error>) {
         do {
             guard let url = try result.get().first else { return }
             guard url.pathExtension.lowercased() == "heritg" else {
-                throw HeritgArchiveError.invalidArchive
+                throw HeritgArchiveError.unsupportedFileType
             }
             let isAccessing = url.startAccessingSecurityScopedResource()
             defer { if isAccessing { url.stopAccessingSecurityScopedResource() } }
@@ -369,4 +392,9 @@ struct FamilyTreeLibraryView: View {
             operationError = error.localizedDescription
         }
     }
+}
+
+private enum ImportKind {
+    case gedcom
+    case heritgArchive
 }

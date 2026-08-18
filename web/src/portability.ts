@@ -118,6 +118,11 @@ const dateValue = (value: unknown, label: string): string => {
 };
 const optionalDate = (value: unknown, label: string): string | undefined =>
   value === undefined ? undefined : dateValue(value, label);
+const optionalPositiveInteger = (value: unknown, label: string): number | undefined => {
+  if (value === undefined) return undefined;
+  if (!Number.isSafeInteger(value) || (value as number) < 1) invalid(`${label} must be a positive whole number.`);
+  return value as number;
+};
 const optionalCalendarDate = (value: unknown, label: string): string | undefined => {
   if (value === undefined) return undefined;
   const result = textValue(value, label, 10);
@@ -190,6 +195,10 @@ export function validateAppData(value: unknown): AppData {
       gender: enumValue(item.gender, GENDERS, `person ${index}.gender`),
       createdAt: dateValue(item.createdAt, `person ${index}.createdAt`),
       birthDate: optionalDate(item.birthDate, `person ${index}.birthDate`),
+      birthOrderOverride: optionalPositiveInteger(
+        item.birthOrderOverride,
+        `person ${index}.birthOrderOverride`
+      ),
       deathDate: optionalDate(item.deathDate, `person ${index}.deathDate`),
       birthDatePrecision: enumValue(item.birthDatePrecision, PRECISIONS, `person ${index}.birthDatePrecision`),
       notes: textValue(item.notes, `person ${index}.notes`, MAX_NOTES_LENGTH),

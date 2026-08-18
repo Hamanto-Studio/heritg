@@ -1,4 +1,4 @@
-import SwiftData
+import CoreData
 import Testing
 @testable import HERITG
 
@@ -47,7 +47,7 @@ struct PersonRelationshipEditTests {
                 in: context
             )
 
-            let saved = try #require(context.fetch(FetchDescriptor<FamilyRelationship>()).first)
+            let saved = try #require(context.fetch(FamilyRelationship.fetchRequest()).first)
             #expect(saved.fromPersonID == parent.id)
             #expect(saved.toPersonID == child.id)
             #expect(saved.subtype == testCase.subtype)
@@ -55,10 +55,7 @@ struct PersonRelationshipEditTests {
     }
 
     @MainActor
-    private func makeContext() throws -> ModelContext {
-        let schema = Schema([FamilyTree.self, Person.self, FamilyRelationship.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
+    private func makeContext() throws -> NSManagedObjectContext {
+        PersistenceController(inMemory: true).container.viewContext
     }
 }

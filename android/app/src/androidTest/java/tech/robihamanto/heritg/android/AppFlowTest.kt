@@ -100,24 +100,26 @@ class AppFlowTest {
         compose.onNodeWithTag("settings.export", true).performClick()
         compose.onNodeWithTag("settings.exportHeritg", true).performScrollTo().assertIsEnabled()
         compose.onNodeWithTag("settings.archivePassword", true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("First12!")
         compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("first")
-        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("second")
+        compose.onNodeWithText(compose.activity.getString(R.string.password_special))
+            .assert(hasStateDescription(compose.activity.getString(R.string.password_requirement_met)))
+        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("Second2!")
         compose.onNodeWithTag("settings.passwordMismatch", true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("rotation-secret")
-        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("rotation-secret")
+        compose.onNodeWithTag("settings.archivePassword", true).performTextReplacement("Rotation1!")
+        compose.onNodeWithTag("settings.archivePasswordConfirmation", true).performTextReplacement("Rotation1!")
         compose.activityRule.scenario.recreate()
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithTag("settings.archivePassword", true).assertIsDisplayed(); true }.getOrDefault(false)
         }
         val retainedSecret = SemanticsMatcher.expectValue(
-            SemanticsProperties.InputText, AnnotatedString("rotation-secret"),
+            SemanticsProperties.InputText, AnnotatedString("Rotation1!"),
         )
         val sensitive = SemanticsMatcher.expectValue(SemanticsProperties.IsSensitiveData, true)
         compose.onNodeWithTag("settings.archivePassword", true).assert(retainedSecret)
             .assert(sensitive)
         compose.onNodeWithTag("settings.archivePasswordConfirmation", true).assert(retainedSecret)
             .assert(sensitive)
-        compose.onNodeWithTag("settings.exportHeritg", true).assertIsDisplayed()
+        compose.onNodeWithTag("settings.exportHeritg", true).assertIsDisplayed().assertIsEnabled()
     }
 }

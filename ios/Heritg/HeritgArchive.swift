@@ -11,6 +11,7 @@ extension UTType {
 enum HeritgArchiveError: LocalizedError, Equatable {
     case fileTooLarge
     case invalidArchive
+    case unsupportedFileType
     case unsupportedVersion
     case wrongPasswordOrCorruptArchive
     case tooManyRecords
@@ -24,6 +25,8 @@ enum HeritgArchiveError: LocalizedError, Equatable {
             String(localized: "The Heritg backup is larger than 32 MB.", locale: AppLanguage.selectedLocale)
         case .invalidArchive:
             String(localized: "The Heritg backup is invalid.", locale: AppLanguage.selectedLocale)
+        case .unsupportedFileType:
+            String(localized: "Choose a .heritg backup file.", locale: AppLanguage.selectedLocale)
         case .unsupportedVersion:
             String(localized: "This Heritg backup was created by an unsupported app version.", locale: AppLanguage.selectedLocale)
         case .wrongPasswordOrCorruptArchive:
@@ -48,14 +51,40 @@ nonisolated enum HeritgArchiveProtection: Equatable, Sendable {
 nonisolated enum ArchivePasswordPolicy {
     static let minimumCodePoints = 8
 
-    static func accepts(_ password: String) -> Bool {
-        guard !password.isEmpty else { return true }
+    struct Requirements {
+        let minimumLength: Bool
+        let lowercase: Bool
+        let uppercase: Bool
+        let number: Bool
+        let special: Bool
+
+        var allMet: Bool { minimumLength && lowercase && uppercase && number && special }
+    }
+
+    static func requirements(for password: String) -> Requirements {
         let normalized = password.precomposedStringWithCanonicalMapping
         let scalars = normalized.unicodeScalars
-        return scalars.count >= minimumCodePoints &&
-            scalars.contains { $0.properties.generalCategory == .uppercaseLetter } &&
-            scalars.contains { $0.properties.generalCategory == .lowercaseLetter } &&
-            scalars.contains { $0.properties.generalCategory == .decimalNumber }
+        return Requirements(
+            minimumLength: scalars.count >= minimumCodePoints,
+            lowercase: scalars.contains { $0.properties.generalCategory == .lowercaseLetter },
+            uppercase: scalars.contains { $0.properties.generalCategory == .uppercaseLetter },
+            number: scalars.contains { $0.properties.generalCategory == .decimalNumber },
+            special: scalars.contains {
+                switch $0.properties.generalCategory {
+                case .connectorPunctuation, .dashPunctuation, .openPunctuation, .closePunctuation,
+                     .initialPunctuation, .finalPunctuation, .otherPunctuation, .mathSymbol,
+                     .currencySymbol, .modifierSymbol, .otherSymbol:
+                    true
+                default:
+                    false
+                }
+            }
+        )
+    }
+
+    static func accepts(_ password: String) -> Bool {
+        guard !password.isEmpty else { return true }
+        return requirements(for: password).allMet
     }
 }
 

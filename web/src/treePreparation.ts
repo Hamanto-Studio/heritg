@@ -52,6 +52,7 @@ export const personForTreePreparation = (person: Person): Person => ({
   gender: person.gender,
   createdAt: person.createdAt,
   birthDate: person.birthDate,
+  birthOrderOverride: person.birthOrderOverride,
   deathDate: person.deathDate,
   birthDatePrecision: person.birthDatePrecision,
   notes: "",

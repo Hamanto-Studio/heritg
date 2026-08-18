@@ -28,7 +28,7 @@ same format and becomes the final commit subject on `main`.
 
 ## Repository Layout
 
-- `ios/`: SwiftUI and SwiftData application, unit tests, and UI tests
+- `ios/`: SwiftUI and Core Data application, unit tests, and UI tests
 - `android/`: Kotlin and Jetpack Compose application, core modules, and tests
 - `web/`: React and TypeScript progressive web application and tests
 - `docs/`: specifications shared by all platforms

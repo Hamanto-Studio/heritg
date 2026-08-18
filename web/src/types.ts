@@ -67,6 +67,7 @@ export interface Person {
   gender: Gender;
   createdAt: string;
   birthDate?: string;
+  birthOrderOverride?: number;
   deathDate?: string;
   birthDatePrecision: "exact" | "month" | "year";
   notes: string;

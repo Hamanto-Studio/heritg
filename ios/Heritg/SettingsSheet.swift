@@ -246,7 +246,9 @@ struct TreeExportView: View {
             GeometryReader { proxy in
                 let connectionPlan = TreeConnectionPlan.make(
                     from: layout,
-                    showsRelationshipLabels: showsRelationshipLabels
+                    showsRelationshipLabels: showsRelationshipLabels,
+                    controlsVisible: false,
+                    sourcePersonCount: layout.nodes.count
                 )
                 let transform = ExportTransform(
                     connectionPlan: connectionPlan,
@@ -288,12 +290,10 @@ struct TreeExportView: View {
                             }
                         }
 
-                        for edge in connectionPlan.nonParentEdges {
+                        for route in connectionPlan.nonParentRoutes {
                             let path = TreeConnector.path(
-                                kind: edge.kind,
-                                from: transform.point(edge.from),
-                                to: transform.point(edge.to),
-                                avatarRadius: TreeVisualMetrics.avatarRadius * transform.scale
+                                for: route.segments,
+                                transform: transform.point
                             )
                             context.stroke(
                                 path,
@@ -334,8 +334,10 @@ struct TreeExportView: View {
                         }
                     }
 
-                    ForEach(layout.edges.filter { $0.marriageLabel != nil }) { edge in
-                        exportMarriageLabel(edge, transform: transform)
+                    ForEach(connectionPlan.nonParentRoutes) { route in
+                        if let label = route.label {
+                            exportRelationshipLabel(label, transform: transform)
+                        }
                     }
 
                     ForEach(layout.nodes) { node in
@@ -369,19 +371,21 @@ struct TreeExportView: View {
         .padding(.horizontal, 28 * scale)
     }
 
-    private func exportMarriageLabel(_ edge: TreeEdgeLayout, transform: ExportTransform) -> some View {
-        let midpoint = transform.point(CGPoint(
-            x: (edge.from.x + edge.to.x) / 2,
-            y: (edge.from.y + edge.to.y) / 2
-        ))
-        return Text(edge.marriageLabel ?? "")
+    private func exportRelationshipLabel(
+        _ label: TreeRoutingGeometry.RelationshipLabel,
+        transform: ExportTransform
+    ) -> some View {
+        Text(label.text)
             .font(.system(size: 12 * transform.scale, weight: .medium))
             .foregroundStyle(Color.gray)
-            .padding(.horizontal, 7 * transform.scale)
-            .padding(.vertical, 3 * transform.scale)
+            .lineLimit(1)
+            .frame(
+                width: label.rect.width * transform.scale,
+                height: label.rect.height * transform.scale
+            )
             .background(Color.white)
             .clipShape(Capsule())
-            .position(midpoint)
+            .position(transform.point(label.center))
     }
 
     private func exportNode(_ node: TreeNodeLayout, transform: ExportTransform) -> some View {

@@ -243,6 +243,31 @@ describe("immutable state transitions", () => {
     expect(updated.trees[0].updatedAt).toBe("2026-03-01T00:00:00.000Z");
   });
 
+  it("creates, updates, and clears a manual child order", () => {
+    const source = createPerson(
+      initial(),
+      "tree-a",
+      { displayName: "Child", birthOrderOverride: 2 },
+      { id: "child", now: "2026-01-02T00:00:00.000Z" }
+    );
+    expect(source.people[0].birthOrderOverride).toBe(2);
+    expect(updatePerson(source, "child", { birthOrderOverride: 3 }).people[0].birthOrderOverride)
+      .toBe(3);
+    expect(updatePerson(source, "child", { birthOrderOverride: undefined }).people[0])
+      .not.toHaveProperty("birthOrderOverride", expect.any(Number));
+  });
+
+  it("rejects invalid manual child orders", () => {
+    expect(() => createPerson(initial(), "tree-a", {
+      displayName: "Child",
+      birthOrderOverride: 0
+    })).toThrow(/positive whole number/i);
+
+    const source = withPerson(initial(), "tree-a", "child", "Child");
+    expect(() => updatePerson(source, "child", { birthOrderOverride: 1.5 }))
+      .toThrow(/positive whole number/i);
+  });
+
   it("deletes a tree and all of its scoped data", () => {
     let data = withPerson(initial(), "tree-a", "person-a", "A");
     data = setViewport(data, "tree-a", { scrollX: 10, scrollY: 20, zoom: 1.5 });
@@ -394,6 +419,15 @@ describe("import replacement", () => {
     const invalid = {
       ...source,
       people: [{ ...source.people[0], gender: "invalid" }]
+    };
+    expect(() => replaceAppData(invalid)).toThrowError(DomainError);
+  });
+
+  it("rejects malformed manual child order values", () => {
+    const source = withPerson(initial(), "tree-a", "person-a", "A");
+    const invalid = {
+      ...source,
+      people: [{ ...source.people[0], birthOrderOverride: -1 }]
     };
     expect(() => replaceAppData(invalid)).toThrowError(DomainError);
   });

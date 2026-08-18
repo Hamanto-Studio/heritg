@@ -41,6 +41,7 @@ export interface NewPersonInput {
   gender?: Gender;
   role?: DirectRole;
   birthDate?: string;
+  birthOrderOverride?: number;
   deathDate?: string;
   birthDatePrecision?: Person["birthDatePrecision"];
   notes?: string;
@@ -85,6 +86,11 @@ const touchTree = (data: AppData, treeId: string, updatedAt: string) => ({
 const validateLifeDates = (birthDate?: string, deathDate?: string) => {
   if (birthDate && deathDate && Date.parse(deathDate) < Date.parse(birthDate)) {
     throw new DomainError("invalidData", "Death date cannot be earlier than birth date.");
+  }
+};
+const validateBirthOrder = (value?: number) => {
+  if (value !== undefined && (!Number.isSafeInteger(value) || value < 1)) {
+    throw new DomainError("invalidData", "Child order must be a positive whole number.");
   }
 };
 const validCalendarDate = (value: string) => {
@@ -204,6 +210,7 @@ export function createPerson(
     throw new DomainError("invalidData", "A person with this ID already exists.");
   }
   validateLifeDates(input.birthDate, input.deathDate);
+  validateBirthOrder(input.birthOrderOverride);
   const roleGender = input.role && DIRECT_ROLE_DEFAULTS[input.role].gender;
   const person: Person = {
     id,
@@ -219,6 +226,9 @@ export function createPerson(
     country: input.country?.trim() ?? "",
     postalCode: input.postalCode?.trim() ?? "",
     ...(input.birthDate ? { birthDate: input.birthDate } : {}),
+    ...(input.birthOrderOverride !== undefined
+      ? { birthOrderOverride: input.birthOrderOverride }
+      : {}),
     ...(input.deathDate ? { deathDate: input.deathDate } : {}),
     ...(input.photoDataUrl ? { photoDataUrl: input.photoDataUrl } : {})
   };
@@ -249,6 +259,7 @@ export function updatePerson(
     postalCode: changes.postalCode?.trim() ?? person.postalCode
   };
   validateLifeDates(next.birthDate, next.deathDate);
+  validateBirthOrder(next.birthOrderOverride);
   return touchTree(
     {
       ...data,
@@ -444,7 +455,9 @@ export function assertAppData(value: unknown): asserts value is AppData {
         hasStrings(person, ["id", "treeId", "displayName", "createdAt", "notes",
           "addressLine", "city", "province", "country", "postalCode"]) &&
         ["female", "male", "unspecified"].includes(String(person.gender)) &&
-        ["exact", "month", "year"].includes(String(person.birthDatePrecision))) ||
+        ["exact", "month", "year"].includes(String(person.birthDatePrecision)) &&
+        (person.birthOrderOverride === undefined ||
+          (Number.isSafeInteger(person.birthOrderOverride) && person.birthOrderOverride > 0))) ||
       !data.relationships.every((item) =>
         hasStrings(item, ["id", "treeId", "fromPersonId", "toPersonId", "createdAt"]) &&
         ["parent", "partner", "sibling"].includes(String(item.kind)) &&

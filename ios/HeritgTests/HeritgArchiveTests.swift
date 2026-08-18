@@ -1,18 +1,19 @@
 import CryptoKit
+import CoreData
 import Foundation
-import SwiftData
 import Testing
 @testable import HERITG
 
 struct HeritgArchiveTests {
     @Test func optionalPasswordPolicyMatchesEveryWriter() {
         #expect(ArchivePasswordPolicy.accepts(""))
-        #expect(ArchivePasswordPolicy.accepts("Pass1234"))
-        #expect(ArchivePasswordPolicy.accepts("Ångström1"))
+        #expect(ArchivePasswordPolicy.accepts("Pass123!"))
+        #expect(ArchivePasswordPolicy.accepts("Ångström1!"))
         #expect(!ArchivePasswordPolicy.accepts("Pass1"))
         #expect(!ArchivePasswordPolicy.accepts("password1"))
         #expect(!ArchivePasswordPolicy.accepts("PASSWORD1"))
         #expect(!ArchivePasswordPolicy.accepts("Password"))
+        #expect(!ArchivePasswordPolicy.accepts("Pass1234"))
     }
 
     @Test func unencryptedZIPRoundTripPreservesPortableSemantics() throws {
@@ -165,24 +166,24 @@ struct HeritgArchiveTests {
         let payload = validPayload()
 
         let imported = try FamilyGraph.importArchive(payload, in: context)
-        let people = try context.fetch(FetchDescriptor<Person>())
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let people = try context.fetch(Person.fetchRequest())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
         #expect(imported.id == "tree-synthetic")
         #expect(imported.lastSelectedPersonID == "person-alpha")
         #expect(Set(people.map(\.id)) == ["person-alpha", "person-beta"])
         #expect(relationships.map(\.id) == ["relationship-alpha-beta"])
 
         let counts = (
-            try context.fetchCount(FetchDescriptor<FamilyTree>()),
-            try context.fetchCount(FetchDescriptor<Person>()),
-            try context.fetchCount(FetchDescriptor<FamilyRelationship>())
+            try context.count(for: FamilyTree.fetchRequest()),
+            try context.count(for: Person.fetchRequest()),
+            try context.count(for: FamilyRelationship.fetchRequest())
         )
         #expect(throws: HeritgArchiveError.identifierCollision) {
             try FamilyGraph.importArchive(payload, in: context)
         }
-        #expect(try context.fetchCount(FetchDescriptor<FamilyTree>()) == counts.0)
-        #expect(try context.fetchCount(FetchDescriptor<Person>()) == counts.1)
-        #expect(try context.fetchCount(FetchDescriptor<FamilyRelationship>()) == counts.2)
+        #expect(try context.count(for: FamilyTree.fetchRequest()) == counts.0)
+        #expect(try context.count(for: Person.fetchRequest()) == counts.1)
+        #expect(try context.count(for: FamilyRelationship.fetchRequest()) == counts.2)
     }
 
     @MainActor
@@ -190,14 +191,14 @@ struct HeritgArchiveTests {
         let context = try makeContext()
         _ = try FamilyGraph.createTree(named: "Existing", in: context)
         let payload = validPayload(relationshipTargetID: "missing-person")
-        let initialTreeCount = try context.fetchCount(FetchDescriptor<FamilyTree>())
+        let initialTreeCount = try context.count(for: FamilyTree.fetchRequest())
 
         #expect(throws: HeritgArchiveError.invalidArchive) {
             try FamilyGraph.importArchive(payload, in: context)
         }
-        #expect(try context.fetchCount(FetchDescriptor<FamilyTree>()) == initialTreeCount)
-        #expect(try context.fetchCount(FetchDescriptor<Person>()) == 0)
-        #expect(try context.fetchCount(FetchDescriptor<FamilyRelationship>()) == 0)
+        #expect(try context.count(for: FamilyTree.fetchRequest()) == initialTreeCount)
+        #expect(try context.count(for: Person.fetchRequest()) == 0)
+        #expect(try context.count(for: FamilyRelationship.fetchRequest()) == 0)
     }
 
     @Test func oldPreReleaseEnvelopeIsNotAccepted() {
@@ -297,10 +298,7 @@ struct HeritgArchiveTests {
     }
 
     @MainActor
-    private func makeContext() throws -> ModelContext {
-        let schema = Schema([FamilyTree.self, Person.self, FamilyRelationship.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
+    private func makeContext() throws -> NSManagedObjectContext {
+        PersistenceController(inMemory: true).container.viewContext
     }
 }

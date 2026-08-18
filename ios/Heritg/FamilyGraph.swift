@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 
 enum FamilyGraphError: LocalizedError {
     case emptyName
@@ -40,9 +40,8 @@ enum FamilyGraphError: LocalizedError {
 
 @MainActor
 enum FamilyGraph {
-    static func createTree(named name: String, in context: ModelContext) throws -> FamilyTree {
-        let tree = FamilyTree(title: try validatedName(name))
-        context.insert(tree)
+    static func createTree(named name: String, in context: NSManagedObjectContext) throws -> FamilyTree {
+        let tree = FamilyTree(context: context, title: try validatedName(name))
         try saveOrRollback(context)
         return tree
     }
@@ -50,7 +49,7 @@ enum FamilyGraph {
     static func renameTree(
         _ tree: FamilyTree,
         to name: String,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         tree.title = try validatedName(name)
         tree.updatedAt = .now
@@ -59,15 +58,11 @@ enum FamilyGraph {
 
     static func deleteTree(
         _ tree: FamilyTree,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         let treeID = tree.id
-        let people = try context.fetch(FetchDescriptor<Person>(
-            predicate: #Predicate { $0.treeID == treeID }
-        ))
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>(
-            predicate: #Predicate { $0.treeID == treeID }
-        ))
+        let people = try context.fetch(Person.fetchRequest(treeID: treeID))
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest(treeID: treeID))
         for relationship in relationships {
             context.delete(relationship)
         }
@@ -81,18 +76,63 @@ enum FamilyGraph {
     static func importGEDCOM(
         _ importData: GEDCOMImport,
         named name: String? = nil,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws -> FamilyTree {
-        let tree = FamilyTree(title: try validatedName(name ?? importData.suggestedTitle))
-        var peopleBySourceID = [String: Person]()
+        let title = try validatedName(name ?? importData.suggestedTitle)
+        let tree = try insertGEDCOM(importData, title: title, in: context)
+        try saveOrRollback(context)
+        return tree
+    }
 
+    static func importGEDCOMInBackground(
+        _ importData: GEDCOMImport,
+        named name: String? = nil,
+        in context: NSManagedObjectContext
+    ) async throws -> FamilyTree {
+        guard let coordinator = context.persistentStoreCoordinator else {
+            throw GEDCOMImportError.noPeople
+        }
+        let title = try validatedName(name ?? importData.suggestedTitle)
+        let treeID = UUID().uuidString.lowercased()
+        let importContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        importContext.persistentStoreCoordinator = coordinator
+        importContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        try await importContext.perform {
+            _ = try insertGEDCOM(importData, id: treeID, title: title, in: importContext)
+            try saveOrRollback(importContext)
+        }
+
+        context.processPendingChanges()
+        guard let tree = try context.fetch(FamilyTree.fetchRequest(id: treeID)).first else {
+            throw GEDCOMImportError.noPeople
+        }
+        return tree
+    }
+
+    nonisolated private static func insertGEDCOM(
+        _ importData: GEDCOMImport,
+        id: String = UUID().uuidString.lowercased(),
+        title: String,
+        in context: NSManagedObjectContext
+    ) throws -> FamilyTree {
         for record in importData.people {
             if let birthDate = record.birthDate,
                let deathDate = record.deathDate,
                deathDate < birthDate {
                 throw FamilyGraphError.deathBeforeBirth
             }
+        }
+        let tree = FamilyTree(
+            context: context,
+            id: id,
+            title: title
+        )
+        var peopleBySourceID = [String: Person]()
+
+        for record in importData.people {
             let person = Person(
+                context: context,
                 treeID: tree.id,
                 displayName: record.name.isEmpty
                     ? String(localized: "Unnamed person", locale: AppLanguage.selectedLocale)
@@ -107,10 +147,11 @@ enum FamilyGraph {
             peopleBySourceID[record.sourceID] = person
         }
 
-        let importedRelationships = importData.relationships.compactMap { record -> FamilyRelationship? in
+        for record in importData.relationships {
             guard let from = peopleBySourceID[record.fromSourceID],
-                  let to = peopleBySourceID[record.toSourceID] else { return nil }
-            return FamilyRelationship(
+                  let to = peopleBySourceID[record.toSourceID] else { continue }
+            _ = FamilyRelationship(
+                context: context,
                 treeID: tree.id,
                 fromPersonID: from.id,
                 toPersonID: to.id,
@@ -120,78 +161,78 @@ enum FamilyGraph {
             )
         }
 
-        context.insert(tree)
-        for person in peopleBySourceID.values { context.insert(person) }
-        for relationship in importedRelationships { context.insert(relationship) }
-        try saveOrRollback(context)
         return tree
     }
 
     static func importArchive(
         _ payload: HeritgArchivePayload,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws -> FamilyTree {
         try HeritgArchive.validate(payload)
 
-        let existingTreeIDs = Set(try context.fetch(FetchDescriptor<FamilyTree>()).map(\.id))
-        let existingPersonIDs = Set(try context.fetch(FetchDescriptor<Person>()).map(\.id))
-        let existingRelationshipIDs = Set(try context.fetch(FetchDescriptor<FamilyRelationship>()).map(\.id))
-        guard !existingTreeIDs.contains(payload.tree.id),
-              existingPersonIDs.isDisjoint(with: payload.people.map(\.id)),
-              existingRelationshipIDs.isDisjoint(with: payload.relationships.map(\.id)) else {
-            throw HeritgArchiveError.identifierCollision
+        guard let coordinator = context.persistentStoreCoordinator else {
+            throw HeritgArchiveError.invalidArchive
         }
+        let importContext = NSManagedObjectContext(concurrencyType: .privateQueueConcurrencyType)
+        importContext.persistentStoreCoordinator = coordinator
+        importContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
 
-        let tree = FamilyTree(
-            id: payload.tree.id,
-            title: payload.tree.title,
-            createdAt: payload.tree.createdAt,
-            updatedAt: payload.tree.updatedAt,
-            lastSelectedPersonID: payload.tree.lastSelectedPersonID
-        )
-        let people = payload.people.map { record in
-            let person = Person(
-                id: record.id,
-                treeID: record.treeID,
-                displayName: record.displayName,
-                gender: PersonGender(rawValue: record.genderRaw)!,
-                createdAt: record.createdAt
+        try importContext.performAndWait {
+            let existingTreeIDs = Set(try importContext.fetch(FamilyTree.fetchRequest()).map(\.id))
+            let existingPersonIDs = Set(try importContext.fetch(Person.fetchRequest()).map(\.id))
+            let existingRelationshipIDs = Set(try importContext.fetch(FamilyRelationship.fetchRequest()).map(\.id))
+            guard !existingTreeIDs.contains(payload.tree.id),
+                  existingPersonIDs.isDisjoint(with: payload.people.map(\.id)),
+                  existingRelationshipIDs.isDisjoint(with: payload.relationships.map(\.id)) else {
+                throw HeritgArchiveError.identifierCollision
+            }
+
+            _ = FamilyTree(
+                context: importContext,
+                id: payload.tree.id,
+                title: payload.tree.title,
+                createdAt: payload.tree.createdAt,
+                updatedAt: payload.tree.updatedAt,
+                lastSelectedPersonID: payload.tree.lastSelectedPersonID
             )
-            person.birthDate = record.birthDate
-            person.deathDate = record.deathDate
-            person.birthDatePrecision = BirthDatePrecision(rawValue: record.birthDatePrecisionRaw)!
-            person.notes = record.notes
-            person.addressLine = record.addressLine
-            person.city = record.city
-            person.province = record.province
-            person.country = record.country
-            person.postalCode = record.postalCode
-            person.profilePhotoData = record.profilePhotoData
-            return person
-        }
-        let relationships = payload.relationships.map { record in
-            return FamilyRelationship(
-                id: record.id,
-                treeID: record.treeID,
-                fromPersonID: record.fromPersonID,
-                toPersonID: record.toPersonID,
-                kind: RelationshipKind(rawValue: record.kindRaw)!,
-                subtype: RelationshipSubtype(rawValue: record.subtypeRaw)!,
-                marriageDate: record.marriageDate,
-                createdAt: record.createdAt
-            )
+            for record in payload.people {
+                let person = Person(
+                    context: importContext,
+                    id: record.id,
+                    treeID: record.treeID,
+                    displayName: record.displayName,
+                    gender: PersonGender(rawValue: record.genderRaw)!,
+                    createdAt: record.createdAt
+                )
+                person.birthDate = record.birthDate
+                person.deathDate = record.deathDate
+                person.birthDatePrecision = BirthDatePrecision(rawValue: record.birthDatePrecisionRaw)!
+                person.notes = record.notes
+                person.addressLine = record.addressLine
+                person.city = record.city
+                person.province = record.province
+                person.country = record.country
+                person.postalCode = record.postalCode
+                person.profilePhotoData = record.profilePhotoData
+            }
+            for record in payload.relationships {
+                _ = FamilyRelationship(
+                    context: importContext,
+                    id: record.id,
+                    treeID: record.treeID,
+                    fromPersonID: record.fromPersonID,
+                    toPersonID: record.toPersonID,
+                    kind: RelationshipKind(rawValue: record.kindRaw)!,
+                    subtype: RelationshipSubtype(rawValue: record.subtypeRaw)!,
+                    marriageDate: record.marriageDate,
+                    createdAt: record.createdAt
+                )
+            }
+            try saveOrRollback(importContext)
         }
 
-        let importContext = ModelContext(context.container)
-        importContext.autosaveEnabled = false
-        importContext.insert(tree)
-        people.forEach(importContext.insert)
-        relationships.forEach(importContext.insert)
-        try saveOrRollback(importContext)
-
-        let importedTrees = try context.fetch(FetchDescriptor<FamilyTree>(
-            predicate: #Predicate { $0.id == payload.tree.id }
-        ))
+        context.processPendingChanges()
+        let importedTrees = try context.fetch(FamilyTree.fetchRequest(id: payload.tree.id))
         guard let importedTree = importedTrees.first else {
             throw HeritgArchiveError.invalidArchive
         }
@@ -201,10 +242,13 @@ enum FamilyGraph {
     static func createPerson(
         named name: String,
         in tree: FamilyTree,
-        context: ModelContext
+        context: NSManagedObjectContext
     ) throws -> Person {
-        let person = Person(treeID: tree.id, displayName: try validatedName(name))
-        context.insert(person)
+        let person = Person(
+            context: context,
+            treeID: tree.id,
+            displayName: try validatedName(name)
+        )
         tree.updatedAt = .now
         try saveOrRollback(context)
         return person
@@ -215,7 +259,7 @@ enum FamilyGraph {
         name: String,
         gender: PersonGender,
         details: PersonDetails = .empty,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         let validatedName = try validatedName(name)
         try apply(details, to: person)
@@ -232,9 +276,10 @@ enum FamilyGraph {
         deleting relationshipsToDelete: [FamilyRelationship],
         linking peopleToLink: [(person: Person, role: RelativeRole, marriageDate: Date?)],
         relationships: [FamilyRelationship],
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         let validatedName = try validatedName(name)
+        try validate(details)
         guard relationshipsToDelete.allSatisfy({ $0.treeID == person.treeID }) else {
             throw FamilyGraphError.crossTreeRelationship
         }
@@ -295,8 +340,9 @@ enum FamilyGraph {
         marriageDate: Date? = nil,
         coParent: Person? = nil,
         relationships: [FamilyRelationship] = [],
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws -> Person {
+        try validate(details)
         if let coParent {
             guard role.allowsCoParent,
                   coParent.id != person.id,
@@ -312,13 +358,15 @@ enum FamilyGraph {
         }
 
         let relative = Person(
+            context: context,
             treeID: person.treeID,
             displayName: try validatedName(name),
             gender: role.gender
         )
         try apply(details, to: relative)
         let endpoints = relationshipEndpoints(personID: person.id, relativeID: relative.id, role: role)
-        let relationship = FamilyRelationship(
+        _ = FamilyRelationship(
+            context: context,
             treeID: person.treeID,
             fromPersonID: endpoints.from,
             toPersonID: endpoints.to,
@@ -327,16 +375,15 @@ enum FamilyGraph {
             marriageDate: endpoints.kind == .partner ? marriageDate : nil
         )
 
-        context.insert(relative)
-        context.insert(relationship)
         if let coParent {
-            context.insert(FamilyRelationship(
+            _ = FamilyRelationship(
+                context: context,
                 treeID: person.treeID,
                 fromPersonID: coParent.id,
                 toPersonID: relative.id,
                 kind: .parent,
                 subtype: endpoints.subtype
-            ))
+            )
         }
         try saveOrRollback(context)
         return relative
@@ -368,7 +415,7 @@ enum FamilyGraph {
 
     static func deleteRelationship(
         _ relationship: FamilyRelationship,
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         context.delete(relationship)
         try saveOrRollback(context)
@@ -379,15 +426,13 @@ enum FamilyGraph {
         to relative: Person,
         as role: RelativeRole,
         relationships: [FamilyRelationship],
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         guard person.id != relative.id else { throw FamilyGraphError.selfRelationship }
         guard person.treeID == relative.treeID else { throw FamilyGraphError.crossTreeRelationship }
         let endpoints = relationshipEndpoints(personID: person.id, relativeID: relative.id, role: role)
         let treeID = person.treeID
-        let storedRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>(
-            predicate: #Predicate { $0.treeID == treeID }
-        ))
+        let storedRelationships = try context.fetch(FamilyRelationship.fetchRequest(treeID: treeID))
         guard !(relationships + storedRelationships).contains(where: {
             $0.treeID == person.treeID &&
                 $0.kind == endpoints.kind &&
@@ -397,20 +442,21 @@ enum FamilyGraph {
             throw FamilyGraphError.duplicateRelationship
         }
 
-        context.insert(FamilyRelationship(
+        _ = FamilyRelationship(
+            context: context,
             treeID: person.treeID,
             fromPersonID: endpoints.from,
             toPersonID: endpoints.to,
             kind: endpoints.kind,
             subtype: endpoints.subtype
-        ))
+        )
         try saveOrRollback(context)
     }
 
     static func deletePerson(
         _ person: Person,
         relationships: [FamilyRelationship],
-        in context: ModelContext
+        in context: NSManagedObjectContext
     ) throws {
         for relationship in relationships where relationship.treeID == person.treeID &&
             (relationship.fromPersonID == person.id || relationship.toPersonID == person.id) {
@@ -427,11 +473,7 @@ enum FamilyGraph {
     }
 
     private static func apply(_ details: PersonDetails, to person: Person) throws {
-        if let birthDate = details.birthDate,
-           let deathDate = details.deathDate,
-           deathDate < birthDate {
-            throw FamilyGraphError.deathBeforeBirth
-        }
+        try validate(details)
         person.birthDate = details.birthDate
         person.deathDate = details.deathDate
         person.birthDatePrecision = details.birthDatePrecision
@@ -444,7 +486,15 @@ enum FamilyGraph {
         person.profilePhotoData = details.profilePhotoData
     }
 
-    private static func saveOrRollback(_ context: ModelContext) throws {
+    private static func validate(_ details: PersonDetails) throws {
+        if let birthDate = details.birthDate,
+           let deathDate = details.deathDate,
+           deathDate < birthDate {
+            throw FamilyGraphError.deathBeforeBirth
+        }
+    }
+
+    nonisolated private static func saveOrRollback(_ context: NSManagedObjectContext) throws {
         do {
             try context.save()
         } catch {

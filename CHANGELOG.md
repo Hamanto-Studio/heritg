@@ -12,11 +12,17 @@ prefix.
 
 ### iOS
 
-- No unreleased changes yet.
+- Migrated local family storage to Core Data while preserving the private,
+  account-free app experience.
+- Improved family-tree relationship lines with obstacle-aware routing, rounded
+  corners, junctions, and crossing bridges while retaining native canvas
+  gestures and controls.
+- Improved archive, relationship, photo, and export compatibility coverage.
 
 ### Android
 
-- No unreleased changes yet.
+- Refreshed the internal testing build for the current offline family-tree,
+  encrypted archive, GEDCOM, and chart-export compatibility checks.
 
 ## [web-0.5.0] - 2026-08-17
 
@@ -162,4 +168,5 @@ prefix.
 [web-0.3.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.3.0
 [web-0.4.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.0
 [web-0.4.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.1
+[web-0.5.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.5.0
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0

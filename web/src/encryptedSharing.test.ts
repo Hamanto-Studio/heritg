@@ -34,6 +34,7 @@ const syntheticData: AppData = {
     gender: "unspecified",
     createdAt: "2026-08-03T00:00:00.000Z",
     birthDate: "2000-01-01",
+    birthOrderOverride: 1,
     birthDatePrecision: "exact",
     notes: "Synthetic protocol fixture only",
     addressLine: "",
@@ -84,6 +85,7 @@ describe("password-protected share protocol", () => {
 
     expect(prepared.data.people[0]).toMatchObject({
       birthDate: undefined,
+      birthOrderOverride: undefined,
       photoDataUrl: undefined
     });
     expect(prepared.data.relationships[0]).toMatchObject({
@@ -99,7 +101,11 @@ describe("password-protected share protocol", () => {
       { sharedView: prepared.sharedView }
     );
     const restored = await importHeritgArchive(archive);
-    expect(restored.people[0]).toMatchObject({ birthDate: undefined, photoDataUrl: undefined });
+    expect(restored.people[0]).toMatchObject({
+      birthDate: undefined,
+      birthOrderOverride: undefined,
+      photoDataUrl: undefined
+    });
     expect(restored.relationships[0]?.marriageDate).toBeUndefined();
     expect(restored.relationships[0]?.divorceDate).toBeUndefined();
     expect(sharedViewFor(restored)?.ageByPersonId).toEqual({ "person-share-fixture": 26 });

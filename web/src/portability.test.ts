@@ -71,6 +71,7 @@ const appData: AppData = {
       gender: "female",
       createdAt: timestamp,
       birthDate: "2000-01-02",
+      birthOrderOverride: 1,
       deathDate: undefined,
       birthDatePrecision: "exact",
       notes: "",
@@ -193,6 +194,7 @@ describe("HERITG JSON backups", () => {
       "new-child"
     ]);
     expect(restored.people[0].photoDataUrl).toBe(appData.people[0].photoDataUrl);
+    expect(restored.people[2].birthOrderOverride).toBe(1);
     expect(restored.relationships[0]).toMatchObject({
       id: "new-partners",
       treeId: "new-tree",
@@ -225,6 +227,12 @@ describe("HERITG JSON backups", () => {
     expect(() => validateAppData(source)).toThrow(/earlier than marriageDate/i);
     source.relationships[0].divorceDate = "2020-4-05";
     expect(() => validateAppData(source)).toThrow(/YYYY-MM-DD/i);
+  });
+
+  it("rejects invalid manual child orders", () => {
+    const source = structuredClone(appData);
+    source.people[2].birthOrderOverride = 0;
+    expect(() => validateAppData(source)).toThrow(/positive whole number/i);
   });
 });
 

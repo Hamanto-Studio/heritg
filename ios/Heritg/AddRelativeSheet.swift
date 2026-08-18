@@ -82,20 +82,22 @@ struct AddRelativeSheet: View {
                         .accessibilityIdentifier("relative.cancel")
                 }
             }
-            .navigationDestination(item: $selectedRole) { role in
-                ScrollView {
-                    relativeForm(role: role)
-                        .padding(20)
-                }
-                .background(HeritgColor.canvas)
-                .navigationTitle("New \(role.title)")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Add \(role.title)") {
-                            save(role: role)
+            .navigationDestination(isPresented: selectedRoleIsPresented) {
+                if let selectedRole {
+                    ScrollView {
+                        relativeForm(role: selectedRole)
+                            .padding(20)
+                    }
+                    .background(HeritgColor.canvas)
+                    .navigationTitle("New \(selectedRole.title)")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Add \(selectedRole.title)") {
+                                save(role: selectedRole)
+                            }
+                            .accessibilityIdentifier("relative.save")
                         }
-                        .accessibilityIdentifier("relative.save")
                     }
                 }
             }
@@ -151,7 +153,7 @@ struct AddRelativeSheet: View {
                     DatePicker("Birthday", selection: $birthDate, displayedComponents: .date)
                         .labelsHidden()
                         .datePickerStyle(.compact)
-                        .onChange(of: birthDate) {
+                        .onChange(of: birthDate) { _ in
                             hasBirthdayData = true
                         }
                         .accessibilityIdentifier("relative.birthDate")
@@ -225,7 +227,7 @@ struct AddRelativeSheet: View {
                 DatePicker("Marriage date", selection: $marriageDate, displayedComponents: .date)
                     .labelsHidden()
                     .datePickerStyle(.compact)
-                    .onChange(of: marriageDate) {
+                    .onChange(of: marriageDate) { _ in
                         hasMarriageDate = true
                     }
                     .accessibilityIdentifier("relative.marriageDate")
@@ -248,6 +250,13 @@ struct AddRelativeSheet: View {
             }
             .accessibilityIdentifier("relative.addMarriageDate")
         }
+    }
+
+    private var selectedRoleIsPresented: Binding<Bool> {
+        Binding(
+            get: { selectedRole != nil },
+            set: { if !$0 { selectedRole = nil } }
+        )
     }
 
     private func save(role: RelativeRole) {

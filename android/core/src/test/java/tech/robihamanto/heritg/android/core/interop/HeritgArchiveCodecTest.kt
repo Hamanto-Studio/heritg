@@ -26,12 +26,13 @@ class HeritgArchiveCodecTest {
 
     @Test fun optionalPasswordPolicyMatchesEveryWriter() {
         assertTrue(ArchivePasswordPolicy.accepts(""))
-        assertTrue(ArchivePasswordPolicy.accepts("Pass1234"))
-        assertTrue(ArchivePasswordPolicy.accepts("Ångström1"))
+        assertTrue(ArchivePasswordPolicy.accepts("Pass123!"))
+        assertTrue(ArchivePasswordPolicy.accepts("Ångström1!"))
         assertFalse(ArchivePasswordPolicy.accepts("Pass1"))
         assertFalse(ArchivePasswordPolicy.accepts("password1"))
         assertFalse(ArchivePasswordPolicy.accepts("PASSWORD1"))
         assertFalse(ArchivePasswordPolicy.accepts("Password"))
+        assertFalse(ArchivePasswordPolicy.accepts("Pass1234"))
     }
 
     @Test fun outputMatchesIosEncryptedCompatibilityVectorExactly() {

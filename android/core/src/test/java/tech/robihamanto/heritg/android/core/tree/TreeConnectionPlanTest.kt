@@ -2,6 +2,7 @@ package tech.robihamanto.heritg.android.core.tree
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import tech.robihamanto.heritg.android.core.domain.EnglishSemanticFormatter
@@ -211,6 +212,19 @@ class TreeConnectionPlanTest {
             TreeVisualMetrics.relationshipLabelRect("結婚しました", Point(0.0, 0.0), measurer).width,
             0.0,
         )
+    }
+
+    @Test fun partnerLabelsOnlyDescribeKnownMarriageYears() {
+        val left = Point(-100.0, 0.0)
+        val right = Point(100.0, 0.0)
+        val undated = TreeEdgeLayout(
+            "undated", "left", "right", left, right,
+            RelationshipKind.PARTNER, RelationshipSubtype.SPOUSE,
+        )
+        val dated = undated.copy(id = "dated", marriageYear = "2015")
+
+        assertNull(undated.marriageLabel())
+        assertEquals("Married 2015", dated.marriageLabel())
     }
 
     private fun layout(

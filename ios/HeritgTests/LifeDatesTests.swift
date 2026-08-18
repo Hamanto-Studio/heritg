@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 import Testing
 @testable import HERITG
 
@@ -69,7 +69,7 @@ struct LifeDatesTests {
             in: context
         )
 
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
         #expect(relationships.first?.marriageDate == marriageDate)
 
         let gedcom = GEDCOMExporter.export(people: [first, second], relationships: relationships)
@@ -95,7 +95,7 @@ struct LifeDatesTests {
             marriageDate: marriageDate,
             in: context
         )
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         #expect(spouse.birthDate == birthDate)
         #expect(spouse.birthDatePrecision == .exact)
@@ -215,10 +215,7 @@ struct LifeDatesTests {
     }
 
     @MainActor
-    private func makeContext() throws -> ModelContext {
-        let schema = Schema([FamilyTree.self, Person.self, FamilyRelationship.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
+    private func makeContext() throws -> NSManagedObjectContext {
+        PersistenceController(inMemory: true).container.viewContext
     }
 }

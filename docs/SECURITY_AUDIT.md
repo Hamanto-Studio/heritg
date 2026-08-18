@@ -1,6 +1,6 @@
 # HERITG Security and Cryptography Audit
 
-Audit date: 2026-08-03
+Audit date: 2026-08-18
 Scope: the iOS, web, and Android source, tests, workflows, and documentation
 included with this audit
 
@@ -51,7 +51,7 @@ They do not protect against:
 | Payload encryption | AES-256-GCM |
 | Password KDF | PBKDF2-HMAC-SHA256, 600,000 iterations |
 | Password bytes | Unicode NFC, then UTF-8 |
-| Password policy | Optional; empty is allowed, non-empty requires 8+ NFC code points with Unicode uppercase, lowercase, and decimal-digit classes in writer UIs |
+| Password policy | Optional; empty is allowed, non-empty requires 8+ NFC code points with Unicode uppercase, lowercase, decimal-digit, and punctuation-or-symbol classes in writer UIs |
 | Salt | 16 random bytes per export |
 | Nonce | 12 random bytes per export |
 | Authentication tag | 16 bytes |
@@ -68,7 +68,8 @@ PBKDF2-HMAC-SHA256 work factor matches the current
 for PBKDF2.
 
 The product policy for newly created non-empty backup passwords is a minimum of
-8 NFC code points plus uppercase, lowercase, and decimal-digit composition.
+8 NFC code points plus uppercase, lowercase, decimal-digit, and
+punctuation-or-symbol composition.
 This is a product compatibility choice, not a claim of equivalence with
 [NIST SP 800-63B](https://pages.nist.gov/800-63-4/sp800-63b/authenticators/),
 which recommends a 15-character minimum for passwords used as a single
@@ -134,7 +135,8 @@ The web settings flow previously downloaded a readable JSON backup, and native
 flows could create an unencrypted ZIP. Every current iOS, web, and Android
 `.heritg` export now emits `HTGENC01`. The password is optional; if supplied,
 all three interfaces require at least 8 NFC-normalized Unicode code points with
-an uppercase letter, a lowercase letter, and a decimal digit.
+an uppercase letter, a lowercase letter, a decimal digit, and a punctuation or
+symbol character.
 With an empty password, importers authenticate and restore without prompting.
 
 An empty password does not turn encryption into access control or authenticity

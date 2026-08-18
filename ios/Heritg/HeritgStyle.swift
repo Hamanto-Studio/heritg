@@ -4,6 +4,7 @@ enum HeritgColor {
     static let canvas = adaptive(light: 0xF7F3EC, dark: 0x29251F)
     static let treeCanvas = adaptive(light: 0xF5F5F3, dark: 0x29251F)
     static let base = adaptive(light: 0xFFFDF8, dark: 0x342F28)
+    static let selectedAvatar = adaptive(light: 0xF3EADF, dark: 0x463E33)
     static let elevated = adaptive(light: 0xFFFAF2, dark: 0x3B352C)
     static let recessed = adaptive(light: 0xEDE5D8, dark: 0x463E33)
     static let text = adaptive(light: 0x302B25, dark: 0xFFF8EE)
