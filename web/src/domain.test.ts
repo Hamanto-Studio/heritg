@@ -14,6 +14,7 @@ import {
   replaceAppData,
   selectPerson,
   setViewport,
+  setRelationshipTerminology,
   updatePerson
 } from "./domain";
 import {
@@ -64,6 +65,17 @@ describe("initial app data", () => {
     expect(english.people).toEqual([]);
     expect(english.relationships).toEqual([]);
     expect(indonesian.trees[0].title).toBe("Silsilah Keluarga Saya");
+    expect(indonesian.relationshipTerminology).toBe("id");
+  });
+
+  it("stores a regional relationship terminology independently of interface language", () => {
+    const source = initial();
+    const updated = setRelationshipTerminology(source, "jv-yogyakarta");
+
+    expect(updated.language).toBe("en");
+    expect(updated.relationshipTerminology).toBe("jv-yogyakarta");
+    expect(() => setRelationshipTerminology(source, "invalid" as "id"))
+      .toThrowError(DomainError);
   });
 });
 
@@ -393,6 +405,13 @@ describe("import replacement", () => {
     expect(source.trees[0].title).toBe("My Family Tree");
   });
 
+  it("defaults legacy data to Indonesian relationship terminology", () => {
+    const legacy = initial();
+    delete legacy.relationshipTerminology;
+
+    expect(replaceAppData(legacy).relationshipTerminology).toBe("id");
+  });
+
   it("rejects dangling and duplicate relationship data", () => {
     const source = familyWithRelationship();
     const invalid: AppData = {
@@ -429,6 +448,11 @@ describe("import replacement", () => {
       ...source,
       people: [{ ...source.people[0], birthOrderOverride: -1 }]
     };
+    expect(() => replaceAppData(invalid)).toThrowError(DomainError);
+  });
+
+  it("rejects unsupported relationship terminology", () => {
+    const invalid = { ...initial(), relationshipTerminology: "jv-unknown" };
     expect(() => replaceAppData(invalid)).toThrowError(DomainError);
   });
 });

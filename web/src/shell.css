@@ -209,6 +209,11 @@
   background: var(--recessed);
 }
 
+.tree-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .tree-menu button.danger-text {
   color: var(--danger);
 }
@@ -491,6 +496,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.workspace-title-row {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+}
+
+.workspace-title-name {
+  background: transparent;
+  border-radius: 5px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.workspace-title-name:hover h2 {
+  color: var(--brand-deep);
+}
+
+.workspace-title-edit {
+  height: 30px;
+  margin: -5px -8px -5px 0;
+  width: 30px;
 }
 
 .workspace-title p {

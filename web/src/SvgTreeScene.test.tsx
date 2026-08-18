@@ -49,7 +49,6 @@ describe("SvgTreeScene", () => {
           connectionPlan={plan}
           language="en"
           layout={layout}
-          overview={false}
           selectedPersonId="parent"
         />
       </svg>
@@ -62,22 +61,46 @@ describe("SvgTreeScene", () => {
     expect(markup).toContain('stroke="#9c825f"');
   });
 
-  it("keeps routes and avatar hit groups while omitting unreadable overview details", () => {
+  it("renders long names as two centered lines at a consistent font size", () => {
+    const longNameLayout = createTreeLayout([
+      person("long-name", "Novian Pratomo Edi Nugroho (Novan)")
+    ], []);
     const markup = renderToStaticMarkup(
       <svg>
         <SvgTreeScene
-          connectionPlan={plan}
+          connectionPlan={createConnectionPlan(longNameLayout)}
           language="en"
-          layout={layout}
-          overview
+          layout={longNameLayout}
         />
       </svg>
     );
 
-    expect(markup).toContain("svg-connector family");
-    expect(markup).toContain('data-person-id="parent"');
-    expect(markup).not.toContain("svg-person-name");
-    expect(markup).not.toContain("svg-person-initial");
+    expect(markup).toContain('class="svg-person-name" font-size="14" text-anchor="middle"');
+    expect(markup).toContain(">Novian Pratomo Edi</tspan>");
+    expect(markup).toContain(">Nugroho (Novan)</tspan>");
+  });
+
+  it("renders the current city below birth details", () => {
+    const cityLayout = createTreeLayout([{
+      ...person("city-person", "City Person"),
+      birthDate: "1990-01-01",
+      birthDatePrecision: "exact",
+      city: "Jakarta"
+    }], []);
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgTreeScene
+          connectionPlan={createConnectionPlan(cityLayout)}
+          language="en"
+          layout={cityLayout}
+        />
+      </svg>
+    );
+
+    expect(markup).toContain("Born Jan 1, 1990");
+    expect(markup).toContain('class="svg-person-city"');
+    expect(markup).toContain(">Jakarta</text>");
+    expect(markup.indexOf(">Jakarta</text>")).toBeGreaterThan(markup.indexOf("Born Jan 1, 1990"));
   });
 
   it("renders distinct gender fills while selection remains a separate outline", () => {
@@ -99,7 +122,6 @@ describe("SvgTreeScene", () => {
           connectionPlan={createConnectionPlan(genderLayout)}
           language="en"
           layout={genderLayout}
-          overview={false}
           selectedPersonId="female"
         />
       </svg>

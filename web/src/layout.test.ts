@@ -159,6 +159,51 @@ describe("kinship labels", () => {
     expect(kinshipLabel("spouse-mother", "focus", people, relationships, "id")).toBe("Ibu mertua");
     expect(kinshipLabel("son-wife", "focus", people, relationships, "id")).toBe("Menantu perempuan");
   });
+
+  it("uses regional Javanese seniority and cousin terminology", () => {
+    const people = [
+      person("grandparent"),
+      person("older-aunt", "female", "1960-01-01"),
+      person("father", "male", "1965-01-01"),
+      person("cousin", "male", "1988-01-01"),
+      person("older-sister", "female", "1989-01-01"),
+      person("focus", "male", "1990-01-01")
+    ];
+    const relationships = [
+      parent("grandparent", "older-aunt"),
+      parent("grandparent", "father"),
+      parent("older-aunt", "cousin"),
+      parent("father", "older-sister"),
+      parent("father", "focus")
+    ];
+
+    expect(kinshipLabel("father", "focus", people, relationships, "jv-yogyakarta"))
+      .toBe("Bapak");
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "jv-yogyakarta"))
+      .toBe("Bu Dhe");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "jv-yogyakarta"))
+      .toBe("Mbakyu");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "jv-east-java"))
+      .toBe("Mbak");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "jv-yogyakarta"))
+      .toBe("Nak-sanak");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "jv-east-java"))
+      .toBe("Misanan");
+  });
+
+  it("prefers manual birth order when resolving Javanese sibling seniority", () => {
+    const people = [
+      { ...person("parent"), birthDate: undefined },
+      { ...person("focus", "male"), birthDate: undefined, birthOrderOverride: 2 },
+      { ...person("sibling", "male"), birthDate: undefined, birthOrderOverride: 1 }
+    ];
+    const relationships = [parent("parent", "focus"), parent("parent", "sibling")];
+
+    expect(kinshipLabel("sibling", "focus", people, relationships, "jv-yogyakarta"))
+      .toBe("Kangmas");
+    expect(kinshipLabel("sibling", "focus", people, relationships, "jv-east-java"))
+      .toBe("Mas");
+  });
 });
 
 describe("deterministic family layout", () => {
@@ -279,6 +324,39 @@ describe("deterministic family layout", () => {
       [...branchPeople].reverse(),
       [...branchRelationships].reverse()
     )).toEqual(generations);
+  });
+
+  it("keeps an older married child on the same row and left of younger siblings", () => {
+    const familyPeople = [
+      person("spouse-grandfather"), person("spouse-grandmother"),
+      person("spouse-father"), person("spouse-mother"),
+      person("father"), person("mother"),
+      person("older-child", "male", "1961-06-27"),
+      person("older-child-spouse", "female", "1970-01-15"),
+      person("younger-child", "male", "1978-08-01")
+    ];
+    const familyRelationships = [
+      parent("spouse-grandfather", "spouse-father"),
+      parent("spouse-grandmother", "spouse-father"),
+      parent("spouse-father", "older-child-spouse"),
+      parent("spouse-mother", "older-child-spouse"),
+      parent("father", "older-child"),
+      parent("mother", "older-child"),
+      parent("father", "younger-child"),
+      parent("mother", "younger-child"),
+      partner("older-child", "older-child-spouse", "older-child-partnership")
+    ];
+
+    const layout = createTreeLayout(familyPeople, familyRelationships);
+    const positioned = new Map(layout.people.map((value) => [value.id, value]));
+    const older = positioned.get("older-child")!;
+    const spouse = positioned.get("older-child-spouse")!;
+    const younger = positioned.get("younger-child")!;
+
+    expect(older.generation).toBe(younger.generation);
+    expect(spouse.generation).toBe(older.generation);
+    expect(older.x).toBeLessThan(younger.x);
+    expect(Math.abs(older.x - spouse.x)).toBe(LAYOUT_METRICS.horizontalSpacing);
   });
 
   it("keeps separate co-parent couples adjacent without interleaving their branches", () => {

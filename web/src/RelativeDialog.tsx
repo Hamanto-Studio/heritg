@@ -2,6 +2,7 @@ import { ImagePlus, Link2, UserPlus } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
+import { CityField } from "./CityField";
 import type { Translator } from "./i18n";
 import { PersonPicker } from "./PersonPicker";
 import { PhotoCropDialog } from "./PhotoCropDialog";
@@ -294,10 +295,13 @@ export function RelativeDialog({
                 t={t}
                 value={birthDate}
               />
-              <label className="field">
-                {t("city")}
-                <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
-              </label>
+              <CityField
+                label={t("city")}
+                onChange={setCity}
+                people={people}
+                treeId={target.treeId}
+                value={city}
+              />
             </div>
           </details>
         </div>

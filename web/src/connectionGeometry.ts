@@ -1,8 +1,10 @@
 import { createTranslator, formatDisplayDate } from "./i18n";
 import { LAYOUT_METRICS } from "./layout";
+import { formatPersonName } from "./personName";
 import type { AppData, FamilyRelationship, PositionedPerson } from "./types";
 
 export const ROUTE_CLEARANCE = 8;
+export const CHILD_RAIL_CLEARANCE = 40;
 export const ROUTE_EPSILON = 0.001;
 
 export interface RoutePoint {
@@ -210,19 +212,36 @@ export const avatarRect = (person: PositionedPerson): RouteRect => ({
 export const hasLifeText = (person: PositionedPerson) =>
   Boolean(person.birthDate?.match(/^\d{4}/) || person.deathDate?.match(/^\d{4}/));
 
-export const personLifeTop = (showRole: boolean) =>
-  showRole ? LAYOUT_METRICS.lifeTop : LAYOUT_METRICS.roleTop;
+export const personLifeTop = (showRole: boolean, nameExtraHeight = 0) =>
+  (showRole ? LAYOUT_METRICS.lifeTop : LAYOUT_METRICS.roleTop) + nameExtraHeight;
 
-export const nodeLabelRect = (person: PositionedPerson): RouteRect => ({
-  x: person.x - LAYOUT_METRICS.labelWidth / 2,
-  y: person.y + LAYOUT_METRICS.labelTop,
-  width: LAYOUT_METRICS.labelWidth,
-  height: (hasLifeText(person)
-    ? personLifeTop(Boolean(person.role)) + LAYOUT_METRICS.lifeHeight
-    : person.role
-      ? LAYOUT_METRICS.roleTop + LAYOUT_METRICS.roleHeight
-      : LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight) - LAYOUT_METRICS.labelTop
-});
+export const personCityTop = (
+  showRole: boolean,
+  hasLife: boolean,
+  nameExtraHeight = 0
+) => hasLife
+  ? personLifeTop(showRole, nameExtraHeight) + LAYOUT_METRICS.lifeHeight
+  : (showRole ? LAYOUT_METRICS.roleTop + LAYOUT_METRICS.roleHeight :
+      LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight) + nameExtraHeight;
+
+export const nodeLabelRect = (person: PositionedPerson): RouteRect => {
+  const nameExtraHeight = formatPersonName(person.displayName).extraHeight;
+  const hasLife = hasLifeText(person);
+  const hasCity = Boolean(person.city.trim());
+  return {
+    x: person.x - LAYOUT_METRICS.labelWidth / 2,
+    y: person.y + LAYOUT_METRICS.labelTop,
+    width: LAYOUT_METRICS.labelWidth,
+    height: (hasCity
+      ? personCityTop(Boolean(person.role), hasLife, nameExtraHeight) + LAYOUT_METRICS.lifeHeight
+      : hasLife
+        ? personLifeTop(Boolean(person.role), nameExtraHeight) + LAYOUT_METRICS.lifeHeight
+      : person.role
+        ? LAYOUT_METRICS.roleTop + nameExtraHeight + LAYOUT_METRICS.roleHeight
+        : LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight + nameExtraHeight) -
+      LAYOUT_METRICS.labelTop
+  };
+};
 
 export const controlRect = (center: RoutePoint): RouteRect => ({
   x: center.x - 22,

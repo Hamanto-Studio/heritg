@@ -190,6 +190,7 @@ export function SharedTreeApp() {
           generationLimits={unlimitedGenerationLimits}
           initialViewport={viewportRef.current}
           language={language}
+          relationshipTerminology={loaded.data.relationshipTerminology ?? "id"}
           lifeSummaryOptions={loaded.sharedView ? {
             showAge: loaded.sharedView.ages,
             showBirthDate: loaded.sharedView.birthDates,
