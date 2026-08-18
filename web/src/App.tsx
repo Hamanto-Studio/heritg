@@ -29,6 +29,7 @@ import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { RelativeDialog } from "./RelativeDialog";
+import { ReportBugSheet } from "./ReportBugSheet";
 import { SettingsDialog } from "./SettingsDialog";
 import { SharePanel } from "./SharePanel";
 import { HelpPanel } from "./HelpPanel";
@@ -39,7 +40,7 @@ import type { GenerationLimits, Person } from "./types";
 import { ErrorNotice, LoadingScreen, Modal } from "./ui";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
-type RightPanel = "people" | "settings" | "share" | "help" | "privacy";
+type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report";
 
 export function App() {
   const store = useAppStore();
@@ -209,6 +210,7 @@ export function App() {
         onImported={() => setToast(t("imported"))}
         onShowHelp={() => setRightPanel("help")}
         onShowPrivacy={() => setRightPanel("privacy")}
+        onReportBug={() => setRightPanel("report")}
         open={sidebarOpen}
         t={t}
       />
@@ -549,11 +551,25 @@ export function App() {
       ) : null}
 
       {rightPanel === "help" ? (
-        <HelpPanel onClose={() => setRightPanel(undefined)} t={t} />
+        <HelpPanel
+          onClose={() => setRightPanel(undefined)}
+          onReportBug={() => setRightPanel("report")}
+          t={t}
+        />
       ) : null}
 
       {rightPanel === "privacy" ? (
         <PrivacyPanel onClose={() => setRightPanel(undefined)} t={t} />
+      ) : null}
+
+      {rightPanel === "report" ? (
+        <ReportBugSheet
+          language={data.language}
+          onClose={() => setRightPanel(undefined)}
+          peopleCount={people.length}
+          relationshipCount={relationships.length}
+          t={t}
+        />
       ) : null}
 
       {operationError ? (

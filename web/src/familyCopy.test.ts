@@ -7,7 +7,7 @@ import {
   createPerson
 } from "./domain";
 import { selectFocusedFamily } from "./familyCopy";
-import type { AppData, DirectRole } from "./types";
+import type { DirectRole } from "./types";
 
 const buildFamily = () => {
   let data = createInitialAppData("en", {
@@ -64,22 +64,17 @@ const buildFamily = () => {
 };
 
 describe("focused family copy selection", () => {
-  it("keeps the focus lineage and shared descendants while removing the selected partner branch", () => {
+  it("keeps the spouse and marriage while stopping before the spouse's family branch", () => {
     const data = buildFamily();
-    const selected = selectFocusedFamily(
-      data.people,
-      data.relationships,
-      "latifa",
-      ["robi"]
-    );
+    const selected = selectFocusedFamily(data.people, data.relationships, "latifa");
     const includedIds = new Set(selected.people.map((person) => person.id));
 
     expect(includedIds).toEqual(new Set([
       "latifa-father", "latifa-mother", "latifa", "latifa-sibling",
-      "sibling-spouse", "niece", "shared-child", "grandchild", "grandchild-spouse"
+      "sibling-spouse", "niece", "robi", "shared-child", "grandchild", "grandchild-spouse"
     ]));
     expect(selected.excludedPeople.map((person) => person.id)).toEqual([
-      "robi-father", "robi-mother", "robi", "robi-sibling", "robi-child", "unrelated"
+      "robi-father", "robi-mother", "robi-sibling", "robi-child", "unrelated"
     ]);
     expect(selected.relationships.every((relationship) =>
       includedIds.has(relationship.fromPersonId) && includedIds.has(relationship.toPersonId)
@@ -87,17 +82,10 @@ describe("focused family copy selection", () => {
     expect(selected.relationships.some((relationship) =>
       relationship.fromPersonId === "shared-child" || relationship.toPersonId === "shared-child"
     )).toBe(true);
-  });
-
-  it("can retain the focus partner as a boundary without copying their relatives", () => {
-    const data = buildFamily();
-    const selected = selectFocusedFamily(data.people, data.relationships, "latifa");
-    const ids = new Set(selected.people.map((person) => person.id));
-
-    expect(ids.has("robi")).toBe(true);
-    expect(ids.has("robi-father")).toBe(false);
-    expect(ids.has("robi-sibling")).toBe(false);
-    expect(ids.has("robi-child")).toBe(false);
+    expect(selected.relationships.some((relationship) => relationship.id === "focus-union"))
+      .toBe(true);
+    expect(selected.relationships.some((relationship) => relationship.id === "robi-child-link"))
+      .toBe(false);
   });
 });
 
@@ -107,8 +95,7 @@ describe("independent focused tree copies", () => {
     let sequence = 0;
     const result = copyFocusedTree(source, "tree-a", {
       title: "  Latifa Family  ",
-      focusPersonId: "latifa",
-      excludedPartnerIds: ["robi"]
+      focusPersonId: "latifa"
     }, {
       now: "2026-08-18T00:00:00.000Z",
       idFactory: () => `copy-${sequence++}`
@@ -128,25 +115,20 @@ describe("independent focused tree copies", () => {
       createdAt: "2026-08-18T00:00:00.000Z",
       updatedAt: "2026-08-18T00:00:00.000Z"
     });
-    expect(copiedPeople).toHaveLength(9);
+    expect(copiedPeople).toHaveLength(10);
     expect(copiedPeople.find((person) => person.displayName === "Latifa")?.photoDataUrl)
       .toBe("data:image/jpeg;base64,latifa");
-    expect(copiedPeople.some((person) => person.displayName.startsWith("Robi"))).toBe(false);
+    expect(copiedPeople.find((person) => person.displayName === "Robi")?.photoDataUrl)
+      .toBe("data:image/jpeg;base64,robi");
+    expect(copiedPeople.some((person) => person.displayName === "Robi father")).toBe(false);
+    expect(copiedPeople.some((person) => person.displayName === "Robi child")).toBe(false);
     expect(copiedPeople.every((person) => !source.people.some(({ id }) => id === person.id)))
       .toBe(true);
     expect(copiedIds.has(copiedTree.lastSelectedPersonId!)).toBe(true);
     expect(copiedRelationships.every((relationship) =>
       copiedIds.has(relationship.fromPersonId) && copiedIds.has(relationship.toPersonId)
     )).toBe(true);
+    expect(copiedRelationships.some((relationship) => relationship.kind === "partner")).toBe(true);
     expect(result.data.viewports[result.treeId]).toBeUndefined();
-  });
-
-  it("rejects exclusions that are not direct partners of the focus", () => {
-    const source: AppData = buildFamily();
-    expect(() => copyFocusedTree(source, "tree-a", {
-      title: "Invalid copy",
-      focusPersonId: "latifa",
-      excludedPartnerIds: ["robi-sibling"]
-    })).toThrow(/only a focus person's partners/i);
   });
 });

@@ -42,7 +42,6 @@ export function FocusedTreeCopyDialog({
   ));
   const [titleTouched, setTitleTouched] = useState(false);
   const [focusPersonId, setFocusPersonId] = useState("");
-  const [excludedPartnerIds, setExcludedPartnerIds] = useState<string[]>([]);
   const [error, setError] = useState<string>();
 
   const focusPartnerIds = new Set(sourceRelationships.flatMap((relationship) => {
@@ -56,20 +55,27 @@ export function FocusedTreeCopyDialog({
     ? selectFocusedFamily(
       sourcePeople,
       sourceRelationships,
-      focusPersonId,
-      excludedPartnerIds
+      focusPersonId
     )
     : undefined;
+  const reviewedExcludedPeople = selection ? [...selection.excludedPeople].sort((left, right) =>
+    left.displayName.localeCompare(right.displayName)
+  ) : [];
+  const sharedChildren = focusPersonId ? sourcePeople.filter((person) =>
+    sourceRelationships.some((relationship) =>
+      relationship.kind === "parent" &&
+      relationship.fromPersonId === focusPersonId &&
+      relationship.toPersonId === person.id
+    ) &&
+    [...focusPartnerIds].some((partnerId) => sourceRelationships.some((relationship) =>
+      relationship.kind === "parent" &&
+      relationship.fromPersonId === partnerId &&
+      relationship.toPersonId === person.id
+    ))
+  ) : [];
 
   const selectFocus = (personId: string) => {
-    const partnerIds = sourceRelationships.flatMap((relationship) => {
-      if (relationship.kind !== "partner") return [];
-      if (relationship.fromPersonId === personId) return [relationship.toPersonId];
-      if (relationship.toPersonId === personId) return [relationship.fromPersonId];
-      return [];
-    });
     setFocusPersonId(personId);
-    setExcludedPartnerIds([...new Set(partnerIds)]);
     setError(undefined);
     if (!titleTouched) {
       const person = sourcePeople.find((item) => item.id === personId);
@@ -82,7 +88,7 @@ export function FocusedTreeCopyDialog({
   const createCopy = () => {
     if (!focusPersonId || !title.trim()) return;
     try {
-      actions.copyFocusedTree(sourceTree.id, title, focusPersonId, excludedPartnerIds);
+      actions.copyFocusedTree(sourceTree.id, title, focusPersonId);
       onCreated();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("errorTitle"));
@@ -139,22 +145,13 @@ export function FocusedTreeCopyDialog({
             {focusPartners.length ? (
               <div className="family-copy-partners">
                 {focusPartners.map((partner) => (
-                  <label className="family-copy-partner" key={partner.id}>
-                    <input
-                      checked={excludedPartnerIds.includes(partner.id)}
-                      onChange={() => setExcludedPartnerIds((current) =>
-                        current.includes(partner.id)
-                          ? current.filter((id) => id !== partner.id)
-                          : [...current, partner.id]
-                      )}
-                      type="checkbox"
-                    />
+                  <div className="family-copy-partner retained" key={partner.id}>
                     <PersonAvatar person={partner} size={38} />
                     <span>
                       <strong>{partner.displayName}</strong>
                       <small>{t("familyCopyRemovePartner")}</small>
                     </span>
-                  </label>
+                  </div>
                 ))}
               </div>
             ) : <p className="family-copy-empty">{t("familyCopyNoPartners")}</p>}
@@ -169,6 +166,45 @@ export function FocusedTreeCopyDialog({
                 <small>{t("familyCopyPrivacy")}</small>
               </span>
             </div>
+            {selection.excludedPeople.length ? (
+              <div className="family-copy-review">
+                <h4>{t("familyCopyNotCopied", { count: selection.excludedPeople.length })}</h4>
+                <div className="family-copy-people compact">
+                  {reviewedExcludedPeople.slice(0, 5).map((person) => (
+                    <span className="family-copy-person" key={person.id}>
+                      <PersonAvatar person={person} size={28} />
+                      <span>{person.displayName}</span>
+                    </span>
+                  ))}
+                </div>
+                {selection.excludedPeople.length > 5 ? (
+                  <details className="family-copy-all-people">
+                    <summary>{t("familyCopyReviewAll", { count: selection.excludedPeople.length })}</summary>
+                    <div className="family-copy-people">
+                      {reviewedExcludedPeople.map((person) => (
+                        <span className="family-copy-person" key={person.id}>
+                          <PersonAvatar person={person} size={28} />
+                          <span>{person.displayName}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+            ) : null}
+            {sharedChildren.length ? (
+              <div className="family-copy-review">
+                <h4>{t("familyCopySharedChildren")}</h4>
+                <div className="family-copy-people compact">
+                  {sharedChildren.map((person) => (
+                    <span className="family-copy-person kept" key={person.id}>
+                      <PersonAvatar person={person} size={28} />
+                      <span>{person.displayName}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
         <p className="family-copy-independent">{t("familyCopyIndependent")}</p>

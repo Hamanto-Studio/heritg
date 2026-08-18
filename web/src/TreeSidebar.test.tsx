@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Translator } from "./i18n";
+import { createTranslator, type Translator } from "./i18n";
 import type { AppActions } from "./store";
 import { TreeSidebar } from "./TreeSidebar";
 import type { AppData } from "./types";
@@ -92,6 +92,7 @@ describe("TreeSidebar file import", () => {
         onImported={vi.fn()}
         onShowHelp={vi.fn()}
         onShowPrivacy={vi.fn()}
+        onReportBug={vi.fn()}
         open
         t={t}
       />
@@ -102,12 +103,39 @@ describe("TreeSidebar file import", () => {
     expect(input?.hasAttribute("accept")).toBe(false);
     expect(input?.closest("label")?.classList.contains("import-file-control")).toBe(true);
   });
+
+  it("opens the bug-report chooser from the sidebar utility", () => {
+    const onClose = vi.fn();
+    const onReportBug = vi.fn();
+    act(() => root.render(
+      <TreeSidebar
+        actions={actions}
+        data={data}
+        onClose={onClose}
+        onError={vi.fn()}
+        onImported={vi.fn()}
+        onReportBug={onReportBug}
+        onShowHelp={vi.fn()}
+        onShowPrivacy={vi.fn()}
+        open
+        t={t}
+      />
+    ));
+
+    const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((candidate) => candidate.textContent?.includes("reportBug"));
+    act(() => button?.click());
+
+    expect(onReportBug).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
 });
 
 describe("TreeSidebar family copies", () => {
   it("previews a focused copy and excludes the selected focus partner by default", () => {
     const copyFocusedTree = vi.fn(() => "tree-copy");
     const onClose = vi.fn();
+    const englishT = createTranslator("en");
     act(() => root.render(
       <TreeSidebar
         actions={{ ...actions, copyFocusedTree }}
@@ -117,16 +145,17 @@ describe("TreeSidebar family copies", () => {
         onImported={vi.fn()}
         onShowHelp={vi.fn()}
         onShowPrivacy={vi.fn()}
+        onReportBug={vi.fn()}
         open
-        t={t}
+        t={englishT}
       />
     ));
 
     act(() => container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Sukamto Family: treeActions"]'
+      'button[aria-label="Sukamto Family: Tree actions"]'
     )?.click());
     const copyAction = [...container.querySelectorAll<HTMLButtonElement>("button")]
-      .find((button) => button.textContent?.includes("makeFamilyCopy"));
+      .find((button) => button.textContent?.includes("Make a family copy"));
     act(() => copyAction?.click());
 
     const dialog = container.querySelector<HTMLElement>('[role="dialog"]')!;
@@ -134,20 +163,22 @@ describe("TreeSidebar family copies", () => {
       .find((input) => input.closest("label")?.textContent?.includes("Latifa Nabila Harfiya"));
     act(() => latifaInput?.click());
 
-    const partnerCheckbox = dialog.querySelector<HTMLInputElement>('input[type="checkbox"]');
-    expect(partnerCheckbox?.checked).toBe(true);
-    expect(partnerCheckbox?.closest("label")?.textContent).toContain("Robihamanto");
-    expect(dialog.textContent).toContain("familyCopyCounts");
+    expect(dialog.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(dialog.textContent).toContain("Robihamanto");
+    expect(dialog.textContent).toContain("Spouse and marriage kept");
+    expect(dialog.textContent).toContain("3 people will be copied · 0 will not be copied");
+    expect(dialog.textContent).toContain("Shared children kept");
+    expect(dialog.textContent).toContain("Shared child");
+    expect(dialog.textContent).not.toContain("Resulting family tree");
 
     const createButton = [...dialog.querySelectorAll<HTMLButtonElement>("button")]
-      .find((button) => button.textContent?.includes("createFamilyCopy"));
+      .find((button) => button.textContent?.includes("Create copy"));
     act(() => createButton?.click());
 
     expect(copyFocusedTree).toHaveBeenCalledWith(
       "tree-a",
-      "familyCopyDefaultName",
-      "latifa",
-      ["robi"]
+      "Latifa Nabila Harfiya Family",
+      "latifa"
     );
     expect(onClose).toHaveBeenCalledOnce();
   });

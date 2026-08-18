@@ -114,8 +114,7 @@ describe("atomic relationship store actions", () => {
       copiedTreeId = currentActions().copyFocusedTree(
         "tree-a",
         "Target Family",
-        "target",
-        ["active"]
+        "target"
       );
     });
 
@@ -124,7 +123,7 @@ describe("atomic relationship store actions", () => {
     expect(currentData().selectedTreeId).toBe(copiedTreeId);
     expect(copiedTree.lastSelectedPersonId).toBeDefined();
     expect(copiedPeople.map((person) => person.displayName).sort()).toEqual([
-      "Child", "Former partner", "Target"
+      "Active spouse", "Child", "Former partner", "Target"
     ]);
     expect(currentData().people.filter((person) => person.treeId === "tree-a")).toHaveLength(5);
 
