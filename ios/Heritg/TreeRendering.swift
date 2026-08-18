@@ -34,6 +34,24 @@ nonisolated enum TreeViewportTransform {
             ty: viewportSize.height / 2 + offset.height - contentSize.height * scale / 2
         )
     }
+
+    static func project(
+        _ point: CGPoint,
+        from contentBounds: CGRect,
+        into viewportSize: CGSize,
+        scale: CGFloat,
+        offset: CGSize
+    ) -> CGPoint {
+        CGPoint(
+            x: point.x - contentBounds.minX,
+            y: point.y - contentBounds.minY
+        ).applying(canvasTransform(
+            contentSize: contentBounds.size,
+            viewportSize: viewportSize,
+            scale: scale,
+            offset: offset
+        ))
+    }
 }
 
 nonisolated enum TreeVisualMetrics {
@@ -72,6 +90,11 @@ nonisolated enum TreeVisualMetrics {
         let safeScale = max(scale, 0.001)
         let actionScale = min(1, max(0.34, safeScale))
         return actionScale / safeScale
+    }
+
+    static func actionDistance(index: CGFloat, at scale: CGFloat) -> CGFloat {
+        avatarRadius + 12
+            + (22 + index * (minimumTapTarget + 4)) * actionCompensation(at: scale)
     }
 
     static func connectorWidth(at scale: CGFloat) -> CGFloat {

@@ -734,6 +734,52 @@ struct HeritgTests {
         #expect(TreeVisualMetrics.connectorWidth(at: 0.5) == 1)
     }
 
+    @Test func actionControlsStayAttachedThroughPanAndZoom() {
+        let bounds = CGRect(x: -325, y: -32, width: 6_057.5, height: 1_172)
+        let viewport = CGSize(width: 390, height: 844)
+        let person = CGPoint(x: 1_200, y: 520)
+        let baseOffset = CGSize(width: 17, height: -29)
+        let pan = CGSize(width: 83, height: 41)
+
+        for scale in [CGFloat(0.08), 0.5, 1.8] {
+            let action = CGPoint(
+                x: person.x + TreeVisualMetrics.actionDistance(index: 0, at: scale),
+                y: person.y
+            )
+            let projectedPerson = TreeViewportTransform.project(
+                person,
+                from: bounds,
+                into: viewport,
+                scale: scale,
+                offset: baseOffset
+            )
+            let projectedAction = TreeViewportTransform.project(
+                action,
+                from: bounds,
+                into: viewport,
+                scale: scale,
+                offset: baseOffset
+            )
+            let expectedDistance = (TreeVisualMetrics.avatarRadius + 12) * scale
+                + 22 * min(1, max(0.34, scale))
+            #expect(abs(projectedAction.x - projectedPerson.x - expectedDistance) < 0.001)
+            #expect(abs(projectedAction.y - projectedPerson.y) < 0.001)
+
+            let pannedAction = TreeViewportTransform.project(
+                action,
+                from: bounds,
+                into: viewport,
+                scale: scale,
+                offset: CGSize(
+                    width: baseOffset.width + pan.width,
+                    height: baseOffset.height + pan.height
+                )
+            )
+            #expect(abs(pannedAction.x - projectedAction.x - pan.width) < 0.001)
+            #expect(abs(pannedAction.y - projectedAction.y - pan.height) < 0.001)
+        }
+    }
+
     @Test func connectionPlanFingerprintIgnoresSelectionOnlyRoleChanges() {
         let person = PersonSnapshot(id: "person", name: "Rina", gender: .female)
         let base = TreeLayoutResult(

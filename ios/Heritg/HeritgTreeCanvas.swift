@@ -111,11 +111,14 @@ struct HeritgTreeCanvas: View {
         )
         let effectiveScale = (scale * zoomState.magnification).clamped(to: 0.08...1.8)
         let gestureMagnification = effectiveScale / scale
+        let projectedOffset = CGSize(
+            width: renderOffset.width * gestureMagnification,
+            height: renderOffset.height * gestureMagnification
+        )
         let overview = TreeVisualMetrics.shouldRenderOverview(
             currentlyOverview: rendersOverview,
             scale: effectiveScale
         )
-        let actionCompensation = TreeVisualMetrics.actionCompensation(at: effectiveScale)
 
         return ZStack {
             Color.clear
@@ -126,10 +129,7 @@ struct HeritgTreeCanvas: View {
                 connectionDrawing,
                 viewportSize: size,
                 effectiveScale: effectiveScale,
-                projectedOffset: CGSize(
-                    width: renderOffset.width * gestureMagnification,
-                    height: renderOffset.height * gestureMagnification
-                )
+                projectedOffset: projectedOffset
             )
 
             ZStack {
@@ -144,8 +144,7 @@ struct HeritgTreeCanvas: View {
                 ForEach(layout.nodes) { node in
                     personNode(
                         node,
-                        anchor: localPoint(node.position, drawingOrigin: drawingOrigin),
-                        overview: overview
+                        anchor: localPoint(node.position, drawingOrigin: drawingOrigin)
                     )
                 }
             }
@@ -163,13 +162,10 @@ struct HeritgTreeCanvas: View {
                     for: node,
                     control: control,
                     overview: overview,
-                    contentCenter: center,
                     viewportSize: size,
                     drawingBounds: drawingBounds,
                     effectiveScale: effectiveScale,
-                    gestureMagnification: gestureMagnification,
-                    renderOffset: renderOffset,
-                    actionCompensation: actionCompensation
+                    projectedOffset: projectedOffset
                 )
             }
         }
@@ -268,8 +264,7 @@ struct HeritgTreeCanvas: View {
 
     private func personNode(
         _ node: TreeNodeLayout,
-        anchor: CGPoint,
-        overview: Bool
+        anchor: CGPoint
     ) -> some View {
         let showsRelationship = focusedPersonID != nil
         let showsLifeSummary = node.person.lifeSummary != nil
@@ -293,14 +288,12 @@ struct HeritgTreeCanvas: View {
                         height: TreeVisualMetrics.avatarDiameter
                     )
                     .overlay {
-                        if !overview {
-                            ProfilePhotoAvatar(
-                                data: node.person.profilePhotoData,
-                                initials: displayName.prefix(1).uppercased(),
-                                size: TreeVisualMetrics.avatarDiameter - 10,
-                                background: avatarFill
-                            )
-                        }
+                        ProfilePhotoAvatar(
+                            data: node.person.profilePhotoData,
+                            initials: displayName.prefix(1).uppercased(),
+                            size: TreeVisualMetrics.avatarDiameter - 10,
+                            background: avatarFill
+                        )
                     }
                     .overlay {
                         Circle()
@@ -319,7 +312,7 @@ struct HeritgTreeCanvas: View {
             .accessibilityHint("Selects this person")
             .accessibilityIdentifier("person.node.\(node.person.id)")
 
-            if !overview, let birthOrder = node.birthOrder {
+            if let birthOrder = node.birthOrder {
                 ZStack {
                     Circle()
                         .fill(HeritgColor.treeCanvas)
@@ -336,47 +329,44 @@ struct HeritgTreeCanvas: View {
                 .accessibilityHidden(true)
             }
 
-            if !overview {
-                VStack(spacing: 2) {
-                    Text(verbatim: displayName)
-                        .font(.system(size: TreeVisualMetrics.nameFontSize(displayName), weight: .bold))
-                        .foregroundStyle(HeritgColor.text)
+            VStack(spacing: 2) {
+                Text(verbatim: displayName)
+                    .font(.system(size: TreeVisualMetrics.nameFontSize(displayName), weight: .bold))
+                    .foregroundStyle(HeritgColor.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                    .multilineTextAlignment(.center)
+                if showsRelationship {
+                    Text(role)
+                        .font(.caption)
+                        .foregroundStyle(
+                            node.id == focusedPersonID
+                                ? connectorColor(for: .parent)
+                                : HeritgColor.subtleText
+                        )
                         .lineLimit(1)
-                        .minimumScaleFactor(0.55)
-                        .multilineTextAlignment(.center)
-                    if showsRelationship {
-                        Text(role)
-                            .font(.caption)
-                            .foregroundStyle(
-                                node.id == focusedPersonID
-                                    ? connectorColor(for: .parent)
-                                    : HeritgColor.subtleText
-                            )
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    if let lifeSummary = node.person.lifeSummary {
-                        Text(lifeSummary)
-                            .font(.caption2)
-                            .foregroundStyle(HeritgColor.subtleText)
-                            .lineLimit(1)
-                    }
+                        .minimumScaleFactor(0.7)
                 }
-                .frame(
-                    width: TreeVisualMetrics.nodeLabelWidth,
-                    height: labelHeight,
-                    alignment: .top
-                )
-                .position(
-                    x: anchor.x,
-                    y: anchor.y + TreeVisualMetrics.nodeLabelCenterOffset(
-                        showsRelationship: showsRelationship,
-                        showsLifeSummary: showsLifeSummary
-                    )
-                )
-                .accessibilityHidden(true)
+                if let lifeSummary = node.person.lifeSummary {
+                    Text(lifeSummary)
+                        .font(.caption2)
+                        .foregroundStyle(HeritgColor.subtleText)
+                        .lineLimit(1)
+                }
             }
-
+            .frame(
+                width: TreeVisualMetrics.nodeLabelWidth,
+                height: labelHeight,
+                alignment: .top
+            )
+            .position(
+                x: anchor.x,
+                y: anchor.y + TreeVisualMetrics.nodeLabelCenterOffset(
+                    showsRelationship: showsRelationship,
+                    showsLifeSummary: showsLifeSummary
+                )
+            )
+            .accessibilityHidden(true)
         }
     }
 
@@ -401,50 +391,35 @@ struct HeritgTreeCanvas: View {
         for node: TreeNodeLayout,
         control: RenderedTreeControl,
         overview: Bool,
-        contentCenter: CGPoint,
         viewportSize: CGSize,
         drawingBounds: CGRect,
         effectiveScale: CGFloat,
-        gestureMagnification: CGFloat,
-        renderOffset: CGSize,
-        actionCompensation: CGFloat
+        projectedOffset: CGSize
     ) -> some View {
         if showsActions(for: node, overview: overview) {
-            let visualScale = actionCompensation * effectiveScale
-            let positionCompensation = max(
-                actionCompensation,
-                1 / max(effectiveScale, 0.001)
-            )
+            let visualScale = TreeVisualMetrics.actionCompensation(at: effectiveScale)
+                * effectiveScale
             let addPosition = projectedActionPosition(
                 node: node,
                 side: control.side,
                 index: 0,
-                contentCenter: contentCenter,
+                viewportSize: viewportSize,
                 drawingBounds: drawingBounds,
                 effectiveScale: effectiveScale,
-                gestureMagnification: gestureMagnification,
-                renderOffset: renderOffset,
-                actionCompensation: positionCompensation
+                projectedOffset: projectedOffset
             )
             let editPosition = node.id == focusedPersonID
                 ? projectedActionPosition(
                     node: node,
                     side: control.side,
                     index: 1,
-                    contentCenter: contentCenter,
+                    viewportSize: viewportSize,
                     drawingBounds: drawingBounds,
                     effectiveScale: effectiveScale,
-                    gestureMagnification: gestureMagnification,
-                    renderOffset: renderOffset,
-                    actionCompensation: positionCompensation
+                    projectedOffset: projectedOffset
                 )
                 : nil
-            let visiblePositions = visibleActionPositions(
-                add: addPosition,
-                edit: editPosition,
-                viewportSize: viewportSize
-            )
-            positionedActionControl(at: visiblePositions.add, in: viewportSize) {
+            positionedActionControl(at: addPosition, in: viewportSize) {
                 Button("Add relative to \(node.person.name)", systemImage: "plus") {
                     onAddRelative(node.person.id)
                 }
@@ -465,7 +440,7 @@ struct HeritgTreeCanvas: View {
                 .accessibilityIdentifier("person.add.\(node.person.id)")
             }
 
-            if node.id == focusedPersonID, let editPosition = visiblePositions.edit {
+            if node.id == focusedPersonID, let editPosition {
                 positionedActionControl(at: editPosition, in: viewportSize) {
                     Button("Edit \(node.person.name)", systemImage: "pencil") {
                         onEditPerson(node.person.id, roleLabel(for: node))
@@ -505,61 +480,24 @@ struct HeritgTreeCanvas: View {
         node: TreeNodeLayout,
         side: TreeRoutingGeometry.ControlPlacement.Side,
         index: CGFloat,
-        contentCenter: CGPoint,
+        viewportSize: CGSize,
         drawingBounds: CGRect,
         effectiveScale: CGFloat,
-        gestureMagnification: CGFloat,
-        renderOffset: CGSize,
-        actionCompensation: CGFloat
+        projectedOffset: CGSize
     ) -> CGPoint {
         let logical = actionPosition(
             anchor: node.position,
             side: side,
             index: index,
-            compensation: actionCompensation
+            scale: effectiveScale
         )
-        let projected = CGPoint(
-            x: contentCenter.x + (logical.x - drawingBounds.midX) * effectiveScale +
-                renderOffset.width * gestureMagnification,
-            y: contentCenter.y + (logical.y - drawingBounds.midY) * effectiveScale +
-                renderOffset.height * gestureMagnification
+        return TreeViewportTransform.project(
+            logical,
+            from: drawingBounds,
+            into: viewportSize,
+            scale: effectiveScale,
+            offset: projectedOffset
         )
-        return projected
-    }
-
-    private func visibleActionPositions(
-        add: CGPoint,
-        edit: CGPoint?,
-        viewportSize: CGSize
-    ) -> (add: CGPoint, edit: CGPoint?) {
-        let margin = TreeVisualMetrics.minimumTapTarget / 2
-        let fallback = CGPoint(x: viewportSize.width / 2, y: viewportSize.height / 2)
-        let visibleAdd = CGPoint(
-            x: add.x.isFinite ? add.x : fallback.x,
-            y: add.y.isFinite ? add.y : fallback.y
-        )
-        let visibleEdit = edit.map {
-            CGPoint(
-                x: $0.x.isFinite ? $0.x : fallback.x,
-                y: $0.y.isFinite ? $0.y : fallback.y
-            )
-        }
-        let positions = [visibleAdd, visibleEdit].compactMap { $0 }
-        let minimumX = positions.map(\.x).min() ?? visibleAdd.x
-        let maximumX = positions.map(\.x).max() ?? visibleAdd.x
-        let horizontalShift: CGFloat
-        if minimumX < margin {
-            horizontalShift = margin - minimumX
-        } else if maximumX > viewportSize.width - margin {
-            horizontalShift = viewportSize.width - margin - maximumX
-        } else {
-            horizontalShift = 0
-        }
-        let visibleY = visibleAdd.y.clamped(to: margin...max(margin, viewportSize.height - margin))
-        let shift: (CGPoint) -> CGPoint = { point in
-            CGPoint(x: point.x + horizontalShift, y: visibleY)
-        }
-        return (shift(visibleAdd), visibleEdit.map(shift))
     }
 
     private func roleLabel(for node: TreeNodeLayout) -> String {
@@ -576,11 +514,10 @@ struct HeritgTreeCanvas: View {
         anchor: CGPoint,
         side: TreeRoutingGeometry.ControlPlacement.Side,
         index: CGFloat,
-        compensation: CGFloat
+        scale: CGFloat
     ) -> CGPoint {
         let direction: CGFloat = side == .left ? -1 : 1
-        let distance = TreeVisualMetrics.avatarRadius + 12 +
-            (22 + index * (TreeVisualMetrics.minimumTapTarget + 4)) * compensation
+        let distance = TreeVisualMetrics.actionDistance(index: index, at: scale)
         return CGPoint(x: anchor.x + direction * distance, y: anchor.y)
     }
 
@@ -847,11 +784,8 @@ private struct TreeActionControlLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        let margin = TreeVisualMetrics.minimumTapTarget / 2
         let x = (position.x.isFinite ? bounds.minX + position.x : bounds.midX)
-            .clamped(to: bounds.minX + margin...max(bounds.minX + margin, bounds.maxX - margin))
         let y = (position.y.isFinite ? bounds.minY + position.y : bounds.midY)
-            .clamped(to: bounds.minY + margin...max(bounds.minY + margin, bounds.maxY - margin))
         subviews.first?.place(
             at: CGPoint(x: x, y: y),
             anchor: .center,
