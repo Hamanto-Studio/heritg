@@ -18,12 +18,8 @@ final class HeritgUITests: XCTestCase {
         app.launchArguments += ["-ui_testing", "-AppleLanguages", "(en)"]
         app.launch()
 
-        let addTree = element("trees.add", in: app)
-        XCTAssertTrue(addTree.waitForExistence(timeout: 10))
-        addTree.tap()
-
-        let importGEDCOM = element("trees.importGEDCOMMenu", in: app)
-        XCTAssertTrue(importGEDCOM.waitForExistence(timeout: 5))
+        let importGEDCOM = element("trees.import", in: app)
+        XCTAssertTrue(importGEDCOM.waitForExistence(timeout: 10))
         importGEDCOM.tap()
 
         let cancelPicker = app.buttons["Cancel"].firstMatch
