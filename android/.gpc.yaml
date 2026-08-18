@@ -1,0 +1,6 @@
+# playconsole-cli project configuration
+# See: https://github.com/AndroidPoet/playconsole-cli
+
+package: tech.robihamanto.heritg.android
+track: internal
+output: table
