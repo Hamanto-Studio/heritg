@@ -59,6 +59,9 @@ export function PersonEditor({
   const [name, setName] = useState(person?.displayName ?? "");
   const [gender, setGender] = useState<Gender>(person?.gender ?? "unspecified");
   const [birthDate, setBirthDate] = useState(person?.birthDate ?? "");
+  const [birthOrderOverride, setBirthOrderOverride] = useState(
+    person?.birthOrderOverride?.toString() ?? ""
+  );
   const [deathDate, setDeathDate] = useState(person?.deathDate ?? "");
   const [city, setCity] = useState(person?.city ?? "");
   const [notes, setNotes] = useState(person?.notes ?? "");
@@ -96,12 +99,14 @@ export function PersonEditor({
     ? name !== person.displayName ||
       gender !== person.gender ||
       birthDate !== (person.birthDate ?? "") ||
+      birthOrderOverride !== (person.birthOrderOverride?.toString() ?? "") ||
       deathDate !== (person.deathDate ?? "") ||
       city !== person.city ||
       notes !== person.notes ||
       photoDataUrl !== person.photoDataUrl
     : Boolean(
-      name || birthDate || deathDate || city || notes || photoDataUrl || gender !== "unspecified"
+      name || birthDate || birthOrderOverride || deathDate || city || notes || photoDataUrl ||
+        gender !== "unspecified"
     );
   const relationshipsDirty = Boolean(
     removedRelationshipIds.size || Object.keys(relationshipEdits).length || pendingLinks.length
@@ -115,6 +120,7 @@ export function PersonEditor({
     displayName: name,
     gender,
     birthDate: birthDate || undefined,
+    birthOrderOverride: birthOrderOverride ? Number(birthOrderOverride) : undefined,
     deathDate: deathDate || undefined,
     birthDatePrecision: person?.birthDatePrecision ?? "exact" as const,
     city,
@@ -296,6 +302,18 @@ export function PersonEditor({
                 t={t}
                 value={birthDate}
               />
+              <label className="field">
+                {t("childOrder")}
+                <input
+                  inputMode="numeric"
+                  min={1}
+                  onChange={(event) => setBirthOrderOverride(event.target.value)}
+                  step={1}
+                  type="number"
+                  value={birthOrderOverride}
+                />
+                <small>{t("childOrderHelp")}</small>
+              </label>
               <DatePickerField
                 label={t("deathDate")}
                 language={language}
@@ -327,6 +345,18 @@ export function PersonEditor({
                     t={t}
                     value={birthDate}
                   />
+                  <label className="field">
+                    {t("childOrder")}
+                    <input
+                      inputMode="numeric"
+                      min={1}
+                      onChange={(event) => setBirthOrderOverride(event.target.value)}
+                      step={1}
+                      type="number"
+                      value={birthOrderOverride}
+                    />
+                    <small>{t("childOrderHelp")}</small>
+                  </label>
                   <DatePickerField
                     label={t("deathDate")}
                     language={language}

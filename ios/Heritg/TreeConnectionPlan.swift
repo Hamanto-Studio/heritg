@@ -1,6 +1,39 @@
 import CoreGraphics
 import Foundation
 
+nonisolated struct TreeConnectionPlanFingerprint: Equatable, Sendable {
+    private struct Node: Equatable, Sendable {
+        let id: String
+        let position: CGPoint
+        let hasLifeSummary: Bool
+    }
+
+    private let nodes: [Node]
+    private let edges: [TreeEdgeLayout]
+    private let controlsVisible: Bool
+    private let sourcePersonCount: Int
+    private let localeIdentifier: String
+
+    init(
+        layout: TreeLayoutResult,
+        controlsVisible: Bool,
+        sourcePersonCount: Int,
+        localeIdentifier: String
+    ) {
+        nodes = layout.nodes.map {
+            Node(
+                id: $0.id,
+                position: $0.position,
+                hasLifeSummary: $0.person.lifeSummary != nil
+            )
+        }
+        edges = layout.edges
+        self.controlsVisible = controlsVisible
+        self.sourcePersonCount = sourcePersonCount
+        self.localeIdentifier = localeIdentifier
+    }
+}
+
 nonisolated struct TreeConnectionPlan: Equatable, Sendable {
     static let familyRailSpacing: CGFloat = 32
 
@@ -118,8 +151,15 @@ nonisolated struct TreeConnectionPlan: Equatable, Sendable {
         let nonParentEdges = layout.edges.filter { $0.kind != .parent }.sorted {
             TreeRoutingGeometry.textPrecedes($0.id, $1.id)
         }
+        let familyChildSets = families.map { Set($0.childIDs) }
 
         for relationship in nonParentEdges {
+            if relationship.kind == .sibling,
+               familyChildSets.contains(where: {
+                   $0.contains(relationship.fromPersonID) && $0.contains(relationship.toPersonID)
+               }) {
+                continue
+            }
             guard let from = nodesByID[relationship.fromPersonID],
                   let to = nodesByID[relationship.toPersonID] else { continue }
             let ordered: (TreeNodeLayout, TreeNodeLayout)
@@ -160,10 +200,10 @@ nonisolated struct TreeConnectionPlan: Equatable, Sendable {
                 failures.append("relationship:\(relationship.id)")
             }
 
-            // RelationshipSnapshot currently stores only marriageYear. A dated spouse
-            // keeps the existing localized label until full date/divorce fields exist.
-            let compatibilityLabelText = relationship.kind == .partner &&
-                relationship.marriageYear != nil ? relationship.marriageLabel : nil
+            let compatibilityLabelText = showsRelationshipLabels && relationship.kind == .partner &&
+                (relationship.marriageDate != nil || relationship.marriageYear != nil)
+                ? relationship.marriageLabel
+                : nil
             let placement = compatibilityLabelText.flatMap { text in
                 TreeObstacleRouter.placeRelationshipLabel(
                     relationshipID: relationship.id,

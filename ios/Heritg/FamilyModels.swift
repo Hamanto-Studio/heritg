@@ -23,7 +23,7 @@ enum RelationshipSubtype: String, Codable, Sendable {
     case fosterSibling
     case stepSibling
 
-    static func legacyDefault(for kind: RelationshipKind) -> RelationshipSubtype {
+    nonisolated static func legacyDefault(for kind: RelationshipKind) -> RelationshipSubtype {
         switch kind {
         case .parent: .biologicalParent
         case .partner: .partner
@@ -31,11 +31,11 @@ enum RelationshipSubtype: String, Codable, Sendable {
         }
     }
 
-    var contributesToAncestry: Bool {
+    nonisolated var contributesToAncestry: Bool {
         self == .biologicalParent || self == .adoptiveParent
     }
 
-    var isActiveUnion: Bool {
+    nonisolated var isActiveUnion: Bool {
         self == .partner || self == .spouse
     }
 }

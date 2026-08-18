@@ -191,6 +191,14 @@ describe("SvgTreeCanvas", () => {
     expect(oldestHit?.ariaLabel).toContain("First child");
   });
 
+  it("preserves a manual birth-order badge through worker preparation", () => {
+    renderCanvas(vi.fn(), undefined, [{ ...person, birthOrderOverride: 3 }], []);
+
+    expect(container.querySelector('[data-birth-order="3"]')).not.toBeNull();
+    const hitTarget = container.querySelector<HTMLButtonElement>('[data-canvas-person="person"]');
+    expect(hitTarget?.title).toBe("Third child");
+  });
+
   it("changes the transformed scene through pointer-centered wheel zoom", () => {
     renderCanvas();
     const host = container.querySelector<HTMLElement>(".svg-canvas-host")!;

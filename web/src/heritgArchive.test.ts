@@ -198,6 +198,21 @@ describe("cross-platform .heritg archive", () => {
       .rejects.toThrow(/earlier than marriageDate/i);
   });
 
+  it("round-trips an additive manual child order", async () => {
+    const source = structuredClone(syntheticData);
+    source.people[0].birthOrderOverride = 2;
+
+    const archive = await exportHeritgArchive(source, "tree-synthetic", "archive-pass");
+    const zip = await openEnvelopeForCompatibilityTest(archive, "archive-pass");
+    const record = JSON.parse(new TextDecoder().decode(
+      decodeHeritgZip(zip).get("people.jsonl")
+    ).split("\n")[0]);
+    expect(record.birthOrderOverride).toBe(2);
+
+    const restored = await importHeritgArchive(archive, "archive-pass");
+    expect(restored.people[0].birthOrderOverride).toBe(2);
+  });
+
   it("round-trips encrypted-share display policy without adding archive entries", async () => {
     const archive = await exportCanonicalHeritgArchive(
       syntheticData,

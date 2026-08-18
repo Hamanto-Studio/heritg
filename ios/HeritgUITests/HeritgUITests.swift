@@ -152,14 +152,14 @@ final class HeritgUITests: XCTestCase {
             NSPredicate(format: "identifier BEGINSWITH 'person.node.'")
         ).firstMatch
         XCTAssertTrue(personNode.waitForExistence(timeout: 10))
-        XCTAssertEqual(personNode.value as? String, "Anda")
+        XCTAssertEqual(personNode.value as? String, "Orang terpilih")
 
         let toggleControls = element("tree.toggleControls", in: app)
         XCTAssertTrue(toggleControls.waitForExistence(timeout: 5))
         XCTAssertEqual(toggleControls.label, "Sembunyikan kontrol")
         XCTAssertEqual(toggleControls.value as? String, "Ditampilkan")
 
-        let addButton = app.descendants(matching: .any).matching(
+        let addButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
         ).firstMatch
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))
@@ -183,7 +183,7 @@ final class HeritgUITests: XCTestCase {
     }
 
     private func addRelative(role: String, name: String, in app: XCUIApplication) {
-        let addButton = app.descendants(matching: .any).matching(
+        let addButton = app.buttons.matching(
             NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
         ).firstMatch
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))

@@ -92,25 +92,6 @@ enum TreeGenerationFilter {
         })
     }
 
-    static func layoutLevels(
-        selectedPersonID: String?,
-        validPersonIDs: Set<String>,
-        relationships: [RelationshipSnapshot],
-        depths: [String: Int],
-        limits: TreeGenerationLimits
-    ) -> [String: Int] {
-        guard !limits.isUnlimited,
-              let relativeLevels = relativeLevels(
-                  selectedPersonID: selectedPersonID,
-                  validPersonIDs: validPersonIDs,
-                  relationships: relationships,
-                  depths: depths
-              ) else {
-            return depths
-        }
-        return depths.merging(relativeLevels) { _, relativeLevel in relativeLevel }
-    }
-
     private static func relativeLevels(
         selectedPersonID: String?,
         validPersonIDs: Set<String>,
@@ -232,7 +213,8 @@ extension Person {
             gender: gender,
             profilePhotoData: profilePhotoData,
             lifeSummary: lifeSummary,
-            birthDate: birthDate
+            birthDate: birthDate,
+            birthDatePrecision: birthDatePrecision
         )
     }
 }
@@ -245,6 +227,7 @@ extension FamilyRelationship {
             toPersonID: toPersonID,
             kind: kind,
             subtype: subtype,
+            marriageDate: marriageDate,
             marriageYear: marriageYear
         )
     }

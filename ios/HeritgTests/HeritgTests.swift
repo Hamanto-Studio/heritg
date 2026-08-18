@@ -436,11 +436,11 @@ struct HeritgTests {
 
         #expect(layout.nodes.count == 3)
         #expect(layout.edges.count == 2)
-        #expect(layout.nodes.first(where: { $0.id == "person0" })?.position.y == -260)
-        #expect(layout.nodes.first(where: { $0.id == "person2" })?.position.y == 260)
+        #expect(layout.nodes.first(where: { $0.id == "person0" })?.position.y == 0)
+        #expect(layout.nodes.first(where: { $0.id == "person2" })?.position.y == 520)
     }
 
-    @Test func selectedEntireTreeKeepsAllNodesAndLabelsSelectionAsYou() {
+    @Test func selectedEntireTreeKeepsAllNodesAndLabelsSelectedPerson() {
         let people = (0..<3).map { index in
             PersonSnapshot(id: "person\(index)", name: "Person \(index)", gender: .unspecified)
         }
@@ -457,7 +457,10 @@ struct HeritgTests {
         )
 
         #expect(layout.nodes.count == 3)
-        #expect(layout.nodes.first(where: { $0.id == "person1" })?.role == AppLanguage.localized("You"))
+        #expect(
+            layout.nodes.first(where: { $0.id == "person1" })?.role
+                == AppLanguage.localized("Selected person")
+        )
     }
 
     @Test func changingSelectionDoesNotMoveEntireTreeNodes() {
@@ -489,7 +492,7 @@ struct HeritgTests {
         )
     }
 
-    @Test func contradictoryParentCycleDoesNotCollapseEveryGeneration() {
+    @Test func contradictoryParentCycleUsesCanonicalSingleGeneration() {
         let people = ["a", "b", "c"].map {
             PersonSnapshot(id: $0, name: $0, gender: .unspecified)
         }
@@ -507,13 +510,13 @@ struct HeritgTests {
         )
         let rows = Set(layout.nodes.map { $0.position.y })
 
-        #expect(rows.count == 3)
-        #expect(layout.edges.count == 2)
+        #expect(rows.count == 1)
+        #expect(layout.edges.isEmpty)
     }
 
     @Test func relationshipFixtureLabelsEverySupportedRole() {
         let fixture: [(String, PersonGender, String)] = [
-            ("rina", .female, AppLanguage.localized("You")),
+            ("rina", .female, AppLanguage.localized("Selected person")),
             ("budi", .male, AppLanguage.localized("Father")),
             ("maya", .female, AppLanguage.localized("Mother")),
             ("pat", .unspecified, AppLanguage.localized("Parent")),
@@ -711,6 +714,66 @@ struct HeritgTests {
         )
 
         #expect(offset == CGSize(width: -30, height: -10))
+    }
+
+    @Test func connectorCanvasProjectsLargeTreesIntoTheViewport() {
+        let transform = TreeViewportTransform.canvasTransform(
+            contentSize: CGSize(width: 6_200, height: 1_400),
+            viewportSize: CGSize(width: 390, height: 844),
+            scale: 0.08,
+            offset: .zero
+        )
+        let center = CGPoint(x: 3_100, y: 700).applying(transform)
+        let arbitraryPoint = CGPoint(x: 100, y: 200).applying(transform)
+
+        #expect(abs(center.x - 195) < 0.001)
+        #expect(abs(center.y - 422) < 0.001)
+        #expect(abs(arbitraryPoint.x + 45) < 0.001)
+        #expect(abs(arbitraryPoint.y - 382) < 0.001)
+        #expect(TreeVisualMetrics.connectorWidth(at: 0.08) == 0.75)
+        #expect(TreeVisualMetrics.connectorWidth(at: 0.5) == 1)
+    }
+
+    @Test func connectionPlanFingerprintIgnoresSelectionOnlyRoleChanges() {
+        let person = PersonSnapshot(id: "person", name: "Rina", gender: .female)
+        let base = TreeLayoutResult(
+            nodes: [TreeNodeLayout(
+                id: person.id,
+                person: person,
+                role: "Relative",
+                position: CGPoint(x: 10, y: 20)
+            )],
+            edges: []
+        )
+        let selected = TreeLayoutResult(
+            nodes: [TreeNodeLayout(
+                id: person.id,
+                person: person,
+                role: "Selected person",
+                position: CGPoint(x: 10, y: 20)
+            )],
+            edges: []
+        )
+        let moved = TreeLayoutResult(
+            nodes: [TreeNodeLayout(
+                id: person.id,
+                person: person,
+                role: "Selected person",
+                position: CGPoint(x: 30, y: 20)
+            )],
+            edges: []
+        )
+        let fingerprint: (TreeLayoutResult) -> TreeConnectionPlanFingerprint = {
+            TreeConnectionPlanFingerprint(
+                layout: $0,
+                controlsVisible: true,
+                sourcePersonCount: 1,
+                localeIdentifier: "en"
+            )
+        }
+
+        #expect(fingerprint(base) == fingerprint(selected))
+        #expect(fingerprint(base) != fingerprint(moved))
     }
 
     @Test func overviewRenderingUsesCanonicalZoomHysteresis() {

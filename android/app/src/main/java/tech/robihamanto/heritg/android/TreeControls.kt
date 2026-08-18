@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -103,7 +104,7 @@ internal fun TreeControls(
 }
 
 @Composable
-internal fun TreeNodeLabels(name: String, role: String?, lifeSummary: String?) {
+internal fun TreeNodeLabels(name: String, role: String?, lifeSummary: String?, roleColor: Color? = null) {
     val fontScale = LocalDensity.current.fontScale
     Spacer(Modifier.height(TreeVisualMetrics.NodeLabelTopSpacing.dp))
     Text(
@@ -121,7 +122,7 @@ internal fun TreeNodeLabels(name: String, role: String?, lifeSummary: String?) {
     role?.let {
         Text(
             it,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = roleColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = fixedLogicalTextSp(13f, fontScale).sp,
             lineHeight = fixedLogicalTextSp(20f, fontScale).sp,
             maxLines = 1,

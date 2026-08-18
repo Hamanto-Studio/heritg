@@ -168,8 +168,11 @@ struct TreeGenerationLimitTests {
 
         #expect(availableLevels == TreeAvailableGenerationLevels(ancestorLevels: 1, descendantLevels: 1))
         #expect(Set(layout.nodes.map(\.id)) == ["b", "c"])
-        #expect(layout.nodes.first(where: { $0.id == "c" })!.position.y > layout.nodes.first(where: { $0.id == "b" })!.position.y)
-        #expect(layout.edges.map(\.id) == ["bc"])
+        #expect(
+            layout.nodes.first(where: { $0.id == "c" })!.position.y
+                == layout.nodes.first(where: { $0.id == "b" })!.position.y
+        )
+        #expect(layout.edges.isEmpty)
     }
 
     @Test func limitsClampToAChangedSelectionMaximum() {

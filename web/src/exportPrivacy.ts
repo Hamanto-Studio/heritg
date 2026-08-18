@@ -31,6 +31,7 @@ export const prepareDataForExport = (
     return {
       ...person,
       birthDate: selection.birthDates ? person.birthDate : undefined,
+      birthOrderOverride: selection.birthDates ? person.birthOrderOverride : undefined,
       photoDataUrl: selection.photos ? person.photoDataUrl : undefined
     };
   });

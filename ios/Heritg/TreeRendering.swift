@@ -18,6 +18,22 @@ nonisolated enum TreeViewportTransform {
                 + anchorFromCenter.height * (1 - magnification)
         )
     }
+
+    static func canvasTransform(
+        contentSize: CGSize,
+        viewportSize: CGSize,
+        scale: CGFloat,
+        offset: CGSize
+    ) -> CGAffineTransform {
+        CGAffineTransform(
+            a: scale,
+            b: 0,
+            c: 0,
+            d: scale,
+            tx: viewportSize.width / 2 + offset.width - contentSize.width * scale / 2,
+            ty: viewportSize.height / 2 + offset.height - contentSize.height * scale / 2
+        )
+    }
 }
 
 nonisolated enum TreeVisualMetrics {
@@ -27,11 +43,26 @@ nonisolated enum TreeVisualMetrics {
     static let avatarDiameter: CGFloat = 64
     static let avatarRadius = avatarDiameter / 2
     static let horizontalSpacing: CGFloat = 260
+    static let familyGap: CGFloat = 200
     static let generationSpacing: CGFloat = 260
     static let labelOffset: CGFloat = 66
     static let labelHeight: CGFloat = 72
     static let nodeLabelWidth: CGFloat = 190
     static let nodeLabelTopSpacing: CGFloat = 10
+
+    static func compactName(_ value: String) -> String {
+        let normalized = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let fallback = normalized.isEmpty ? "Unnamed person" : normalized
+        let units = Array(fallback.utf16)
+        guard units.count > 34 else { return fallback }
+        let prefix = String(decoding: units.prefix(31), as: UTF16.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(prefix)..."
+    }
+
+    static func nameFontSize(_ value: String) -> CGFloat {
+        CGFloat(max(9, min(16, 320 / max(20, value.utf16.count))))
+    }
 
     static func shouldRenderOverview(currentlyOverview: Bool, scale: CGFloat) -> Bool {
         currentlyOverview ? scale < overviewExitScale : scale < overviewEnterScale
@@ -41,6 +72,15 @@ nonisolated enum TreeVisualMetrics {
         let safeScale = max(scale, 0.001)
         let actionScale = min(1, max(0.34, safeScale))
         return actionScale / safeScale
+    }
+
+    static func connectorWidth(at scale: CGFloat) -> CGFloat {
+        max(TreeConnectorStyle.width * scale, 0.75)
+    }
+
+    static func connectorDash(at scale: CGFloat) -> [CGFloat] {
+        let visibleScale = max(scale, 0.25)
+        return TreeConnectorStyle.siblingDash.map { $0 * visibleScale }
     }
 
     static func nodeLabelHeight(showsRelationship: Bool, showsLifeSummary: Bool) -> CGFloat {

@@ -194,7 +194,14 @@ nonisolated enum GEDCOMImporter {
                         currentFamily?.children[index].subtype = subtype
                     }
                 case (1, "MARR"):
+                    currentFamily?.married = true
                     currentEvent = .marriage
+                case (1, "_HERITG_SUBTYPE"):
+                    if let subtype = RelationshipSubtype(rawValue: value),
+                       subtype == .partner || subtype == .spouse ||
+                        subtype == .formerPartner || subtype == .formerSpouse {
+                        currentFamily?.partnerSubtype = subtype
+                    }
                 case (2, "DATE") where currentEvent == .marriage:
                     currentFamily?.marriageDate = parseDate(value)?.date
                 default:
@@ -236,7 +243,7 @@ nonisolated enum GEDCOMImporter {
                     from: pair[0],
                     to: pair[1],
                     kind: .partner,
-                    subtype: family.marriageDate == nil ? .partner : .spouse,
+                    subtype: family.partnerSubtype ?? (family.married ? .spouse : .partner),
                     marriageDate: family.marriageDate,
                     signatures: &signatures,
                     result: &result
@@ -325,6 +332,8 @@ nonisolated enum GEDCOMImporter {
     private struct ImportedFamily {
         var parents = [String]()
         var children = [ImportedChild]()
+        var married = false
+        var partnerSubtype: RelationshipSubtype?
         var marriageDate: Date?
     }
 

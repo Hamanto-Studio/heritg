@@ -28,14 +28,8 @@ data class TreeEdgeLayout(
     val marriageYear: String? = null,
 ) {
     fun marriageLabel(formatter: SemanticFormatter = EnglishSemanticFormatter): String? {
-        if (kind != RelationshipKind.PARTNER) return null
-        return when (subtype) {
-            tech.robihamanto.heritg.android.core.model.RelationshipSubtype.SPOUSE ->
-                marriageYear?.let { "${formatter.text("Married")} $it" } ?: formatter.text("Married")
-            tech.robihamanto.heritg.android.core.model.RelationshipSubtype.FORMER_SPOUSE -> formatter.text("Former spouse")
-            tech.robihamanto.heritg.android.core.model.RelationshipSubtype.FORMER_PARTNER -> formatter.text("Former partner")
-            else -> formatter.text("Partner")
-        }
+        if (kind != RelationshipKind.PARTNER || marriageYear == null) return null
+        return "${formatter.text("Married")} $marriageYear"
     }
 }
 

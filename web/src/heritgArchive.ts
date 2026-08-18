@@ -478,6 +478,9 @@ async function archiveEntries(
     peopleRecords.push({
       addressLine: person.addressLine,
       ...(person.birthDate ? { birthDate: person.birthDate } : {}),
+      ...(person.birthOrderOverride !== undefined
+        ? { birthOrderOverride: person.birthOrderOverride }
+        : {}),
       birthDatePrecision: person.birthDatePrecision,
       city: person.city,
       country: person.country,
@@ -566,6 +569,12 @@ const text = (value: unknown, label: string, maximum = MAX_SHORT_BYTES): string 
 const integer = (value: unknown, label: string): number => {
   if (!Number.isSafeInteger(value) || (value as number) < 0) fail(`${label} is invalid.`);
   return value as number;
+};
+const optionalPositiveInteger = (value: unknown, label: string): number | undefined => {
+  if (value === null || value === undefined) return undefined;
+  const result = integer(value, label);
+  if (result < 1) fail(`${label} is invalid.`);
+  return result;
 };
 const nullableText = (value: unknown, label: string): string | undefined =>
   value === null || value === undefined ? undefined : text(value, label);
@@ -669,6 +678,10 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
       gender: text(record.gender, `person ${index}.gender`) as Gender,
       createdAt: exactArchiveInstant(record.createdAt, `person ${index}.createdAt`),
       birthDate,
+      birthOrderOverride: optionalPositiveInteger(
+        record.birthOrderOverride,
+        `person ${index}.birthOrderOverride`
+      ),
       deathDate,
       birthDatePrecision: text(record.birthDatePrecision, `person ${index}.birthDatePrecision`) as Person["birthDatePrecision"],
       notes: text(record.notes, `person ${index}.notes`, MAX_NOTES_BYTES),

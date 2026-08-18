@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
@@ -74,6 +75,7 @@ import tech.robihamanto.heritg.android.core.domain.semanticFormatter
 import tech.robihamanto.heritg.android.core.model.FamilyRelationship
 import tech.robihamanto.heritg.android.core.model.FamilyTree
 import tech.robihamanto.heritg.android.core.model.Person
+import tech.robihamanto.heritg.android.core.model.PersonGender
 import tech.robihamanto.heritg.android.core.model.RelationshipKind
 import tech.robihamanto.heritg.android.core.tree.TreeConnectionPlan
 import tech.robihamanto.heritg.android.core.tree.TreeGenerationLimits
@@ -95,6 +97,21 @@ private data class TreeComputation(
     val maxAbove: Int,
     val maxBelow: Int,
 )
+
+private data class AvatarColors(val fill: Color, val stroke: Color)
+
+private val MaleAvatarColors = AvatarColors(Color(0xFFE2EBF2), Color(0xFF56738D))
+private val FemaleAvatarColors = AvatarColors(Color(0xFFF4E4E8), Color(0xFF985C6D))
+private val UnspecifiedAvatarColors = AvatarColors(Color(0xFFEDE5D8), Color(0xFF796F63))
+private val FamilyConnectorColor = Color(0xFF9C825F)
+private val PartnerConnectorColor = Color(0xFFB47C76)
+private val SiblingConnectorColor = Color(0xFF78956C)
+
+private fun avatarColors(gender: PersonGender) = when (gender) {
+    PersonGender.MALE -> MaleAvatarColors
+    PersonGender.FEMALE -> FemaleAvatarColors
+    PersonGender.UNSPECIFIED -> UnspecifiedAvatarColors
+}
 
 @Composable
 internal fun TreeHost(
@@ -130,7 +147,7 @@ internal fun TreeHost(
                 null, snapshots, relationshipSnapshots, selectedId, actualLimits, formatter,
             )
             TreeComputation(
-                layout, TreeConnectionPlan.make(layout, selectedId != null, formatter, textMeasurer), actualLimits,
+                layout, TreeConnectionPlan.make(layout, true, formatter, textMeasurer), actualLimits,
                 available.ancestorLevels, available.descendantLevels,
             )
         }
@@ -238,6 +255,7 @@ private fun TreeCanvas(
                 val person = node.person
                 val nodeCenter = center(node.position.x, node.position.y)
                 val role = if (node.id == selectedId) stringResource(R.string.you) else node.role
+                val colors = avatarColors(person.gender)
                 val addDescription = stringResource(R.string.add_relative_to, person.name)
                 val editDescription = stringResource(R.string.edit_person_named, person.name)
                 val selectDescription = stringResource(R.string.select_person_named, person.name)
@@ -286,21 +304,27 @@ private fun TreeCanvas(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Box(
-                        Modifier.size(64.dp).background(MaterialTheme.colorScheme.surface, CircleShape)
+                        Modifier.size(64.dp).background(colors.fill, CircleShape)
                             .border(if (node.id == selectedId) 2.dp else 1.dp,
-                                if (node.id == selectedId) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outline, CircleShape),
+                                if (node.id == selectedId) FamilyConnectorColor else colors.stroke, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         val photo by rememberPhotoThumbnail(person.id, person.profilePhotoData, with(density) { 64.dp.roundToPx() })
                         if (photo == null) {
-                            Text(person.name.take(1).uppercase(), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            Box(Modifier.size(54.dp).background(colors.fill, CircleShape), contentAlignment = Alignment.Center) {
+                                Text(person.name.take(1).uppercase(), fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                            }
                         } else {
                             Image(photo!!.asImageBitmap(), null, Modifier.size(54.dp).clip(CircleShape),
                                 contentScale = ContentScale.Crop)
                         }
                     }
-                    TreeNodeLabels(person.name, role.takeIf { selectedId != null }, person.lifeSummary)
+                    TreeNodeLabels(
+                        person.name,
+                        role.takeIf { selectedId != null },
+                        person.lifeSummary,
+                        roleColor = FamilyConnectorColor.takeIf { node.id == selectedId },
+                    )
                 }
                 if (showControls) {
                     NodeControl(
@@ -430,35 +454,45 @@ private fun Connections(
     val density = LocalDensity.current
     val densityValue = density.density
     val background = MaterialTheme.colorScheme.background
-    val line = MaterialTheme.colorScheme.outline
     Canvas(Modifier.fillMaxSize()) {
         fun logical(value: Double) = logicalToPixels(value, densityValue)
         fun point(x: Double, y: Double) = Offset(
             viewport.x / 2 + logical(x) * scale + translation.x,
             viewport.y / 2 + logical(y) * scale + translation.y,
         )
-        val strokeWidth = logical(1.5) * scale
+        val strokeWidth = maxOf(logical(2.0) * scale, logical(.75))
         connectionPlan.families.flatMap { it.segments }.forEach { segment ->
             drawLine(
-                line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
+                FamilyConnectorColor, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
                 strokeWidth, cap = StrokeCap.Round,
             )
         }
-        connectionPlan.nonParentRoutes.flatMap { it.segments }.forEach { segment ->
-            drawLine(
-                line, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
-                strokeWidth, cap = StrokeCap.Round,
-            )
+        connectionPlan.nonParentRoutes.forEach { route ->
+            val color = when (route.edge.kind) {
+                RelationshipKind.PARTNER -> PartnerConnectorColor
+                RelationshipKind.SIBLING -> SiblingConnectorColor
+                RelationshipKind.PARENT -> FamilyConnectorColor
+            }
+            val pathEffect = if (route.edge.kind == RelationshipKind.SIBLING) {
+                val dashScale = maxOf(scale, .25f)
+                PathEffect.dashPathEffect(floatArrayOf(logical(6.0) * dashScale, logical(7.0) * dashScale))
+            } else null
+            route.segments.forEach { segment ->
+                drawLine(
+                    color, point(segment.start.x, segment.start.y), point(segment.end.x, segment.end.y),
+                    strokeWidth, cap = StrokeCap.Round, pathEffect = pathEffect,
+                )
+            }
         }
         connectionPlan.families.flatMap { it.junctions }.forEach {
-            drawCircle(line, logical(2.0) * scale, point(it.x, it.y))
+            drawCircle(FamilyConnectorColor, maxOf(logical(2.0) * scale, logical(1.0)), point(it.x, it.y))
         }
         connectionPlan.crossings.forEach {
             val center = point(it.x, it.y)
-            val gap = logical(5.0) * scale
-            drawCircle(background, logical(4.0) * scale, center)
+            val gap = maxOf(logical(6.0) * scale, logical(2.0))
+            drawCircle(background, maxOf(logical(5.0) * scale, logical(2.0)), center)
             drawLine(
-                line, center.copy(y = center.y - gap), center.copy(y = center.y + gap),
+                FamilyConnectorColor, center.copy(y = center.y - gap), center.copy(y = center.y + gap),
                 strokeWidth, cap = StrokeCap.Round,
             )
         }
