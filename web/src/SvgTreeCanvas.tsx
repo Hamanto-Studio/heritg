@@ -6,7 +6,6 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent
 } from "react";
@@ -24,14 +23,12 @@ import { birthOrderLabel } from "./birthOrder";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { TreeCanvasHandle, TreeCanvasProps } from "./ExcalidrawTreeCanvas";
 import { downloadBlob, safeFilename } from "./images";
-import { deriveKinshipLabels } from "./kinship";
+import { deriveKinshipLabels, effectiveKinshipLanguage } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
+import { formatPersonName } from "./personName";
 import { SvgTreeScene } from "./SvgTreeScene";
 import type { TreeLayout, ViewportState } from "./types";
 import { useTreePreparation } from "./useTreePreparation";
-
-const OVERVIEW_ENTER_ZOOM = 0.3;
-const OVERVIEW_EXIT_ZOOM = 0.42;
 
 interface PendingWheel {
   deltaX: number;
@@ -193,6 +190,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   selectedPersonId,
   generationLimits,
   language,
+  relationshipTerminology = "id",
   initialViewport,
   t,
   onAddRelative,
@@ -225,9 +223,6 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const drag = useRef<DragState | undefined>(undefined);
   const pinch = useRef<PinchState | undefined>(undefined);
   const gestureMoved = useRef(false);
-  const overviewRef = useRef(false);
-  const [overview, setOverview] = useState(false);
-
   const selectionFiltersLayout = generationLimits.ancestors !== null ||
     generationLimits.descendants !== null;
   const layoutSelectionId = selectionFiltersLayout ? selectedPersonId : undefined;
@@ -237,6 +232,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     layoutSelectionId,
     generationLimits,
     language,
+    relationshipTerminology,
     controlsVisible: !readOnly && people.length <= 24
   });
   const geometryLayout = useMemo<TreeLayout>(() => {
@@ -258,7 +254,12 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
       return geometryLayout;
     }
-    const labels = deriveKinshipLabels(selectedPersonId, people, relationships, language);
+    const labels = deriveKinshipLabels(
+      selectedPersonId,
+      people,
+      relationships,
+      effectiveKinshipLanguage(language, relationshipTerminology)
+    );
     return {
       ...geometryLayout,
       people: geometryLayout.people.map((person) => ({
@@ -266,7 +267,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         role: labels[person.id] ?? ""
       }))
     };
-  }, [geometryLayout, language, people, relationships, selectedPersonId, selectionFiltersLayout]);
+  }, [geometryLayout, language, people, relationshipTerminology, relationships, selectedPersonId, selectionFiltersLayout]);
   const connectionPlan = preparedTree?.connectionPlan ?? {
     families: [],
     nonParentRoutes: [],
@@ -277,9 +278,6 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     failures: [],
     isValid: true
   };
-
-  const shouldRenderOverview = (zoom: number) =>
-    overviewRef.current ? zoom < OVERVIEW_EXIT_ZOOM : zoom < OVERVIEW_ENTER_ZOOM;
 
   const updateTransforms = (next: ViewportState, navigating = false) => {
     const transform = `translate3d(${next.scrollX * next.zoom}px, ${next.scrollY * next.zoom}px, 0) scale(${next.zoom})`;
@@ -322,11 +320,6 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
 
   const applyViewport = (next: ViewportState, navigating = true, persist = true) => {
     viewport.current = next;
-    const nextOverview = shouldRenderOverview(next.zoom);
-    if (nextOverview !== overviewRef.current) {
-      overviewRef.current = nextOverview;
-      setOverview(nextOverview);
-    }
     updateTransforms(next, navigating);
     if (persist) scheduleViewportPersistence(next);
   };
@@ -370,11 +363,14 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const focusPerson = (personId: string) => {
     const person = layout.people.find((candidate) => candidate.id === personId);
     if (!person) return;
+    const nameExtraHeight = formatPersonName(person.displayName).extraHeight;
+    const cityExtraHeight = person.city.trim() ? LAYOUT_METRICS.lifeHeight : 0;
     const target = fitSceneRect({
       x: person.x - LAYOUT_METRICS.labelWidth / 2,
       y: person.y - LAYOUT_METRICS.avatarRadius,
       width: LAYOUT_METRICS.labelWidth,
-      height: LAYOUT_METRICS.nodeBottom + LAYOUT_METRICS.avatarRadius
+      height: LAYOUT_METRICS.nodeBottom + LAYOUT_METRICS.avatarRadius + nameExtraHeight +
+        cityExtraHeight
     }, hostSize(), {
       viewportFactor: 0.32,
       minZoom: 0.25,
@@ -472,7 +468,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
 
   useEffect(() => {
     updateTransforms(viewport.current);
-  }, [layout, overview]);
+  }, [layout]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -692,7 +688,6 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
             language={language}
             layout={layout}
             lifeSummaryOptions={lifeSummaryOptions}
-            overview={overview}
             selectedPersonId={selectedPersonId}
           />
         </g>

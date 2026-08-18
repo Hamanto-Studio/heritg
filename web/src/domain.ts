@@ -1,7 +1,8 @@
 import { newId } from "./types";
+import { selectFocusedFamily } from "./familyCopy";
 import type {
   AppData, DirectRole, FamilyRelationship, FamilyTree, Gender, Person,
-  RelationshipKind, RelationshipSubtype, ViewportState
+  RelationshipKind, RelationshipSubtype, RelationshipTerminology, ViewportState
 } from "./types";
 import {
   DIRECT_ROLE_DEFAULTS,
@@ -35,6 +36,14 @@ export class DomainError extends Error {
 export interface DomainMeta {
   id?: string;
   now?: string;
+}
+export interface FocusedTreeCopyInput {
+  title: string;
+  focusPersonId: string;
+}
+export interface FocusedTreeCopyMeta {
+  now?: string;
+  idFactory?: () => string;
 }
 export interface NewPersonInput {
   displayName: string;
@@ -138,6 +147,7 @@ export function createInitialAppData(
     people: [],
     relationships: [],
     language: selectedLanguage,
+    relationshipTerminology: "id",
     viewports: {}
   };
   return createTree(empty, localizedDefaultTreeTitle(selectedLanguage), meta);
@@ -199,6 +209,76 @@ export function deleteTree(data: AppData, treeId: string): AppData {
 export function selectTree(data: AppData, treeId?: string): AppData {
   if (treeId) findTree(data, treeId);
   return data.selectedTreeId === treeId ? data : { ...data, selectedTreeId: treeId };
+}
+export function copyFocusedTree(
+  data: AppData,
+  sourceTreeId: string,
+  input: FocusedTreeCopyInput,
+  meta: FocusedTreeCopyMeta = {}
+): { data: AppData; treeId: string } {
+  findTree(data, sourceTreeId);
+  const sourcePeople = data.people.filter((person) => person.treeId === sourceTreeId);
+  const sourceRelationships = data.relationships.filter(
+    (relationship) => relationship.treeId === sourceTreeId
+  );
+  const focus = findPerson(data, input.focusPersonId);
+  if (focus.treeId !== sourceTreeId) throw new DomainError("notFound");
+
+  const title = requiredName(input.title);
+  const selected = selectFocusedFamily(
+    sourcePeople,
+    sourceRelationships,
+    focus.id
+  );
+  const usedIds = new Set([
+    ...data.trees.map((tree) => tree.id),
+    ...data.people.map((person) => person.id),
+    ...data.relationships.map((relationship) => relationship.id)
+  ]);
+  const idFactory = meta.idFactory ?? newId;
+  const nextId = () => {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const id = idFactory();
+      if (id.trim() && !usedIds.has(id)) {
+        usedIds.add(id);
+        return id;
+      }
+    }
+    throw new DomainError("invalidData", "Unable to create unique IDs for the family copy.");
+  };
+
+  const now = meta.now ?? new Date().toISOString();
+  const treeId = nextId();
+  const personIds = new Map(selected.people.map((person) => [person.id, nextId()]));
+  const copiedPeople = selected.people.map((person) => ({
+    ...person,
+    id: personIds.get(person.id)!,
+    treeId
+  }));
+  const copiedRelationships = selected.relationships.map((relationship) => ({
+    ...relationship,
+    id: nextId(),
+    treeId,
+    fromPersonId: personIds.get(relationship.fromPersonId)!,
+    toPersonId: personIds.get(relationship.toPersonId)!
+  }));
+  const copiedTree: FamilyTree = {
+    id: treeId,
+    title,
+    createdAt: now,
+    updatedAt: now,
+    lastSelectedPersonId: personIds.get(focus.id)
+  };
+  return {
+    treeId,
+    data: {
+      ...data,
+      trees: [...data.trees, copiedTree],
+      people: [...data.people, ...copiedPeople],
+      relationships: [...data.relationships, ...copiedRelationships],
+      selectedTreeId: treeId
+    }
+  };
 }
 export function createPerson(
   data: AppData, treeId: string, input: NewPersonInput,
@@ -409,6 +489,18 @@ export function setLanguage(data: AppData, language: AppLanguage): AppData {
   return data.language === language ? data : { ...data, language };
 }
 
+export function setRelationshipTerminology(
+  data: AppData,
+  terminology: RelationshipTerminology
+): AppData {
+  if (!["id", "jv-yogyakarta", "jv-east-java"].includes(terminology)) {
+    throw new DomainError("invalidData");
+  }
+  return (data.relationshipTerminology ?? "id") === terminology
+    ? data
+    : { ...data, relationshipTerminology: terminology };
+}
+
 export function setViewport(
   data: AppData, treeId: string, viewport: ViewportState
 ): AppData {
@@ -442,6 +534,10 @@ const hasStrings = (value: unknown, fields: string[]) =>
 
 export function assertAppData(value: unknown): asserts value is AppData {
   if (!isRecord(value) || value.version !== 1 || !["en", "id"].includes(String(value.language))) {
+    throw new DomainError("invalidData");
+  }
+  if (value.relationshipTerminology !== undefined &&
+      !["id", "jv-yogyakarta", "jv-east-java"].includes(String(value.relationshipTerminology))) {
     throw new DomainError("invalidData");
   }
   if (!Array.isArray(value.trees) || !Array.isArray(value.people) ||
@@ -517,6 +613,7 @@ export function replaceAppData(value: unknown): AppData {
   assertAppData(value);
   return {
     ...value,
+    relationshipTerminology: value.relationshipTerminology ?? "id",
     trees: value.trees.map((tree) => ({ ...tree })),
     people: value.people.map((person) => ({ ...person })),
     relationships: value.relationships.map((item) => ({ ...item })),

@@ -1,7 +1,7 @@
-import { deriveKinshipLabels } from "./kinship";
+import { deriveKinshipLabels, type KinshipLanguage } from "./kinship";
 import { deriveBirthOrders } from "./birthOrder";
+import { formatPersonName } from "./personName";
 import type {
-  AppData,
   FamilyRelationship,
   GenerationLimits,
   Person,
@@ -143,6 +143,19 @@ const buildGenerationMap = (
   }
   for (const parents of parentsByChild.values()) {
     const ordered = [...new Set(parents)].sort(compareText);
+    for (let index = 1; index < ordered.length; index += 1) {
+      groups.union(ordered[0], ordered[index]);
+    }
+  }
+  const childrenByParent = new Map<string, string[]>();
+  for (const relationship of relationships) {
+    if (relationship.kind !== "parent") continue;
+    const children = childrenByParent.get(relationship.fromPersonId) ?? [];
+    children.push(relationship.toPersonId);
+    childrenByParent.set(relationship.fromPersonId, children);
+  }
+  for (const children of childrenByParent.values()) {
+    const ordered = [...new Set(children)].sort(compareText);
     for (let index = 1; index < ordered.length; index += 1) {
       groups.union(ordered[0], ordered[index]);
     }
@@ -505,7 +518,7 @@ export function createTreeLayout(
   relationships: readonly FamilyRelationship[],
   selectedPersonId?: string,
   limits: GenerationLimits = { ancestors: null, descendants: null },
-  language: AppData["language"] = "en"
+  language: KinshipLanguage = "en"
 ): DeterministicTreeLayout {
   const orderedPeople = normalizedPeople(people);
   const validIds = new Set(orderedPeople.map((person) => person.id));
@@ -603,6 +616,32 @@ export function createTreeLayout(
         ? LAYOUT_METRICS.familyGap : 0;
       const minimumX = nextX === undefined ? desiredStart : nextX + gap;
       const startX = Math.max(desiredStart, minimumX);
+      const descendantShift = startX - desiredStart;
+      if (descendantShift > 0 && childXs.length > 0) {
+        const descendantIds = new Set<string>();
+        const queue = [...memberIds];
+        for (let index = 0; index < queue.length; index += 1) {
+          for (const relationship of orderedRelationships) {
+            if (
+              relationship.kind !== "parent" ||
+              relationship.fromPersonId !== queue[index] ||
+              descendantIds.has(relationship.toPersonId)
+            ) continue;
+            descendantIds.add(relationship.toPersonId);
+            queue.push(relationship.toPersonId);
+          }
+        }
+        for (const descendantGeneration of rowGenerations) {
+          if (descendantGeneration <= generation) continue;
+          for (const descendantBlock of blocksByGeneration.get(descendantGeneration) ?? []) {
+            const members = descendantBlock.members.map((person) => positioned.get(person.id)!);
+            if (!members.some((person) => descendantIds.has(person.id))) continue;
+            members.forEach((person) => {
+              person.x += descendantShift;
+            });
+          }
+        }
+      }
       const shift = startX - currentStart;
       currentMembers.forEach((person) => {
         person.x += shift;
@@ -648,7 +687,10 @@ export function createTreeLayout(
   const minX = Math.min(...resultPeople.map((person) => person.x - LAYOUT_METRICS.labelWidth / 2));
   const maxX = Math.max(...resultPeople.map((person) => person.x + LAYOUT_METRICS.labelWidth / 2));
   const minY = Math.min(...resultPeople.map((person) => person.y - LAYOUT_METRICS.avatarRadius));
-  const maxY = Math.max(...resultPeople.map((person) => person.y + LAYOUT_METRICS.nodeBottom));
+  const maxY = Math.max(...resultPeople.map((person) =>
+    person.y + LAYOUT_METRICS.nodeBottom + formatPersonName(person.displayName).extraHeight +
+      (person.city.trim() ? LAYOUT_METRICS.lifeHeight : 0)
+  ));
   const bounds: LayoutBounds = {
     x: minX,
     y: minY,

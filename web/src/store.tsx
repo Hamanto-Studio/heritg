@@ -13,6 +13,7 @@ import {
   addRelationship as addRelationshipToData,
   createInitialAppData,
   createPerson as createPersonInData,
+  copyFocusedTree as copyFocusedTreeInData,
   createTree as createTreeInData,
   deletePerson as deletePersonFromData,
   deleteTree as deleteTreeFromData,
@@ -22,6 +23,7 @@ import {
   selectPerson as selectPersonInData,
   selectTree as selectTreeInData,
   setLanguage as setLanguageInData,
+  setRelationshipTerminology as setRelationshipTerminologyInData,
   setViewport as setViewportInData,
   updatePerson as updatePersonInData,
   DomainError,
@@ -31,7 +33,7 @@ import {
 } from "./domain";
 import { allowsCoParent } from "./relationshipRoles";
 import { newId } from "./types";
-import type { AppData, DirectRole, ViewportState } from "./types";
+import type { AppData, DirectRole, RelationshipTerminology, ViewportState } from "./types";
 
 export interface RelationshipDraftInput {
   relativePersonId: string;
@@ -42,6 +44,11 @@ export interface RelationshipDraftInput {
 
 export interface AppActions {
   createTree(title: string): string;
+  copyFocusedTree(
+    sourceTreeId: string,
+    title: string,
+    focusPersonId: string
+  ): string;
   renameTree(treeId: string, title: string): void;
   deleteTree(treeId: string): void;
   selectTree(treeId?: string): void;
@@ -81,6 +88,7 @@ export interface AppActions {
   ): void;
   removeRelationship(relationshipId: string): void;
   setLanguage(language: AppLanguage): void;
+  setRelationshipTerminology(terminology: RelationshipTerminology): void;
   setViewport(treeId: string, viewport: ViewportState): void;
   replaceData(data: unknown): void;
   importData(data: unknown): void;
@@ -219,6 +227,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       createTreeInData(current, title, { id }),
       id
     ]);
+  }
+
+  function copyFocusedTree(
+    sourceTreeId: string,
+    title: string,
+    focusPersonId: string
+  ) {
+    return commit((current) => {
+      const result = copyFocusedTreeInData(current, sourceTreeId, {
+        title,
+        focusPersonId
+      });
+      return [result.data, result.treeId];
+    });
   }
 
   function renameTree(treeId: string, title: string) {
@@ -408,6 +430,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     commit((current) => [setLanguageInData(current, language), undefined]);
   }
 
+  function setRelationshipTerminology(terminology: RelationshipTerminology) {
+    commit((current) => [setRelationshipTerminologyInData(current, terminology), undefined]);
+  }
+
   function setViewport(treeId: string, viewport: ViewportState) {
     const current = dataRef.current;
     if (!current) throw new Error("The family data store is not ready.");
@@ -424,6 +450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const actions: AppActions = {
     createTree,
+    copyFocusedTree,
     renameTree,
     deleteTree,
     selectTree,
@@ -437,6 +464,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     linkRelative,
     removeRelationship,
     setLanguage,
+    setRelationshipTerminology,
     setViewport,
     replaceData,
     importData: replaceData

@@ -6,6 +6,7 @@ import {
   Hand,
   Maximize2,
   Menu,
+  Pencil,
   Share2,
   Settings2,
   ShieldCheck,
@@ -28,6 +29,7 @@ import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { RelativeDialog } from "./RelativeDialog";
+import { ReportBugSheet } from "./ReportBugSheet";
 import { SettingsDialog } from "./SettingsDialog";
 import { SharePanel } from "./SharePanel";
 import { HelpPanel } from "./HelpPanel";
@@ -35,10 +37,10 @@ import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import { TreeSidebar } from "./TreeSidebar";
 import { useAppStore } from "./store";
 import type { GenerationLimits, Person } from "./types";
-import { LoadingScreen, Modal } from "./ui";
+import { ErrorNotice, LoadingScreen, Modal } from "./ui";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
-type RightPanel = "people" | "settings" | "share" | "help" | "privacy";
+type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report";
 
 export function App() {
   const store = useAppStore();
@@ -49,6 +51,8 @@ export function App() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [generationLimitsByTree, setGenerationLimitsByTree] = useState<Record<string, GenerationLimits>>({});
   const [editingPerson, setEditingPerson] = useState<Person | "new">();
+  const [renamingTree, setRenamingTree] = useState<{ id: string; title: string }>();
+  const [renameError, setRenameError] = useState<string>();
   const [relativeTarget, setRelativeTarget] = useState<Person>();
   const [toast, setToast] = useState<string>();
   const [operationError, setOperationError] = useState<string>();
@@ -123,6 +127,23 @@ export function App() {
     if (person) setEditingPerson(person);
   };
 
+  const startRenamingTree = () => {
+    if (!activeTree) return;
+    setRenameError(undefined);
+    setRenamingTree({ id: activeTree.id, title: activeTree.title });
+  };
+
+  const saveTreeName = () => {
+    if (!renamingTree) return;
+    try {
+      actions.renameTree(renamingTree.id, renamingTree.title);
+      setRenamingTree(undefined);
+      setRenameError(undefined);
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : t("errorTitle"));
+    }
+  };
+
   const generationOptions = (maximum: number) => [
     <option key="all" value="all">{t("allGenerations")}</option>,
     <option key={0} value={0}>{t("zeroGenerations")}</option>,
@@ -189,6 +210,7 @@ export function App() {
         onImported={() => setToast(t("imported"))}
         onShowHelp={() => setRightPanel("help")}
         onShowPrivacy={() => setRightPanel("privacy")}
+        onReportBug={() => setRightPanel("report")}
         open={sidebarOpen}
         t={t}
       />
@@ -222,8 +244,9 @@ export function App() {
               generationLimits={generationLimits}
               emptyContent={emptyWelcome}
               initialViewport={data.viewports[activeTree.id]}
-              key={`${activeTree.id}-${data.language}`}
+              key={`${activeTree.id}-${data.language}-${data.relationshipTerminology ?? "id"}`}
               language={data.language}
+              relationshipTerminology={data.relationshipTerminology ?? "id"}
               onAddRelative={addRelativeTo}
               onCanvasInteract={dismissCanvasPanels}
               onDeselectPerson={() => {
@@ -248,7 +271,25 @@ export function App() {
 
             <header className="workspace-header">
               <div className="workspace-title">
-                <h2>{activeTree.title}</h2>
+                <div className="workspace-title-row">
+                  <button
+                    aria-label={`${t("renameTree")}: ${activeTree.title}`}
+                    className="workspace-title-name"
+                    onClick={startRenamingTree}
+                    type="button"
+                  >
+                    <h2>{activeTree.title}</h2>
+                  </button>
+                  <button
+                    aria-label={t("renameTree")}
+                    className="icon-button quiet workspace-title-edit"
+                    onClick={startRenamingTree}
+                    title={t("renameTree")}
+                    type="button"
+                  >
+                    <Pencil aria-hidden="true" size={15} />
+                  </button>
+                </div>
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               {controlsVisible ? <div className="workspace-tools">
@@ -417,6 +458,33 @@ export function App() {
         )}
       </main>
 
+      {renamingTree ? (
+        <Modal
+          closeLabel={t("close")}
+          footer={
+            <>
+              <button className="button secondary" onClick={() => setRenamingTree(undefined)} type="button">{t("cancel")}</button>
+              <button className="button primary" onClick={saveTreeName} type="button">{t("save")}</button>
+            </>
+          }
+          onClose={() => setRenamingTree(undefined)}
+          size="small"
+          title={t("renameTree")}
+        >
+          <label className="field">
+            {t("treeName")}
+            <input
+              autoFocus
+              maxLength={160}
+              onChange={(event) => setRenamingTree({ ...renamingTree, title: event.target.value })}
+              onKeyDown={(event) => { if (event.key === "Enter") saveTreeName(); }}
+              value={renamingTree.title}
+            />
+          </label>
+          <ErrorNotice message={renameError} />
+        </Modal>
+      ) : null}
+
       {activeTree && editingPerson ? (
         <PersonEditor
           actions={actions}
@@ -448,6 +516,7 @@ export function App() {
       {rightPanel === "people" ? (
         <PeopleDialog
           language={data.language}
+          relationshipTerminology={data.relationshipTerminology ?? "id"}
           onClose={() => setRightPanel(undefined)}
           onSelect={selectAndFocus}
           people={people}
@@ -482,11 +551,25 @@ export function App() {
       ) : null}
 
       {rightPanel === "help" ? (
-        <HelpPanel onClose={() => setRightPanel(undefined)} t={t} />
+        <HelpPanel
+          onClose={() => setRightPanel(undefined)}
+          onReportBug={() => setRightPanel("report")}
+          t={t}
+        />
       ) : null}
 
       {rightPanel === "privacy" ? (
         <PrivacyPanel onClose={() => setRightPanel(undefined)} t={t} />
+      ) : null}
+
+      {rightPanel === "report" ? (
+        <ReportBugSheet
+          language={data.language}
+          onClose={() => setRightPanel(undefined)}
+          peopleCount={people.length}
+          relationshipCount={relationships.length}
+          t={t}
+        />
       ) : null}
 
       {operationError ? (

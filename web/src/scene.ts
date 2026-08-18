@@ -22,12 +22,14 @@ import {
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
 import {
   personLifeTop,
+  personCityTop,
   type PlannedRelationshipLabel,
   type RoutePoint
 } from "./connectionGeometry";
 import { LAYOUT_METRICS } from "./layout";
-import { personLifeSummary } from "./lifeSummary";
+import { personCitySummary, personLifeSummary } from "./lifeSummary";
 import { personAvatarAppearance } from "./personAvatarAppearance";
+import { formatPersonName, PERSON_NAME_FONT_SIZE } from "./personName";
 import type {
   AppData,
   FamilyRelationship,
@@ -172,12 +174,6 @@ const textSkeleton = (
     opacity: 100,
     ...elementIdentity(id, link, customData, groupIds)
   }) as ExcalidrawElementSkeleton;
-const nodeName = (value: string) => {
-  const normalized = value.trim().replace(/\s+/g, " ") || "Unnamed person";
-  return normalized.length > 34 ? `${normalized.slice(0, 31).trimEnd()}...` : normalized;
-};
-const nodeNameFontSize = (value: string) =>
-  Math.max(9, Math.min(16, Math.floor(320 / Math.max(20, value.length))));
 const centeredTextX = (text: string, fontSize: number, centerX: number) =>
   centerX - text.length * fontSize * 0.26;
 const plannedLabelSkeletons = (
@@ -242,7 +238,7 @@ const personSkeletons = (
   const avatarY = person.y - LAYOUT_METRICS.avatarRadius;
   const innerX = person.x - innerSize / 2;
   const innerY = person.y - innerSize / 2;
-  const name = nodeName(person.displayName);
+  const name = formatPersonName(person.displayName);
   const values: ExcalidrawElementSkeleton[] = [
     {
       type: "ellipse",
@@ -357,27 +353,28 @@ const personSkeletons = (
     );
   }
 
-  values.push(
-    textSkeleton(
+  values.push({
+    ...textSkeleton(
       `heritg:person:${key}:name`,
-      name,
-      centeredTextX(name, nodeNameFontSize(name), person.x),
+      name.text,
+      person.x - LAYOUT_METRICS.labelWidth / 2,
       person.y + LAYOUT_METRICS.labelTop,
       LAYOUT_METRICS.labelWidth,
-      LAYOUT_METRICS.nameHeight,
-      nodeNameFontSize(name),
+      LAYOUT_METRICS.nameHeight + name.extraHeight,
+      PERSON_NAME_FONT_SIZE,
       HERITG_SCENE_COLORS.text,
       link,
       data,
       groupIds
-    )
-  );
+    ),
+    textAlign: "center"
+  } as ExcalidrawElementSkeleton);
   if (showRole) {
     values.push(textSkeleton(
       `heritg:person:${key}:role`,
       person.role,
       centeredTextX(person.role, 13, person.x),
-      person.y + LAYOUT_METRICS.roleTop,
+      person.y + LAYOUT_METRICS.roleTop + name.extraHeight,
       LAYOUT_METRICS.labelWidth,
       LAYOUT_METRICS.roleHeight,
       13,
@@ -392,13 +389,31 @@ const personSkeletons = (
     showAge: lifeSummaryOptions.showAge,
     ageOverride: lifeSummaryOptions.ageByPersonId?.[person.id]
   } : undefined);
+  const city = personCitySummary(person);
   if (life) {
     values.push(
       textSkeleton(
         `heritg:person:${key}:life`,
         life,
         centeredTextX(life, 11, person.x),
-        person.y + personLifeTop(showRole),
+        person.y + personLifeTop(showRole, name.extraHeight),
+        LAYOUT_METRICS.labelWidth,
+        LAYOUT_METRICS.lifeHeight,
+        11,
+        HERITG_SCENE_COLORS.subtleText,
+        link,
+        data,
+        groupIds
+      )
+    );
+  }
+  if (city) {
+    values.push(
+      textSkeleton(
+        `heritg:person:${key}:city`,
+        city,
+        centeredTextX(city, 11, person.x),
+        person.y + personCityTop(showRole, Boolean(life), name.extraHeight),
         LAYOUT_METRICS.labelWidth,
         LAYOUT_METRICS.lifeHeight,
         11,

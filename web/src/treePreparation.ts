@@ -1,6 +1,14 @@
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
+import { effectiveKinshipLanguage } from "./kinship";
 import { createTreeLayout } from "./layout";
-import type { AppData, FamilyRelationship, GenerationLimits, Person, TreeLayout } from "./types";
+import type {
+  AppData,
+  FamilyRelationship,
+  GenerationLimits,
+  Person,
+  RelationshipTerminology,
+  TreeLayout
+} from "./types";
 
 export interface TreePreparationRequest {
   requestKey: string;
@@ -9,6 +17,7 @@ export interface TreePreparationRequest {
   layoutSelectionId?: string;
   generationLimits: GenerationLimits;
   language: AppData["language"];
+  relationshipTerminology: RelationshipTerminology;
   controlsVisible: boolean;
 }
 
@@ -25,6 +34,7 @@ export function prepareTree({
   layoutSelectionId,
   generationLimits,
   language,
+  relationshipTerminology,
   controlsVisible
 }: TreePreparationRequest): TreePreparationResult {
   const geometryLayout = createTreeLayout(
@@ -32,7 +42,7 @@ export function prepareTree({
     relationships,
     layoutSelectionId,
     generationLimits,
-    language
+    effectiveKinshipLanguage(language, relationshipTerminology)
   );
   const routingLayout = {
     ...geometryLayout,
@@ -57,7 +67,7 @@ export const personForTreePreparation = (person: Person): Person => ({
   birthDatePrecision: person.birthDatePrecision,
   notes: "",
   addressLine: "",
-  city: "",
+  city: person.city,
   province: "",
   country: "",
   postalCode: ""

@@ -31,6 +31,7 @@ const SUBTYPES_BY_KIND: Record<RelationshipKind, ReadonlySet<RelationshipSubtype
   sibling: new Set(SUBTYPES.slice(9))
 };
 const PRECISIONS = ["exact", "month", "year"] as const;
+const RELATIONSHIP_TERMINOLOGIES = ["id", "jv-yogyakarta", "jv-east-java"] as const;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 type JsonObject = Record<string, unknown>;
 type IdFactory = () => string;
@@ -274,7 +275,20 @@ export function validateAppData(value: unknown): AppData {
       zoom
     };
   }
-  return { version: 1, trees, people, relationships, selectedTreeId, language: enumValue(root.language, ["en", "id"], "data.language"), viewports };
+  return {
+    version: 1,
+    trees,
+    people,
+    relationships,
+    selectedTreeId,
+    language: enumValue(root.language, ["en", "id"], "data.language"),
+    relationshipTerminology: enumValue(
+      root.relationshipTerminology ?? "id",
+      RELATIONSHIP_TERMINOLOGIES,
+      "data.relationshipTerminology"
+    ),
+    viewports
+  };
 }
 const byteLength = (value: string) => new TextEncoder().encode(value).byteLength;
 const assertBoundedText = (value: string, label: string) => {
@@ -330,6 +344,7 @@ export const mergeImportedData = (imported: AppData, options: BackupImportOption
     relationships: imported.relationships.map((relationship) => ({ ...relationship, id: relationshipIds.get(relationship.id)!, treeId: treeIds.get(relationship.treeId)!, fromPersonId: personIds.get(relationship.fromPersonId)!, toPersonId: personIds.get(relationship.toPersonId)! })),
     selectedTreeId: imported.selectedTreeId ? treeIds.get(imported.selectedTreeId) : undefined,
     language: imported.language,
+    relationshipTerminology: imported.relationshipTerminology ?? "id",
     viewports: Object.fromEntries(Object.entries(imported.viewports).map(([treeId, viewport]) => [treeIds.get(treeId)!, viewport]))
   };
   if (!target) return validateAppData(remapped);
@@ -340,6 +355,7 @@ export const mergeImportedData = (imported: AppData, options: BackupImportOption
     relationships: [...target.relationships, ...remapped.relationships],
     selectedTreeId: remapped.selectedTreeId ?? target.selectedTreeId,
     language: target.language,
+    relationshipTerminology: target.relationshipTerminology ?? "id",
     viewports: { ...target.viewports, ...remapped.viewports }
   });
 };

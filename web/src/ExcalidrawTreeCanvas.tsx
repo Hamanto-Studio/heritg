@@ -31,7 +31,7 @@ import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { ExportPrivacySelection } from "./exportPrivacy";
 import type { Translator } from "./i18n";
-import { deriveKinshipLabels } from "./kinship";
+import { deriveKinshipLabels, effectiveKinshipLanguage } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import {
   projectConnectionPlanToElements,
@@ -43,6 +43,7 @@ import type {
   GenerationLimits,
   Person,
   PositionedPerson,
+  RelationshipTerminology,
   SceneLifeSummaryOptions,
   ViewportState
 } from "./types";
@@ -64,6 +65,7 @@ export interface TreeCanvasProps {
   selectedPersonId?: string;
   generationLimits: GenerationLimits;
   language: AppData["language"];
+  relationshipTerminology?: RelationshipTerminology;
   initialViewport?: ViewportState;
   t: Translator;
   onAddRelative: (personId: string) => void;
@@ -314,6 +316,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   selectedPersonId,
   generationLimits,
   language,
+  relationshipTerminology = "id",
   initialViewport,
   t,
   onAddRelative,
@@ -334,7 +337,6 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   const viewportCallback = useRef(onViewportChange);
   const didInitialMobileFit = useRef(false);
   const registeredFileIds = useRef(new Set<string>());
-  const lowDetailScene = useRef(false);
   const wheelFrame = useRef<number | undefined>(undefined);
   const pendingWheel = useRef<{
     deltaX: number;
@@ -357,15 +359,20 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
       relationships,
       layoutSelectionId,
       generationLimits,
-      language
+      effectiveKinshipLanguage(language, relationshipTerminology)
     ),
-    [generationLimits, language, layoutSelectionId, people, relationships]
+    [generationLimits, language, layoutSelectionId, people, relationshipTerminology, relationships]
   );
   const layout = useMemo(() => {
     if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
       return geometryLayout;
     }
-    const labels = deriveKinshipLabels(selectedPersonId, people, relationships, language);
+    const labels = deriveKinshipLabels(
+      selectedPersonId,
+      people,
+      relationships,
+      effectiveKinshipLanguage(language, relationshipTerminology)
+    );
     return {
       ...geometryLayout,
       people: geometryLayout.people.map((person) => ({
@@ -373,7 +380,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
         role: labels[person.id] ?? ""
       }))
     };
-  }, [geometryLayout, language, people, relationships, selectedPersonId, selectionFiltersLayout]);
+  }, [geometryLayout, language, people, relationshipTerminology, relationships, selectedPersonId, selectionFiltersLayout]);
   const routingLayout = useMemo(() => ({
     ...geometryLayout,
     people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
@@ -403,15 +410,6 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
     ),
     [connectionElements, connectionPlan, language, layout, lifeSummaryOptions, resolveAvatar, selectedPersonId]
   );
-  const overviewElements = useMemo(() => scene.elements.filter((element) => {
-    const customData = element.customData as { heritgType?: unknown } | undefined;
-    if (customData?.heritgType === "person") return element.id.endsWith(":avatar");
-    if (customData?.heritgType === "relationship") return !element.id.includes(":label");
-    return true;
-  }), [scene.elements]);
-  const shouldRenderOverview = (zoom: number) =>
-    lowDetailScene.current ? zoom < 0.42 : zoom < 0.3;
-
   useEffect(() => {
     viewportCallback.current = onViewportChange;
   }, [onViewportChange]);
@@ -606,16 +604,15 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
       api.addFiles(newFiles);
       Object.keys(scene.files).forEach((fileId) => registeredFileIds.current.add(fileId));
     }
-    lowDetailScene.current = shouldRenderOverview(api.getAppState().zoom.value);
     api.updateScene({
-      elements: lowDetailScene.current ? overviewElements : scene.elements,
+      elements: scene.elements,
       appState: {
         selectedElementIds: {},
         viewBackgroundColor: scene.appState.viewBackgroundColor
       },
       captureUpdate: CaptureUpdateAction.NEVER
     });
-  }, [api, overviewElements, scene]);
+  }, [api, scene]);
 
   useEffect(() => {
     if (!api || didInitialMobileFit.current || window.innerWidth > 840 || !scene.elements.length) return;
@@ -653,14 +650,6 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   });
 
   const persistViewport = (scrollX: number, scrollY: number, zoom: { value: number }) => {
-    const nextLowDetailScene = shouldRenderOverview(zoom.value);
-    if (api && nextLowDetailScene !== lowDetailScene.current) {
-      lowDetailScene.current = nextLowDetailScene;
-      api.updateScene({
-        elements: nextLowDetailScene ? overviewElements : scene.elements,
-        captureUpdate: CaptureUpdateAction.NEVER
-      });
-    }
     pendingViewport.current = { scrollX, scrollY, zoom: zoom.value };
     if (viewportTimer.current) clearTimeout(viewportTimer.current);
     viewportTimer.current = setTimeout(() => {

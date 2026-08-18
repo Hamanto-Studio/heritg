@@ -67,6 +67,7 @@ describe("manual child order editing", () => {
     });
 
     const input = container?.querySelector<HTMLInputElement>('input[type="number"]');
+    expect(container?.textContent).toContain("Current city / domicile");
     expect(input?.value).toBe("2");
     await act(async () => {
       if (!input) return;

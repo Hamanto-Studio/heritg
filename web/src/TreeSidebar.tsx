@@ -1,5 +1,7 @@
 import {
+  Bug,
   CircleHelp,
+  CopyPlus,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -17,6 +19,7 @@ import {
   heritgArchiveProtection,
   importHeritgArchive
 } from "./heritgArchive";
+import { FocusedTreeCopyDialog } from "./FocusedTreeCopyDialog";
 import { PasswordField } from "./PasswordField";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
@@ -40,6 +43,7 @@ interface TreeSidebarProps {
   onImported: () => void;
   onShowHelp: () => void;
   onShowPrivacy: () => void;
+  onReportBug: () => void;
 }
 
 const treeDate = (value: string, language: AppData["language"]) =>
@@ -57,13 +61,15 @@ export function TreeSidebar({
   onError,
   onImported,
   onShowHelp,
-  onShowPrivacy
+  onShowPrivacy,
+  onReportBug
 }: TreeSidebarProps) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const [menuTreeId, setMenuTreeId] = useState<string>();
   const [edit, setEdit] = useState<EditState>();
   const [deleting, setDeleting] = useState<FamilyTree>();
+  const [copying, setCopying] = useState<FamilyTree>();
   const [editError, setEditError] = useState<string>();
   const [pendingArchive, setPendingArchive] = useState<{ name: string; bytes: Uint8Array }>();
   const [archivePassword, setArchivePassword] = useState("");
@@ -234,6 +240,12 @@ export function TreeSidebar({
                   {menuTreeId === tree.id ? (
                     <div className="tree-menu">
                       <button onClick={() => {
+                        setCopying(tree);
+                        setMenuTreeId(undefined);
+                      }} type="button" disabled={count === 0}>
+                        <CopyPlus aria-hidden="true" size={15} /> {t("makeFamilyCopy")}
+                      </button>
+                      <button onClick={() => {
                         setEdit({ kind: "rename", tree, value: tree.title });
                         setMenuTreeId(undefined);
                       }} type="button">
@@ -282,6 +294,10 @@ export function TreeSidebar({
           <button onClick={() => { onShowHelp(); onClose(); }} type="button">
             <CircleHelp aria-hidden="true" size={17} />
             <span><strong>{t("help")}</strong><small>{t("welcomeHelpDetail")}</small></span>
+          </button>
+          <button onClick={() => { onReportBug(); onClose(); }} type="button">
+            <Bug aria-hidden="true" size={17} />
+            <span><strong>{t("reportBug")}</strong><small>{t("reportBugDetail")}</small></span>
           </button>
         </div>
       </aside>
@@ -346,6 +362,20 @@ export function TreeSidebar({
           </label>
           <ErrorNotice message={editError} />
         </Modal>
+      ) : null}
+
+      {copying ? (
+        <FocusedTreeCopyDialog
+          actions={actions}
+          data={data}
+          onClose={() => setCopying(undefined)}
+          onCreated={() => {
+            setCopying(undefined);
+            onClose();
+          }}
+          sourceTree={copying}
+          t={t}
+        />
       ) : null}
 
       {deleting ? (

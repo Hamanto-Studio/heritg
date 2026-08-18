@@ -106,6 +106,35 @@ afterEach(async () => {
 });
 
 describe("atomic relationship store actions", () => {
+  it("publishes and persists a complete focused family copy atomically", async () => {
+    dbMocks.saveAppData.mockClear();
+    let copiedTreeId = "";
+
+    act(() => {
+      copiedTreeId = currentActions().copyFocusedTree(
+        "tree-a",
+        "Target Family",
+        "target"
+      );
+    });
+
+    const copiedTree = currentData().trees.find((tree) => tree.id === copiedTreeId)!;
+    const copiedPeople = currentData().people.filter((person) => person.treeId === copiedTreeId);
+    expect(currentData().selectedTreeId).toBe(copiedTreeId);
+    expect(copiedTree.lastSelectedPersonId).toBeDefined();
+    expect(copiedPeople.map((person) => person.displayName).sort()).toEqual([
+      "Active spouse", "Child", "Former partner", "Target"
+    ]);
+    expect(currentData().people.filter((person) => person.treeId === "tree-a")).toHaveLength(5);
+
+    await vi.waitFor(() => expect(dbMocks.saveAppData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selectedTreeId: copiedTreeId,
+        trees: expect.arrayContaining([expect.objectContaining({ id: copiedTreeId })])
+      })
+    ));
+  });
+
   it("publishes selection immediately and persists it after the interaction", async () => {
     vi.useFakeTimers();
     dbMocks.saveAppData.mockClear();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { personLifeSummary } from "./lifeSummary";
+import { personCitySummary, personLifeSummary } from "./lifeSummary";
 
 describe("person life summary", () => {
   const now = new Date(2026, 7, 2);
@@ -47,5 +47,13 @@ describe("person life summary", () => {
     })).toBe("Age 36");
     expect(personLifeSummary(person, "en", now, { showBirthDate: false, showAge: false }))
       .toBeUndefined();
+  });
+});
+
+describe("current city summary", () => {
+  it("shows only the city because the editor already explains its meaning", () => {
+    expect(personCitySummary({ city: "  South   Jakarta " })).toBe("South Jakarta");
+    expect(personCitySummary({ city: "Jakarta Selatan" })).toBe("Jakarta Selatan");
+    expect(personCitySummary({ city: "   " })).toBeUndefined();
   });
 });

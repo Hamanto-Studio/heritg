@@ -18,7 +18,8 @@ export function Modal({
   size = "medium",
   label,
   closeLabel = "Close",
-  inactive = false
+  inactive = false,
+  presentation = "dialog"
 }: {
   title: string;
   onClose: () => void;
@@ -28,6 +29,7 @@ export function Modal({
   label?: string;
   closeLabel?: string;
   inactive?: boolean;
+  presentation?: "dialog" | "sheet";
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef(onClose);
@@ -82,13 +84,13 @@ export function Modal({
   }, [inactive]);
 
   return (
-    <div aria-hidden={inactive || undefined} className="modal-backdrop" inert={inactive} onMouseDown={(event) => {
+    <div aria-hidden={inactive || undefined} className={`modal-backdrop ${presentation === "sheet" ? "bottom-sheet-backdrop" : ""}`} inert={inactive} onMouseDown={(event) => {
       if (!inactive && event.target === event.currentTarget) onClose();
     }}>
       <section
         aria-label={label ?? title}
         aria-modal={!inactive}
-        className={`modal-card modal-${size}`}
+        className={`modal-card modal-${size} ${presentation === "sheet" ? "bottom-sheet-card" : ""}`}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
