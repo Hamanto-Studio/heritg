@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   archivePasswordIsReady,
   archivePasswordMeetsRequirements,
-  archivePasswordRequirements
+  archivePasswordRequirements,
+  SettingsDialog
 } from "./SettingsDialog";
+import { createInitialAppData } from "./domain";
+import { createTranslator } from "./i18n";
+import type { AppActions } from "./store";
 
 describe("encrypted backup password validation", () => {
   it("allows both password fields to be empty", () => {
@@ -34,5 +39,32 @@ describe("encrypted backup password validation", () => {
       number: false,
       special: false
     });
+  });
+});
+
+describe("relationship terminology settings", () => {
+  it("shows regional terminology choices only with the Indonesian interface", () => {
+    const actions = {} as AppActions;
+    const indonesian = renderToStaticMarkup(
+      <SettingsDialog
+        actions={actions}
+        data={createInitialAppData("id")}
+        onClose={() => undefined}
+        t={createTranslator("id")}
+      />
+    );
+    const english = renderToStaticMarkup(
+      <SettingsDialog
+        actions={actions}
+        data={createInitialAppData("en")}
+        onClose={() => undefined}
+        t={createTranslator("en")}
+      />
+    );
+
+    expect(indonesian).toContain("Istilah hubungan keluarga");
+    expect(indonesian).toContain("Basa Jawa · Yogyakarta");
+    expect(indonesian).toContain("Basa Jawa · Jawa Timur");
+    expect(english).not.toContain("Relationship terminology");
   });
 });

@@ -1,5 +1,6 @@
 import {
   CircleHelp,
+  CopyPlus,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -17,6 +18,7 @@ import {
   heritgArchiveProtection,
   importHeritgArchive
 } from "./heritgArchive";
+import { FocusedTreeCopyDialog } from "./FocusedTreeCopyDialog";
 import { PasswordField } from "./PasswordField";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
@@ -64,6 +66,7 @@ export function TreeSidebar({
   const [menuTreeId, setMenuTreeId] = useState<string>();
   const [edit, setEdit] = useState<EditState>();
   const [deleting, setDeleting] = useState<FamilyTree>();
+  const [copying, setCopying] = useState<FamilyTree>();
   const [editError, setEditError] = useState<string>();
   const [pendingArchive, setPendingArchive] = useState<{ name: string; bytes: Uint8Array }>();
   const [archivePassword, setArchivePassword] = useState("");
@@ -234,6 +237,12 @@ export function TreeSidebar({
                   {menuTreeId === tree.id ? (
                     <div className="tree-menu">
                       <button onClick={() => {
+                        setCopying(tree);
+                        setMenuTreeId(undefined);
+                      }} type="button" disabled={count === 0}>
+                        <CopyPlus aria-hidden="true" size={15} /> {t("makeFamilyCopy")}
+                      </button>
+                      <button onClick={() => {
                         setEdit({ kind: "rename", tree, value: tree.title });
                         setMenuTreeId(undefined);
                       }} type="button">
@@ -346,6 +355,20 @@ export function TreeSidebar({
           </label>
           <ErrorNotice message={editError} />
         </Modal>
+      ) : null}
+
+      {copying ? (
+        <FocusedTreeCopyDialog
+          actions={actions}
+          data={data}
+          onClose={() => setCopying(undefined)}
+          onCreated={() => {
+            setCopying(undefined);
+            onClose();
+          }}
+          sourceTree={copying}
+          t={t}
+        />
       ) : null}
 
       {deleting ? (

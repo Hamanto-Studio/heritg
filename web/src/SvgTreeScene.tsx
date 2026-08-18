@@ -3,7 +3,7 @@ import { useId } from "react";
 import { isValidAvatarImage } from "./avatar";
 import { BIRTH_ORDER_BADGE, birthOrderLabel } from "./birthOrder";
 import type { ConnectionPlan } from "./connectionPlan";
-import { personLifeTop } from "./connectionGeometry";
+import { personCityTop, personLifeTop } from "./connectionGeometry";
 import {
   CONNECTOR_STYLE,
   branchJunctions,
@@ -11,8 +11,13 @@ import {
   roundedConnectorPath
 } from "./connectorStyle";
 import { LAYOUT_METRICS } from "./layout";
-import { personLifeSummary } from "./lifeSummary";
+import { personCitySummary, personLifeSummary } from "./lifeSummary";
 import { personAvatarAppearance } from "./personAvatarAppearance";
+import {
+  formatPersonName,
+  PERSON_NAME_FONT_SIZE,
+  PERSON_NAME_LINE_HEIGHT
+} from "./personName";
 import type {
   AppData,
   PositionedPerson,
@@ -25,7 +30,6 @@ interface SvgTreeSceneProps {
   language: AppData["language"];
   layout: TreeLayout;
   lifeSummaryOptions?: SceneLifeSummaryOptions;
-  overview: boolean;
   selectedPersonId?: string;
 }
 
@@ -37,28 +41,16 @@ const SCENE_COLORS = {
   brand: CONNECTOR_STYLE.familyColor
 } as const;
 
-const compactText = (value: string, maximum: number) => {
-  const normalized = value.trim().replace(/\s+/g, " ") || "Unnamed person";
-  return normalized.length > maximum
-    ? `${normalized.slice(0, maximum - 3).trimEnd()}...`
-    : normalized;
-};
-
-const nameFontSize = (value: string) =>
-  Math.max(9, Math.min(16, Math.floor(320 / Math.max(20, value.length))));
-
 const PersonNode = ({
   clipPrefix,
   language,
   lifeSummaryOptions,
-  overview,
   person,
   selectedPersonId
 }: {
   clipPrefix: string;
   language: AppData["language"];
   lifeSummaryOptions?: SceneLifeSummaryOptions;
-  overview: boolean;
   person: PositionedPerson;
   selectedPersonId?: string;
 }) => {
@@ -68,15 +60,17 @@ const PersonNode = ({
   const clipId = `${clipPrefix}-${encodeURIComponent(person.id).replaceAll("%", "-")}`;
   const hasPhoto = isValidAvatarImage(person.photoDataUrl);
   const appearance = personAvatarAppearance(person.gender);
-  const name = compactText(person.displayName, 34);
+  const name = formatPersonName(person.displayName);
   const life = personLifeSummary(person, language, new Date(), lifeSummaryOptions ? {
     showBirthDate: lifeSummaryOptions.showBirthDate,
     showAge: lifeSummaryOptions.showAge,
     ageOverride: lifeSummaryOptions.ageByPersonId?.[person.id]
   } : undefined);
+  const city = personCitySummary(person);
 
   return (
     <g className="svg-person" data-gender={person.gender} data-person-id={person.id}>
+      <title>{name.fullName}</title>
       <circle
         cx={person.x}
         cy={person.y}
@@ -85,7 +79,7 @@ const PersonNode = ({
         stroke={selected ? SCENE_COLORS.brand : appearance.stroke}
         strokeWidth={selected ? 2 : 1}
       />
-      {!overview ? <>
+      <>
         <circle
           cx={person.x}
           cy={person.y}
@@ -141,16 +135,25 @@ const PersonNode = ({
             </text>
           </g>
         ) : null}
-      </> : null}
-      {!overview ? <>
+      </>
+      <>
         <text
           className="svg-person-name"
-          fontSize={nameFontSize(name)}
+          fontSize={PERSON_NAME_FONT_SIZE}
           textAnchor="middle"
           x={person.x}
-          y={person.y + LAYOUT_METRICS.labelTop + nameFontSize(name)}
+          y={person.y + LAYOUT_METRICS.labelTop + PERSON_NAME_FONT_SIZE}
         >
-          {name}
+          {name.lines.map((line, index) => (
+            <tspan
+              key={`${line}:${index}`}
+              x={person.x}
+              y={person.y + LAYOUT_METRICS.labelTop + PERSON_NAME_FONT_SIZE +
+                index * PERSON_NAME_LINE_HEIGHT}
+            >
+              {line}
+            </tspan>
+          ))}
         </text>
         {showRole ? (
           <text
@@ -158,7 +161,7 @@ const PersonNode = ({
             fill={selected ? SCENE_COLORS.brand : SCENE_COLORS.subtleText}
             textAnchor="middle"
             x={person.x}
-            y={person.y + LAYOUT_METRICS.roleTop + 13}
+            y={person.y + LAYOUT_METRICS.roleTop + name.extraHeight + 13}
           >
             {person.role}
           </text>
@@ -168,12 +171,22 @@ const PersonNode = ({
             className="svg-person-life"
             textAnchor="middle"
             x={person.x}
-            y={person.y + personLifeTop(showRole) + 11}
+            y={person.y + personLifeTop(showRole, name.extraHeight) + 11}
           >
             {life}
           </text>
         ) : null}
-      </> : null}
+        {city ? (
+          <text
+            className="svg-person-city"
+            textAnchor="middle"
+            x={person.x}
+            y={person.y + personCityTop(showRole, Boolean(life), name.extraHeight) + 11}
+          >
+            {city}
+          </text>
+        ) : null}
+      </>
     </g>
   );
 };
@@ -183,7 +196,6 @@ export function SvgTreeScene({
   language,
   layout,
   lifeSummaryOptions,
-  overview,
   selectedPersonId
 }: SvgTreeSceneProps) {
   const clipPrefix = useId().replaceAll(":", "-");
@@ -237,14 +249,14 @@ export function SvgTreeScene({
           />
         </g>
       ))}
-      {!overview ? connectionPlan.nonParentRoutes.map((route) => route.label ? (
+      {connectionPlan.nonParentRoutes.map((route) => route.label ? (
         <g className="svg-relationship-label" key={`${route.id}:label`}>
           <rect {...route.label.rect} rx={12} />
           <text textAnchor="middle" x={route.label.center.x} y={route.label.center.y + 4}>
             {route.label.text}
           </text>
         </g>
-      ) : null) : null}
+      ) : null)}
     </g>
     <g className="svg-people">
       {layout.people.map((person) => (
@@ -253,7 +265,6 @@ export function SvgTreeScene({
           key={person.id}
           language={language}
           lifeSummaryOptions={lifeSummaryOptions}
-          overview={overview}
           person={person}
           selectedPersonId={selectedPersonId}
         />

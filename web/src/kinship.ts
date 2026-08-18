@@ -3,8 +3,16 @@ import type {
   FamilyRelationship,
   Gender,
   Person,
-  RelationshipSubtype
+  RelationshipSubtype,
+  RelationshipTerminology
 } from "./types";
+
+export type KinshipLanguage = AppData["language"] | Exclude<RelationshipTerminology, "id">;
+
+export const effectiveKinshipLanguage = (
+  language: AppData["language"],
+  terminology: RelationshipTerminology = "id"
+): KinshipLanguage => language === "en" ? "en" : terminology;
 
 const ancestrySubtypes = new Set<RelationshipSubtype>([
   "biologicalParent",
@@ -244,14 +252,81 @@ const localizedLabel = (label: string, language: AppData["language"]): string =>
   return label;
 };
 
+const JAVANESE_LABELS: Record<string, string> = {
+  "Selected person": "Wong kapilih",
+  "Father": "Bapak", "Mother": "Ibu", "Parent": "Wong tuwa",
+  "Son": "Anak", "Daughter": "Anak", "Child": "Anak",
+  "Brother": "Sedulur", "Sister": "Sedulur", "Sibling": "Sedulur",
+  "Husband": "Bojo", "Wife": "Bojo", "Spouse": "Bojo", "Partner": "Bojo",
+  "Former partner": "Mantan bojo", "Former husband": "Mantan bojo",
+  "Former wife": "Mantan bojo", "Former spouse": "Mantan bojo",
+  "Adoptive father": "Bapak angkat", "Adoptive mother": "Ibu angkat",
+  "Adoptive parent": "Wong tuwa angkat", "Adoptive son": "Anak pupon",
+  "Adoptive daughter": "Anak pupon", "Adoptive child": "Anak pupon",
+  "Foster father": "Bapak asuh", "Foster mother": "Ibu asuh",
+  "Foster parent": "Wong tuwa asuh", "Foster son": "Anak asuh",
+  "Foster daughter": "Anak asuh", "Foster child": "Anak asuh",
+  "Guardian": "Wali", "Ward": "Anak sing diwaleni",
+  "Stepfather": "Bapak kuwalon", "Stepmother": "Ibu kuwalon",
+  "Step-parent": "Wong tuwa kuwalon", "Stepson": "Anak kuwalon",
+  "Stepdaughter": "Anak kuwalon", "Stepchild": "Anak kuwalon",
+  "Half-brother": "Sedulur tunggal bapak utawa ibu",
+  "Half-sister": "Sedulur tunggal bapak utawa ibu",
+  "Half-sibling": "Sedulur tunggal bapak utawa ibu",
+  "Adoptive brother": "Sedulur angkat", "Adoptive sister": "Sedulur angkat",
+  "Adoptive sibling": "Sedulur angkat", "Foster brother": "Sedulur asuh",
+  "Foster sister": "Sedulur asuh", "Foster sibling": "Sedulur asuh",
+  "Stepbrother": "Sedulur kuwalon", "Stepsister": "Sedulur kuwalon",
+  "Stepsibling": "Sedulur kuwalon",
+  "Grandson": "Putu", "Granddaughter": "Putu", "Grandchild": "Putu",
+  "Uncle": "Pak", "Aunt": "Bu", "Aunt/Uncle": "Sedulur wong tuwa",
+  "Nephew": "Keponakan", "Niece": "Keponakan", "Niece/Nephew": "Keponakan",
+  "Father-in-law": "Bapak maratuwa", "Mother-in-law": "Ibu maratuwa",
+  "Parent-in-law": "Maratuwa", "Son-in-law": "Mantu", "Daughter-in-law": "Mantu",
+  "Child-in-law": "Mantu", "Brother-in-law": "Ipe", "Sister-in-law": "Ipe",
+  "Sibling-in-law": "Ipe", "Family member": "Sanak-sedulur"
+};
+
+const javaneseGenerationLabel = (label: string, terminology: Exclude<RelationshipTerminology, "id">) => {
+  const grandparent = terminology === "jv-yogyakarta" ? "Simbah" : "Mbah";
+  if (label === "Grandfather") return `${grandparent} Kakung`;
+  if (label === "Grandmother") return `${grandparent} Putri`;
+  if (label === "Grandparent") return grandparent;
+  if (/^Great-/i.test(label)) {
+    const greatCount = label.match(/great-/gi)?.length ?? 1;
+    const level = ["Buyut", "Canggah", "Wareng", "Udeg-udeg", "Gantung siwur"][
+      Math.min(greatCount - 1, 4)
+    ];
+    return /grand(?:father|mother|parent)/i.test(label) ? `${grandparent} ${level}` : level;
+  }
+  return undefined;
+};
+
+const javaneseBasicLabel = (
+  label: string,
+  terminology: Exclude<RelationshipTerminology, "id">
+): string => {
+  if (label.endsWith(" by marriage")) {
+    return javaneseBasicLabel(label.slice(0, -" by marriage".length), terminology);
+  }
+  const generation = javaneseGenerationLabel(label, terminology);
+  if (generation) return generation;
+  if (JAVANESE_LABELS[label]) return JAVANESE_LABELS[label];
+  if (/cousin/i.test(label)) return "Sedulur";
+  return INDONESIAN_LABELS[label] ?? label;
+};
+
 export function directRelationshipLabel(
   person: Person,
   relativeToPersonId: string,
   relationships: readonly FamilyRelationship[],
-  language: AppData["language"] = "en"
+  language: KinshipLanguage = "en"
 ): string | undefined {
   const label = directRelationshipLabelEnglish(person, relativeToPersonId, relationships);
-  return label ? localizedLabel(label, language) : undefined;
+  if (!label) return undefined;
+  return language === "jv-yogyakarta" || language === "jv-east-java"
+    ? javaneseBasicLabel(label, language)
+    : localizedLabel(label, language);
 }
 
 const ancestorDistances = (
@@ -529,34 +604,136 @@ function kinshipLabelEnglish(
   return inLawLabel(person, relativeToPersonId, people, relationships, index);
 }
 
+const compareSeniority = (left: Person, right: Person) => {
+  if (left.birthOrderOverride !== undefined && right.birthOrderOverride !== undefined &&
+      left.birthOrderOverride !== right.birthOrderOverride) {
+    return left.birthOrderOverride < right.birthOrderOverride ? -1 : 1;
+  }
+  if (left.birthDate && right.birthDate && left.birthDate !== right.birthDate) {
+    return left.birthDate < right.birthDate ? -1 : 1;
+  }
+  return 0;
+};
+
+const javaneseSiblingLabel = (
+  person: Person,
+  reference: Person,
+  terminology: Exclude<RelationshipTerminology, "id">
+) => {
+  const seniority = compareSeniority(person, reference);
+  if (seniority === 0) return "Sedulur";
+  if (seniority > 0) return terminology === "jv-yogyakarta" ? "Adhi" : "Adik";
+  if (person.gender === "male") {
+    return terminology === "jv-yogyakarta" ? "Kangmas" : "Mas";
+  }
+  if (person.gender === "female") {
+    return terminology === "jv-yogyakarta" ? "Mbakyu" : "Mbak";
+  }
+  return "Sedulur tuwa";
+};
+
+const javaneseParentSiblingLabel = (
+  person: Person,
+  referenceId: string,
+  relationships: readonly FamilyRelationship[],
+  index: KinshipIndex
+) => {
+  const referenceParents = indexedIds(index.parents, referenceId);
+  const connectingParent = [...referenceParents]
+    .map((id) => index.peopleById.get(id))
+    .find((parent) => parent && areSiblings(person.id, parent.id, relationships, index));
+  const seniority = connectingParent ? compareSeniority(person, connectingParent) : 0;
+  if (seniority === 0) {
+    return person.gender === "male" ? "Pak" : person.gender === "female" ? "Bu" : "Sedulur wong tuwa";
+  }
+  if (seniority < 0) {
+    return person.gender === "male" ? "Pak Dhe" : person.gender === "female" ? "Bu Dhe" : "Sedulur tuwane wong tuwa";
+  }
+  return person.gender === "male" ? "Pak Lik" : person.gender === "female" ? "Bu Lik" : "Sedulur enome wong tuwa";
+};
+
+const javaneseCousinLabel = (
+  label: string,
+  terminology: Exclude<RelationshipTerminology, "id">
+) => {
+  if (/^First cousin/i.test(label)) {
+    return terminology === "jv-yogyakarta" ? "Nak-sanak" : "Misanan";
+  }
+  if (/^Second cousin/i.test(label)) {
+    return terminology === "jv-yogyakarta" ? "Misan" : "Mindhoan";
+  }
+  if (/^Third cousin/i.test(label)) {
+    return terminology === "jv-yogyakarta" ? "Mindho" : "Sedulur adoh";
+  }
+  return "Sedulur adoh";
+};
+
+const regionalKinshipLabel = (
+  label: string,
+  personId: string,
+  relativeToPersonId: string,
+  relationships: readonly FamilyRelationship[],
+  terminology: Exclude<RelationshipTerminology, "id">,
+  index: KinshipIndex
+) => {
+  const person = index.peopleById.get(personId);
+  const reference = index.peopleById.get(relativeToPersonId);
+  if (!person || !reference) return javaneseBasicLabel(label, terminology);
+  if (["Brother", "Sister", "Sibling"].includes(label)) {
+    return javaneseSiblingLabel(person, reference, terminology);
+  }
+  if (["Uncle", "Aunt", "Aunt/Uncle"].includes(label)) {
+    return javaneseParentSiblingLabel(person, relativeToPersonId, relationships, index);
+  }
+  if (/cousin/i.test(label)) return javaneseCousinLabel(label, terminology);
+  return javaneseBasicLabel(label, terminology);
+};
+
 export function kinshipLabel(
   personId: string,
   relativeToPersonId: string,
   people: readonly Person[],
   relationships: readonly FamilyRelationship[],
-  language: AppData["language"] = "en"
+  language: KinshipLanguage = "en"
 ): string | undefined {
-  const label = kinshipLabelEnglish(personId, relativeToPersonId, people, relationships);
-  return label ? localizedLabel(label, language) : undefined;
+  const index = createKinshipIndex(people, relationships);
+  const label = kinshipLabelEnglish(personId, relativeToPersonId, people, relationships, index);
+  if (!label) return undefined;
+  return language === "jv-yogyakarta" || language === "jv-east-java"
+    ? regionalKinshipLabel(
+        label,
+        personId,
+        relativeToPersonId,
+        relationships,
+        language,
+        index
+      )
+    : localizedLabel(label, language);
 }
 
 export function deriveKinshipLabels(
   selectedPersonId: string,
   people: readonly Person[],
   relationships: readonly FamilyRelationship[],
-  language: AppData["language"] = "en"
+  language: KinshipLanguage = "en"
 ): Record<string, string> {
   const index = createKinshipIndex(people, relationships);
   return [...people]
     .sort((left, right) => compareText(left.id, right.id))
     .reduce<Record<string, string>>((labels, person) => {
-      labels[person.id] =
-        localizedLabel(
-          kinshipLabelEnglish(
-            person.id, selectedPersonId, people, relationships, index
-          ) ?? "Family member",
-          language
-        );
+      const label = kinshipLabelEnglish(
+        person.id, selectedPersonId, people, relationships, index
+      ) ?? "Family member";
+      labels[person.id] = language === "jv-yogyakarta" || language === "jv-east-java"
+        ? regionalKinshipLabel(
+            label,
+            person.id,
+            selectedPersonId,
+            relationships,
+            language,
+            index
+          )
+        : localizedLabel(label, language);
       return labels;
     }, {});
 }

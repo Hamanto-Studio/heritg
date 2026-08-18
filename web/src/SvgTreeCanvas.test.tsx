@@ -4,7 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SvgTreeCanvas } from "./SvgTreeCanvas";
 import { prepareTree, type TreePreparationRequest, type TreePreparationResult } from "./treePreparation";
-import type { FamilyRelationship, Person } from "./types";
+import type {
+  AppData,
+  FamilyRelationship,
+  Person,
+  RelationshipTerminology,
+  ViewportState
+} from "./types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -97,13 +103,17 @@ describe("SvgTreeCanvas", () => {
     onSelectPerson = vi.fn(),
     selectedPersonId?: string,
     canvasPeople: Person[] = [person],
-    canvasRelationships: FamilyRelationship[] = []
+    canvasRelationships: FamilyRelationship[] = [],
+    initialViewport?: ViewportState,
+    relationshipTerminology?: RelationshipTerminology,
+    language: AppData["language"] = "en"
   ) => {
     act(() => root.render(
       <SvgTreeCanvas
         actionsVisible
         generationLimits={{ ancestors: null, descendants: null }}
-        language="en"
+        initialViewport={initialViewport}
+        language={language}
         onAddRelative={vi.fn()}
         onCanvasInteract={vi.fn()}
         onDeselectPerson={vi.fn()}
@@ -112,6 +122,7 @@ describe("SvgTreeCanvas", () => {
         onViewportChange={vi.fn()}
         people={canvasPeople}
         relationships={canvasRelationships}
+        relationshipTerminology={relationshipTerminology}
         selectedPersonId={selectedPersonId}
         t={(key) => key}
         treeId="tree"
@@ -129,6 +140,27 @@ describe("SvgTreeCanvas", () => {
     expect(container.querySelector<HTMLButtonElement>('[data-canvas-person="person"]')?.ariaLabel)
       .toBe("Example Person, unspecified");
     expect(container.querySelector('[data-canvas-action="add"]')).not.toBeNull();
+  });
+
+  it("keeps the current city in worker preparation and renders it", () => {
+    renderCanvas(vi.fn(), undefined, [{ ...person, city: "Jakarta" }]);
+
+    expect(container.querySelector(".svg-person-city")?.textContent).toBe("Jakarta");
+  });
+
+  it("keeps names and photos rendered at the minimum zoom", () => {
+    renderCanvas(
+      vi.fn(),
+      undefined,
+      [{ ...person, photoDataUrl: "data:image/png;base64,AA==" }],
+      [],
+      { scrollX: 0, scrollY: 0, zoom: 0.08 }
+    );
+
+    expect(container.querySelector<SVGGElement>(".svg-tree-scene")?.style.transform)
+      .toContain("scale(0.08)");
+    expect(container.querySelector(".svg-person-name")?.textContent).toBe("Example Person");
+    expect(container.querySelector(".svg-person image")).not.toBeNull();
   });
 
   it("shows a status indicator while tree preparation runs in the worker", () => {
@@ -197,6 +229,45 @@ describe("SvgTreeCanvas", () => {
     expect(container.querySelector('[data-birth-order="3"]')).not.toBeNull();
     const hitTarget = container.querySelector<HTMLButtonElement>('[data-canvas-person="person"]');
     expect(hitTarget?.title).toBe("Third child");
+  });
+
+  it("renders the selected regional Javanese relationship terminology", () => {
+    const parent = { ...person, id: "parent", displayName: "Parent" };
+    const focus = {
+      ...person,
+      id: "focus",
+      displayName: "Focus",
+      birthOrderOverride: 2
+    };
+    const sibling = {
+      ...person,
+      id: "sibling",
+      displayName: "Sibling",
+      gender: "male" as const,
+      birthOrderOverride: 1
+    };
+    const relationships: FamilyRelationship[] = [focus, sibling].map((child) => ({
+      id: `parent-${child.id}`,
+      treeId: "tree",
+      fromPersonId: parent.id,
+      toPersonId: child.id,
+      kind: "parent",
+      subtype: "biologicalParent",
+      createdAt: person.createdAt
+    }));
+
+    renderCanvas(
+      vi.fn(),
+      focus.id,
+      [parent, focus, sibling],
+      relationships,
+      undefined,
+      "jv-yogyakarta",
+      "id"
+    );
+
+    expect(container.querySelector('[data-person-id="sibling"] .svg-person-role')?.textContent)
+      .toBe("Kangmas");
   });
 
   it("changes the transformed scene through pointer-centered wheel zoom", () => {

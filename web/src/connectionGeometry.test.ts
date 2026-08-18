@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { relationshipLabelText } from "./connectionGeometry";
-import type { FamilyRelationship } from "./types";
+import { nodeLabelRect, parentPortY, relationshipLabelText } from "./connectionGeometry";
+import { PERSON_NAME_LINE_HEIGHT } from "./personName";
+import type { FamilyRelationship, PositionedPerson } from "./types";
 
 const formerRelationship: FamilyRelationship = {
   id: "former",
@@ -33,5 +34,47 @@ describe("relationship labels", () => {
       kind: "sibling",
       subtype: "sibling"
     }, "en")).toBeUndefined();
+  });
+});
+
+describe("person label geometry", () => {
+  const person: PositionedPerson = {
+    id: "person",
+    treeId: "tree",
+    displayName: "Short Name",
+    gender: "unspecified",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    birthDate: "1990-01-01",
+    birthDatePrecision: "exact",
+    notes: "",
+    addressLine: "",
+    city: "",
+    province: "",
+    country: "",
+    postalCode: "",
+    x: 0,
+    y: 0,
+    role: "Selected person",
+    generation: 0
+  };
+
+  it("reserves another line before routing connectors below long names", () => {
+    const shortRect = nodeLabelRect(person);
+    const longPerson = {
+      ...person,
+      displayName: "Novian Pratomo Edi Nugroho (Novan)"
+    };
+    const longRect = nodeLabelRect(longPerson);
+
+    expect(longRect.height).toBe(shortRect.height + PERSON_NAME_LINE_HEIGHT);
+    expect(parentPortY(longPerson)).toBe(parentPortY(person) + PERSON_NAME_LINE_HEIGHT);
+  });
+
+  it("reserves a separate line below life details for the current city", () => {
+    const cityPerson = { ...person, city: "Jakarta" };
+
+    expect(nodeLabelRect(cityPerson).height)
+      .toBe(nodeLabelRect(person).height + 16);
+    expect(parentPortY(cityPerson)).toBe(parentPortY(person) + 16);
   });
 });

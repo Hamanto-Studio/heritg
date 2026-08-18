@@ -1,4 +1,4 @@
-import { Globe2, ShieldCheck } from "lucide-react";
+import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { Translator } from "./i18n";
 import { passwordRequirements } from "./passwordPolicy";
@@ -30,6 +30,7 @@ export function SettingsDialog({
   const [pendingLanguage, setPendingLanguage] = useState<AppData["language"]>();
   const [isPending, startTransition] = useTransition();
   const changingLanguage = useRef(false);
+  const relationshipTerminology = data.relationshipTerminology ?? "id";
 
   useEffect(() => {
     if (!isPending) changingLanguage.current = false;
@@ -85,6 +86,47 @@ export function SettingsDialog({
           </div>
         </section>
       </div>
+
+      {data.language === "id" ? (
+        <div className="settings-group">
+          <h3>{t("relationshipTerminology")}</h3>
+          <section className="settings-card">
+            <div className="settings-card-header">
+              <Languages aria-hidden="true" size={23} />
+              <div>
+                <strong>{t("relationshipTerminology")}</strong>
+                <p className="settings-detail">{t("relationshipTerminologyDetail")}</p>
+              </div>
+            </div>
+            <div className="language-options relationship-language-options">
+              <button
+                aria-pressed={relationshipTerminology === "id"}
+                className={relationshipTerminology === "id" ? "selected" : ""}
+                onClick={() => actions.setRelationshipTerminology("id")}
+                type="button"
+              >
+                {t("indonesianRelationships")}
+              </button>
+              <button
+                aria-pressed={relationshipTerminology === "jv-yogyakarta"}
+                className={relationshipTerminology === "jv-yogyakarta" ? "selected" : ""}
+                onClick={() => actions.setRelationshipTerminology("jv-yogyakarta")}
+                type="button"
+              >
+                {t("javaneseYogyakarta")}
+              </button>
+              <button
+                aria-pressed={relationshipTerminology === "jv-east-java"}
+                className={relationshipTerminology === "jv-east-java" ? "selected" : ""}
+                onClick={() => actions.setRelationshipTerminology("jv-east-java")}
+                type="button"
+              >
+                {t("javaneseEastJava")}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <div className="privacy-note">
         <ShieldCheck aria-hidden="true" size={17} />

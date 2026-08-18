@@ -117,6 +117,7 @@ const appData: AppData = {
   ],
   selectedTreeId: "tree-original",
   language: "id",
+  relationshipTerminology: "id",
   viewports: {
     "tree-original": { scrollX: 120, scrollY: -40, zoom: 1.25 }
   }

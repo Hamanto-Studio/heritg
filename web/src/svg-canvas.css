@@ -76,6 +76,7 @@
 }
 
 .svg-relationship-label text,
+.svg-person-city,
 .svg-person-life,
 .svg-person-role {
   fill: #796f63;
@@ -89,6 +90,7 @@
 
 .svg-person-name,
 .svg-person-initial,
+.svg-person-city,
 .svg-person-life,
 .svg-person-role {
   pointer-events: none;
@@ -108,6 +110,7 @@
   font-size: 13px;
 }
 
+.svg-person-city,
 .svg-person-life {
   font-size: 11px;
 }

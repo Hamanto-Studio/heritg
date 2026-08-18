@@ -44,6 +44,17 @@ export interface PersonLifeSummaryOptions {
   ageOverride?: number;
 }
 
+export const personCitySummary = (
+  person: Pick<Person, "city">
+): string | undefined => {
+  const city = person.city.trim().replace(/\s+/g, " ");
+  if (!city) return undefined;
+  const displayed = city.length > 34
+    ? `${city.slice(0, 31).trimEnd()}...`
+    : city;
+  return displayed;
+};
+
 export const personLifeSummary = (
   person: Pick<Person, "birthDate" | "deathDate" | "birthDatePrecision">,
   language: AppData["language"] = "en",

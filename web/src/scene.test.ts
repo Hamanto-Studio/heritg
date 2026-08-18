@@ -68,6 +68,25 @@ describe("canvas avatar projection", () => {
     expect(chart.svg).not.toContain('rx="16"');
   });
 
+  it("exports long names on two centered lines without reducing their font size", () => {
+    const svg = buildChartSvg(layout, "Family", person.id).svg;
+
+    expect(svg).toContain('text-anchor="middle" font-size="14"');
+    expect(svg).toContain(">A Person With</tspan>");
+    expect(svg).toContain(">A Longer Name</tspan>");
+  });
+
+  it("exports the current city below birth details", () => {
+    const svg = buildChartSvg({
+      ...layout,
+      people: [{ ...person, city: "Jakarta" }]
+    }, "Family", person.id).svg;
+
+    expect(svg).toContain("Born Jan 1, 1990");
+    expect(svg).toContain(">Jakarta</text>");
+    expect(svg.indexOf(">Jakarta</text>")).toBeGreaterThan(svg.indexOf("Born Jan 1, 1990"));
+  });
+
   it("exports role labels only when a person is selected", () => {
     const withoutSelection = buildChartSvg(layout, "Family").svg;
     const withSelection = buildChartSvg(layout, "Family", person.id).svg;

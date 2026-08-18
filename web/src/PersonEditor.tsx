@@ -2,6 +2,7 @@ import { CalendarDays, ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } fro
 import { useRef, useState, useTransition } from "react";
 
 import { DatePickerField, formatIsoDate } from "./DatePickerField";
+import { CityField } from "./CityField";
 import { formatDisplayDate, type Translator } from "./i18n";
 import { PhotoCropDialog } from "./PhotoCropDialog";
 import { RelationshipDialog } from "./RelationshipDialog";
@@ -289,10 +290,13 @@ export function PersonEditor({
                   <option value="male">{t("male")}</option>
                 </select>
               </label>
-              <label className="field">
-                {t("city")}
-                <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
-              </label>
+              <CityField
+                label={t("city")}
+                onChange={setCity}
+                people={people}
+                treeId={treeId}
+                value={city}
+              />
               <DatePickerField
                 defaultMonth={new Date(new Date().getFullYear() - 30, 0, 1)}
                 label={t("birthDate")}
@@ -366,10 +370,14 @@ export function PersonEditor({
                     t={t}
                     value={deathDate}
                   />
-                  <label className="field full">
-                    {t("city")}
-                    <input maxLength={240} onChange={(event) => setCity(event.target.value)} value={city} />
-                  </label>
+                  <CityField
+                    full
+                    label={t("city")}
+                    onChange={setCity}
+                    people={people}
+                    treeId={treeId}
+                    value={city}
+                  />
                 </div>
               </details>
             </>

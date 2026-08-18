@@ -6,7 +6,13 @@ import {
   type TreePreparationRequest,
   type TreePreparationResult
 } from "./treePreparation";
-import type { AppData, FamilyRelationship, GenerationLimits, Person } from "./types";
+import type {
+  AppData,
+  FamilyRelationship,
+  GenerationLimits,
+  Person,
+  RelationshipTerminology
+} from "./types";
 
 interface TreePreparationOptions {
   people: Person[];
@@ -14,6 +20,7 @@ interface TreePreparationOptions {
   layoutSelectionId?: string;
   generationLimits: GenerationLimits;
   language: AppData["language"];
+  relationshipTerminology: RelationshipTerminology;
   controlsVisible: boolean;
 }
 
@@ -25,6 +32,7 @@ export function useTreePreparation(options: TreePreparationOptions) {
       layoutSelectionId: options.layoutSelectionId,
       generationLimits: options.generationLimits,
       language: options.language,
+      relationshipTerminology: options.relationshipTerminology,
       controlsVisible: options.controlsVisible
     };
     return { ...payload, requestKey: JSON.stringify(payload) };
@@ -32,6 +40,7 @@ export function useTreePreparation(options: TreePreparationOptions) {
     options.controlsVisible,
     options.generationLimits,
     options.language,
+    options.relationshipTerminology,
     options.layoutSelectionId,
     options.people,
     options.relationships
