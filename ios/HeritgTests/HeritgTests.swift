@@ -492,6 +492,47 @@ struct HeritgTests {
         )
     }
 
+    @Test func selectionOnlyUpdateReusesEntireTreeGeometry() {
+        let people = [
+            PersonSnapshot(id: "parent", name: "Budi", gender: .male),
+            PersonSnapshot(id: "child", name: "Rina", gender: .female),
+        ]
+        let relationships = [
+            RelationshipSnapshot(
+                id: "parent-child",
+                fromPersonID: "parent",
+                toPersonID: "child",
+                kind: .parent
+            ),
+        ]
+        let initial = TreeLayout.make(
+            focusedPersonID: nil,
+            people: people,
+            relationships: relationships,
+            selectedPersonID: "child"
+        )
+
+        let updated = TreeLayout.updatingRelationshipLabels(
+            in: initial,
+            selectedPersonID: "parent",
+            people: people,
+            relationships: relationships
+        )
+
+        #expect(updated.edges == initial.edges)
+        #expect(updated.nodes.map(\.id) == initial.nodes.map(\.id))
+        #expect(updated.nodes.map(\.position) == initial.nodes.map(\.position))
+        #expect(updated.nodes.map(\.birthOrder) == initial.nodes.map(\.birthOrder))
+        #expect(
+            updated.nodes.first(where: { $0.id == "parent" })?.role
+                == AppLanguage.localized("Selected person")
+        )
+        #expect(
+            updated.nodes.first(where: { $0.id == "child" })?.role
+                == AppLanguage.localized("Daughter")
+        )
+    }
+
     @Test func contradictoryParentCycleUsesCanonicalSingleGeneration() {
         let people = ["a", "b", "c"].map {
             PersonSnapshot(id: $0, name: $0, gender: .unspecified)
@@ -730,7 +771,7 @@ struct HeritgTests {
         #expect(abs(center.y - 422) < 0.001)
         #expect(abs(arbitraryPoint.x + 45) < 0.001)
         #expect(abs(arbitraryPoint.y - 382) < 0.001)
-        #expect(TreeVisualMetrics.connectorWidth(at: 0.08) == 0.75)
+        #expect(TreeVisualMetrics.connectorWidth(at: 0.08) == 0.16)
         #expect(TreeVisualMetrics.connectorWidth(at: 0.5) == 1)
     }
 
@@ -744,6 +785,10 @@ struct HeritgTests {
         for scale in [CGFloat(0.08), 0.5, 1.8] {
             let action = CGPoint(
                 x: person.x + TreeVisualMetrics.actionDistance(index: 0, at: scale),
+                y: person.y
+            )
+            let editAction = CGPoint(
+                x: person.x + TreeVisualMetrics.actionDistance(index: 1, at: scale),
                 y: person.y
             )
             let projectedPerson = TreeViewportTransform.project(
@@ -760,9 +805,18 @@ struct HeritgTests {
                 scale: scale,
                 offset: baseOffset
             )
-            let expectedDistance = (TreeVisualMetrics.avatarRadius + 12) * scale
-                + 22 * min(1, max(0.5, scale))
+            let projectedEditAction = TreeViewportTransform.project(
+                editAction,
+                from: bounds,
+                into: viewport,
+                scale: scale,
+                offset: baseOffset
+            )
+            let actionScale = min(1, max(0.34, scale))
+            let expectedDistance = (TreeVisualMetrics.avatarRadius + 12) * scale +
+                22 * actionScale
             #expect(abs(projectedAction.x - projectedPerson.x - expectedDistance) < 0.001)
+            #expect(abs(projectedEditAction.x - projectedAction.x - 44 * actionScale) < 0.001)
             #expect(abs(projectedAction.y - projectedPerson.y) < 0.001)
 
             let pannedAction = TreeViewportTransform.project(
@@ -822,22 +876,35 @@ struct HeritgTests {
         #expect(fingerprint(base) != fingerprint(moved))
     }
 
-    @Test func overviewRenderingUsesZoomHysteresisAndProportionalActions() {
-        #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.29))
-        #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.3))
-        #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.41))
-        #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.42))
-        #expect(TreeVisualMetrics.actionVisualScale(at: 0.08) == 0.08)
+    @Test func webCanvasActionScalingIsPreservedAcrossZoomLevels() {
+        #expect(TreeVisualMetrics.actionVisualScale(at: 0.08) == 0.34)
         #expect(TreeVisualMetrics.actionVisualScale(at: 0.5) == 0.5)
         #expect(TreeVisualMetrics.actionVisualScale(at: 1.8) == 1)
-        #expect(TreeVisualMetrics.actionCompensation(at: 0.08) == 6.25)
-        #expect(TreeVisualMetrics.actionCompensation(at: 0.2) == 2.5)
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.08) == 4.25)
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.2) == 1.7)
         #expect(TreeVisualMetrics.actionCompensation(at: 0.5) == 1)
         #expect(TreeVisualMetrics.actionCompensation(at: 1.8) == 1 / 1.8)
-        #expect(TreeVisualMetrics.actionHitTarget(at: 0.08) == 22)
+        #expect(TreeVisualMetrics.actionHitTarget(at: 0.08) == 44 * 0.34)
         #expect(TreeVisualMetrics.actionHitTarget(at: 0.5) == 22)
         #expect(TreeVisualMetrics.actionHitTarget(at: 1) == 44)
         #expect(TreeVisualMetrics.actionHitTarget(at: 1.8) == 44)
+    }
+
+    @Test func longNamesUseTheWebCanvasTwoLineGeometry() {
+        let name = TreeVisualMetrics.formattedName("Raden Soekemi Sosrodihardjo")
+        let person = PersonSnapshot(id: "person", name: name.fullName, gender: .male)
+        let node = TreeNodeLayout(
+            id: person.id,
+            person: person,
+            role: " ",
+            position: .zero
+        )
+
+        #expect(name.lines == ["Raden Soekemi", "Sosrodihardjo"])
+        #expect(name.text == "Raden Soekemi\nSosrodihardjo")
+        #expect(name.extraHeight == 17)
+        #expect(TreeRoutingGeometry.nodeLabelRect(for: node).maxY == 99)
+        #expect(TreeRoutingGeometry.parentPortY(for: node) == 101)
     }
 
     @MainActor

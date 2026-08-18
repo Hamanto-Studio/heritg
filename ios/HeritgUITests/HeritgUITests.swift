@@ -10,6 +10,7 @@ import XCTest
 final class HeritgUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
     }
 
     @MainActor
@@ -77,6 +78,7 @@ final class HeritgUITests: XCTestCase {
         snapshot("02_AllPeople")
 
         peopleClose.tap()
+        XCTAssertTrue(peopleClose.waitForNonExistence(timeout: 5))
         let editPerson = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier BEGINSWITH 'person.edit.'")
         ).firstMatch
@@ -175,7 +177,7 @@ final class HeritgUITests: XCTestCase {
         relativeName.typeText("Budi")
         element("relative.save", in: app).tap()
 
-        let fatherNode = app.descendants(matching: .any).matching(
+        let fatherNode = app.buttons.matching(
             NSPredicate(format: "label == 'Budi'")
         ).firstMatch
         XCTAssertTrue(fatherNode.waitForExistence(timeout: 10))
@@ -206,33 +208,37 @@ final class HeritgUITests: XCTestCase {
         element("firstPerson.nameField", in: app).typeText("Rina")
         element("firstPerson.save", in: app).tap()
 
-        let personNode = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'person.node.'")
-        ).firstMatch
+        addRelative(role: "father", name: "Budi", in: app)
+
+        let personNode = app.buttons.matching(NSPredicate(format: "label == 'Budi'")).firstMatch
         XCTAssertTrue(personNode.waitForExistence(timeout: 10))
+        XCTAssertEqual(personNode.value as? String, "Father")
+
+        let originalFrame = personNode.frame
+        let dragStart = app.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.75))
+        let dragEnd = app.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.75))
+        dragStart.press(forDuration: 0.05, thenDragTo: dragEnd)
+        XCTAssertGreaterThan(abs(personNode.frame.midX - originalFrame.midX), 40)
+        element("tree.fit", in: app).tap()
+
         personNode.tap()
-        let personName = app.textFields["person.nameField"].firstMatch
-        XCTAssertTrue(personName.waitForExistence(timeout: 5))
-        XCTAssertEqual(personName.value as? String, "Rina")
-        element("person.close", in: app).tap()
+        XCTAssertEqual(personNode.value as? String, "Selected person")
+        XCTAssertFalse(app.textFields["person.nameField"].firstMatch.exists)
 
         let zoomOut = element("tree.zoomOut", in: app)
         for _ in 0..<6 { zoomOut.tap() }
 
-        let editButton = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'person.edit.'")
-        ).firstMatch
+        let personID = personNode.identifier.replacingOccurrences(of: "person.node.", with: "")
+        let editButton = app.buttons["person.edit.\(personID)"].firstMatch
         XCTAssertTrue(editButton.waitForExistence(timeout: 5))
         XCTAssertTrue(editButton.isHittable, "Edit button is not hittable.\n\(app.debugDescription)")
         editButton.tap()
         let editedPersonName = app.textFields["person.nameField"].firstMatch
         XCTAssertTrue(editedPersonName.waitForExistence(timeout: 5))
-        XCTAssertEqual(editedPersonName.value as? String, "Rina")
+        XCTAssertEqual(editedPersonName.value as? String, "Budi")
         element("person.close", in: app).tap()
 
-        let addButton = app.buttons.matching(
-            NSPredicate(format: "identifier BEGINSWITH 'person.add.'")
-        ).firstMatch
+        let addButton = app.buttons["person.add.\(personID)"].firstMatch
         XCTAssertTrue(addButton.waitForExistence(timeout: 5))
         addButton.tap()
         XCTAssertTrue(app.buttons["relationship.action.add"].waitForExistence(timeout: 5))

@@ -37,6 +37,7 @@ struct ContentView: View {
     @State private var isImportingGEDCOM = false
     @State private var generationLimits = TreeGenerationLimits.unlimited
     @State private var splitViewVisibility = NavigationSplitViewVisibility.detailOnly
+    @State private var preparedTreeLayout: PreparedTreeLayout?
 
     var body: some View {
         rootContent
@@ -219,12 +220,15 @@ struct ContentView: View {
     private var canvasContent: some View {
         if let activeTree {
             HeritgTreeCanvas(
-                layout: layout,
+                layout: displayedTreeLayout,
+                connectionPlan: displayedTreeConnectionPlan,
                 sourcePersonCount: people.count,
                 focusedPersonID: resolvedFocusID,
+                isPreparingLayout: isPreparingTreeLayout,
                 generationLimits: $generationLimits,
                 availableGenerationLevels: availableGenerationLevels,
-                onDeselectPerson: { focusedPersonID = nil },
+                onSelectPerson: selectPerson,
+                onDeselectPerson: { focus(on: nil) },
                 onAddRelative: selectAddTarget,
                 onCreateFirstPerson: { isCreatingFirstPerson = true },
                 onShowTrees: showTreeLibrary,
@@ -233,6 +237,9 @@ struct ContentView: View {
                 onEditPerson: editPerson
             )
             .id(activeTree.id)
+            .task(id: treeLayoutRequest) {
+                await prepareTreeLayout(treeLayoutRequest)
+            }
         } else {
             VStack(spacing: 12) {
                 Image(systemName: "tree")
@@ -441,14 +448,29 @@ struct ContentView: View {
         }
     }
 
-    private var layout: TreeLayoutResult {
-        return TreeLayout.make(
-            focusedPersonID: nil,
+    private var treeLayoutRequest: TreeLayoutRequest {
+        TreeLayoutRequest(
+            treeID: activeTreeID,
+            selectedPersonID: resolvedFocusID,
             people: personSnapshots,
             relationships: relationshipSnapshots,
-            selectedPersonID: resolvedFocusID,
-            generationLimits: appliedGenerationLimits
+            generationLimits: generationLimits,
+            localeIdentifier: AppLanguage.selectedLocale.identifier
         )
+    }
+
+    private var displayedTreeLayout: TreeLayoutResult {
+        guard preparedTreeLayout?.request.treeID == activeTreeID else { return .empty }
+        return preparedTreeLayout?.layout ?? .empty
+    }
+
+    private var displayedTreeConnectionPlan: TreeConnectionPlan {
+        guard preparedTreeLayout?.request.treeID == activeTreeID else { return .empty }
+        return preparedTreeLayout?.connectionPlan ?? .empty
+    }
+
+    private var isPreparingTreeLayout: Bool {
+        preparedTreeLayout?.request != treeLayoutRequest
     }
 
     private var appliedGenerationLimits: TreeGenerationLimits {
@@ -456,11 +478,8 @@ struct ContentView: View {
     }
 
     private var availableGenerationLevels: TreeAvailableGenerationLevels {
-        TreeLayout.availableGenerationLevels(
-            selectedPersonID: resolvedFocusID,
-            people: personSnapshots,
-            relationships: relationshipSnapshots
-        )
+        guard preparedTreeLayout?.request.treeID == activeTreeID else { return .none }
+        return preparedTreeLayout?.availableGenerationLevels ?? .none
     }
 
     private var personSnapshots: [PersonSnapshot] {
@@ -471,6 +490,77 @@ struct ContentView: View {
         relationships.map(\.treeSnapshot)
     }
 
+    private func prepareTreeLayout(_ request: TreeLayoutRequest) async {
+        let previous = preparedTreeLayout
+        let preparationTask = Task.detached(priority: .userInitiated) {
+            () -> PreparedTreeLayout? in
+            guard !Task.isCancelled else { return nil }
+            let availableGenerationLevels = TreeLayout.availableGenerationLevels(
+                selectedPersonID: request.selectedPersonID,
+                people: request.people,
+                relationships: request.relationships
+            )
+            guard !Task.isCancelled else { return nil }
+            let appliedGenerationLimits = request.generationLimits.clamped(
+                to: availableGenerationLevels
+            )
+            let layout: TreeLayoutResult
+            let canReuseGeometry: Bool
+            if let previous, request.canReuseGeometry(from: previous.request) {
+                canReuseGeometry = true
+                layout = TreeLayout.updatingRelationshipLabels(
+                    in: previous.layout,
+                    selectedPersonID: request.selectedPersonID,
+                    people: request.people,
+                    relationships: request.relationships
+                )
+            } else {
+                canReuseGeometry = false
+                layout = TreeLayout.make(
+                    focusedPersonID: nil,
+                    people: request.people,
+                    relationships: request.relationships,
+                    selectedPersonID: request.selectedPersonID,
+                    generationLimits: appliedGenerationLimits
+                )
+            }
+            guard !Task.isCancelled else { return nil }
+            let connectionPlan: TreeConnectionPlan
+            if canReuseGeometry,
+               let previous,
+               request.localeIdentifier == previous.request.localeIdentifier {
+                connectionPlan = previous.connectionPlan
+            } else {
+                connectionPlan = TreeConnectionPlan.make(
+                    from: layout,
+                    showsRelationshipLabels: true,
+                    controlsVisible: true,
+                    sourcePersonCount: request.people.count
+                )
+            }
+            guard !Task.isCancelled else { return nil }
+            return PreparedTreeLayout(
+                request: request,
+                layout: layout,
+                connectionPlan: connectionPlan,
+                availableGenerationLevels: availableGenerationLevels
+            )
+        }
+        let prepared = await withTaskCancellationHandler {
+            await preparationTask.value
+        } onCancel: {
+            preparationTask.cancel()
+        }
+        guard !Task.isCancelled,
+              request == treeLayoutRequest,
+              let prepared else { return }
+        preparedTreeLayout = prepared
+    }
+
+    private func selectPerson(_ personID: String, role _: String) {
+        focus(on: resolvedFocusID == personID ? nil : personID)
+    }
+
     private func editPerson(_ personID: String, role _: String) {
         guard let person = people.first(where: { $0.id == personID }) else { return }
         presentedPerson = person
@@ -478,6 +568,7 @@ struct ContentView: View {
 
     private func selectAddTarget(_ personID: String) {
         guard let person = people.first(where: { $0.id == personID }) else { return }
+        focus(on: personID)
         relationshipActionTarget = person
     }
 
@@ -499,6 +590,7 @@ struct ContentView: View {
     private func focus(on personID: String?) {
         guard let personID else {
             focusedPersonID = nil
+            rememberFocus(nil)
             return
         }
         guard people.contains(where: { $0.id == personID }) else { return }
@@ -732,6 +824,32 @@ struct ContentView: View {
             relationshipSubtype: relationship.subtype
         )
     }
+}
+
+nonisolated private struct TreeLayoutRequest: Equatable, Sendable {
+    let treeID: String?
+    let selectedPersonID: String?
+    let people: [PersonSnapshot]
+    let relationships: [RelationshipSnapshot]
+    let generationLimits: TreeGenerationLimits
+    let localeIdentifier: String
+
+    func canReuseGeometry(from previous: TreeLayoutRequest) -> Bool {
+        guard treeID == previous.treeID,
+              people == previous.people,
+              relationships == previous.relationships,
+              generationLimits == previous.generationLimits else {
+            return false
+        }
+        return generationLimits.isUnlimited || selectedPersonID == previous.selectedPersonID
+    }
+}
+
+nonisolated private struct PreparedTreeLayout: Sendable {
+    let request: TreeLayoutRequest
+    let layout: TreeLayoutResult
+    let connectionPlan: TreeConnectionPlan
+    let availableGenerationLevels: TreeAvailableGenerationLevels
 }
 
 #Preview {

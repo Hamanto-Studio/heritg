@@ -212,9 +212,14 @@ nonisolated enum TreeRoutingGeometry {
 
     // The canonical role line is always reserved, even when selection hides its text.
     static func nodeLabelRect(for node: TreeNodeLayout) -> CGRect {
+        let nameExtraHeight = TreeVisualMetrics.formattedName(node.person.name).extraHeight
         let labelTop = node.position.y + TreeVisualMetrics.nodeLabelTopSpacing +
             TreeVisualMetrics.avatarRadius
-        let labelBottom = node.position.y + (node.person.lifeSummary == nil ? 82 : 100)
+        var labelBottom = node.position.y + (node.person.lifeSummary == nil ? 82 : 100) +
+            nameExtraHeight
+        if TreeVisualMetrics.formattedCity(node.person.city) != nil {
+            labelBottom += TreeVisualMetrics.lifeHeight
+        }
         return CGRect(
             x: node.position.x - TreeVisualMetrics.nodeLabelWidth / 2,
             y: labelTop,

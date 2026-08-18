@@ -158,6 +158,10 @@ enum TreeSVGExporter {
             baseline += 16
             svg += fittedText(lifeSummary, x: x, y: baseline, size: 11, color: "#777777")
         }
+        if let city = TreeVisualMetrics.formattedCity(node.person.city) {
+            baseline += 16
+            svg += fittedText(city, x: x, y: baseline, size: 11, color: "#777777")
+        }
         return svg
     }
 
