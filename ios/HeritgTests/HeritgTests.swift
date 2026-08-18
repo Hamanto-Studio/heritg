@@ -761,7 +761,7 @@ struct HeritgTests {
                 offset: baseOffset
             )
             let expectedDistance = (TreeVisualMetrics.avatarRadius + 12) * scale
-                + 22 * min(1, max(0.34, scale))
+                + 22 * min(1, max(0.5, scale))
             #expect(abs(projectedAction.x - projectedPerson.x - expectedDistance) < 0.001)
             #expect(abs(projectedAction.y - projectedPerson.y) < 0.001)
 
@@ -822,14 +822,22 @@ struct HeritgTests {
         #expect(fingerprint(base) != fingerprint(moved))
     }
 
-    @Test func overviewRenderingUsesCanonicalZoomHysteresis() {
+    @Test func overviewRenderingUsesZoomHysteresisAndProportionalActions() {
         #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.29))
         #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.3))
         #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.41))
         #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.42))
-        #expect(TreeVisualMetrics.actionCompensation(at: 0.2) == 1.7)
+        #expect(TreeVisualMetrics.actionVisualScale(at: 0.08) == 0.08)
+        #expect(TreeVisualMetrics.actionVisualScale(at: 0.5) == 0.5)
+        #expect(TreeVisualMetrics.actionVisualScale(at: 1.8) == 1)
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.08) == 6.25)
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.2) == 2.5)
         #expect(TreeVisualMetrics.actionCompensation(at: 0.5) == 1)
         #expect(TreeVisualMetrics.actionCompensation(at: 1.8) == 1 / 1.8)
+        #expect(TreeVisualMetrics.actionHitTarget(at: 0.08) == 22)
+        #expect(TreeVisualMetrics.actionHitTarget(at: 0.5) == 22)
+        #expect(TreeVisualMetrics.actionHitTarget(at: 1) == 44)
+        #expect(TreeVisualMetrics.actionHitTarget(at: 1.8) == 44)
     }
 
     @MainActor

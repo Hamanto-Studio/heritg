@@ -6,7 +6,6 @@ struct HeritgTreeCanvas: View {
     let focusedPersonID: String?
     @Binding var generationLimits: TreeGenerationLimits
     let availableGenerationLevels: TreeAvailableGenerationLevels
-    let onSelectPerson: (String, String) -> Void
     let onDeselectPerson: () -> Void
     let onAddRelative: (String) -> Void
     let onCreateFirstPerson: () -> Void
@@ -279,7 +278,7 @@ struct HeritgTreeCanvas: View {
 
         return ZStack {
             Button {
-                onSelectPerson(node.person.id, role)
+                onEditPerson(node.person.id, role)
             } label: {
                 Circle()
                     .fill(avatarFill)
@@ -309,7 +308,7 @@ struct HeritgTreeCanvas: View {
             .position(anchor)
             .accessibilityLabel(node.person.name)
             .accessibilityValue(focusedPersonID == nil ? "" : role)
-            .accessibilityHint("Selects this person")
+            .accessibilityHint("Opens this person's details")
             .accessibilityIdentifier("person.node.\(node.person.id)")
 
             if let birthOrder = node.birthOrder {
@@ -397,8 +396,8 @@ struct HeritgTreeCanvas: View {
         projectedOffset: CGSize
     ) -> some View {
         if showsActions(for: node, overview: overview) {
-            let visualScale = TreeVisualMetrics.actionCompensation(at: effectiveScale)
-                * effectiveScale
+            let visualScale = TreeVisualMetrics.actionVisualScale(at: effectiveScale)
+            let hitTargetSize = TreeVisualMetrics.actionHitTarget(at: effectiveScale)
             let addPosition = projectedActionPosition(
                 node: node,
                 side: control.side,
@@ -419,61 +418,90 @@ struct HeritgTreeCanvas: View {
                     projectedOffset: projectedOffset
                 )
                 : nil
-            positionedActionControl(at: addPosition, in: viewportSize) {
-                Button("Add relative to \(node.person.name)", systemImage: "plus") {
-                    onAddRelative(node.person.id)
+            if let editPosition {
+                let spacing = max(abs(editPosition.x - addPosition.x) - hitTargetSize, 0)
+                HStack(spacing: spacing) {
+                    if editPosition.x < addPosition.x {
+                        editActionButton(
+                            for: node,
+                            visualScale: visualScale,
+                            hitTargetSize: hitTargetSize
+                        )
+                        addActionButton(
+                            for: node,
+                            visualScale: visualScale,
+                            hitTargetSize: hitTargetSize
+                        )
+                    } else {
+                        addActionButton(
+                            for: node,
+                            visualScale: visualScale,
+                            hitTargetSize: hitTargetSize
+                        )
+                        editActionButton(
+                            for: node,
+                            visualScale: visualScale,
+                            hitTargetSize: hitTargetSize
+                        )
+                    }
                 }
-                .labelStyle(.iconOnly)
-                .font(.system(size: 16 * visualScale, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(
-                    width: TreeVisualMetrics.minimumTapTarget,
-                    height: TreeVisualMetrics.minimumTapTarget
+                .position(
+                    x: (addPosition.x + editPosition.x) / 2,
+                    y: (addPosition.y + editPosition.y) / 2
                 )
-                .background {
-                    Circle()
-                        .fill(HeritgColor.add)
-                        .frame(width: 28 * visualScale, height: 28 * visualScale)
-                }
-                .contentShape(Circle())
-                .accessibilityLabel("Add relative to \(node.person.name)")
-                .accessibilityIdentifier("person.add.\(node.person.id)")
-            }
-
-            if node.id == focusedPersonID, let editPosition {
-                positionedActionControl(at: editPosition, in: viewportSize) {
-                    Button("Edit \(node.person.name)", systemImage: "pencil") {
-                        onEditPerson(node.person.id, roleLabel(for: node))
-                    }
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 14 * visualScale, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(
-                        width: TreeVisualMetrics.minimumTapTarget,
-                        height: TreeVisualMetrics.minimumTapTarget
-                    )
-                    .background {
-                        Circle()
-                            .fill(HeritgColor.brand)
-                            .frame(width: 28 * visualScale, height: 28 * visualScale)
-                    }
-                    .contentShape(Circle())
-                    .accessibilityLabel("Edit \(node.person.name)")
-                    .accessibilityIdentifier("person.edit.\(node.person.id)")
-                }
+            } else {
+                addActionButton(
+                    for: node,
+                    visualScale: visualScale,
+                    hitTargetSize: hitTargetSize
+                )
+                .position(addPosition)
             }
         }
     }
 
-    private func positionedActionControl<Content: View>(
-        at position: CGPoint,
-        in viewportSize: CGSize,
-        @ViewBuilder content: () -> Content
+    private func addActionButton(
+        for node: TreeNodeLayout,
+        visualScale: CGFloat,
+        hitTargetSize: CGFloat
     ) -> some View {
-        TreeActionControlLayout(position: position) {
-            content()
+        Button("Add relative to \(node.person.name)", systemImage: "plus") {
+            onAddRelative(node.person.id)
         }
-        .frame(width: viewportSize.width, height: viewportSize.height)
+        .labelStyle(.iconOnly)
+        .font(.system(size: 16 * visualScale, weight: .bold))
+        .foregroundStyle(.white)
+        .frame(width: hitTargetSize, height: hitTargetSize)
+        .background {
+            Circle()
+                .fill(HeritgColor.add)
+                .frame(width: 28 * visualScale, height: 28 * visualScale)
+        }
+        .contentShape(Circle())
+        .accessibilityLabel("Add relative to \(node.person.name)")
+        .accessibilityIdentifier("person.add.\(node.person.id)")
+    }
+
+    private func editActionButton(
+        for node: TreeNodeLayout,
+        visualScale: CGFloat,
+        hitTargetSize: CGFloat
+    ) -> some View {
+        Button("Edit \(node.person.name)", systemImage: "pencil") {
+            onEditPerson(node.person.id, roleLabel(for: node))
+        }
+        .labelStyle(.iconOnly)
+        .font(.system(size: 14 * visualScale, weight: .bold))
+        .foregroundStyle(.white)
+        .frame(width: hitTargetSize, height: hitTargetSize)
+        .background {
+            Circle()
+                .fill(HeritgColor.brand)
+                .frame(width: 28 * visualScale, height: 28 * visualScale)
+        }
+        .contentShape(Circle())
+        .accessibilityLabel("Edit \(node.person.name)")
+        .accessibilityIdentifier("person.edit.\(node.person.id)")
     }
 
     private func projectedActionPosition(
@@ -765,36 +793,6 @@ struct HeritgTreeCanvas: View {
 private struct TreeZoomGestureState {
     var magnification: CGFloat = 1
     var anchor: UnitPoint = .center
-}
-
-private struct TreeActionControlLayout: Layout {
-    let position: CGPoint
-
-    func sizeThatFits(
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) -> CGSize {
-        proposal.replacingUnspecifiedDimensions()
-    }
-
-    func placeSubviews(
-        in bounds: CGRect,
-        proposal: ProposedViewSize,
-        subviews: Subviews,
-        cache: inout ()
-    ) {
-        let x = (position.x.isFinite ? bounds.minX + position.x : bounds.midX)
-        let y = (position.y.isFinite ? bounds.minY + position.y : bounds.midY)
-        subviews.first?.place(
-            at: CGPoint(x: x, y: y),
-            anchor: .center,
-            proposal: ProposedViewSize(
-                width: TreeVisualMetrics.minimumTapTarget,
-                height: TreeVisualMetrics.minimumTapTarget
-            )
-        )
-    }
 }
 
 private struct CachedTreeConnectionPlan {

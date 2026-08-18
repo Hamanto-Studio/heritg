@@ -156,7 +156,7 @@ struct ContentView: View {
             .accessibilityIdentifier("relationship.action.link")
             Button("Cancel", role: .cancel) {}
         }
-        .sheet(item: $presentedPerson) { person in
+        .sheet(item: $presentedPerson, onDismiss: { presentedPerson = nil }) { person in
             PersonSheet(
                 person: person,
                 relatedPeople: relatedPeople(for: person),
@@ -224,7 +224,6 @@ struct ContentView: View {
                 focusedPersonID: resolvedFocusID,
                 generationLimits: $generationLimits,
                 availableGenerationLevels: availableGenerationLevels,
-                onSelectPerson: selectPerson,
                 onDeselectPerson: { focusedPersonID = nil },
                 onAddRelative: selectAddTarget,
                 onCreateFirstPerson: { isCreatingFirstPerson = true },
@@ -472,18 +471,13 @@ struct ContentView: View {
         relationships.map(\.treeSnapshot)
     }
 
-    private func selectPerson(_ personID: String, role _: String) {
-        focus(on: personID)
-    }
-
-    private func editPerson(_ personID: String, role: String) {
+    private func editPerson(_ personID: String, role _: String) {
         guard let person = people.first(where: { $0.id == personID }) else { return }
         presentedPerson = person
     }
 
     private func selectAddTarget(_ personID: String) {
         guard let person = people.first(where: { $0.id == personID }) else { return }
-        focus(on: personID)
         relationshipActionTarget = person
     }
 

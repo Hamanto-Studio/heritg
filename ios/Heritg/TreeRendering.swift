@@ -88,13 +88,24 @@ nonisolated enum TreeVisualMetrics {
 
     static func actionCompensation(at scale: CGFloat) -> CGFloat {
         let safeScale = max(scale, 0.001)
-        let actionScale = min(1, max(0.34, safeScale))
-        return actionScale / safeScale
+        return actionLayoutScale(at: safeScale) / safeScale
+    }
+
+    static func actionVisualScale(at scale: CGFloat) -> CGFloat {
+        min(1, max(scale, 0.001))
     }
 
     static func actionDistance(index: CGFloat, at scale: CGFloat) -> CGFloat {
         avatarRadius + 12
             + (22 + index * (minimumTapTarget + 4)) * actionCompensation(at: scale)
+    }
+
+    static func actionHitTarget(at scale: CGFloat) -> CGFloat {
+        minimumTapTarget * actionLayoutScale(at: scale)
+    }
+
+    private static func actionLayoutScale(at scale: CGFloat) -> CGFloat {
+        min(1, max(0.5, scale))
     }
 
     static func connectorWidth(at scale: CGFloat) -> CGFloat {
