@@ -119,7 +119,7 @@ if (webPackage.scripts?.["deploy:promote"] !== "node scripts/promote-production.
   fail("Web production promotion must use the guarded promotion script");
 }
 if (webPackage.scripts?.["deploy:stage"] !==
-    "npx --yes vercel@58.4.4 deploy --prod --skip-domain --cwd .. --local-config web/vercel.json") {
+    "npx --yes vercel@58.4.4 deploy --prod --skip-domain --cwd .. --local-config vercel.json") {
   fail("Web staging must create a production-targeted deployment without assigning domains");
 }
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
