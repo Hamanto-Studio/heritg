@@ -1,7 +1,7 @@
 {
   "name": "heritg",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -16,7 +16,7 @@
     "vercel:configure": "node scripts/render-vercel-config.mjs",
     "release:check": "node ../.agents/skills/release-heritg-web/scripts/release-preflight.mjs --ci",
     "release:verify": "node ../.agents/skills/release-heritg-web/scripts/verify-production.mjs",
-    "deploy:preview": "npx --yes vercel@58.4.4 deploy --cwd .. --local-config web/vercel.json",
+    "deploy:stage": "npx --yes vercel@58.4.4 deploy --prod --skip-domain --cwd .. --local-config web/vercel.json",
     "deploy:promote": "node scripts/promote-production.mjs"
   },
   "dependencies": {
