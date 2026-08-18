@@ -6,6 +6,7 @@ import {
   segmentsFormConnectedNetwork
 } from "./connectionPlan";
 import {
+  CHILD_RAIL_CLEARANCE,
   collinearlyOverlaps,
   hasCollinearOverlap,
   parentPortY,
@@ -163,9 +164,14 @@ describe("family connection planning", () => {
     expect(plan.families.every(({ segments }) =>
       segmentsFormConnectedNetwork(segments)
     )).toBe(true);
-    expect(yatminCenter).toBe(
-      (Math.min(...yatminChildren.map((person) => person.x)) +
-        Math.max(...yatminChildren.map((person) => person.x))) / 2
+    expect(new Set(yatminChildren.map((person) => person.generation)).size).toBe(1);
+    expect(positionedByName.get("Sukamto")!.x).toBeLessThan(
+      positionedByName.get("Karno")!.x
+    );
+    expect(
+      positionedByName.get("Robihamanto")!.x - positionedByName.get("Irvan Tama")!.x
+    ).toBeLessThanOrEqual(
+      LAYOUT_METRICS.horizontalSpacing * 3 + LAYOUT_METRICS.familyGap
     );
     expect(yatminCenter).toBeGreaterThan(
       Math.max(...ismailChildren.map((person) => person.x))
@@ -253,6 +259,37 @@ describe("family connection planning", () => {
     expect(plan.families).toHaveLength(2);
     expect(new Set(sharedPorts).size).toBe(2);
     expect(new Set(plan.families.map(({ laneIndex }) => laneIndex)).size).toBe(2);
+    expect(plan.isValid).toBe(true);
+  });
+
+  it("keeps married and unmarried child stems equally clear of the family rail", () => {
+    const childY = 260;
+    const value = layout(
+      [
+        person("parent-a", -130, 0), person("parent-b", 130, 0),
+        person("spouse", -390, childY), person("married-child", -130, childY),
+        person("unmarried-child", 130, childY)
+      ],
+      [
+        parent("parent-a", "married-child"), parent("parent-b", "married-child"),
+        parent("parent-a", "unmarried-child"), parent("parent-b", "unmarried-child"),
+        relationship("child-marriage", "spouse", "married-child", "partner")
+      ]
+    );
+
+    const plan = createConnectionPlan(value, "en", undefined, false);
+    const family = plan.families[0];
+    const childTop = childY - LAYOUT_METRICS.avatarRadius;
+    const stemLength = (childId: string) => {
+      const childX = value.people.find(({ id }) => id === childId)!.x;
+      const stem = family.segments.find(({ start, end }) =>
+        start.x === childX && end.x === childX && (start.y === childTop || end.y === childTop)
+      )!;
+      return Math.abs(stem.start.y - stem.end.y);
+    };
+
+    expect(stemLength("married-child")).toBe(CHILD_RAIL_CLEARANCE);
+    expect(stemLength("unmarried-child")).toBe(CHILD_RAIL_CLEARANCE);
     expect(plan.isValid).toBe(true);
   });
 
@@ -440,7 +477,7 @@ describe("family connection planning", () => {
     )).toBe(true);
   });
 
-  it("exports every segment through rounded paths and keeps the marriage label", () => {
+  it("exports every segment with clear terminal stems and keeps the marriage label", () => {
     const marriage = {
       ...relationship("marriage", "parent-a", "parent-b", "partner"),
       marriageDate: "2004-01-02"
@@ -459,7 +496,7 @@ describe("family connection planning", () => {
       .flatMap((match) => match[1].split(","));
     expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
     expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
-    expect(chart.svg).toContain(" Q ");
+    expect(chart.svg).toContain('d="M 151 172 L 151 180 L 281 180"');
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });
