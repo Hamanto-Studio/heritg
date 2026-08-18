@@ -46,7 +46,8 @@ Before preview deployment:
 
 Before production promotion:
 
-- Candidate deployment points to the exact release commit.
+- Candidate deployment points to the exact release commit, targets Production,
+  and was staged without assigning public domains.
 - Desktop, iPhone, and iPad smoke tests pass with synthetic data.
 - Landing-page availability, app SPA navigation, PWA manifest, service worker,
   installation, offline restart,
@@ -60,6 +61,7 @@ Before production promotion:
 Before publication:
 
 - The canonical hostname passes the production verifier.
+- The canonical hostname points to the exact staged deployment ID.
 - The user explicitly approves the exact tag and release notes.
 - Tag target equals the promoted commit.
 

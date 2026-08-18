@@ -48,18 +48,19 @@ still validates metadata, changelog structure, workflows, and Vercel policy.
    only after confirming it does not exist. Use Node.js 22, `web/dist`, no
    runtime variables, and no Git integration. Use `web/vercel.json` as the
    local configuration while installing and building only the Web package.
-3. Deploy a preview with the pinned CLI using
-   `npx --yes vercel@58.4.4 deploy --local-config web/vercel.json`. Capture the
-   resulting URL without placing credentials in logs or files.
-4. Verify the preview manually at desktop, iPhone, and iPad sizes. Test fresh
+3. Create a staged production deployment without assigning domains using
+   `npm --prefix web run deploy:stage`. This keeps `web/vercel.json` attached
+   while allowing the exact tested deployment to be promoted without a rebuild.
+   Capture the resulting URL without placing credentials in logs or files.
+4. Verify the staged deployment manually at desktop, iPhone, and iPad sizes. Test fresh
    sample data only: onboarding, canvas, deep route, `.heritg` import/export,
    IndexedDB persistence, installation, and offline restart.
 5. Run the production verifier against any publicly reachable candidate URL.
    It performs a complete synthetic `HTGSHR02` allocation, encrypted upload,
    activation, download, decryption, and revocation while checking production
    Storage CORS. This is a mandatory compatibility gate, not an optional smoke
-   test. Use `--cors-origin https://heritg.us` when the candidate has a preview
-   hostname. Protected preview URLs may require Vercel-authenticated browser
+   test. Use `--cors-origin https://heritg.us` when the candidate has a Vercel
+   hostname. Protected deployment URLs may require Vercel-authenticated browser
    verification.
 
 ## Promote and publish
@@ -73,11 +74,11 @@ promoting or verifying Vercel.
 
 After approval:
 
-1. Promote the exact tested deployment with
-   `npm --prefix web run deploy:promote -- <candidate-url>`. The command must
-   keep `web/vercel.json` attached so the API, health, and SPA rewrites are
-   present in the production deployment. Do not run a bare `vercel promote`.
-   Never promote a candidate whose complete encrypted-sharing smoke test failed.
+1. Promote the exact tested, production-targeted deployment with
+   `npm --prefix web run deploy:promote -- <candidate-url>`. The guarded command
+   must verify that `web/vercel.json` is attached and refuse any Preview target,
+   because promoting a Preview creates an unverified rebuild. Never promote a
+   candidate whose complete encrypted-sharing smoke test failed.
 2. Verify the GitHub Pages landing site and `https://heritg.us/` with:
 
    ```sh

@@ -118,6 +118,10 @@ const vercel = readJson(resolve(webDirectory, "vercel.json"));
 if (webPackage.scripts?.["deploy:promote"] !== "node scripts/promote-production.mjs") {
   fail("Web production promotion must use the guarded promotion script");
 }
+if (webPackage.scripts?.["deploy:stage"] !==
+    "npx --yes vercel@58.4.4 deploy --prod --skip-domain --cwd .. --local-config web/vercel.json") {
+  fail("Web staging must create a production-targeted deployment without assigning domains");
+}
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
     vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {
   fail("web/vercel.json must build the Web package from the repository deployment root");

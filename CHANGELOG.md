@@ -24,7 +24,7 @@ prefix.
 - Refreshed the internal testing build for the current offline family-tree,
   encrypted archive, GEDCOM, and chart-export compatibility checks.
 
-## [web-0.6.0] - 2026-08-18
+## [web-0.6.1] - 2026-08-18
 
 ### Added
 
@@ -46,6 +46,8 @@ prefix.
 
 - Improved sibling alignment, spouse adjacency, descendant branch spacing, and
   family centering in large multi-generation trees.
+- Prevented production releases from losing API routing and security headers
+  while switching verified deployments to the public app.
 
 ### Security
 
