@@ -1,4 +1,5 @@
 import {
+  Bug,
   CircleHelp,
   CopyPlus,
   MoreHorizontal,
@@ -42,6 +43,7 @@ interface TreeSidebarProps {
   onImported: () => void;
   onShowHelp: () => void;
   onShowPrivacy: () => void;
+  onReportBug: () => void;
 }
 
 const treeDate = (value: string, language: AppData["language"]) =>
@@ -59,7 +61,8 @@ export function TreeSidebar({
   onError,
   onImported,
   onShowHelp,
-  onShowPrivacy
+  onShowPrivacy,
+  onReportBug
 }: TreeSidebarProps) {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
@@ -291,6 +294,10 @@ export function TreeSidebar({
           <button onClick={() => { onShowHelp(); onClose(); }} type="button">
             <CircleHelp aria-hidden="true" size={17} />
             <span><strong>{t("help")}</strong><small>{t("welcomeHelpDetail")}</small></span>
+          </button>
+          <button onClick={() => { onReportBug(); onClose(); }} type="button">
+            <Bug aria-hidden="true" size={17} />
+            <span><strong>{t("reportBug")}</strong><small>{t("reportBugDetail")}</small></span>
           </button>
         </div>
       </aside>

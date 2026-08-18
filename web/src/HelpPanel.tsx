@@ -1,4 +1,5 @@
 import {
+  Bug,
   Focus,
   GitBranch,
   Hand,
@@ -12,9 +13,11 @@ import { SidePanel } from "./ui";
 
 export function HelpPanel({
   onClose,
+  onReportBug,
   t
 }: {
   onClose: () => void;
+  onReportBug: () => void;
   t: Translator;
 }) {
   const items = [
@@ -40,6 +43,10 @@ export function HelpPanel({
           </section>
         ))}
       </div>
+      <button className="help-report-button" onClick={onReportBug} type="button">
+        <span className="panel-icon"><Bug aria-hidden="true" size={19} /></span>
+        <span><strong>{t("reportBug")}</strong><small>{t("reportBugDetail")}</small></span>
+      </button>
     </SidePanel>
   );
 }

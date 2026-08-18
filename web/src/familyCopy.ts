@@ -15,15 +15,13 @@ const addToIndex = (index: Map<string, string[]>, from: string, to: string) => {
 export function selectFocusedFamily(
   people: readonly Person[],
   relationships: readonly FamilyRelationship[],
-  focusPersonId: string,
-  excludedPersonIds: readonly string[] = []
+  focusPersonId: string
 ): FocusedFamilySelection {
   const peopleById = new Map(people.map((person) => [person.id, person]));
   if (!peopleById.has(focusPersonId)) {
     throw new Error("The focus person does not exist in this family tree.");
   }
 
-  const excluded = new Set(excludedPersonIds.filter((id) => id !== focusPersonId));
   const parentsByChild = new Map<string, string[]>();
   const childrenByParent = new Map<string, string[]>();
   const siblingsByPerson = new Map<string, string[]>();
@@ -44,7 +42,7 @@ export function selectFocusedFamily(
   const ancestorQueue = [focusPersonId];
   for (let index = 0; index < ancestorQueue.length; index += 1) {
     for (const parentId of parentsByChild.get(ancestorQueue[index]) ?? []) {
-      if (excluded.has(parentId) || familyIds.has(parentId)) continue;
+      if (familyIds.has(parentId)) continue;
       familyIds.add(parentId);
       ancestorQueue.push(parentId);
     }
@@ -59,7 +57,7 @@ export function selectFocusedFamily(
       ...(siblingsByPerson.get(familyQueue[index]) ?? [])
     ];
     for (const personId of nextIds) {
-      if (excluded.has(personId) || familyIds.has(personId)) continue;
+      if (familyIds.has(personId)) continue;
       familyIds.add(personId);
       familyQueue.push(personId);
     }
@@ -68,16 +66,15 @@ export function selectFocusedFamily(
   const retainedIds = new Set(familyIds);
   for (const relationship of relationships) {
     if (relationship.kind === "partner") {
-      if (familyIds.has(relationship.fromPersonId) && !excluded.has(relationship.toPersonId)) {
+      if (familyIds.has(relationship.fromPersonId)) {
         retainedIds.add(relationship.toPersonId);
       }
-      if (familyIds.has(relationship.toPersonId) && !excluded.has(relationship.fromPersonId)) {
+      if (familyIds.has(relationship.toPersonId)) {
         retainedIds.add(relationship.fromPersonId);
       }
     } else if (
       relationship.kind === "parent" &&
-      familyIds.has(relationship.toPersonId) &&
-      !excluded.has(relationship.fromPersonId)
+      familyIds.has(relationship.toPersonId)
     ) {
       retainedIds.add(relationship.fromPersonId);
     }

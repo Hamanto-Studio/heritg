@@ -40,7 +40,6 @@ export interface DomainMeta {
 export interface FocusedTreeCopyInput {
   title: string;
   focusPersonId: string;
-  excludedPartnerIds?: readonly string[];
 }
 export interface FocusedTreeCopyMeta {
   now?: string;
@@ -225,23 +224,11 @@ export function copyFocusedTree(
   const focus = findPerson(data, input.focusPersonId);
   if (focus.treeId !== sourceTreeId) throw new DomainError("notFound");
 
-  const partnerIds = new Set(sourceRelationships.flatMap((relationship) => {
-    if (relationship.kind !== "partner") return [];
-    if (relationship.fromPersonId === focus.id) return [relationship.toPersonId];
-    if (relationship.toPersonId === focus.id) return [relationship.fromPersonId];
-    return [];
-  }));
-  const excludedPartnerIds = [...new Set(input.excludedPartnerIds ?? [])];
-  if (excludedPartnerIds.some((id) => !partnerIds.has(id))) {
-    throw new DomainError("invalidData", "Only a focus person's partners can be excluded.");
-  }
-
   const title = requiredName(input.title);
   const selected = selectFocusedFamily(
     sourcePeople,
     sourceRelationships,
-    focus.id,
-    excludedPartnerIds
+    focus.id
   );
   const usedIds = new Set([
     ...data.trees.map((tree) => tree.id),

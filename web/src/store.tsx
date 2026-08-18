@@ -47,8 +47,7 @@ export interface AppActions {
   copyFocusedTree(
     sourceTreeId: string,
     title: string,
-    focusPersonId: string,
-    excludedPartnerIds: readonly string[]
+    focusPersonId: string
   ): string;
   renameTree(treeId: string, title: string): void;
   deleteTree(treeId: string): void;
@@ -233,14 +232,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   function copyFocusedTree(
     sourceTreeId: string,
     title: string,
-    focusPersonId: string,
-    excludedPartnerIds: readonly string[]
+    focusPersonId: string
   ) {
     return commit((current) => {
       const result = copyFocusedTreeInData(current, sourceTreeId, {
         title,
-        focusPersonId,
-        excludedPartnerIds
+        focusPersonId
       });
       return [result.data, result.treeId];
     });
