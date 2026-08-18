@@ -24,6 +24,34 @@ prefix.
 - Refreshed the internal testing build for the current offline family-tree,
   encrypted archive, GEDCOM, and chart-export compatibility checks.
 
+## [web-0.6.0] - 2026-08-18
+
+### Added
+
+- Added independent family-focused copies that preserve spouses, marriage links,
+  and shared children while omitting unrelated spouse-side branches.
+- Added Indonesian, Yogyakarta Javanese, and East Java Javanese relationship
+  terminology choices for family trees and people lists.
+- Added privacy-conscious bug reports through WhatsApp or Telegram with
+  transparent browser and device diagnostics.
+
+### Changed
+
+- Added editable child order, local domicile suggestions, wrapped long names,
+  and persistent person details at every canvas zoom level.
+- Improved family-copy reviews with clear included and omitted people before a
+  new independent tree is created.
+
+### Fixed
+
+- Improved sibling alignment, spouse adjacency, descendant branch spacing, and
+  family centering in large multi-generation trees.
+
+### Security
+
+- Ensured family-focused copies physically omit unrelated profiles and
+  relationships from subsequent exports and encrypted share links.
+
 ## [web-0.5.0] - 2026-08-17
 
 ### Added
@@ -169,4 +197,5 @@ prefix.
 [web-0.4.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.0
 [web-0.4.1]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.4.1
 [web-0.5.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.5.0
+[web-0.6.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/web-0.6.0
 [ios-1.0.0]: https://github.com/Hamanto-Studio/heritg/releases/tag/ios-1.0.0
