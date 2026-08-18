@@ -1,6 +1,6 @@
 import Foundation
 
-struct TreeGenerationLimits: Equatable, Hashable {
+nonisolated struct TreeGenerationLimits: Equatable, Hashable, Sendable {
     var ancestorLevels: Int?
     var descendantLevels: Int?
 
@@ -26,7 +26,7 @@ struct TreeGenerationLimits: Equatable, Hashable {
     }
 }
 
-struct TreeAvailableGenerationLevels: Equatable {
+nonisolated struct TreeAvailableGenerationLevels: Equatable, Sendable {
     let ancestorLevels: Int
     let descendantLevels: Int
 
@@ -40,7 +40,7 @@ struct TreeAvailableGenerationLevels: Equatable {
     }
 }
 
-enum TreeGenerationFilter {
+nonisolated enum TreeGenerationFilter {
     static func availableLevels(
         selectedPersonID: String?,
         validPersonIDs: Set<String>,
@@ -109,20 +109,25 @@ enum TreeGenerationFilter {
             validPersonIDs: validPersonIDs,
             relationships: relationships
         )
+        guard !Task.isCancelled else { return nil }
         let ancestorDistances = parentDistances(
             from: selectedPersonID,
             validPersonIDs: validPersonIDs,
             relationships: relationships,
             followsParents: true
         )
+        guard !Task.isCancelled else { return nil }
         let descendantDistances = parentDistances(
             from: selectedPersonID,
             validPersonIDs: validPersonIDs,
             relationships: relationships,
             followsParents: false
         )
+        guard !Task.isCancelled else { return nil }
 
-        return connectedIDs.reduce(into: [String: Int]()) { result, personID in
+        var result = [String: Int]()
+        for personID in connectedIDs {
+            guard !Task.isCancelled else { return nil }
             let fallbackLevel = (depths[personID] ?? selectedDepth) - selectedDepth
             switch (ancestorDistances[personID], descendantDistances[personID]) {
             case let (ancestorDistance?, descendantDistance?) where ancestorDistance < descendantDistance:
@@ -139,6 +144,7 @@ enum TreeGenerationFilter {
                 result[personID] = fallbackLevel
             }
         }
+        return result
     }
 
     private static func parentDistances(
@@ -151,9 +157,11 @@ enum TreeGenerationFilter {
         var queue = [(selectedPersonID, 0)]
         var index = 0
         while index < queue.count {
+            guard !Task.isCancelled else { return result }
             let (personID, distance) = queue[index]
             index += 1
             for relationship in relationships where relationship.kind == .parent {
+                guard !Task.isCancelled else { return result }
                 let nextPersonID: String?
                 if followsParents, relationship.toPersonID == personID {
                     nextPersonID = relationship.fromPersonID
@@ -182,6 +190,7 @@ enum TreeGenerationFilter {
     ) -> Set<String> {
         var adjacentIDs = [String: Set<String>]()
         for relationship in relationships {
+            guard !Task.isCancelled else { return [] }
             guard validPersonIDs.contains(relationship.fromPersonID),
                   validPersonIDs.contains(relationship.toPersonID),
                   relationship.fromPersonID != relationship.toPersonID else {
@@ -195,6 +204,7 @@ enum TreeGenerationFilter {
         var queue = [selectedPersonID]
         var index = 0
         while index < queue.count {
+            guard !Task.isCancelled else { return result }
             let personID = queue[index]
             index += 1
             for adjacentID in adjacentIDs[personID, default: []] where result.insert(adjacentID).inserted {
@@ -213,6 +223,7 @@ extension Person {
             gender: gender,
             profilePhotoData: profilePhotoData,
             lifeSummary: lifeSummary,
+            city: city,
             birthDate: birthDate,
             birthDatePrecision: birthDatePrecision
         )

@@ -1,12 +1,13 @@
 import Foundation
 
-enum KinshipResolver {
+nonisolated enum KinshipResolver {
     static func label(
         for personID: String,
         relativeTo referenceID: String,
         people: [PersonSnapshot],
         relationships: [RelationshipSnapshot]
     ) -> String? {
+        guard !Task.isCancelled else { return nil }
         guard personID != referenceID else {
             return AppLanguage.localized("Selected person")
         }
@@ -20,6 +21,7 @@ enum KinshipResolver {
         ) {
             return direct
         }
+        guard !Task.isCancelled else { return nil }
         if let lineage = lineageLabel(
             for: person,
             relativeTo: referenceID,
@@ -28,6 +30,7 @@ enum KinshipResolver {
         ) {
             return lineage
         }
+        guard !Task.isCancelled else { return nil }
         if let step = stepLabel(
             for: person,
             relativeTo: referenceID,
@@ -36,6 +39,7 @@ enum KinshipResolver {
         ) {
             return step
         }
+        guard !Task.isCancelled else { return nil }
         return inLawLabel(
             for: person,
             relativeTo: referenceID,
@@ -172,6 +176,7 @@ enum KinshipResolver {
         var queue = [(personID, 0)]
         var index = 0
         while index < queue.count {
+            guard !Task.isCancelled else { return result }
             let (currentID, distance) = queue[index]
             index += 1
             for relationship in relationships.sorted(by: relationshipOrder) where relationship.kind == .parent &&

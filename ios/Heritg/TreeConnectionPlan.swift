@@ -6,6 +6,7 @@ nonisolated struct TreeConnectionPlanFingerprint: Equatable, Sendable {
         let id: String
         let position: CGPoint
         let hasLifeSummary: Bool
+        let hasCity: Bool
     }
 
     private let nodes: [Node]
@@ -24,7 +25,8 @@ nonisolated struct TreeConnectionPlanFingerprint: Equatable, Sendable {
             Node(
                 id: $0.id,
                 position: $0.position,
-                hasLifeSummary: $0.person.lifeSummary != nil
+                hasLifeSummary: $0.person.lifeSummary != nil,
+                hasCity: TreeVisualMetrics.formattedCity($0.person.city) != nil
             )
         }
         edges = layout.edges
@@ -36,6 +38,19 @@ nonisolated struct TreeConnectionPlanFingerprint: Equatable, Sendable {
 
 nonisolated struct TreeConnectionPlan: Equatable, Sendable {
     static let familyRailSpacing: CGFloat = 32
+    static let empty = TreeConnectionPlan(
+        families: [],
+        nonParentRoutes: [],
+        obstacles: [],
+        controls: [],
+        plannedCrossings: [],
+        rawBounds: .zero,
+        failures: [],
+        isValid: true,
+        nonParentEdges: [],
+        crossings: [],
+        showsRelationshipLabels: true
+    )
 
     struct Family: Identifiable, Equatable, Sendable {
         let id: String
@@ -575,6 +590,19 @@ nonisolated struct TreeConnectionPlan: Equatable, Sendable {
                 $0 - TreeVisualMetrics.avatarRadius - childRailOffset
             } ?? parentJoinY
             families[familyIndex].branchOffset = firstRailY - (parentStartY + childTopY) / 2
+            let childRailYs = Array(Set(families[familyIndex].children.map {
+                $0.y - TreeVisualMetrics.avatarRadius - childRailOffset
+            })).sorted()
+            families[familyIndex].junctions = [CGPoint(x: trunkX, y: parentJoinY)] +
+                childRailYs.enumerated().flatMap { index, y in
+                    if index == 0 {
+                        return [CGPoint(x: trunkX, y: y)] +
+                            (continuationTrunkX == trunkX
+                                ? []
+                                : [CGPoint(x: continuationTrunkX, y: y)])
+                    }
+                    return [CGPoint(x: continuationTrunkX, y: y)]
+                }
         }
 
         return families.sorted { familyRoutingOrder($0, $1) }
@@ -634,9 +662,6 @@ nonisolated struct TreeConnectionPlan: Equatable, Sendable {
                     segmentsFormConnectedNetwork(relaxed) ? relaxed : families[familyIndex].baseSegments
                 failures.append("family:\(families[familyIndex].id)")
             }
-            families[familyIndex].junctions = TreeConnectorStyle.branchJunctions(
-                in: families[familyIndex].segments
-            )
             occupied += families[familyIndex].segments
         }
         return occupied

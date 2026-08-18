@@ -438,7 +438,7 @@ extension Person {
     }
 }
 
-enum FamilyRoleLabel {
+nonisolated enum FamilyRoleLabel {
     static func label(
         relativeGender: PersonGender,
         relationshipKind: RelationshipKind,
