@@ -1,13 +1,13 @@
 import Foundation
-import SwiftData
+import CoreData
 
-enum RelationshipKind: String, Codable {
+enum RelationshipKind: String, Codable, Sendable {
     case parent
     case partner
     case sibling
 }
 
-enum RelationshipSubtype: String, Codable {
+enum RelationshipSubtype: String, Codable, Sendable {
     case biologicalParent
     case adoptiveParent
     case fosterParent
@@ -40,21 +40,36 @@ enum RelationshipSubtype: String, Codable {
     }
 }
 
-@Model
-final class FamilyTree {
-    var id: String = ""
-    var title: String = ""
-    var createdAt: Date = Date.now
-    var updatedAt: Date = Date.now
-    var lastSelectedPersonID: String?
+@objc(FamilyTree)
+final class FamilyTree: NSManagedObject, Identifiable {
+    @NSManaged var id: String
+    @NSManaged var title: String
+    @NSManaged var createdAt: Date
+    @NSManaged var updatedAt: Date
+    @NSManaged var lastSelectedPersonID: String?
 
-    init(
+    override func awakeFromInsert() {
+        super.awakeFromInsert()
+        if primitiveValue(forKey: "createdAt") == nil {
+            setPrimitiveValue(Date.now, forKey: "createdAt")
+        }
+        if primitiveValue(forKey: "updatedAt") == nil {
+            setPrimitiveValue(Date.now, forKey: "updatedAt")
+        }
+    }
+
+    convenience init(
+        context: NSManagedObjectContext? = nil,
         id: String = UUID().uuidString.lowercased(),
         title: String,
         createdAt: Date = .now,
         updatedAt: Date = .now,
         lastSelectedPersonID: String? = nil
     ) {
+        self.init(
+            entity: PersistenceController.entity(named: "FamilyTree"),
+            insertInto: context
+        )
         self.id = id
         self.title = title
         self.createdAt = createdAt
@@ -64,6 +79,14 @@ final class FamilyTree {
 }
 
 extension FamilyTree {
+    static func fetchRequest(id: String? = nil) -> NSFetchRequest<FamilyTree> {
+        let request = NSFetchRequest<FamilyTree>(entityName: "FamilyTree")
+        if let id {
+            request.predicate = NSPredicate(format: "id == %@", id)
+        }
+        return request
+    }
+
     func resolvedFocusID(in people: [Person]) -> String? {
         let treePeople = people.filter { $0.treeID == id }
         if let lastSelectedPersonID,
@@ -74,7 +97,7 @@ extension FamilyTree {
     }
 }
 
-enum PersonGender: String, CaseIterable, Codable, Identifiable {
+enum PersonGender: String, CaseIterable, Codable, Identifiable, Sendable {
     case unspecified
     case female
     case male
@@ -90,7 +113,7 @@ enum PersonGender: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum BirthDatePrecision: String, CaseIterable, Codable, Identifiable {
+enum BirthDatePrecision: String, CaseIterable, Codable, Identifiable, Sendable {
     case exact
     case month
     case year
@@ -280,23 +303,30 @@ enum RelativeRole: String, CaseIterable, Identifiable {
     }
 }
 
-@Model
-final class Person {
-    var id: String = ""
-    var treeID: String = ""
-    var displayName: String = ""
-    var genderRaw: String = PersonGender.unspecified.rawValue
-    var createdAt: Date = Date.now
-    var birthDate: Date?
-    var deathDate: Date?
-    var birthDatePrecisionRaw: String = BirthDatePrecision.exact.rawValue
-    var notes: String = ""
-    var addressLine: String = ""
-    var city: String = ""
-    var province: String = ""
-    var country: String = ""
-    var postalCode: String = ""
-    @Attribute(.externalStorage) var profilePhotoData: Data? = nil
+@objc(Person)
+final class Person: NSManagedObject, Identifiable {
+    @NSManaged var id: String
+    @NSManaged var treeID: String
+    @NSManaged var displayName: String
+    @NSManaged var genderRaw: String
+    @NSManaged var createdAt: Date
+    @NSManaged var birthDate: Date?
+    @NSManaged var deathDate: Date?
+    @NSManaged var birthDatePrecisionRaw: String
+    @NSManaged var notes: String
+    @NSManaged var addressLine: String
+    @NSManaged var city: String
+    @NSManaged var province: String
+    @NSManaged var country: String
+    @NSManaged var postalCode: String
+    @NSManaged var profilePhotoData: Data?
+
+    override func awakeFromInsert() {
+        super.awakeFromInsert()
+        if primitiveValue(forKey: "createdAt") == nil {
+            setPrimitiveValue(Date.now, forKey: "createdAt")
+        }
+    }
 
     var gender: PersonGender {
         get { PersonGender(rawValue: genderRaw) ?? .unspecified }
@@ -371,18 +401,40 @@ final class Person {
         )
     }
 
-    init(
+    convenience init(
+        context: NSManagedObjectContext? = nil,
         id: String = UUID().uuidString.lowercased(),
         treeID: String = "",
         displayName: String,
         gender: PersonGender = .unspecified,
         createdAt: Date = .now
     ) {
+        self.init(
+            entity: PersistenceController.entity(named: "Person"),
+            insertInto: context
+        )
         self.id = id
         self.treeID = treeID
         self.displayName = displayName
         self.genderRaw = gender.rawValue
         self.createdAt = createdAt
+        self.birthDatePrecisionRaw = BirthDatePrecision.exact.rawValue
+        self.notes = ""
+        self.addressLine = ""
+        self.city = ""
+        self.province = ""
+        self.country = ""
+        self.postalCode = ""
+    }
+}
+
+extension Person {
+    static func fetchRequest(treeID: String? = nil) -> NSFetchRequest<Person> {
+        let request = NSFetchRequest<Person>(entityName: "Person")
+        if let treeID {
+            request.predicate = NSPredicate(format: "treeID == %@", treeID)
+        }
+        return request
     }
 }
 
@@ -464,16 +516,23 @@ enum FamilyRoleLabel {
     }
 }
 
-@Model
-final class FamilyRelationship {
-    var id: String = ""
-    var treeID: String = ""
-    var fromPersonID: String = ""
-    var toPersonID: String = ""
-    var kindRaw: String = RelationshipKind.parent.rawValue
-    var subtypeRaw: String = ""
-    var createdAt: Date = Date.now
-    var marriageDate: Date?
+@objc(FamilyRelationship)
+final class FamilyRelationship: NSManagedObject, Identifiable {
+    @NSManaged var id: String
+    @NSManaged var treeID: String
+    @NSManaged var fromPersonID: String
+    @NSManaged var toPersonID: String
+    @NSManaged var kindRaw: String
+    @NSManaged var subtypeRaw: String
+    @NSManaged var createdAt: Date
+    @NSManaged var marriageDate: Date?
+
+    override func awakeFromInsert() {
+        super.awakeFromInsert()
+        if primitiveValue(forKey: "createdAt") == nil {
+            setPrimitiveValue(Date.now, forKey: "createdAt")
+        }
+    }
 
     var kind: RelationshipKind {
         get { RelationshipKind(rawValue: kindRaw) ?? .parent }
@@ -490,7 +549,8 @@ final class FamilyRelationship {
         return String(Calendar.current.component(.year, from: marriageDate))
     }
 
-    init(
+    convenience init(
+        context: NSManagedObjectContext? = nil,
         id: String = UUID().uuidString.lowercased(),
         treeID: String = "",
         fromPersonID: String,
@@ -500,6 +560,10 @@ final class FamilyRelationship {
         marriageDate: Date? = nil,
         createdAt: Date = .now
     ) {
+        self.init(
+            entity: PersistenceController.entity(named: "FamilyRelationship"),
+            insertInto: context
+        )
         self.id = id
         self.treeID = treeID
         self.fromPersonID = fromPersonID
@@ -508,5 +572,15 @@ final class FamilyRelationship {
         self.subtypeRaw = (subtype ?? .legacyDefault(for: kind)).rawValue
         self.marriageDate = marriageDate
         self.createdAt = createdAt
+    }
+}
+
+extension FamilyRelationship {
+    static func fetchRequest(treeID: String? = nil) -> NSFetchRequest<FamilyRelationship> {
+        let request = NSFetchRequest<FamilyRelationship>(entityName: "FamilyRelationship")
+        if let treeID {
+            request.predicate = NSPredicate(format: "treeID == %@", treeID)
+        }
+        return request
     }
 }

@@ -26,15 +26,24 @@ struct LinkRelationshipSheet: View {
                         .accessibilityIdentifier("relationship.link.cancel")
                 }
             }
-            .navigationDestination(item: $selectedRole) { role in
-                peoplePicker(for: role)
-                    .background(HeritgColor.canvas)
-                    .navigationTitle("Choose \(role.title)")
-                    .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: selectedRoleIsPresented) {
+                if let selectedRole {
+                    peoplePicker(for: selectedRole)
+                        .background(HeritgColor.canvas)
+                        .navigationTitle("Choose \(selectedRole.title)")
+                        .navigationBarTitleDisplayMode(.inline)
+                }
             }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var selectedRoleIsPresented: Binding<Bool> {
+        Binding(
+            get: { selectedRole != nil },
+            set: { if !$0 { selectedRole = nil } }
+        )
     }
 
     private var rolePicker: some View {

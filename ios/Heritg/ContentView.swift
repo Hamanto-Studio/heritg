@@ -5,15 +5,21 @@
 //  Created by Hamanto Studio on 28/07/26.
 //
 
-import SwiftData
+import CoreData
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Query(sort: \FamilyTree.updatedAt, order: .reverse) private var trees: [FamilyTree]
-    @Query(sort: \Person.createdAt) private var allPeople: [Person]
-    @Query(sort: \FamilyRelationship.createdAt) private var allRelationships: [FamilyRelationship]
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \FamilyTree.updatedAt, ascending: false)]
+    ) private var fetchedTrees: FetchedResults<FamilyTree>
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \Person.createdAt, ascending: true)]
+    ) private var fetchedPeople: FetchedResults<Person>
+    @FetchRequest(
+        sortDescriptors: [NSSortDescriptor(keyPath: \FamilyRelationship.createdAt, ascending: true)]
+    ) private var fetchedRelationships: FetchedResults<FamilyRelationship>
     @AppStorage("selectedFamilyTreeID") private var selectedTreeID = ""
 
     @State private var focusedPersonID: String?
@@ -27,11 +33,30 @@ struct ContentView: View {
     @State private var isShowingTrees = false
     @State private var pendingExportTreeID: String?
     @State private var importNotice: String?
+    @State private var importError: String?
+    @State private var isImportingGEDCOM = false
     @State private var generationLimits = TreeGenerationLimits.unlimited
     @State private var splitViewVisibility = NavigationSplitViewVisibility.detailOnly
 
     var body: some View {
         rootContent
+        .overlay(alignment: .top) {
+            if isImportingGEDCOM {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Importing GEDCOM…")
+                        .font(.callout.weight(.semibold))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(.regularMaterial, in: Capsule())
+                .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+                .padding(.top, 12)
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("trees.importProgress")
+                .allowsHitTesting(false)
+            }
+        }
         .sheet(isPresented: $isCreatingFirstPerson) {
             NewPersonSheet(
                 title: String(localized: "Start your family tree", locale: AppLanguage.selectedLocale),
@@ -71,6 +96,11 @@ struct ContentView: View {
             Button("OK", role: .cancel) { importNotice = nil }
         } message: {
             Text(importNotice ?? "")
+        }
+        .alert("Couldn’t Import GEDCOM", isPresented: importErrorBinding) {
+            Button("OK", role: .cancel) { importError = nil }
+        } message: {
+            Text(importError ?? "")
         }
         .sheet(item: $addTargetPerson) { target in
             AddRelativeSheet(
@@ -154,9 +184,10 @@ struct ContentView: View {
                 }
             )
         }
-        .onChange(of: activeTreeID, initial: true) { restoreFocus() }
-        .onChange(of: people.map(\.id)) { ensureValidFocus() }
-        .onChange(of: availableGenerationLevels) { _, availableLevels in
+        .onAppear { restoreFocus() }
+        .onChange(of: activeTreeID) { _ in restoreFocus() }
+        .onChange(of: people.map(\.id)) { _ in ensureValidFocus() }
+        .onChange(of: availableGenerationLevels) { availableLevels in
             guard resolvedFocusID != nil else { return }
             generationLimits = generationLimits.clamped(to: availableLevels)
         }
@@ -189,11 +220,12 @@ struct ContentView: View {
         if let activeTree {
             HeritgTreeCanvas(
                 layout: layout,
+                sourcePersonCount: people.count,
                 focusedPersonID: resolvedFocusID,
-                    generationLimits: $generationLimits,
-                    availableGenerationLevels: availableGenerationLevels,
-                    onSelectPerson: selectPerson,
-                    onDeselectPerson: { focusedPersonID = nil },
+                generationLimits: $generationLimits,
+                availableGenerationLevels: availableGenerationLevels,
+                onSelectPerson: selectPerson,
+                onDeselectPerson: { focusedPersonID = nil },
                 onAddRelative: selectAddTarget,
                 onCreateFirstPerson: { isCreatingFirstPerson = true },
                 onShowTrees: showTreeLibrary,
@@ -203,11 +235,16 @@ struct ContentView: View {
             )
             .id(activeTree.id)
         } else {
-            ContentUnavailableView(
-                "Select a Family Tree",
-                systemImage: "tree",
-                description: Text("Choose or create a family tree in the sidebar.")
-            )
+            VStack(spacing: 12) {
+                Image(systemName: "tree")
+                    .font(.largeTitle)
+                    .foregroundStyle(HeritgColor.subtleText)
+                Text("Select a Family Tree")
+                    .font(.title2.weight(.semibold))
+                Text("Choose or create a family tree in the sidebar.")
+                    .foregroundStyle(HeritgColor.subtleText)
+                    .multilineTextAlignment(.center)
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(HeritgColor.treeCanvas)
         }
@@ -217,6 +254,10 @@ struct ContentView: View {
         guard let activeTreeID else { return nil }
         return trees.first { $0.id == activeTreeID }
     }
+
+    private var trees: [FamilyTree] { Array(fetchedTrees) }
+    private var allPeople: [Person] { Array(fetchedPeople) }
+    private var allRelationships: [FamilyRelationship] { Array(fetchedRelationships) }
 
     private var adaptiveSplitVisibility: Binding<NavigationSplitViewVisibility> {
         Binding(
@@ -258,6 +299,7 @@ struct ContentView: View {
             relationships: allRelationships,
             selectedTreeID: activeTreeID,
             allowsDismiss: allowsDismiss,
+            isProcessingImport: $isImportingGEDCOM,
             onSelect: selectTree,
             onCreate: { name in
                 try FamilyGraph.createTree(named: name, in: modelContext)
@@ -268,6 +310,7 @@ struct ContentView: View {
             onDelete: deleteTree,
             onExport: requestExport,
             onImport: importGEDCOM,
+            onImportError: { importError = $0 },
             onImportArchive: { payload in
                 try FamilyGraph.importArchive(payload, in: modelContext)
             }
@@ -323,15 +366,24 @@ struct ContentView: View {
         isShowingSettings = true
     }
 
-    private func importGEDCOM(data: Data, sourceName: String) throws -> FamilyTree {
-        let importData = try GEDCOMImporter.parse(data: data, sourceName: sourceName)
-        let tree = try FamilyGraph.importGEDCOM(importData, in: modelContext)
-        if !importData.warnings.isEmpty {
-            let preview = importData.warnings.prefix(3).joined(separator: "\n")
-            let peopleSummary = String(
-                localized: "\(importData.people.count) people",
-                locale: AppLanguage.selectedLocale
+    private func importGEDCOM(data: Data, sourceName: String) async throws {
+        let shouldSelectImportedTree = activeTree == nil
+        let importData = try await Task.detached(priority: .userInitiated) {
+            try GEDCOMImporter.parse(data: data, sourceName: sourceName)
+        }.value
+        let tree = try await FamilyGraph.importGEDCOMInBackground(importData, in: modelContext)
+        let peopleSummary = String(
+            localized: "\(importData.people.count) people",
+            locale: AppLanguage.selectedLocale
+        )
+        if importData.warnings.isEmpty {
+            importNotice = String(
+                localized: "Imported \(peopleSummary) into \(tree.title).",
+                locale: AppLanguage.selectedLocale,
+                comment: "Successful GEDCOM import with person count and family tree title."
             )
+        } else {
+            let preview = importData.warnings.prefix(3).joined(separator: "\n")
             let warningSummary = String(
                 localized: "\(importData.warnings.count) warnings",
                 locale: AppLanguage.selectedLocale
@@ -342,13 +394,20 @@ struct ContentView: View {
                 comment: "GEDCOM import result followed by up to three warning messages."
             )
         }
-        return tree
+        if shouldSelectImportedTree { selectTree(tree) }
     }
 
     private var importNoticeBinding: Binding<Bool> {
         Binding(
             get: { importNotice != nil },
             set: { if !$0 { importNotice = nil } }
+        )
+    }
+
+    private var importErrorBinding: Binding<Bool> {
+        Binding(
+            get: { importError != nil },
+            set: { if !$0 { importError = nil } }
         )
     }
 
@@ -682,6 +741,7 @@ struct ContentView: View {
 }
 
 #Preview {
+    let persistenceController = PersistenceController(inMemory: true)
     ContentView()
-        .modelContainer(for: [FamilyTree.self, Person.self, FamilyRelationship.self], inMemory: true)
+        .environment(\.managedObjectContext, persistenceController.container.viewContext)
 }

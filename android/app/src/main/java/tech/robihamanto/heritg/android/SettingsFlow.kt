@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -62,6 +63,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isSensitiveData
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -216,8 +218,9 @@ private fun ExportScreen(
     var error by uiState.state<String?>(prefix + "error") { null }
     var generatedArchive by uiState.state<GeneratedShare?>(prefix + "generatedArchive") { null }
     val passwordMismatch = stringResource(R.string.passwords_mismatch)
-    val passwordRequirements = stringResource(R.string.password_requirements)
-    val passwordMeetsRequirements = remember(password) { ArchivePasswordPolicy.accepts(password) }
+    val passwordRequirementsError = stringResource(R.string.password_requirements)
+    val passwordRequirements = remember(password) { ArchivePasswordPolicy.requirements(password) }
+    val passwordMeetsRequirements = password.isEmpty() || passwordRequirements.allMet
     val layoutState = remember(people, relationships, pointOfView, generationLimits, locale) {
         mutableStateOf<TreeLayoutResult?>(null)
     }
@@ -251,7 +254,7 @@ private fun ExportScreen(
     }
     fun prepareArchive() {
         if (!passwordMeetsRequirements) {
-            error = passwordRequirements
+            error = passwordRequirementsError
             return
         }
         if (password != confirmation) {
@@ -323,30 +326,41 @@ private fun ExportScreen(
             style = MaterialTheme.typography.titleSmall,
         )
         Text(stringResource(R.string.password_restore_notice), color = MaterialTheme.colorScheme.primary)
-        OutlinedTextField(password, { password = it; generatedArchive?.clearMemory(); generatedArchive = null; error = null },
+        OutlinedTextField(password, {
+            password = it
+            if (it.isEmpty()) confirmation = ""
+            generatedArchive?.clearMemory(); generatedArchive = null; error = null
+        },
             Modifier.fillMaxWidth().contentType(ContentType.NewPassword).semantics { isSensitiveData = true }
                 .testTag("settings.archivePassword"),
             label = { Text(stringResource(R.string.password_optional)) }, visualTransformation = PasswordVisualTransformation(),
             singleLine = true, enabled = !working,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Next),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = if (password.isEmpty()) ImeAction.Done else ImeAction.Next,
+            ),
             keyboardActions = keyboardActions)
-        OutlinedTextField(confirmation, { confirmation = it; generatedArchive?.clearMemory(); generatedArchive = null; error = null },
-            Modifier.fillMaxWidth().contentType(ContentType.NewPassword).semantics { isSensitiveData = true }
-                .testTag("settings.archivePasswordConfirmation"),
-            label = { Text(stringResource(R.string.confirm_password)) }, visualTransformation = PasswordVisualTransformation(),
-            singleLine = true, enabled = !working, isError = passwordsDoNotMatch,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-            keyboardActions = confirmationKeyboardActions)
-        if (passwordsDoNotMatch) Text(
-            passwordMismatch, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordMismatch) }
-                .testTag("settings.passwordMismatch"),
-        )
-        if (!passwordMeetsRequirements) Text(
-            passwordRequirements, color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordRequirements) }
-                .testTag("settings.passwordRequirements"),
-        )
+        if (password.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().testTag("settings.passwordRequirements")) {
+                PasswordRequirementRow(R.string.password_minimum_length, passwordRequirements.minimumLength)
+                PasswordRequirementRow(R.string.password_lowercase, passwordRequirements.lowercase)
+                PasswordRequirementRow(R.string.password_uppercase, passwordRequirements.uppercase)
+                PasswordRequirementRow(R.string.password_number, passwordRequirements.number)
+                PasswordRequirementRow(R.string.password_special, passwordRequirements.special)
+            }
+            OutlinedTextField(confirmation, { confirmation = it; generatedArchive?.clearMemory(); generatedArchive = null; error = null },
+                Modifier.fillMaxWidth().contentType(ContentType.NewPassword).semantics { isSensitiveData = true }
+                    .testTag("settings.archivePasswordConfirmation"),
+                label = { Text(stringResource(R.string.confirm_password)) }, visualTransformation = PasswordVisualTransformation(),
+                singleLine = true, enabled = !working, isError = passwordsDoNotMatch,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = confirmationKeyboardActions)
+            if (passwordsDoNotMatch) Text(
+                passwordMismatch, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Assertive; this.error(passwordMismatch) }
+                    .testTag("settings.passwordMismatch"),
+            )
+        }
         Button(onClick = ::prepareArchive,
             enabled = !working && password == confirmation && passwordMeetsRequirements,
             modifier = Modifier.fillMaxWidth().testTag("settings.exportHeritg")) {
@@ -365,6 +379,20 @@ private fun ExportScreen(
             modifier = Modifier.focusRequester(errorFocus).focusable()
                 .semantics { liveRegion = LiveRegionMode.Assertive; this.error(message) }.testTag("settings.exportError")) }
         Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun PasswordRequirementRow(label: Int, isMet: Boolean) {
+    val state = stringResource(
+        if (isMet) R.string.password_requirement_met else R.string.password_requirement_not_met,
+    )
+    Row(
+        Modifier.semantics(mergeDescendants = true) { stateDescription = state },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = isMet, onCheckedChange = null)
+        Text(stringResource(label), style = MaterialTheme.typography.bodySmall)
     }
 }
 

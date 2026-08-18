@@ -1,6 +1,6 @@
 # Data Processing Register
 
-Last reviewed: August 4, 2026
+Last reviewed: August 18, 2026
 
 This register identifies data flows in the official HERITG application. It is
 intended to keep the privacy policy, implementation, and App Store disclosures
@@ -10,7 +10,7 @@ consistent.
 
 | Component | Status | Purpose | Data | Destination | User control |
 | --- | --- | --- | --- | --- | --- |
-| SwiftData and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
+| Core Data and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
 | IndexedDB | Active at `heritg.us` | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
 | File import | Active | Import genealogy records or backups | User-selected file contents | Processed on-device or in-browser | User explicitly selects a file |
 | Image and document export | Active | Create user-requested exports | User-selected family-tree content | User-selected system share or browser download destination | User initiates and chooses destination |

@@ -1,5 +1,5 @@
 import Foundation
-import SwiftData
+import CoreData
 import Testing
 @testable import HERITG
 
@@ -11,7 +11,7 @@ struct FamilyTreeRelationshipFlowTests {
         let firstParent = try FamilyGraph.createPerson(named: "First", in: tree, context: context)
         let secondParent = try FamilyGraph.createPerson(named: "Second", in: tree, context: context)
         try FamilyGraph.link(firstParent, to: secondParent, as: .wife, relationships: [], in: context)
-        let existingRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let existingRelationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         let child = try FamilyGraph.addRelative(
             named: "Child",
@@ -22,7 +22,7 @@ struct FamilyTreeRelationshipFlowTests {
             in: context
         )
 
-        let parentRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let parentRelationships = try context.fetch(FamilyRelationship.fetchRequest())
             .filter { $0.kind == .parent && $0.toPersonID == child.id }
         #expect(parentRelationships.count == 2)
         #expect(Set(parentRelationships.map(\.fromPersonID)) == Set([firstParent.id, secondParent.id]))
@@ -36,8 +36,8 @@ struct FamilyTreeRelationshipFlowTests {
         let parent = try FamilyGraph.createPerson(named: "Parent", in: tree, context: context)
         let formerPartner = try FamilyGraph.createPerson(named: "Former", in: tree, context: context)
         try FamilyGraph.link(parent, to: formerPartner, as: .formerPartner, relationships: [], in: context)
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
-        let initialPersonCount = try context.fetchCount(FetchDescriptor<Person>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
+        let initialPersonCount = try context.count(for: Person.fetchRequest())
 
         #expect(throws: FamilyGraphError.self) {
             try FamilyGraph.addRelative(
@@ -49,8 +49,8 @@ struct FamilyTreeRelationshipFlowTests {
                 in: context
             )
         }
-        #expect(try context.fetchCount(FetchDescriptor<Person>()) == initialPersonCount)
-        #expect(try context.fetchCount(FetchDescriptor<FamilyRelationship>()) == relationships.count)
+        #expect(try context.count(for: Person.fetchRequest()) == initialPersonCount)
+        #expect(try context.count(for: FamilyRelationship.fetchRequest()) == relationships.count)
     }
 
     @MainActor
@@ -60,7 +60,7 @@ struct FamilyTreeRelationshipFlowTests {
         let stepParent = try FamilyGraph.createPerson(named: "Step Parent", in: tree, context: context)
         let partner = try FamilyGraph.createPerson(named: "Partner", in: tree, context: context)
         try FamilyGraph.link(stepParent, to: partner, as: .wife, relationships: [], in: context)
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         #expect(throws: FamilyGraphError.self) {
             try FamilyGraph.addRelative(
@@ -86,7 +86,7 @@ struct FamilyTreeRelationshipFlowTests {
         #expect(throws: FamilyGraphError.self) {
             try FamilyGraph.link(first, to: second, as: .sister, relationships: [], in: context)
         }
-        #expect(try context.fetchCount(FetchDescriptor<FamilyRelationship>()) == 1)
+        #expect(try context.count(for: FamilyRelationship.fetchRequest()) == 1)
     }
 
     @MainActor
@@ -97,7 +97,7 @@ struct FamilyTreeRelationshipFlowTests {
         let spouse = try FamilyGraph.createPerson(named: "Spouse", in: tree, context: context)
         let formerPartner = try FamilyGraph.createPerson(named: "Former", in: tree, context: context)
         try FamilyGraph.link(person, to: spouse, as: .husband, relationships: [], in: context)
-        var relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        var relationships = try context.fetch(FamilyRelationship.fetchRequest())
         try FamilyGraph.link(
             person,
             to: formerPartner,
@@ -105,7 +105,7 @@ struct FamilyTreeRelationshipFlowTests {
             relationships: relationships,
             in: context
         )
-        relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         let activePartners = FamilyGraph.activePartners(
             of: person,
@@ -232,10 +232,7 @@ struct FamilyTreeRelationshipFlowTests {
     }
 
     @MainActor
-    private func makeContext() throws -> ModelContext {
-        let schema = Schema([FamilyTree.self, Person.self, FamilyRelationship.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
+    private func makeContext() throws -> NSManagedObjectContext {
+        PersistenceController(inMemory: true).container.viewContext
     }
 }

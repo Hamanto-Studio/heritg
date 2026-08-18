@@ -13,13 +13,13 @@ The project is maintained by Hamanto Studio and is under active development.
 - Navigate a visual family tree
 - Import and export GEDCOM family data
 - Export family trees as images and SVG documents
-- Store data locally with SwiftData
+- Store data locally with Core Data
 - Use the app in English or Bahasa Indonesia
 
 ## Requirements
 
 - macOS with Xcode 26.1 or later
-- iOS 26.0 or later
+- iOS 16.0 or later
 
 ## Build and Run
 
@@ -28,7 +28,7 @@ The project is maintained by Hamanto Studio and is under active development.
 3. Select an iOS Simulator or a connected device.
 4. Build and run with `Cmd-R`.
 
-The app uses SwiftUI and SwiftData and does not require external package
+The app uses SwiftUI and Core Data and does not require external package
 dependencies or a backend account.
 
 ## Tests

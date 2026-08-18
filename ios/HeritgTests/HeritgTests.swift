@@ -6,13 +6,165 @@
 //
 
 import CoreGraphics
-import SwiftData
+import CoreData
 import SwiftUI
 import Testing
 import UIKit
 @testable import HERITG
 
+private final class HeritgTestBundleLocator {}
+
 struct HeritgTests {
+    @MainActor
+    @Test func opensReleasedSwiftDataStoreWithCoreData() throws {
+        let bundle = Bundle(for: HeritgTestBundleLocator.self)
+        let fixtureURL = try #require(
+            bundle.url(
+                forResource: "swiftdata-1.0.0",
+                withExtension: "store",
+                subdirectory: "Fixtures"
+            ) ?? bundle.url(
+                forResource: "swiftdata-1.0.0",
+                withExtension: "store"
+            )
+        )
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let storeURL = directory.appendingPathComponent("default.store")
+        try FileManager.default.copyItem(at: fixtureURL, to: storeURL)
+
+        let controller = PersistenceController(
+            inMemory: false,
+            storeURL: storeURL
+        )
+        let context = controller.container.viewContext
+        let tree = try #require(context.fetch(FamilyTree.fetchRequest()).first)
+        let people = try context.fetch(Person.fetchRequest(treeID: tree.id))
+        let first = try #require(people.first { $0.id == "person-1" })
+        let relationship = try #require(
+            context.fetch(FamilyRelationship.fetchRequest(treeID: tree.id)).first
+        )
+
+        #expect(tree.title == "Migration fixture")
+        #expect(tree.lastSelectedPersonID == first.id)
+        #expect(people.map(\.displayName).sorted() == ["Ayu", "Bima"])
+        #expect(first.gender == .female)
+        #expect(first.birthDatePrecision == .year)
+        #expect(first.notes == "Family notes")
+        #expect(first.addressLine == "1 Example Road")
+        #expect(first.city == "Bandung")
+        #expect(first.province == "West Java")
+        #expect(first.country == "Indonesia")
+        #expect(first.postalCode == "40111")
+        #expect(first.profilePhotoData == Data([0x01, 0x02, 0x03, 0x04]))
+        #expect(relationship.kind == .partner)
+        #expect(relationship.subtype == .spouse)
+        #expect(relationship.fromPersonID == "person-1")
+        #expect(relationship.toPersonID == "person-2")
+
+        tree.title = "Migrated Family"
+        try context.save()
+        context.reset()
+        #expect(try context.fetch(FamilyTree.fetchRequest()).first?.title == "Migrated Family")
+        try closePersistentStores(in: controller)
+    }
+
+    @MainActor
+    @Test func diskStoreReopensAllFamilyData() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let storeURL = directory.appendingPathComponent("default.store")
+        let photoData = Data([0x01, 0x02, 0x03, 0x04])
+        let birthDate = Date(timeIntervalSince1970: 315_532_800)
+        let marriageDate = Date(timeIntervalSince1970: 946_684_800)
+
+        do {
+            let controller = PersistenceController(
+                inMemory: false,
+                storeURL: storeURL
+            )
+            let context = controller.container.viewContext
+            let tree = FamilyTree(
+                context: context,
+                id: "tree-1",
+                title: "Migration Family",
+                lastSelectedPersonID: "person-1"
+            )
+            let first = Person(
+                context: context,
+                id: "person-1",
+                treeID: tree.id,
+                displayName: "Ayu",
+                gender: .female
+            )
+            first.birthDate = birthDate
+            first.birthDatePrecision = .year
+            first.notes = "Family notes"
+            first.addressLine = "1 Example Road"
+            first.city = "Bandung"
+            first.province = "West Java"
+            first.country = "Indonesia"
+            first.postalCode = "40111"
+            first.profilePhotoData = photoData
+            _ = Person(
+                context: context,
+                id: "person-2",
+                treeID: tree.id,
+                displayName: "Bima",
+                gender: .male
+            )
+            _ = FamilyRelationship(
+                context: context,
+                id: "relationship-1",
+                treeID: tree.id,
+                fromPersonID: "person-1",
+                toPersonID: "person-2",
+                kind: .partner,
+                subtype: .spouse,
+                marriageDate: marriageDate
+            )
+            try context.save()
+            context.reset()
+            try closePersistentStores(in: controller)
+        }
+
+        let controller = PersistenceController(
+            inMemory: false,
+            storeURL: storeURL
+        )
+        let context = controller.container.viewContext
+        let tree = try #require(context.fetch(FamilyTree.fetchRequest()).first)
+        let people = try context.fetch(Person.fetchRequest(treeID: tree.id))
+        let first = try #require(people.first { $0.id == "person-1" })
+        let relationship = try #require(
+            context.fetch(FamilyRelationship.fetchRequest(treeID: tree.id)).first
+        )
+
+        #expect(tree.title == "Migration Family")
+        #expect(tree.lastSelectedPersonID == first.id)
+        #expect(people.count == 2)
+        #expect(first.birthDate == birthDate)
+        #expect(first.birthDatePrecision == .year)
+        #expect(first.notes == "Family notes")
+        #expect(first.addressLine == "1 Example Road")
+        #expect(first.city == "Bandung")
+        #expect(first.province == "West Java")
+        #expect(first.country == "Indonesia")
+        #expect(first.postalCode == "40111")
+        #expect(first.profilePhotoData == photoData)
+        #expect(relationship.kind == .partner)
+        #expect(relationship.subtype == .spouse)
+        #expect(relationship.marriageDate == marriageDate)
+        #expect(PersistenceController.productionStoreURL.lastPathComponent == "default.store")
+        context.reset()
+        try closePersistentStores(in: controller)
+    }
+
     @MainActor
     @Test func familyTreesRestoreTheirOwnLastSelectedPerson() throws {
         let context = try makeContext()
@@ -72,7 +224,7 @@ struct HeritgTests {
             in: context
         )
 
-        let savedPerson = try #require(context.fetch(FetchDescriptor<Person>()).first)
+        let savedPerson = try #require(context.fetch(Person.fetchRequest()).first)
         #expect(savedPerson.profilePhotoData == photoData)
     }
 
@@ -85,7 +237,7 @@ struct HeritgTests {
         let partner = try FamilyGraph.addRelative(named: "Ari", to: focus, as: .partner, in: context)
         let child = try FamilyGraph.addRelative(named: "Nina", to: focus, as: .daughter, in: context)
         let sibling = try FamilyGraph.addRelative(named: "Dina", to: focus, as: .sister, in: context)
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         #expect(relationships.count == 4)
         #expect(parent.gender == .male)
@@ -114,7 +266,7 @@ struct HeritgTests {
         maya.gender = .female
 
         try FamilyGraph.link(hari, to: maya, as: .partner, relationships: [], in: context)
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         #expect(relationships.count == 1)
         #expect(relationships[0].kind == .partner)
@@ -139,12 +291,12 @@ struct HeritgTests {
         let tree = try FamilyGraph.createTree(named: "Rina Family", in: context)
         let focus = try FamilyGraph.createPerson(named: "Rina", in: tree, context: context)
         let child = try FamilyGraph.addRelative(named: "Nina", to: focus, as: .daughter, in: context)
-        let relationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let relationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         try FamilyGraph.deletePerson(child, relationships: relationships, in: context)
 
-        #expect(try context.fetchCount(FetchDescriptor<Person>()) == 1)
-        #expect(try context.fetchCount(FetchDescriptor<FamilyRelationship>()) == 0)
+        #expect(try context.count(for: Person.fetchRequest()) == 1)
+        #expect(try context.count(for: FamilyRelationship.fetchRequest()) == 0)
     }
 
     @MainActor
@@ -154,7 +306,7 @@ struct HeritgTests {
         let person = try FamilyGraph.createPerson(named: "Rina", in: tree, context: context)
         _ = try FamilyGraph.addRelative(named: "Nina", to: person, as: .daughter, in: context)
         let sibling = try FamilyGraph.createPerson(named: "Dina", in: tree, context: context)
-        let existingRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let existingRelationships = try context.fetch(FamilyRelationship.fetchRequest())
         var details = PersonDetails.empty
         details.city = "Bandung"
 
@@ -169,7 +321,7 @@ struct HeritgTests {
             in: context
         )
 
-        let savedRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let savedRelationships = try context.fetch(FamilyRelationship.fetchRequest())
         #expect(person.displayName == "Rina Wijaya")
         #expect(person.city == "Bandung")
         #expect(savedRelationships.count == 1)
@@ -195,12 +347,12 @@ struct HeritgTests {
             firstTree,
             in: context
         )
-        let remainingPeople = try context.fetch(FetchDescriptor<Person>())
+        let remainingPeople = try context.fetch(Person.fetchRequest())
         #expect(remainingPeople.map(\.id) == [secondPerson.id])
     }
 
     @MainActor
-    @Test func importsGEDCOMAsANewScopedTree() throws {
+    @Test func importsGEDCOMAsANewScopedTree() async throws {
         let context = try makeContext()
         let gedcom = """
         0 HEAD
@@ -223,11 +375,12 @@ struct HeritgTests {
             data: Data(gedcom.utf8),
             sourceName: "Rina-Family.ged"
         )
-        let tree = try FamilyGraph.importGEDCOM(parsed, in: context)
-        let importedPeople = try context.fetch(FetchDescriptor<Person>())
-        let importedRelationships = try context.fetch(FetchDescriptor<FamilyRelationship>())
+        let tree = try await FamilyGraph.importGEDCOMInBackground(parsed, in: context)
+        let importedPeople = try context.fetch(Person.fetchRequest())
+        let importedRelationships = try context.fetch(FamilyRelationship.fetchRequest())
 
         #expect(tree.title == "Rina-Family")
+        #expect(tree.createdAt <= tree.updatedAt)
         #expect(importedPeople.count == 2)
         #expect(importedPeople.allSatisfy { $0.treeID == tree.id })
         #expect(importedRelationships.count == 1)
@@ -544,38 +697,6 @@ struct HeritgTests {
         #expect(lanes == [0, 1, 0])
     }
 
-    @MainActor
-    @Test func addControlUsesAnUnoccupiedCardinalSide() {
-        let center = CGPoint(x: 100, y: 100)
-        let cases: [(occupied: Set<TreeNodeSide>, expected: TreeNodeSide)] = [
-            ([], .left),
-            ([.left], .right),
-            ([.top, .bottom], .left),
-            ([.left, .right], .top),
-            ([.left, .right, .top, .bottom], .topLeft),
-        ]
-
-        for testCase in cases {
-            let side = TreeVisualMetrics.addControlSide(avoiding: testCase.occupied)
-            let position = TreeVisualMetrics.addControlPosition(
-                avatarCenter: center,
-                scale: 1,
-                side: side
-            )
-
-            #expect(side == testCase.expected)
-            #expect(!testCase.occupied.contains(side))
-            if side == .topLeft || side == .topRight {
-                #expect(position.x != center.x && position.y != center.y)
-            } else {
-                #expect(position.x == center.x || position.y == center.y)
-            }
-            if side == .left || side == .right {
-                #expect(abs(position.x - center.x) == 66)
-            }
-        }
-    }
-
     @Test func treeSpacingLeavesRoomForLabelsControlsAndConnectorLanes() {
         #expect(TreeVisualMetrics.horizontalSpacing >= TreeVisualMetrics.nodeLabelWidth + 60)
         #expect(TreeVisualMetrics.generationSpacing >= 250)
@@ -592,11 +713,24 @@ struct HeritgTests {
         #expect(offset == CGSize(width: -30, height: -10))
     }
 
+    @Test func overviewRenderingUsesCanonicalZoomHysteresis() {
+        #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.29))
+        #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: false, scale: 0.3))
+        #expect(TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.41))
+        #expect(!TreeVisualMetrics.shouldRenderOverview(currentlyOverview: true, scale: 0.42))
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.2) == 1.7)
+        #expect(TreeVisualMetrics.actionCompensation(at: 0.5) == 1)
+        #expect(TreeVisualMetrics.actionCompensation(at: 1.8) == 1 / 1.8)
+    }
+
     @MainActor
-    private func makeContext() throws -> ModelContext {
-        let schema = Schema([FamilyTree.self, Person.self, FamilyRelationship.self])
-        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: [configuration])
-        return ModelContext(container)
+    private func makeContext() throws -> NSManagedObjectContext {
+        PersistenceController(inMemory: true).container.viewContext
+    }
+
+    private func closePersistentStores(in controller: PersistenceController) throws {
+        for store in controller.container.persistentStoreCoordinator.persistentStores {
+            try controller.container.persistentStoreCoordinator.remove(store)
+        }
     }
 }

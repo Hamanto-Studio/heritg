@@ -1,7 +1,7 @@
 import CoreGraphics
 import Foundation
 
-struct PersonSnapshot: Identifiable, Equatable {
+nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
     let gender: PersonGender
@@ -26,7 +26,7 @@ struct PersonSnapshot: Identifiable, Equatable {
     }
 }
 
-struct RelationshipSnapshot: Identifiable, Equatable {
+nonisolated struct RelationshipSnapshot: Identifiable, Equatable, Sendable {
     let id: String
     let fromPersonID: String
     let toPersonID: String
@@ -51,14 +51,14 @@ struct RelationshipSnapshot: Identifiable, Equatable {
     }
 }
 
-struct TreeNodeLayout: Identifiable, Equatable {
+nonisolated struct TreeNodeLayout: Identifiable, Equatable, Sendable {
     let id: String
     let person: PersonSnapshot
     let role: String
     let position: CGPoint
 }
 
-struct TreeEdgeLayout: Identifiable, Equatable {
+nonisolated struct TreeEdgeLayout: Identifiable, Equatable, Sendable {
     let id: String
     let fromPersonID: String
     let toPersonID: String
@@ -106,7 +106,7 @@ struct TreeEdgeLayout: Identifiable, Equatable {
     }
 }
 
-struct TreeLayoutResult: Equatable {
+nonisolated struct TreeLayoutResult: Equatable, Sendable {
     let nodes: [TreeNodeLayout]
     let edges: [TreeEdgeLayout]
 }

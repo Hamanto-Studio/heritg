@@ -9,6 +9,8 @@
 "Back to relationship choices" = "Kembali ke pilihan hubungan";
 "Brother" = "Saudara laki-laki";
 "Cancel" = "Batal";
+"Choose a .ged, .gedcom, or .txt GEDCOM file." = "Pilih file GEDCOM .ged, .gedcom, atau .txt.";
+"Choose a .heritg backup file." = "Pilih file cadangan .heritg.";
 "Cancel removing person" = "Batalkan penghapusan orang";
 "Centers this person on the family tree" = "Pusatkan orang ini pada silsilah keluarga";
 "Child" = "Anak";
@@ -126,8 +128,15 @@
 "Creating backup" = "Membuat cadangan";
 "Decrypting backup" = "Mendekripsi cadangan";
 "Every Heritg backup is encrypted" = "Setiap cadangan Heritg dienkripsi";
-"The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer." = "Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi. Jika menggunakan kata sandi, pakai minimal 8 karakter dengan huruf besar, huruf kecil, dan angka. Kata sandi yang lebih panjang lebih aman.";
-"Use at least 8 characters with an uppercase letter, a lowercase letter, and a number." = "Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.";
+"The password is optional. Leave it empty to restore without a password. If you add one, complete the requirements below. Longer is safer." = "Kata sandi bersifat opsional. Kosongkan kolom ini untuk memulihkan tanpa kata sandi. Jika Anda menambahkan kata sandi, lengkapi persyaratan di bawah. Kata sandi yang lebih panjang lebih aman.";
+"Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character." = "Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, angka, dan karakter khusus.";
+"At least 8 characters" = "Minimal 8 karakter";
+"Lowercase letter" = "Huruf kecil";
+"Uppercase letter" = "Huruf besar";
+"Number" = "Angka";
+"Special character" = "Karakter khusus";
+"Met" = "Terpenuhi";
+"Not met" = "Belum terpenuhi";
 "Password (optional)" = "Kata sandi (opsional)";
 "Encrypted Heritg backup" = "Cadangan Heritg terenkripsi";
 "Enter the password used when this backup was created." = "Masukkan kata sandi yang digunakan saat cadangan ini dibuat.";
@@ -331,3 +340,6 @@
 "Levels above" = "Tingkat di atas";
 "Levels below" = "Tingkat di bawah";
 "Limits how many family levels are shown above and below the selected person" = "Membatasi jumlah tingkat keluarga yang ditampilkan di atas dan di bawah orang yang dipilih";
+"Importing GEDCOM…" = "Mengimpor GEDCOM…";
+"Couldn’t Import GEDCOM" = "Tidak Dapat Mengimpor GEDCOM";
+"Imported %@ into %@." = "Berhasil mengimpor %1$@ ke %2$@.";

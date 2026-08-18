@@ -13,6 +13,27 @@ final class HeritgUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportGEDCOMPresentsFilePicker() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-ui_testing", "-AppleLanguages", "(en)"]
+        app.launch()
+
+        let addTree = element("trees.add", in: app)
+        XCTAssertTrue(addTree.waitForExistence(timeout: 10))
+        addTree.tap()
+
+        let importGEDCOM = element("trees.importGEDCOMMenu", in: app)
+        XCTAssertTrue(importGEDCOM.waitForExistence(timeout: 5))
+        importGEDCOM.tap()
+
+        let cancelPicker = app.buttons["Cancel"].firstMatch
+        guard cancelPicker.waitForExistence(timeout: 5) else {
+            XCTFail("Tapping Import GEDCOM did not present the system file picker.\n\(app.debugDescription)")
+            return
+        }
+    }
+
+    @MainActor
     func testAppStoreScreenshots() throws {
         let app = XCUIApplication()
         setupSnapshot(app)

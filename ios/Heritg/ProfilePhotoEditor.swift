@@ -247,7 +247,7 @@ private struct CropPhotoSheet: View {
             currentCropSide = cropSide
             currentBaseScale = baseScale
         }
-        .onChange(of: cropSide) { _, newValue in
+        .onChange(of: cropSide) { newValue in
             currentCropSide = newValue
             currentBaseScale = baseScale
         }
@@ -276,12 +276,12 @@ private struct CropPhotoSheet: View {
     }
 
     private func zoomGesture(cropSide: CGFloat, baseScale: CGFloat) -> some Gesture {
-        MagnifyGesture()
+        MagnificationGesture()
             .onChanged { value in
-                if abs(value.magnification - 1) < 0.001 {
+                if abs(value - 1) < 0.001 {
                     zoomStart = zoom
                 }
-                zoom = (zoomStart * value.magnification).clamped(to: 1...4)
+                zoom = (zoomStart * value).clamped(to: 1...4)
             }
             .onEnded { _ in
                 zoomStart = zoom

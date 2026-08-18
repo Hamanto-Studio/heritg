@@ -1,13 +1,13 @@
 import Foundation
 
-struct GEDCOMImport {
+struct GEDCOMImport: Sendable {
     let suggestedTitle: String
     let people: [GEDCOMImportedPerson]
     let relationships: [GEDCOMImportedRelationship]
     let warnings: [String]
 }
 
-struct GEDCOMImportedPerson {
+struct GEDCOMImportedPerson: Sendable {
     let sourceID: String
     var name: String
     var gender: PersonGender = .unspecified
@@ -18,7 +18,7 @@ struct GEDCOMImportedPerson {
     var notes = ""
 }
 
-struct GEDCOMImportedRelationship {
+struct GEDCOMImportedRelationship: Sendable {
     let fromSourceID: String
     let toSourceID: String
     let kind: RelationshipKind
@@ -29,6 +29,7 @@ struct GEDCOMImportedRelationship {
 enum GEDCOMImportError: LocalizedError {
     case emptyFile
     case fileTooLarge
+    case unsupportedFileType
     case malformedLine(Int)
     case tooManyRecords
     case noPeople
@@ -37,6 +38,7 @@ enum GEDCOMImportError: LocalizedError {
         switch self {
         case .emptyFile: String(localized: "The GEDCOM file is empty.", locale: AppLanguage.selectedLocale)
         case .fileTooLarge: String(localized: "The GEDCOM file is larger than 25 MB.", locale: AppLanguage.selectedLocale)
+        case .unsupportedFileType: String(localized: "Choose a .ged, .gedcom, or .txt GEDCOM file.", locale: AppLanguage.selectedLocale)
         case .malformedLine(let line): String(localized: "The GEDCOM file is invalid near line \(line).", locale: AppLanguage.selectedLocale)
         case .tooManyRecords: String(localized: "The GEDCOM file contains too many records.", locale: AppLanguage.selectedLocale)
         case .noPeople: String(localized: "The GEDCOM file does not contain any people.", locale: AppLanguage.selectedLocale)
@@ -44,7 +46,7 @@ enum GEDCOMImportError: LocalizedError {
     }
 }
 
-enum GEDCOMImporter {
+nonisolated enum GEDCOMImporter {
     static let maximumBytes = 25 * 1_024 * 1_024
     private static let maximumRecords = 50_000
 

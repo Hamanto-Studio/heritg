@@ -108,8 +108,15 @@
     <string name="show_all_people">Tampilkan semua orang</string>
     <string name="shown">Ditampilkan</string>
     <string name="hidden">Disembunyikan</string>
-    <string name="password_restore_notice">Kata sandi bersifat opsional. Kosongkan kedua kolom untuk memulihkan tanpa kata sandi. Jika menggunakan kata sandi, pakai minimal 8 karakter dengan huruf besar, huruf kecil, dan angka. Kata sandi yang lebih panjang lebih aman.</string>
-    <string name="password_requirements">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, dan angka.</string>
+    <string name="password_restore_notice">Kata sandi bersifat opsional. Kosongkan kolom ini untuk memulihkan tanpa kata sandi. Jika Anda menambahkan kata sandi, lengkapi persyaratan di bawah. Kata sandi yang lebih panjang lebih aman.</string>
+    <string name="password_requirements">Gunakan minimal 8 karakter dengan huruf besar, huruf kecil, angka, dan karakter khusus.</string>
+    <string name="password_minimum_length">Minimal 8 karakter</string>
+    <string name="password_lowercase">Huruf kecil</string>
+    <string name="password_uppercase">Huruf besar</string>
+    <string name="password_number">Angka</string>
+    <string name="password_special">Karakter khusus</string>
+    <string name="password_requirement_met">Terpenuhi</string>
+    <string name="password_requirement_not_met">Belum terpenuhi</string>
     <string name="share_backup">Bagikan cadangan Heritg</string>
     <string name="add_family_tree">Tambah silsilah keluarga</string>
     <string name="actions_for">Tindakan untuk %1$s</string>

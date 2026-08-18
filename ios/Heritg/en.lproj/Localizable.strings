@@ -9,6 +9,8 @@
 "Back to relationship choices" = "Back to relationship choices";
 "Brother" = "Brother";
 "Cancel" = "Cancel";
+"Choose a .ged, .gedcom, or .txt GEDCOM file." = "Choose a .ged, .gedcom, or .txt GEDCOM file.";
+"Choose a .heritg backup file." = "Choose a .heritg backup file.";
 "Cancel removing person" = "Cancel removing person";
 "Centers this person on the family tree" = "Centers this person on the family tree";
 "Child" = "Child";
@@ -126,8 +128,15 @@
 "Creating backup" = "Creating backup";
 "Decrypting backup" = "Decrypting backup";
 "Every Heritg backup is encrypted" = "Every Heritg backup is encrypted";
-"The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer." = "The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.";
-"Use at least 8 characters with an uppercase letter, a lowercase letter, and a number." = "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.";
+"The password is optional. Leave it empty to restore without a password. If you add one, complete the requirements below. Longer is safer." = "The password is optional. Leave it empty to restore without a password. If you add one, complete the requirements below. Longer is safer.";
+"Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character." = "Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character.";
+"At least 8 characters" = "At least 8 characters";
+"Lowercase letter" = "Lowercase letter";
+"Uppercase letter" = "Uppercase letter";
+"Number" = "Number";
+"Special character" = "Special character";
+"Met" = "Met";
+"Not met" = "Not met";
 "Password (optional)" = "Password (optional)";
 "Encrypted Heritg backup" = "Encrypted Heritg backup";
 "Enter the password used when this backup was created." = "Enter the password used when this backup was created.";
@@ -331,3 +340,6 @@
 "Levels above" = "Levels above";
 "Levels below" = "Levels below";
 "Limits how many family levels are shown above and below the selected person" = "Limits how many family levels are shown above and below the selected person";
+"Importing GEDCOM…" = "Importing GEDCOM…";
+"Couldn’t Import GEDCOM" = "Couldn’t Import GEDCOM";
+"Imported %@ into %@." = "Imported %1$@ into %2$@.";

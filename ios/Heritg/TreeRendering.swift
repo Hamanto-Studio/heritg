@@ -1,15 +1,6 @@
 import SwiftUI
 
-enum TreeNodeSide: CaseIterable, Hashable {
-    case right
-    case left
-    case top
-    case bottom
-    case topRight
-    case topLeft
-}
-
-enum TreeViewportTransform {
+nonisolated enum TreeViewportTransform {
     static func offset(
         afterMagnifying currentOffset: CGSize,
         by magnification: CGFloat,
@@ -29,7 +20,9 @@ enum TreeViewportTransform {
     }
 }
 
-enum TreeVisualMetrics {
+nonisolated enum TreeVisualMetrics {
+    static let overviewEnterScale: CGFloat = 0.3
+    static let overviewExitScale: CGFloat = 0.42
     static let minimumTapTarget: CGFloat = 44
     static let avatarDiameter: CGFloat = 64
     static let avatarRadius = avatarDiameter / 2
@@ -39,6 +32,16 @@ enum TreeVisualMetrics {
     static let labelHeight: CGFloat = 72
     static let nodeLabelWidth: CGFloat = 190
     static let nodeLabelTopSpacing: CGFloat = 10
+
+    static func shouldRenderOverview(currentlyOverview: Bool, scale: CGFloat) -> Bool {
+        currentlyOverview ? scale < overviewExitScale : scale < overviewEnterScale
+    }
+
+    static func actionCompensation(at scale: CGFloat) -> CGFloat {
+        let safeScale = max(scale, 0.001)
+        let actionScale = min(1, max(0.34, safeScale))
+        return actionScale / safeScale
+    }
 
     static func nodeLabelHeight(showsRelationship: Bool, showsLifeSummary: Bool) -> CGFloat {
         var height: CGFloat = 20
@@ -63,73 +66,10 @@ enum TreeVisualMetrics {
             )
     }
 
-    static func addControlSide(
-        avoiding occupiedSides: Set<TreeNodeSide>,
-        preferredHorizontalSide: TreeNodeSide = .left
-    ) -> TreeNodeSide {
-        let oppositeHorizontalSide: TreeNodeSide = preferredHorizontalSide == .left ? .right : .left
-        let outwardDiagonalSide: TreeNodeSide = preferredHorizontalSide == .left ? .topLeft : .topRight
-        let preferredOrder = [
-            preferredHorizontalSide,
-            oppositeHorizontalSide,
-            .top,
-            .bottom,
-            outwardDiagonalSide,
-        ]
-
-        return preferredOrder.first { !occupiedSides.contains($0) } ?? preferredHorizontalSide
-    }
-
-    static func addControlPosition(
-        avatarCenter: CGPoint,
-        scale: CGFloat,
-        side: TreeNodeSide
-    ) -> CGPoint {
-        let offset = (avatarRadius + 34) * scale
-        let bottomOffset = (labelOffset + labelHeight / 2 + 34) * scale
-
-        switch side {
-        case .right:
-            return CGPoint(x: avatarCenter.x + offset, y: avatarCenter.y)
-        case .left:
-            return CGPoint(x: avatarCenter.x - offset, y: avatarCenter.y)
-        case .top:
-            return CGPoint(x: avatarCenter.x, y: avatarCenter.y - offset)
-        case .bottom:
-            return CGPoint(x: avatarCenter.x, y: avatarCenter.y + bottomOffset)
-        case .topRight:
-            return CGPoint(x: avatarCenter.x + offset, y: avatarCenter.y - offset)
-        case .topLeft:
-            return CGPoint(x: avatarCenter.x - offset, y: avatarCenter.y - offset)
-        }
-    }
-
-    static func adjacentControlPosition(
-        to controlPosition: CGPoint,
-        scale: CGFloat,
-        side: TreeNodeSide
-    ) -> CGPoint {
-        let spacing: CGFloat = 34 * scale
-
-        switch side {
-        case .right:
-            return CGPoint(x: controlPosition.x + spacing, y: controlPosition.y)
-        case .left:
-            return CGPoint(x: controlPosition.x - spacing, y: controlPosition.y)
-        case .top:
-            return CGPoint(x: controlPosition.x, y: controlPosition.y - spacing)
-        case .bottom:
-            return CGPoint(x: controlPosition.x, y: controlPosition.y + spacing)
-        case .topRight:
-            return CGPoint(x: controlPosition.x + spacing, y: controlPosition.y - spacing)
-        case .topLeft:
-            return CGPoint(x: controlPosition.x - spacing, y: controlPosition.y - spacing)
-        }
-    }
 }
 
-enum TreeConnector {
-    struct FamilyGeometry: Equatable {
+nonisolated enum TreeConnector {
+    struct FamilyGeometry: Equatable, Sendable {
         let parentJoinY: CGFloat
         let childRailY: CGFloat
         let trunkX: CGFloat
@@ -137,7 +77,7 @@ enum TreeConnector {
         let childRange: ClosedRange<CGFloat>
     }
 
-    struct Segment: Equatable {
+    struct Segment: Equatable, Sendable {
         enum Orientation {
             case horizontal
             case vertical
@@ -147,9 +87,15 @@ enum TreeConnector {
         let end: CGPoint
 
         var orientation: Orientation? {
-            if start.y == end.y, start.x != end.x { return .horizontal }
-            if start.x == end.x, start.y != end.y { return .vertical }
+            if abs(start.y - end.y) < TreeRoutingGeometry.epsilon,
+               abs(start.x - end.x) >= TreeRoutingGeometry.epsilon { return .horizontal }
+            if abs(start.x - end.x) < TreeRoutingGeometry.epsilon,
+               abs(start.y - end.y) >= TreeRoutingGeometry.epsilon { return .vertical }
             return nil
+        }
+
+        var length: CGFloat {
+            abs(end.x - start.x) + abs(end.y - start.y)
         }
     }
 
@@ -259,12 +205,14 @@ enum TreeConnector {
         for segments: [Segment],
         transform: (CGPoint) -> CGPoint = { $0 }
     ) -> Path {
-        Path { path in
-            for segment in segments {
-                path.move(to: transform(segment.start))
-                path.addLine(to: transform(segment.end))
-            }
+        var result = Path()
+        for connectorPath in TreeConnectorStyle.connectorPaths(for: segments) {
+            result.addPath(TreeConnectorStyle.roundedPath(
+                for: connectorPath.points,
+                transform: transform
+            ))
         }
+        return result
     }
 
     static func familyGeometry(

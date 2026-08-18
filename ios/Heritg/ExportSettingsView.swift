@@ -22,6 +22,10 @@ struct ExportSettingsView: View {
         ArchivePasswordPolicy.accepts(archivePassword)
     }
 
+    private var archivePasswordRequirements: ArchivePasswordPolicy.Requirements {
+        ArchivePasswordPolicy.requirements(for: archivePassword)
+    }
+
     init(
         tree: FamilyTree,
         people: [Person],
@@ -100,7 +104,7 @@ struct ExportSettingsView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(HeritgColor.add)
 
-            Text("The password is optional. Leave both fields empty to restore without a password. Otherwise use at least 8 characters with an uppercase letter, a lowercase letter, and a number. Longer is safer.")
+            Text("The password is optional. Leave it empty to restore without a password. If you add one, complete the requirements below. Longer is safer.")
                 .font(.footnote)
                 .foregroundStyle(HeritgColor.subtleText)
                 .fixedSize(horizontal: false, vertical: true)
@@ -108,22 +112,27 @@ struct ExportSettingsView: View {
                 .textContentType(.newPassword)
                 .disabled(isPreparingArchive)
                 .accessibilityIdentifier("settings.archivePassword")
-            SecureField("Confirm password", text: $archivePasswordConfirmation)
-                .textContentType(.newPassword)
-                .disabled(isPreparingArchive)
-                .accessibilityIdentifier("settings.archivePasswordConfirmation")
 
-            if !archivePasswordConfirmation.isEmpty,
-               archivePassword != archivePasswordConfirmation {
-                Text("Passwords do not match.")
-                    .font(.footnote)
-                    .foregroundStyle(HeritgColor.danger)
-            }
+            if !archivePassword.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    passwordRequirement("At least 8 characters", isMet: archivePasswordRequirements.minimumLength)
+                    passwordRequirement("Lowercase letter", isMet: archivePasswordRequirements.lowercase)
+                    passwordRequirement("Uppercase letter", isMet: archivePasswordRequirements.uppercase)
+                    passwordRequirement("Number", isMet: archivePasswordRequirements.number)
+                    passwordRequirement("Special character", isMet: archivePasswordRequirements.special)
+                }
 
-            if !archivePasswordMeetsRequirements {
-                Text("Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.")
-                    .font(.footnote)
-                    .foregroundStyle(HeritgColor.danger)
+                SecureField("Confirm password", text: $archivePasswordConfirmation)
+                    .textContentType(.newPassword)
+                    .disabled(isPreparingArchive)
+                    .accessibilityIdentifier("settings.archivePasswordConfirmation")
+
+                if !archivePasswordConfirmation.isEmpty,
+                   archivePassword != archivePasswordConfirmation {
+                    Text("Passwords do not match.")
+                        .font(.footnote)
+                        .foregroundStyle(HeritgColor.danger)
+                }
             }
 
             Button {
@@ -157,12 +166,25 @@ struct ExportSettingsView: View {
         .background(HeritgColor.base)
         .clipShape(.rect(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(HeritgColor.line))
-        .onChange(of: archivePassword) { _, password in
+        .onChange(of: archivePassword) { password in
+            if password.isEmpty {
+                archivePasswordConfirmation = ""
+            } else {
+                archiveURL = nil
+            }
+        }
+        .onChange(of: archivePasswordConfirmation) { password in
             if !password.isEmpty { archiveURL = nil }
         }
-        .onChange(of: archivePasswordConfirmation) { _, password in
-            if !password.isEmpty { archiveURL = nil }
-        }
+    }
+
+    private func passwordRequirement(_ title: LocalizedStringKey, isMet: Bool) -> some View {
+        Label(title, systemImage: isMet ? "checkmark.square.fill" : "square")
+            .font(.footnote)
+            .foregroundStyle(isMet ? HeritgColor.add : HeritgColor.subtleText)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(title))
+            .accessibilityValue(isMet ? "Met" : "Not met")
     }
 
     @ViewBuilder
@@ -265,7 +287,7 @@ struct ExportSettingsView: View {
             return
         }
         guard archivePasswordMeetsRequirements else {
-            exportError = String(localized: "Use at least 8 characters with an uppercase letter, a lowercase letter, and a number.", locale: AppLanguage.selectedLocale)
+            exportError = String(localized: "Use at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character.", locale: AppLanguage.selectedLocale)
             return
         }
 

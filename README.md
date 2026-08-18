@@ -17,7 +17,7 @@
   <a href="#platform-report">Platform Report</a> |
   <a href="#features">Features</a> |
   <a href="#quick-start">Quick Start</a> |
-  <a href="docs/MVP_PRODUCT_SPEC.md">Product Specification</a> |
+  <a href="docs/MVP_PRODUCT_SPEC.md">Draft Product Specification</a> |
   <a href="PRIVACY.md">Privacy</a> |
   <a href="SECURITY.md">Security</a> |
   <a href="CHANGELOG.md">Changelog</a> |
@@ -34,6 +34,12 @@
   <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/ios-ci.yml">
     <img alt="iOS build and test status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/ios-ci.yml/badge.svg" />
   </a>
+  <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/android-ci.yml">
+    <img alt="Android build and test status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/android-ci.yml/badge.svg" />
+  </a>
+  <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/web-ci.yml">
+    <img alt="Web build and test status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/web-ci.yml/badge.svg" />
+  </a>
   <a href="https://github.com/Hamanto-Studio/heritg/actions/workflows/secret-scan.yml">
     <img alt="Secret scanning status" src="https://github.com/Hamanto-Studio/heritg/actions/workflows/secret-scan.yml/badge.svg" />
   </a>
@@ -41,40 +47,54 @@
 
 ## Platform Report
 
-HERITG contains three local-first clients on `main`:
+This repository contains three local-first clients:
 
 | Platform | What is included | Local storage | Verification |
 | --- | --- | --- | --- |
-| iOS | Native SwiftUI app in [`ios/`](ios) | SwiftData | Unit and UI tests; [manual iOS CI](.github/workflows/ios-ci.yml) |
-| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Unit, lint, build, and emulator suites run locally; secret scanning runs in CI |
-| Web | Installable React progressive web app in [`web/`](web) | AES-GCM-encrypted IndexedDB | Lint, tests, and production build in [Web CI](.github/workflows/web-ci.yml) |
+| iOS | Native SwiftUI app in [`ios/`](ios) | Core Data | Unit and UI tests run in [iOS CI](.github/workflows/ios-ci.yml) |
+| Android | Native Kotlin and Jetpack Compose app in [`android/`](android) | Room and DataStore | Unit tests, lint, and debug builds run in [Android CI](.github/workflows/android-ci.yml); instrumentation and release checks run locally |
+| Web | Installable React progressive web app in [`web/`](web) | AES-GCM-encrypted IndexedDB | Release checks, lint, tests, and production builds run in [Web CI](.github/workflows/web-ci.yml) |
 
-The repository also contains the shared product, archive, privacy, analytics,
-security, data-processing, and design specifications used to keep the three
-implementations aligned.
+The repository also contains shared archive, privacy, analytics, security,
+data-processing, and design contracts. The linked product specification is a
+draft target and includes planned behavior that may not be implemented yet.
 
 ## Features
 
 The native iOS and Android apps support:
 
-- Private family trees stored locally with SwiftData or Room
+- Private family trees stored locally with Core Data or Room
 - People and family relationship editing
 - An interactive visual family tree
-- GEDCOM family-data import and export
+- GEDCOM family-data import and GEDCOM 7 export
 - Cross-platform `.heritg` backup and restore
 - Always-encrypted `.heritg` archives with an optional password
-- Image and SVG tree export
+- PNG and SVG tree export
 - English and Bahasa Indonesia
 - No required HERITG account, backend, advertising SDK, or network connection
 
 Both platforms follow shared product, archive, privacy, layout, and behavior
 contracts without sharing platform UI or persistence code.
 
+GEDCOM is intended for genealogy-data portability, not as a lossless HERITG
+backup. It may omit photos, detailed addresses, date precision, or unsupported
+relationship extensions. Use `.heritg` to preserve the complete supported
+family record.
+
 The web app provides the same private, local-first family-tree workflow in a
-React progressive web app. Family data is stored in IndexedDB, and the core
-experience works offline after installation. Web users may explicitly create
-an expiring encrypted read-only snapshot; the sharing backend stores ciphertext
-without the URL-fragment viewing key.
+React progressive web app. Family records are AES-256-GCM-encrypted in IndexedDB
+with a non-extractable, origin-scoped browser key. After a successful production
+load caches the application shell, editing local trees works offline; initial
+loading, updates, and encrypted sharing require a network connection.
+
+Web users may explicitly create password-protected encrypted snapshots that
+expire after 7, 30, or 90 days. Encryption happens in the browser, and the
+sharing service receives family data only as ciphertext. The URL contains a
+share identifier, not an encryption key. Viewing is read-only, but a recipient
+may explicitly save an independent editable copy in their browser.
+
+Web imports `.heritg`, legacy HERITG JSON, and GEDCOM files. It exports complete
+`.heritg` backups, GEDCOM, PNG, and SVG.
 
 ## Trust by Design
 
@@ -84,17 +104,17 @@ backed by inspectable policies and automated checks:
 | Commitment | Repository evidence |
 | --- | --- |
 | Private by default | [Privacy Policy](PRIVACY.md) and [Data Processing Register](docs/DATA_PROCESSING.md) |
-| Offline core experience | [Product Specification](docs/MVP_PRODUCT_SPEC.md) |
+| Offline core experience | [Draft Product Specification](docs/MVP_PRODUCT_SPEC.md) |
 | No behavioral tracking | [Analytics Policy](docs/ANALYTICS.md) |
 | Portable family data | [Data and Archive Format](docs/DATA_FORMAT.md) |
 | Separate public origins | [Public Site Deployment](docs/DEPLOYMENT.md) |
 | Public vulnerability process | [Security Policy](SECURITY.md) |
 | Review and verification | [iOS CI](.github/workflows/ios-ci.yml), [Android CI](.github/workflows/android-ci.yml), [Web CI](.github/workflows/web-ci.yml), [secret scanning](.github/workflows/secret-scan.yml), [security audit](docs/SECURITY_AUDIT.md), and [CODEOWNERS](.github/CODEOWNERS) |
 
-The current source does not include Firebase, product analytics, advertising,
-Sentry, or a third-party crash-reporting SDK. Any future data collection,
-network service, permission, or third-party SDK must be documented before
-release.
+The current applications do not integrate Firebase, product analytics,
+advertising, Sentry, or a third-party crash-reporting SDK. Any future data
+collection, network service, permission, or third-party SDK must be documented
+before release.
 
 ### Encrypted Backup and Restore
 
@@ -114,11 +134,13 @@ The archive contains platform-neutral ZIP, JSON, JSONL, and media records.
 Shared fixtures and cryptographic vectors verify encrypted transfers from iOS
 to Android and from Android to iOS.
 
-Every current `.heritg` backup is encrypted. The password is optional: an empty
-password restores without a prompt but does not keep the file secret from
-someone who obtains it. A non-empty password must contain at least 8 NFC Unicode
-code points, including an uppercase letter, a lowercase letter, and a number;
-a longer unique password is safer. HERITG does not store or recover archive
+Every `.heritg` backup created by the current user-facing export flows uses the
+authenticated encrypted envelope. The password is optional: an empty password
+restores without a prompt but does not keep the file secret from someone who
+obtains it. A non-empty password must contain at least 8 NFC Unicode code points,
+including an uppercase letter, a lowercase letter, a decimal digit, and a
+punctuation or symbol character. A longer unique password is safer. HERITG does
+not store or recover archive
 passwords, so a protected backup cannot be restored if its password is lost.
 This protection applies only to `.heritg` backups; GEDCOM, PNG, and SVG exports
 remain readable files.
@@ -127,13 +149,13 @@ remain readable files.
 
 | Platform | Status | Implementation |
 | --- | --- | --- |
-| iOS | Active development | Swift, SwiftUI, and SwiftData |
+| iOS | Active development | Swift, SwiftUI, and Core Data |
 | Android | Active development | Kotlin, Jetpack Compose, Room, and DataStore |
-| Web | Active development | React, TypeScript, IndexedDB, and Excalidraw |
+| Web | Active development | React, TypeScript, encrypted IndexedDB, and a native SVG canvas |
 
-HERITG is under active development. Interfaces and archive specifications may
-change before the first stable release; do not use it as the only copy of
-important family records.
+Each client versions and ships independently. HERITG remains under active
+development, and interfaces or archive specifications may change; do not use it
+as the only copy of important family records.
 
 ## Quick Start
 
@@ -142,7 +164,7 @@ important family records.
 Requirements:
 
 - macOS with Xcode 26.1 or later
-- iOS 26.0 or later
+- iOS 16.0 or later
 
 Clone the repository, open `ios/Heritg.xcodeproj`, select the shared `HERITG`
 scheme, and run the app in an iOS Simulator or on a connected device. No backend
@@ -166,6 +188,7 @@ Requirements:
 
 - Java 17
 - Android SDK 37
+- Android 8.0 / API 26 or later
 
 Run Android tests, lint checks, debug builds, the instrumentation-test build,
 and a minified release build:
@@ -177,11 +200,27 @@ and a minified release build:
   --no-configuration-cache
 ```
 
-Instrumented tests require a connected Android device or running emulator. See
-the [Android development guide](android/README.md) for architecture and test
+The command builds, but does not run, the instrumentation tests. Run them on a
+connected device or running emulator:
+
+```sh
+./android/gradlew \
+  -p android \
+  connectedDebugAndroidTest \
+  --no-configuration-cache
+```
+
+See the [Android development guide](android/README.md) for architecture and test
 details.
 
 ### Web
+
+Requirements:
+
+- Node.js 22.x and npm
+
+The production app is at [heritg.us](https://heritg.us/), and the project site
+is at [family.heritg.us](https://family.heritg.us/).
 
 Run the web app from the repository root:
 
@@ -191,9 +230,48 @@ npm ci
 npm run dev
 ```
 
-Before opening a pull request, run `npm run lint`, `npm test`, and
-`npm run build` from `web/`. Versioned deployments follow the shared
-[release policy](docs/RELEASES.md).
+For local debugging with an AI or other development tool, explicitly enable a
+plaintext snapshot of the active Web family:
+
+```sh
+HERITG_DEBUG_CONTEXT=1 npm run dev
+```
+
+While that development server and the normal app route are open, the latest
+active tree is written to `web/.heritg-debug-context.json`. The gitignored file
+includes people, notes, addresses, selection, counts, and readable relationship
+endpoints. Photo contents and inactive trees are omitted. Stop the server and
+delete the file when it is no longer needed; never share or commit its contents.
+
+Read the snapshot from another terminal with the local Web CLI:
+
+```sh
+cd web
+npm run context
+npm run context -- people
+npm run context -- relationships --person selected
+npm run context -- selected --json
+npm run context -- context
+```
+
+The default `summary` command reports the active tree, selected person, people
+count, and relationship counts by kind. Add `--json` to `summary`, `people`,
+`relationships`, or `selected` for machine-readable output. Use `--file <path>`
+to inspect a different snapshot. Every CLI command is read-only; the explicitly
+enabled development server is what writes the snapshot. The CLI performs no
+filesystem writes, network requests, or application-data mutations. See the
+[Web Context CLI reference](docs/WEB_CONTEXT_CLI.md) for the complete command,
+data-flow, privacy, and troubleshooting documentation.
+
+Browser storage is isolated by origin, so localhost, preview deployments, and
+production do not share trees or encryption keys. Export and import a backup to
+move a tree between origins. The development server has no local sharing-service
+proxy; run `HERITG_SHARING_ENABLED=false npm run dev` when testing without the
+production sharing backend.
+
+Before opening a pull request, run `npm run release:check`, `npm run lint`,
+`npm test`, and `npm run build` from `web/`. Versioned deployments follow the
+shared [release policy](docs/RELEASES.md).
 
 ## Repository Layout
 
