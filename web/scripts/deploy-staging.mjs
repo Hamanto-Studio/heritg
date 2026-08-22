@@ -5,19 +5,16 @@ import { dirname, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { validateStagingAuthConfig } from "./staging-auth-config.mjs";
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "../..");
 const origin = process.env.HERITG_STAGING_API_ORIGIN;
-const expectedOrigin = "https://heritg-share-api-1079742937646.asia-southeast2.run.app";
+const googleClientId = process.env.HERITG_GOOGLE_CLIENT_ID;
+const refusal = validateStagingAuthConfig(origin, googleClientId);
 
-if (!origin) {
-  process.stderr.write(
-    "Staging deployment refused: set HERITG_STAGING_API_ORIGIN to the isolated staging Cloud Run origin.\n"
-  );
-  process.exit(1);
-}
-if (new URL(origin).origin !== expectedOrigin) {
-  process.stderr.write("Staging deployment refused: backend origin is not the isolated heritg-be-stg service.\n");
+if (refusal) {
+  process.stderr.write(`Staging deployment refused: ${refusal}.\n`);
   process.exit(1);
 }
 
@@ -38,5 +35,7 @@ execFileSync("npx", [
   "--project",
   "heritg-staging",
   "--build-env",
-  "HERITG_DEPLOYMENT_ENV=staging"
+  "HERITG_DEPLOYMENT_ENV=staging",
+  "--build-env",
+  `HERITG_GOOGLE_CLIENT_ID=${googleClientId}`
 ], { cwd: repositoryRoot, stdio: "inherit" });

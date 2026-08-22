@@ -92,7 +92,8 @@ export default defineConfig({
     __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false"),
     __EXCALIDRAW_FALLBACK__: JSON.stringify(useExcalidrawFallback),
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
-    __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment)
+    __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment),
+    __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? "")
   },
   plugins: [
     react(),

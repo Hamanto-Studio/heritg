@@ -1,5 +1,6 @@
 import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { AccountSettings } from "./AccountSettings";
 import type { Translator } from "./i18n";
 import { passwordRequirements } from "./passwordPolicy";
 import type { AppActions } from "./store";
@@ -49,6 +50,8 @@ export function SettingsDialog({
         <h3>{t("privateSimple")}</h3>
         <p>{t("privateDescription")}</p>
       </div>
+
+      <AccountSettings language={data.language} t={t} />
 
       <div className="settings-group">
         <h3>{t("language")}</h3>
