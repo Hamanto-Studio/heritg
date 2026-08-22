@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
@@ -44,25 +44,7 @@ const verify = (target) => execFileSync(process.execPath, [
 process.stdout.write("Running the encrypted-sharing compatibility gate for staging...\n");
 verify(candidateUrl.href);
 
-process.stdout.write("Candidate passed. Promoting the exact verified staging deployment...\n");
-const promotion = spawnSync("npx", [
-  "--yes",
-  "vercel@58.4.4",
-  "promote",
-  candidateUrl.href,
-  "--cwd",
-  repositoryRoot,
-  "--local-config",
-  "web/vercel.staging.json"
-], { cwd: repositoryRoot, encoding: "utf8" });
-process.stdout.write(promotion.stdout ?? "");
-process.stderr.write(promotion.stderr ?? "");
-const alreadyCurrent = `${promotion.stdout ?? ""}${promotion.stderr ?? ""}`
-  .includes("already the current production deployment");
-if (promotion.status !== 0 && !alreadyCurrent) {
-  throw new Error(`Staging promotion failed with status ${promotion.status ?? "unknown"}.`);
-}
-
+process.stdout.write("Candidate passed. Assigning the exact verified deployment to staging...\n");
 execFileSync("npx", [
   "--yes",
   "vercel@58.4.4",
@@ -74,4 +56,4 @@ execFileSync("npx", [
 
 process.stdout.write("Verifying staging.heritg.us after promotion...\n");
 verify(staging);
-process.stdout.write("Staging promotion and encrypted-sharing verification completed successfully.\n");
+process.stdout.write("Staging assignment and encrypted-sharing verification completed successfully.\n");
