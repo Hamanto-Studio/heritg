@@ -41,7 +41,7 @@ struct SettingsSheet: View {
                     }
 
                     NavigationLink {
-                        ExportSettingsView(
+                        ShareSettingsView(
                             tree: tree,
                             people: people,
                             relationships: relationships,
@@ -50,13 +50,13 @@ struct SettingsSheet: View {
                         )
                     } label: {
                         settingsRow(
-                            title: "Export",
-                            subtitle: "Share a PNG or SVG image, or GEDCOM file",
+                            title: "Share",
+                            subtitle: "Send a HERITG backup, GEDCOM file, or image",
                             systemImage: "square.and.arrow.up"
                         )
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.export")
+                    .accessibilityIdentifier("settings.share")
 
                     NavigationLink {
                         LanguageSettingsView(languageCode: $languageCode)
@@ -225,17 +225,20 @@ private struct LanguageSettingsView: View {
 
 struct TreeExportView: View {
     let layout: TreeLayoutResult
+    let connectionPlan: TreeConnectionPlan?
     let showsRelationshipLabels: Bool
     let exportedAt: Date
     let footerHeight: CGFloat
 
     init(
         layout: TreeLayoutResult,
+        connectionPlan: TreeConnectionPlan? = nil,
         showsRelationshipLabels: Bool = true,
         exportedAt: Date = .now,
         footerHeight: CGFloat = TreeRasterExportSize.logicalFooterHeight
     ) {
         self.layout = layout
+        self.connectionPlan = connectionPlan
         self.showsRelationshipLabels = showsRelationshipLabels
         self.exportedAt = exportedAt
         self.footerHeight = footerHeight
@@ -244,12 +247,12 @@ struct TreeExportView: View {
     var body: some View {
         VStack(spacing: 0) {
             GeometryReader { proxy in
-                let connectionPlan = TreeConnectionPlan.make(
-                    from: layout,
-                    showsRelationshipLabels: showsRelationshipLabels,
-                    controlsVisible: false,
-                    sourcePersonCount: layout.nodes.count
-                )
+                let connectionPlan = connectionPlan ?? TreeConnectionPlan.make(
+                        from: layout,
+                        showsRelationshipLabels: showsRelationshipLabels,
+                        controlsVisible: false,
+                        sourcePersonCount: layout.nodes.count
+                    )
                 let transform = ExportTransform(
                     connectionPlan: connectionPlan,
                     nodes: layout.nodes,
@@ -427,6 +430,24 @@ struct TreeExportView: View {
                 }
                 .overlay(Circle().stroke(Color.gray.opacity(0.35), lineWidth: 2))
                 .position(anchor)
+
+            if let birthOrder = node.birthOrder {
+                ZStack {
+                    Circle()
+                        .fill(Color.white)
+                        .overlay(Circle().stroke(Color.gray.opacity(0.35), lineWidth: 2))
+                    Text(verbatim: String(birthOrder))
+                        .font(.system(size: 10 * transform.scale, weight: .bold))
+                        .foregroundStyle(Color.black)
+                        .minimumScaleFactor(0.25)
+                        .lineLimit(1)
+                }
+                .frame(width: 20 * transform.scale, height: 20 * transform.scale)
+                .position(
+                    x: anchor.x - 23 * transform.scale,
+                    y: anchor.y - 23 * transform.scale
+                )
+            }
 
             VStack(spacing: 4) {
                 Text(node.person.name)

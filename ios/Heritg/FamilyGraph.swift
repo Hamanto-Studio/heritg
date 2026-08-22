@@ -6,6 +6,7 @@ enum FamilyGraphError: LocalizedError {
     case selfRelationship
     case duplicateRelationship
     case deathBeforeBirth
+    case invalidBirthOrder
     case crossTreeRelationship
     case invalidCoParent
 
@@ -22,6 +23,11 @@ enum FamilyGraphError: LocalizedError {
         case .deathBeforeBirth:
             String(
                 localized: "Death date cannot be earlier than birth date.",
+                locale: AppLanguage.selectedLocale
+            )
+        case .invalidBirthOrder:
+            String(
+                localized: "Child order must be a positive whole number.",
                 locale: AppLanguage.selectedLocale
             )
         case .crossTreeRelationship:
@@ -207,6 +213,7 @@ enum FamilyGraph {
                 person.birthDate = record.birthDate
                 person.deathDate = record.deathDate
                 person.birthDatePrecision = BirthDatePrecision(rawValue: record.birthDatePrecisionRaw)!
+                person.birthOrderOverrideValue = record.birthOrderOverride
                 person.notes = record.notes
                 person.addressLine = record.addressLine
                 person.city = record.city
@@ -242,13 +249,17 @@ enum FamilyGraph {
     static func createPerson(
         named name: String,
         in tree: FamilyTree,
+        details: PersonDetails = .empty,
         context: NSManagedObjectContext
     ) throws -> Person {
+        let validatedName = try validatedName(name)
+        try validate(details)
         let person = Person(
             context: context,
             treeID: tree.id,
-            displayName: try validatedName(name)
+            displayName: validatedName
         )
+        try apply(details, to: person)
         tree.updatedAt = .now
         try saveOrRollback(context)
         return person
@@ -477,6 +488,7 @@ enum FamilyGraph {
         person.birthDate = details.birthDate
         person.deathDate = details.deathDate
         person.birthDatePrecision = details.birthDatePrecision
+        person.birthOrderOverrideValue = details.birthOrderOverride
         person.notes = details.notes.trimmingCharacters(in: .whitespacesAndNewlines)
         person.addressLine = details.addressLine.trimmingCharacters(in: .whitespacesAndNewlines)
         person.city = details.city.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -491,6 +503,10 @@ enum FamilyGraph {
            let deathDate = details.deathDate,
            deathDate < birthDate {
             throw FamilyGraphError.deathBeforeBirth
+        }
+        if let order = details.birthOrderOverride,
+           order <= 0 || order > ChildOrder.maximum {
+            throw FamilyGraphError.invalidBirthOrder
         }
     }
 

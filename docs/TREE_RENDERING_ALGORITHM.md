@@ -77,6 +77,7 @@ Person {
   birthDate: CalendarDate?
   deathDate: CalendarDate?
   birthDatePrecision: exact | month | year
+  birthOrderOverride: PositiveSafeInteger?
   photoReference: PlatformPhotoReference?
 }
 ```
@@ -84,6 +85,10 @@ Person {
 Genealogy dates are timezone-free calendar values. The canonical wire form is
 `YYYY-MM-DD`, with precision stored separately. Platforms may use native date
 types internally only if conversion cannot shift the calendar day.
+
+`birthOrderOverride` accepts integers from `1` through `9007199254740991`.
+Duplicate values are allowed. The field controls displayed order metadata only
+and must never participate in person, block, row, or connector geometry.
 
 ### 3.2 Relationship
 
@@ -282,11 +287,14 @@ Union:
 1. Both endpoints of every partner relationship.
 2. Both endpoints of every sibling relationship.
 3. All parents connected to the same child.
+4. All children connected to the same parent.
 
 When union roots differ, the lexically smaller root becomes the representative.
 This makes component identity independent of insertion order.
 
-Partners, siblings, and co-parents therefore share one generation.
+Partners, explicitly or implicitly related siblings, and co-parents therefore
+share one generation. This keeps siblings aligned when one sibling's partner
+has a deeper ancestry branch.
 
 ### 7.2 Component graph
 
@@ -472,7 +480,10 @@ For each block:
 4. If there are no children, retain the block's current center.
 5. Convert desired center into a desired block start.
 6. Enforce left-to-right spacing and the same family-gap rule.
-7. Shift every member of the block by the same amount.
+7. When collision spacing moves the block right of its descendant-derived
+   start, collect all transitive descendants. Shift every complete later-row
+   block containing any collected descendant by the same collision delta.
+8. Shift every member of the current block by the same amount.
 
 Pseudocode:
 
@@ -485,7 +496,9 @@ previousNextSlot = start + memberCount * horizontalSpacing
 ```
 
 This lets wide descendant branches pull parents apart without changing spacing
-inside couples or co-parent groups.
+inside couples or co-parent groups. Moving complete descendant blocks preserves
+their internal spacing and prevents a parent collision adjustment from
+stretching or crossing the branch below it.
 
 ## 12. Semantic Relationship Filtering
 
@@ -678,8 +691,12 @@ spacing = laneCount > 1
   : 0
 
 parentJoinY     = parentStartY + 8 + laneIndex * spacing
-childRailOffset = 8 + (laneCount - 1 - laneIndex) * spacing
+childRailOffset = 40
 ```
+
+Lane spacing separates parent-side joins only. Every child-facing rail keeps the
+same 40-unit clearance from the top of its avatar, regardless of relationship
+status or lane index.
 
 ### 19.3 Primary trunk
 
@@ -933,6 +950,11 @@ At a corner:
 radius = min(12, incomingLength / 2, outgoingLength / 2)
 ```
 
+Use radius zero when the corner touches a path endpoint through a leg no longer
+than the 40-unit child-rail clearance. This preserves the full visual gap between
+a child-family rail and the avatar instead of letting a rounded endpoint bend
+toward the circle. Married and unmarried children must use the same rule.
+
 SVG uses a quadratic curve. SwiftUI and Compose should construct equivalent
 paths rather than drawing disconnected square elbows.
 
@@ -1004,6 +1026,7 @@ A full-detail node contains:
 4. Name.
 5. Optional selected-relative kinship role.
 6. Optional life summary.
+7. Optional birth-order badge.
 
 Selected styling uses a two-unit brand border and selected fill. Unselected
 styling uses a one-unit neutral border.
@@ -1018,6 +1041,28 @@ clamp(floor(320 / max(20, UTF16CodeUnitCount)), 9, 16)
 Native renderers may use measured one-line fitting inside the same label width,
 but obstacle dimensions remain canonical. Large accessibility text should use
 an alternate semantic/list presentation rather than changing route geometry.
+
+### 28.1 Birth-Order Derivation and Projection
+
+Group children by their exact set of biological parent IDs. A group receives
+automatic order only when it contains at least two children, every child has a
+birth date, and every date range is unambiguous:
+
+```text
+exact -> that calendar day
+month -> first through last day of that month
+year  -> January 1 through December 31 of that year
+```
+
+Sort by range start, then stable person ID. If any preceding range ends on or
+after the next range starts, omit automatic order for the complete sibling
+group. Otherwise assign one-based order. Finally, replace the derived value for
+each person that has `birthOrderOverride`. Overrides may duplicate each other.
+
+The badge is a radius-10 circle centered 23 units left and 23 units above the
+avatar center. It displays the complete decimal value and exposes a localized
+ordinal label to accessibility and SVG `<title>` output. Badges remain visible
+at overview zoom; names, roles, life summaries, and relationship labels do not.
 
 ## 29. Semantic Zoom and Culling
 
@@ -1034,7 +1079,8 @@ Overview retains:
 2. Connectors.
 3. Junctions.
 4. Crossing bridges.
-5. Stable person identity and interaction semantics.
+5. Birth-order badges.
+6. Stable person identity and interaction semantics.
 
 Overview omits photos, inner fills, initials, names, roles, life summaries, and
 relationship labels. Do not recompute layout or routing when detail changes.

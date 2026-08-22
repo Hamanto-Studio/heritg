@@ -12,7 +12,7 @@ struct FamilyTreeLibraryView: View {
     let onCreate: (String) throws -> FamilyTree
     let onRename: (FamilyTree, String) throws -> Void
     let onDelete: (FamilyTree) throws -> Void
-    let onExport: (FamilyTree) -> Void
+    let onShare: (FamilyTree) -> Void
     let onImport: @MainActor (Data, String) async throws -> Void
     let onImportError: @MainActor (String) -> Void
     let onImportArchive: (HeritgArchivePayload) throws -> FamilyTree
@@ -149,8 +149,8 @@ struct FamilyTreeLibraryView: View {
                             renameText = tree.title
                             renamingTree = tree
                         }
-                        Button("Export", systemImage: "square.and.arrow.up") {
-                            onExport(tree)
+                        Button("Share", systemImage: "square.and.arrow.up") {
+                            onShare(tree)
                         }
                         Divider()
                         Button("Delete", systemImage: "trash", role: .destructive) {
@@ -175,7 +175,7 @@ struct FamilyTreeLibraryView: View {
             Text("Start your family archive")
                 .font(.title2.bold())
                 .foregroundStyle(HeritgColor.text)
-            Text("Create a family tree from scratch or import an existing GEDCOM file. Your data stays on this device unless you export it.")
+            Text("Create a family tree from scratch or import an existing GEDCOM file. Your data stays on this device unless you share it.")
                 .multilineTextAlignment(.center)
                 .foregroundStyle(HeritgColor.subtleText)
                 .frame(maxWidth: 360)

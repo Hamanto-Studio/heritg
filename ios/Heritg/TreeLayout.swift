@@ -10,6 +10,7 @@ nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
     let city: String
     let birthDate: Date?
     let birthDatePrecision: BirthDatePrecision
+    let birthOrderOverride: Int?
 
     init(
         id: String,
@@ -19,7 +20,8 @@ nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
         lifeSummary: String? = nil,
         city: String = "",
         birthDate: Date? = nil,
-        birthDatePrecision: BirthDatePrecision = .exact
+        birthDatePrecision: BirthDatePrecision = .exact,
+        birthOrderOverride: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -29,6 +31,7 @@ nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
         self.city = city
         self.birthDate = birthDate
         self.birthDatePrecision = birthDatePrecision
+        self.birthOrderOverride = birthOrderOverride
     }
 }
 
@@ -177,24 +180,34 @@ nonisolated enum TreeLayout {
             )
         }
 
-        guard let focused = people.first(where: { $0.id == focusedPersonID }) else {
+        let orderedPeople = normalizedPeople(people)
+        let validPersonIDs = Set(orderedPeople.map(\.id))
+        let orderedRelationships = normalizedRelationships(
+            relationships,
+            validPersonIDs: validPersonIDs
+        )
+        guard let focused = orderedPeople.first(where: { $0.id == focusedPersonID }) else {
             return TreeLayoutResult(nodes: [], edges: [])
         }
 
-        let peopleByID = people.reduce(into: [String: PersonSnapshot]()) { result, person in
+        let peopleByID = orderedPeople.reduce(into: [String: PersonSnapshot]()) { result, person in
             result[person.id] = person
         }
-        let parents = relationships
+        let birthOrders = deriveBirthOrders(
+            people: orderedPeople,
+            relationships: orderedRelationships
+        )
+        let parents = orderedRelationships
             .filter { $0.kind == .parent && $0.toPersonID == focusedPersonID }
             .compactMap { peopleByID[$0.fromPersonID] }
             .sorted(by: familyOrder)
         let children = familyGroupedOrder(
-            in: relationships
+            in: orderedRelationships
                 .filter { $0.kind == .parent && $0.fromPersonID == focusedPersonID }
                 .compactMap { peopleByID[$0.toPersonID] },
-            relationships: relationships
+            relationships: orderedRelationships
         )
-        let siblings = relationships
+        let siblings = orderedRelationships
             .filter {
                 $0.kind == .sibling &&
                     ($0.fromPersonID == focusedPersonID || $0.toPersonID == focusedPersonID)
@@ -206,7 +219,7 @@ nonisolated enum TreeLayout {
                 return peopleByID[siblingID]
             }
             .sorted(by: familyOrder)
-        let partners = relationships
+        let partners = orderedRelationships
             .filter {
                 $0.kind == .partner &&
                     ($0.fromPersonID == focusedPersonID || $0.toPersonID == focusedPersonID)
@@ -223,16 +236,25 @@ nonisolated enum TreeLayout {
             id: focused.id,
             person: focused,
             role: AppLanguage.localized("You"),
-            position: .zero
+            position: .zero,
+            birthOrder: birthOrders[focused.id]
         )]
         nodes += rowNodes(
             people: parents,
-            roles: roleLabels(for: parents, focusID: focusedPersonID, relationships: relationships),
+            roles: roleLabels(
+                for: parents,
+                focusID: focusedPersonID,
+                relationships: orderedRelationships
+            ),
             y: -TreeVisualMetrics.generationSpacing
         )
         nodes += rowNodes(
             people: children,
-            roles: roleLabels(for: children, focusID: focusedPersonID, relationships: relationships),
+            roles: roleLabels(
+                for: children,
+                focusID: focusedPersonID,
+                relationships: orderedRelationships
+            ),
             y: TreeVisualMetrics.generationSpacing
         )
 
@@ -243,7 +265,7 @@ nonisolated enum TreeLayout {
                 role: roleLabels(
                     for: [sibling],
                     focusID: focusedPersonID,
-                    relationships: relationships
+                    relationships: orderedRelationships
                 )[sibling.id] ?? genderedSiblingLabel(sibling.gender),
                 position: CGPoint(x: -CGFloat(index + 1) * TreeVisualMetrics.horizontalSpacing, y: 0)
             ))
@@ -256,7 +278,7 @@ nonisolated enum TreeLayout {
                 role: roleLabels(
                     for: [partner],
                     focusID: focusedPersonID,
-                    relationships: relationships
+                    relationships: orderedRelationships
                 )[partner.id]
                     ?? AppLanguage.localized("Partner"),
                 position: CGPoint(x: CGFloat(index + 1) * TreeVisualMetrics.horizontalSpacing, y: 0)
@@ -267,12 +289,20 @@ nonisolated enum TreeLayout {
         for node in nodes where uniqueNodes[node.id] == nil {
             uniqueNodes[node.id] = node
         }
-        let orderedNodes = nodes.compactMap { uniqueNodes.removeValue(forKey: $0.id) }
+        let orderedNodes = nodes.compactMap { uniqueNodes.removeValue(forKey: $0.id) }.map { node in
+            TreeNodeLayout(
+                id: node.id,
+                person: node.person,
+                role: node.role,
+                position: node.position,
+                birthOrder: birthOrders[node.id]
+            )
+        }
         let positions = orderedNodes.reduce(into: [String: CGPoint]()) { result, node in
             result[node.id] = node.position
         }
         let visibleIDs = Set(orderedNodes.map(\.id))
-        let edges = relationships.sorted(by: relationshipOrder).compactMap { relationship -> TreeEdgeLayout? in
+        let edges = orderedRelationships.compactMap { relationship -> TreeEdgeLayout? in
             guard visibleIDs.contains(relationship.fromPersonID),
                   visibleIDs.contains(relationship.toPersonID),
                   let from = positions[relationship.fromPersonID],
@@ -454,6 +484,38 @@ nonisolated enum TreeLayout {
                         : 0
                     let minimumX = nextX.map { $0 + gap } ?? desiredStart
                     let startX = max(desiredStart, minimumX)
+                    let descendantShift = startX - desiredStart
+                    if descendantShift > 0, !childXs.isEmpty {
+                        var descendantIDs = Set<String>()
+                        var queue = memberIDs.sorted(by: textPrecedes)
+                        var queueIndex = 0
+                        while queueIndex < queue.count {
+                            let parentID = queue[queueIndex]
+                            for relationship in orderedRelationships where
+                                relationship.kind == .parent &&
+                                relationship.fromPersonID == parentID &&
+                                !descendantIDs.contains(relationship.toPersonID) {
+                                descendantIDs.insert(relationship.toPersonID)
+                                queue.append(relationship.toPersonID)
+                            }
+                            queueIndex += 1
+                        }
+                        for descendantDepth in rowDepths where descendantDepth > depth {
+                            for descendantBlock in blocksByDepth[descendantDepth] ?? [] {
+                                let members = descendantBlock.members.compactMap {
+                                    positioned[$0.id]
+                                }
+                                guard members.contains(where: {
+                                    descendantIDs.contains($0.person.id)
+                                }) else {
+                                    continue
+                                }
+                                for member in members {
+                                    positioned[member.person.id]?.x += descendantShift
+                                }
+                            }
+                        }
+                    }
                     let shift = startX - firstMember.x
                     for person in currentMembers {
                         positioned[person.person.id]?.x += shift
@@ -576,6 +638,18 @@ nonisolated enum TreeLayout {
             guard let firstParentID = parentIDs.first else { continue }
             for parentID in parentIDs.dropFirst() {
                 groups.union(firstParentID, parentID)
+            }
+        }
+
+        let childrenByParent = Dictionary(
+            grouping: relationships.filter { $0.kind == .parent },
+            by: \.fromPersonID
+        )
+        for childRelationships in childrenByParent.values {
+            let childIDs = Set(childRelationships.map(\.toPersonID)).sorted(by: textPrecedes)
+            guard let firstChildID = childIDs.first else { continue }
+            for childID in childIDs.dropFirst() {
+                groups.union(firstChildID, childID)
             }
         }
 
@@ -896,7 +970,7 @@ nonisolated enum TreeLayout {
         }
 
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        calendar.timeZone = .current
         func birthRange(for person: PersonSnapshot) -> ClosedRange<Date>? {
             guard let birthDate = person.birthDate else { return nil }
             let start = calendar.startOfDay(for: birthDate)
@@ -949,6 +1023,11 @@ nonisolated enum TreeLayout {
             }
             for (index, value) in dated.enumerated() {
                 result[value.id] = index + 1
+            }
+        }
+        for person in people {
+            if let birthOrderOverride = person.birthOrderOverride {
+                result[person.id] = birthOrderOverride
             }
         }
         return result
