@@ -93,7 +93,9 @@ npm --prefix web run deploy:staging:promote -- https://CANDIDATE.vercel.app
 Promotion runs the complete encrypted upload, activation, download, decryption,
 and revocation verifier before and after assigning `staging.heritg.us`. Staging
 verification skips the separate GitHub Pages landing check; production
-verification continues to require it.
+verification continues to require it. The staging command promotes by assigning
+the canonical alias to the exact tested preview; it never rebuilds that preview
+under a different Vercel environment.
 
 Attach `staging.heritg.us` only to Vercel project `heritg-staging`. In Cloudflare,
 create a DNS-only CNAME using the exact target Vercel assigns. Inspect and
