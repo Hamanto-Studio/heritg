@@ -136,6 +136,7 @@ nonisolated enum HeritgArchive {
                     birthDate: $0.birthDate,
                     deathDate: $0.deathDate,
                     birthDatePrecisionRaw: $0.birthDatePrecision.rawValue,
+                    birthOrderOverride: $0.birthOrderOverrideValue,
                     notes: $0.notes,
                     addressLine: $0.addressLine,
                     city: $0.city,

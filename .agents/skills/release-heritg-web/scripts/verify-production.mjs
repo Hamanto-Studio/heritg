@@ -9,6 +9,7 @@ const landingTarget = landingIndex >= 0 ? args[landingIndex + 1] : "https://fami
 const corsOriginIndex = args.indexOf("--cors-origin");
 const expectedCorsOrigin = corsOriginIndex >= 0 ? args[corsOriginIndex + 1] : "https://heritg.us";
 const skipShareSmoke = args.includes("--skip-share-smoke");
+const skipLanding = args.includes("--skip-landing");
 
 const SHARE_VERSION = "HTGSHR02";
 const SHARE_MAGIC = new TextEncoder().encode(SHARE_VERSION);
@@ -32,13 +33,22 @@ if (appBase.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(appBas
 
 const failures = [];
 const checked = [];
+const fetchWithContext = async (url, options) => {
+  try {
+    return await fetch(url, options);
+  } catch (error) {
+    const cause = error instanceof Error && error.cause instanceof Error
+      ? `: ${error.cause.message}` : "";
+    throw new Error(`fetch failed for ${url}${cause}`);
+  }
+};
 const request = async (path, options = {}) => {
   const url = path instanceof URL
     ? path
     : path.startsWith("/")
       ? new URL(path, appBase.origin)
       : new URL(path, appBase);
-  const response = await fetch(url, { redirect: "follow", ...options });
+  const response = await fetchWithContext(url, { redirect: "follow", ...options });
   checked.push(`${response.status} ${url.pathname}`);
   if (!response.ok) failures.push(`${url.pathname} returned ${response.status}`);
   return response;
@@ -46,7 +56,7 @@ const request = async (path, options = {}) => {
 
 const postJson = async (path, body) => {
   const url = new URL(path, appBase.origin);
-  const response = await fetch(url, {
+  const response = await fetchWithContext(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -196,13 +206,15 @@ const runEncryptedShareSmoke = async () => {
 };
 
 try {
-  const landingUrl = new URL(landingTarget);
-  const landing = await fetch(landingUrl, { redirect: "follow" });
-  checked.push(`${landing.status} ${landingUrl.href}`);
-  if (!landing.ok) failures.push(`${landingUrl.href} returned ${landing.status}`);
-  const landingHtml = await landing.text();
-  if (!landingHtml.includes('href="https://heritg.us/"')) {
-    failures.push("landing page does not link to https://heritg.us/");
+  if (!skipLanding) {
+    const landingUrl = new URL(landingTarget);
+    const landing = await fetchWithContext(landingUrl, { redirect: "follow" });
+    checked.push(`${landing.status} ${landingUrl.href}`);
+    if (!landing.ok) failures.push(`${landingUrl.href} returned ${landing.status}`);
+    const landingHtml = await landing.text();
+    if (!landingHtml.includes('href="https://heritg.us/"')) {
+      failures.push("landing page does not link to https://heritg.us/");
+    }
   }
 
   const home = await request("");
@@ -257,7 +269,7 @@ try {
   }
 
   const apiProbeUrl = new URL("/api/v1/share-uploads", appBase.origin);
-  const apiProbe = await fetch(apiProbeUrl, {
+  const apiProbe = await fetchWithContext(apiProbeUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: "{}",

@@ -16,6 +16,12 @@ nonisolated enum TreeConnectorStyle {
         let segmentIndexes: [Int]
     }
 
+    enum PathCommand: Equatable, Sendable {
+        case move(CGPoint)
+        case line(CGPoint)
+        case quadraticCurve(to: CGPoint, control: CGPoint)
+    }
+
     private struct GraphEdge {
         let sourceIndex: Int
         let startKey: String
@@ -171,6 +177,15 @@ nonisolated enum TreeConnectorStyle {
         abs(left.x - right.x) + abs(left.y - right.y)
     }
 
+    private static func isShortTerminalCorner(_ points: [CGPoint], index: Int) -> Bool {
+        index == 1 &&
+            distance(points[0], points[1]) <=
+                TreeRoutingGeometry.childRailClearance + TreeRoutingGeometry.epsilon ||
+            index == points.count - 2 &&
+            distance(points[points.count - 2], points[points.count - 1]) <=
+                TreeRoutingGeometry.childRailClearance + TreeRoutingGeometry.epsilon
+    }
+
     private static func pointToward(_ from: CGPoint, _ to: CGPoint, amount: CGFloat) -> CGPoint {
         let xDirection: CGFloat = to.x < from.x ? -1 : to.x > from.x ? 1 : 0
         let yDirection: CGFloat = to.y < from.y ? -1 : to.y > from.y ? 1 : 0
@@ -180,36 +195,55 @@ nonisolated enum TreeConnectorStyle {
         )
     }
 
+    static func roundedPathCommands(
+        for points: [CGPoint],
+        radius: CGFloat = cornerRadius
+    ) -> [PathCommand] {
+        guard let first = points.first else { return [] }
+        var commands = [PathCommand.move(first)]
+        guard points.count > 1 else { return commands }
+        if points.count > 2 {
+            for index in 1..<(points.count - 1) {
+                let previous = points[index - 1]
+                let current = points[index]
+                let next = points[index + 1]
+                guard previous.x != next.x,
+                      previous.y != next.y,
+                      !isShortTerminalCorner(points, index: index) else {
+                    commands.append(.line(current))
+                    continue
+                }
+                let cornerRadius = min(
+                    radius,
+                    distance(previous, current) / 2,
+                    distance(current, next) / 2
+                )
+                let before = pointToward(current, previous, amount: cornerRadius)
+                let after = pointToward(current, next, amount: cornerRadius)
+                commands.append(.line(before))
+                commands.append(.quadraticCurve(to: after, control: current))
+            }
+        }
+        commands.append(.line(points[points.count - 1]))
+        return commands
+    }
+
     static func roundedPath(
         for points: [CGPoint],
         radius: CGFloat = cornerRadius,
         transform: (CGPoint) -> CGPoint = { $0 }
     ) -> Path {
         Path { path in
-            guard let first = points.first else { return }
-            path.move(to: transform(first))
-            guard points.count > 1 else { return }
-            if points.count > 2 {
-                for index in 1..<(points.count - 1) {
-                    let previous = points[index - 1]
-                    let current = points[index]
-                    let next = points[index + 1]
-                    guard previous.x != next.x, previous.y != next.y else {
-                        path.addLine(to: transform(current))
-                        continue
-                    }
-                    let cornerRadius = min(
-                        radius,
-                        distance(previous, current) / 2,
-                        distance(current, next) / 2
-                    )
-                    let before = pointToward(current, previous, amount: cornerRadius)
-                    let after = pointToward(current, next, amount: cornerRadius)
-                    path.addLine(to: transform(before))
-                    path.addQuadCurve(to: transform(after), control: transform(current))
+            for command in roundedPathCommands(for: points, radius: radius) {
+                switch command {
+                case let .move(point):
+                    path.move(to: transform(point))
+                case let .line(point):
+                    path.addLine(to: transform(point))
+                case let .quadraticCurve(point, control):
+                    path.addQuadCurve(to: transform(point), control: transform(control))
                 }
             }
-            path.addLine(to: transform(points[points.count - 1]))
         }
     }
 }

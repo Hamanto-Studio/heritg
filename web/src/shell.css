@@ -452,6 +452,12 @@
   font-family: var(--font-sans);
 }
 
+html[data-deployment-environment="staging"] .canvas-host .excalidraw {
+  --color-primary: #7c3aed;
+  --color-primary-darker: #5b21b6;
+  --color-primary-light: #ede9fe;
+}
+
 .canvas-host .excalidraw .App-menu_top,
 .canvas-host .excalidraw .App-mobile-menu,
 .canvas-host .excalidraw .layer-ui__wrapper__top-right,

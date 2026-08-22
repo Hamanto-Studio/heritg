@@ -7,8 +7,10 @@ nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
     let gender: PersonGender
     let profilePhotoData: Data?
     let lifeSummary: String?
+    let city: String
     let birthDate: Date?
     let birthDatePrecision: BirthDatePrecision
+    let birthOrderOverride: Int?
 
     init(
         id: String,
@@ -16,16 +18,20 @@ nonisolated struct PersonSnapshot: Identifiable, Equatable, Sendable {
         gender: PersonGender,
         profilePhotoData: Data? = nil,
         lifeSummary: String? = nil,
+        city: String = "",
         birthDate: Date? = nil,
-        birthDatePrecision: BirthDatePrecision = .exact
+        birthDatePrecision: BirthDatePrecision = .exact,
+        birthOrderOverride: Int? = nil
     ) {
         self.id = id
         self.name = name
         self.gender = gender
         self.profilePhotoData = profilePhotoData
         self.lifeSummary = lifeSummary
+        self.city = city
         self.birthDate = birthDate
         self.birthDatePrecision = birthDatePrecision
+        self.birthOrderOverride = birthOrderOverride
     }
 }
 
@@ -139,9 +145,11 @@ nonisolated struct TreeEdgeLayout: Identifiable, Equatable, Sendable {
 nonisolated struct TreeLayoutResult: Equatable, Sendable {
     let nodes: [TreeNodeLayout]
     let edges: [TreeEdgeLayout]
+
+    static let empty = TreeLayoutResult(nodes: [], edges: [])
 }
 
-enum TreeLayout {
+nonisolated enum TreeLayout {
     static func make(
         focusedPersonID: String?,
         people: [PersonSnapshot],
@@ -162,6 +170,7 @@ enum TreeLayout {
         selectedPersonID: String?,
         generationLimits: TreeGenerationLimits = .unlimited
     ) -> TreeLayoutResult {
+        guard !Task.isCancelled else { return .empty }
         guard let focusedPersonID else {
             return makeEntireTree(
                 people: people,
@@ -171,24 +180,34 @@ enum TreeLayout {
             )
         }
 
-        guard let focused = people.first(where: { $0.id == focusedPersonID }) else {
+        let orderedPeople = normalizedPeople(people)
+        let validPersonIDs = Set(orderedPeople.map(\.id))
+        let orderedRelationships = normalizedRelationships(
+            relationships,
+            validPersonIDs: validPersonIDs
+        )
+        guard let focused = orderedPeople.first(where: { $0.id == focusedPersonID }) else {
             return TreeLayoutResult(nodes: [], edges: [])
         }
 
-        let peopleByID = people.reduce(into: [String: PersonSnapshot]()) { result, person in
+        let peopleByID = orderedPeople.reduce(into: [String: PersonSnapshot]()) { result, person in
             result[person.id] = person
         }
-        let parents = relationships
+        let birthOrders = deriveBirthOrders(
+            people: orderedPeople,
+            relationships: orderedRelationships
+        )
+        let parents = orderedRelationships
             .filter { $0.kind == .parent && $0.toPersonID == focusedPersonID }
             .compactMap { peopleByID[$0.fromPersonID] }
             .sorted(by: familyOrder)
         let children = familyGroupedOrder(
-            in: relationships
+            in: orderedRelationships
                 .filter { $0.kind == .parent && $0.fromPersonID == focusedPersonID }
                 .compactMap { peopleByID[$0.toPersonID] },
-            relationships: relationships
+            relationships: orderedRelationships
         )
-        let siblings = relationships
+        let siblings = orderedRelationships
             .filter {
                 $0.kind == .sibling &&
                     ($0.fromPersonID == focusedPersonID || $0.toPersonID == focusedPersonID)
@@ -200,7 +219,7 @@ enum TreeLayout {
                 return peopleByID[siblingID]
             }
             .sorted(by: familyOrder)
-        let partners = relationships
+        let partners = orderedRelationships
             .filter {
                 $0.kind == .partner &&
                     ($0.fromPersonID == focusedPersonID || $0.toPersonID == focusedPersonID)
@@ -217,16 +236,25 @@ enum TreeLayout {
             id: focused.id,
             person: focused,
             role: AppLanguage.localized("You"),
-            position: .zero
+            position: .zero,
+            birthOrder: birthOrders[focused.id]
         )]
         nodes += rowNodes(
             people: parents,
-            roles: roleLabels(for: parents, focusID: focusedPersonID, relationships: relationships),
+            roles: roleLabels(
+                for: parents,
+                focusID: focusedPersonID,
+                relationships: orderedRelationships
+            ),
             y: -TreeVisualMetrics.generationSpacing
         )
         nodes += rowNodes(
             people: children,
-            roles: roleLabels(for: children, focusID: focusedPersonID, relationships: relationships),
+            roles: roleLabels(
+                for: children,
+                focusID: focusedPersonID,
+                relationships: orderedRelationships
+            ),
             y: TreeVisualMetrics.generationSpacing
         )
 
@@ -237,7 +265,7 @@ enum TreeLayout {
                 role: roleLabels(
                     for: [sibling],
                     focusID: focusedPersonID,
-                    relationships: relationships
+                    relationships: orderedRelationships
                 )[sibling.id] ?? genderedSiblingLabel(sibling.gender),
                 position: CGPoint(x: -CGFloat(index + 1) * TreeVisualMetrics.horizontalSpacing, y: 0)
             ))
@@ -250,7 +278,7 @@ enum TreeLayout {
                 role: roleLabels(
                     for: [partner],
                     focusID: focusedPersonID,
-                    relationships: relationships
+                    relationships: orderedRelationships
                 )[partner.id]
                     ?? AppLanguage.localized("Partner"),
                 position: CGPoint(x: CGFloat(index + 1) * TreeVisualMetrics.horizontalSpacing, y: 0)
@@ -261,12 +289,20 @@ enum TreeLayout {
         for node in nodes where uniqueNodes[node.id] == nil {
             uniqueNodes[node.id] = node
         }
-        let orderedNodes = nodes.compactMap { uniqueNodes.removeValue(forKey: $0.id) }
+        let orderedNodes = nodes.compactMap { uniqueNodes.removeValue(forKey: $0.id) }.map { node in
+            TreeNodeLayout(
+                id: node.id,
+                person: node.person,
+                role: node.role,
+                position: node.position,
+                birthOrder: birthOrders[node.id]
+            )
+        }
         let positions = orderedNodes.reduce(into: [String: CGPoint]()) { result, node in
             result[node.id] = node.position
         }
         let visibleIDs = Set(orderedNodes.map(\.id))
-        let edges = relationships.sorted(by: relationshipOrder).compactMap { relationship -> TreeEdgeLayout? in
+        let edges = orderedRelationships.compactMap { relationship -> TreeEdgeLayout? in
             guard visibleIDs.contains(relationship.fromPersonID),
                   visibleIDs.contains(relationship.toPersonID),
                   let from = positions[relationship.fromPersonID],
@@ -289,12 +325,44 @@ enum TreeLayout {
         return TreeLayoutResult(nodes: orderedNodes, edges: edges)
     }
 
+    static func updatingRelationshipLabels(
+        in layout: TreeLayoutResult,
+        selectedPersonID: String?,
+        people: [PersonSnapshot],
+        relationships: [RelationshipSnapshot]
+    ) -> TreeLayoutResult {
+        let orderedPeople = people.sorted(by: stablePersonOrder)
+        let peopleByID = Dictionary(uniqueKeysWithValues: orderedPeople.map { ($0.id, $0) })
+        var nodes = [TreeNodeLayout]()
+        nodes.reserveCapacity(layout.nodes.count)
+
+        for node in layout.nodes {
+            guard !Task.isCancelled else { return .empty }
+            nodes.append(TreeNodeLayout(
+                id: node.id,
+                person: node.person,
+                role: relationshipInEntireTree(
+                    for: node.id,
+                    selectedPersonID: selectedPersonID,
+                    people: orderedPeople,
+                    peopleByID: peopleByID,
+                    relationships: relationships
+                ),
+                position: node.position,
+                birthOrder: node.birthOrder
+            ))
+        }
+
+        return TreeLayoutResult(nodes: nodes, edges: layout.edges)
+    }
+
     private static func makeEntireTree(
         people: [PersonSnapshot],
         relationships: [RelationshipSnapshot],
         selectedPersonID: String? = nil,
         generationLimits: TreeGenerationLimits = .unlimited
     ) -> TreeLayoutResult {
+        guard !Task.isCancelled else { return .empty }
         let orderedPeople = normalizedPeople(people)
         let validPersonIDs = Set(orderedPeople.map(\.id))
         let orderedRelationships = normalizedRelationships(
@@ -306,6 +374,7 @@ enum TreeLayout {
             people: orderedPeople,
             relationships: orderedRelationships
         )
+        guard !Task.isCancelled else { return .empty }
         let visibleIDs = TreeGenerationFilter.visiblePersonIDs(
             selectedPersonID: selectedPersonID,
             validPersonIDs: validPersonIDs,
@@ -313,6 +382,7 @@ enum TreeLayout {
             depths: depths,
             limits: generationLimits
         )
+        guard !Task.isCancelled else { return .empty }
         let visiblePeople = orderedPeople.filter { visibleIDs.contains($0.id) }
         guard !visiblePeople.isEmpty else {
             return TreeLayoutResult(nodes: [], edges: [])
@@ -330,6 +400,7 @@ enum TreeLayout {
         var blocksByDepth = [Int: [RowBlock]]()
 
         for depth in rowDepths {
+            guard !Task.isCancelled else { return .empty }
             let blocks = orderRow(
                 people: peopleByDepth[depth] ?? [],
                 relationships: orderedRelationships,
@@ -358,6 +429,7 @@ enum TreeLayout {
                         role: relationshipInEntireTree(
                             for: person.id,
                             selectedPersonID: selectedPersonID,
+                            people: orderedPeople,
                             peopleByID: peopleByID,
                             relationships: orderedRelationships
                         ),
@@ -375,13 +447,16 @@ enum TreeLayout {
         // Wide descendant branches pull their parents apart exactly as they do on Web.
         if rowDepths.count > 1 {
             for rowIndex in stride(from: rowDepths.count - 2, through: 0, by: -1) {
+                guard !Task.isCancelled else { return .empty }
                 let depth = rowDepths[rowIndex]
                 let blocks = blocksByDepth[depth] ?? []
                 var nextX: CGFloat?
 
                 for (blockIndex, block) in blocks.enumerated() {
+                    guard !Task.isCancelled else { return .empty }
                     let memberIDs = Set(block.members.map(\.id))
                     let directChildren = orderedRelationships.compactMap { relationship -> PositionedPerson? in
+                        guard !Task.isCancelled else { return nil }
                         guard relationship.kind == .parent,
                               memberIDs.contains(relationship.fromPersonID),
                               let child = positioned[relationship.toPersonID],
@@ -409,6 +484,38 @@ enum TreeLayout {
                         : 0
                     let minimumX = nextX.map { $0 + gap } ?? desiredStart
                     let startX = max(desiredStart, minimumX)
+                    let descendantShift = startX - desiredStart
+                    if descendantShift > 0, !childXs.isEmpty {
+                        var descendantIDs = Set<String>()
+                        var queue = memberIDs.sorted(by: textPrecedes)
+                        var queueIndex = 0
+                        while queueIndex < queue.count {
+                            let parentID = queue[queueIndex]
+                            for relationship in orderedRelationships where
+                                relationship.kind == .parent &&
+                                relationship.fromPersonID == parentID &&
+                                !descendantIDs.contains(relationship.toPersonID) {
+                                descendantIDs.insert(relationship.toPersonID)
+                                queue.append(relationship.toPersonID)
+                            }
+                            queueIndex += 1
+                        }
+                        for descendantDepth in rowDepths where descendantDepth > depth {
+                            for descendantBlock in blocksByDepth[descendantDepth] ?? [] {
+                                let members = descendantBlock.members.compactMap {
+                                    positioned[$0.id]
+                                }
+                                guard members.contains(where: {
+                                    descendantIDs.contains($0.person.id)
+                                }) else {
+                                    continue
+                                }
+                                for member in members {
+                                    positioned[member.person.id]?.x += descendantShift
+                                }
+                            }
+                        }
+                    }
                     let shift = startX - firstMember.x
                     for person in currentMembers {
                         positioned[person.person.id]?.x += shift
@@ -418,6 +525,7 @@ enum TreeLayout {
 
                 guard blocks.count > 1 else { continue }
                 for blockIndex in stride(from: blocks.count - 2, through: 0, by: -1) {
+                    guard !Task.isCancelled else { return .empty }
                     let block = blocks[blockIndex]
                     let nextBlock = blocks[blockIndex + 1]
                     guard !block.familyKeys.isDisjoint(with: nextBlock.familyKeys) else { continue }
@@ -445,6 +553,7 @@ enum TreeLayout {
         }
 
         let nodes = resultPersonIDs.compactMap { personID -> TreeNodeLayout? in
+            guard !Task.isCancelled else { return nil }
             guard let person = positioned[personID] else { return nil }
             return TreeNodeLayout(
                 id: personID,
@@ -459,6 +568,7 @@ enum TreeLayout {
             result[node.id] = node.position
         }
         let edges = orderedRelationships.compactMap { relationship -> TreeEdgeLayout? in
+            guard !Task.isCancelled else { return nil }
             guard let from = positions[relationship.fromPersonID],
                   let to = positions[relationship.toPersonID] else {
                 return nil
@@ -484,6 +594,7 @@ enum TreeLayout {
             )
         }
 
+        guard !Task.isCancelled else { return .empty }
         return TreeLayoutResult(nodes: nodes, edges: edges)
     }
 
@@ -492,6 +603,7 @@ enum TreeLayout {
         people: [PersonSnapshot],
         relationships: [RelationshipSnapshot]
     ) -> TreeAvailableGenerationLevels {
+        guard !Task.isCancelled else { return .none }
         let orderedPeople = normalizedPeople(people)
         let validPersonIDs = Set(orderedPeople.map(\.id))
         let orderedRelationships = normalizedRelationships(
@@ -513,6 +625,7 @@ enum TreeLayout {
         let personIDs = people.map(\.id)
         var groups = StableGroups(ids: personIDs)
         for relationship in relationships where relationship.kind != .parent {
+            guard !Task.isCancelled else { return [:] }
             groups.union(relationship.fromPersonID, relationship.toPersonID)
         }
 
@@ -525,6 +638,18 @@ enum TreeLayout {
             guard let firstParentID = parentIDs.first else { continue }
             for parentID in parentIDs.dropFirst() {
                 groups.union(firstParentID, parentID)
+            }
+        }
+
+        let childrenByParent = Dictionary(
+            grouping: relationships.filter { $0.kind == .parent },
+            by: \.fromPersonID
+        )
+        for childRelationships in childrenByParent.values {
+            let childIDs = Set(childRelationships.map(\.toPersonID)).sorted(by: textPrecedes)
+            guard let firstChildID = childIDs.first else { continue }
+            for childID in childIDs.dropFirst() {
+                groups.union(firstChildID, childID)
             }
         }
 
@@ -542,6 +667,7 @@ enum TreeLayout {
         var queue = components.keys.filter { indegrees[$0] == 0 }.sorted(by: textPrecedes)
         var index = 0
         while index < queue.count {
+            guard !Task.isCancelled else { return [:] }
             let current = queue[index]
             let children = outgoing[current, default: []].sorted(by: textPrecedes)
             for child in children {
@@ -652,21 +778,25 @@ enum TreeLayout {
         relationships: [RelationshipSnapshot],
         positioned: [String: PositionedPerson]
     ) -> [RowBlock] {
+        guard !Task.isCancelled else { return [] }
         let rowIDs = Set(people.map(\.id))
         var groups = StableGroups(ids: rowIDs)
         for relationship in relationships where relationship.kind == .partner
             && rowIDs.contains(relationship.fromPersonID)
             && rowIDs.contains(relationship.toPersonID) {
+            guard !Task.isCancelled else { return [] }
             groups.union(relationship.fromPersonID, relationship.toPersonID)
         }
 
-        let coParentsByChild = Dictionary(
-            grouping: relationships.filter {
-                $0.kind == .parent && rowIDs.contains($0.fromPersonID)
-            },
-            by: \.toPersonID
-        )
+        var coParentsByChild = [String: [RelationshipSnapshot]]()
+        for relationship in relationships {
+            guard !Task.isCancelled else { return [] }
+            if relationship.kind == .parent, rowIDs.contains(relationship.fromPersonID) {
+                coParentsByChild[relationship.toPersonID, default: []].append(relationship)
+            }
+        }
         for coParentRelationships in coParentsByChild.values {
+            guard !Task.isCancelled else { return [] }
             let coParentIDs = Set(coParentRelationships.map(\.fromPersonID)).sorted(by: textPrecedes)
             guard let firstID = coParentIDs.first else { continue }
             for coParentID in coParentIDs.dropFirst() {
@@ -675,21 +805,31 @@ enum TreeLayout {
         }
 
         let peopleByID = Dictionary(uniqueKeysWithValues: people.map { ($0.id, $0) })
-        var blocks = groups.values().values.map { ids -> RowBlock in
+        var blocks = [RowBlock]()
+        for ids in groups.values().values {
+            guard !Task.isCancelled else { return [] }
             var members = ids.compactMap { peopleByID[$0] }
             let memberIDs = Set(members.map(\.id))
-            let parentRelationships = relationships.filter {
-                $0.kind == .parent && memberIDs.contains($0.toPersonID)
+            var parentRelationships = [RelationshipSnapshot]()
+            var parentIDsByChild = [String: [String]]()
+            var parentXsByChild = [String: [CGFloat]]()
+            for relationship in relationships {
+                guard !Task.isCancelled else { return [] }
+                if relationship.kind == .parent, memberIDs.contains(relationship.toPersonID) {
+                    parentRelationships.append(relationship)
+                    parentIDsByChild[relationship.toPersonID, default: []]
+                        .append(relationship.fromPersonID)
+                    if let parentX = positioned[relationship.fromPersonID]?.x {
+                        parentXsByChild[relationship.toPersonID, default: []].append(parentX)
+                    }
+                }
             }
             func memberParentX(_ personID: String) -> CGFloat {
-                let values = parentRelationships.compactMap { relationship in
-                    relationship.toPersonID == personID
-                        ? positioned[relationship.fromPersonID]?.x
-                        : nil
-                }
+                let values = parentXsByChild[personID, default: []]
                 guard !values.isEmpty else { return .infinity }
                 return values.reduce(0, +) / CGFloat(values.count)
             }
+            guard !Task.isCancelled else { return [] }
             members.sort { left, right in
                 let leftParentX = memberParentX(left.id)
                 let rightParentX = memberParentX(right.id)
@@ -705,6 +845,7 @@ enum TreeLayout {
             for relationship in relationships where relationship.kind == .partner
                 && memberIDs.contains(relationship.fromPersonID)
                 && memberIDs.contains(relationship.toPersonID) {
+                guard !Task.isCancelled else { return [] }
                 partnerGroups.union(relationship.fromPersonID, relationship.toPersonID)
                 partnerDegree[relationship.fromPersonID, default: 0] += 1
                 partnerDegree[relationship.toPersonID, default: 0] += 1
@@ -742,22 +883,21 @@ enum TreeLayout {
                 return parentX - CGFloat(childIndex) * TreeVisualMetrics.horizontalSpacing
             }
             let familyKeys = Set(members.compactMap { person -> String? in
-                let parentIDs = parentRelationships
-                    .filter { $0.toPersonID == person.id }
-                    .map(\.fromPersonID)
-                    .sorted(by: textPrecedes)
+                let parentIDs = parentIDsByChild[person.id, default: []].sorted(by: textPrecedes)
                 return parentIDs.isEmpty ? nil : parentIDs.joined(separator: "\u{001f}")
             })
-            return RowBlock(
+            guard !Task.isCancelled else { return [] }
+            blocks.append(RowBlock(
                 members: members,
                 familyKeys: familyKeys,
                 parentX: parentPositions.isEmpty
                     ? .infinity
                     : parentPositions.reduce(0, +) / CGFloat(parentPositions.count),
                 key: members.map(\.id).joined(separator: "\u{001f}")
-            )
+            ))
         }
 
+        guard !Task.isCancelled else { return [] }
         blocks.sort { left, right in
             if left.parentX != right.parentX { return left.parentX < right.parentX }
             for index in 0..<min(left.members.count, right.members.count) {
@@ -830,7 +970,7 @@ enum TreeLayout {
         }
 
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        calendar.timeZone = .current
         func birthRange(for person: PersonSnapshot) -> ClosedRange<Date>? {
             guard let birthDate = person.birthDate else { return nil }
             let start = calendar.startOfDay(for: birthDate)
@@ -883,6 +1023,11 @@ enum TreeLayout {
             }
             for (index, value) in dated.enumerated() {
                 result[value.id] = index + 1
+            }
+        }
+        for person in people {
+            if let birthOrderOverride = person.birthOrderOverride {
+                result[person.id] = birthOrderOverride
             }
         }
         return result
@@ -1014,6 +1159,7 @@ enum TreeLayout {
     private static func relationshipInEntireTree(
         for personID: String,
         selectedPersonID: String?,
+        people: [PersonSnapshot],
         peopleByID: [String: PersonSnapshot],
         relationships: [RelationshipSnapshot]
     ) -> String {
@@ -1023,11 +1169,12 @@ enum TreeLayout {
         if let label = KinshipResolver.label(
             for: personID,
             relativeTo: selectedPersonID,
-            people: peopleByID.values.sorted(by: stablePersonOrder),
+            people: people,
             relationships: relationships
         ) {
             return label
         }
+        guard !Task.isCancelled else { return "" }
         guard personID != selectedPersonID else {
             return AppLanguage.localized("You")
         }
@@ -1063,6 +1210,7 @@ enum TreeLayout {
         }
 
         for (ancestorID, distance) in ancestors.sorted(by: distanceThenID) {
+            guard !Task.isCancelled else { return "" }
             if siblingIDs(of: ancestorID, relationships: relationships).contains(personID),
                let person = peopleByID[personID] {
                 let label = gendered(
@@ -1076,6 +1224,7 @@ enum TreeLayout {
         }
 
         for siblingID in siblingsOfSelected.sorted() {
+            guard !Task.isCancelled else { return "" }
             let siblingDescendants = descendantDistances(from: siblingID, relationships: relationships)
             if let distance = siblingDescendants[personID],
                let person = peopleByID[personID] {
@@ -1164,11 +1313,14 @@ enum TreeLayout {
         var result = [String: Int]()
         var queue = [(personID, 0)]
         var index = 0
+        let orderedRelationships = relationships.sorted(by: relationshipOrder)
 
         while index < queue.count {
+            guard !Task.isCancelled else { return result }
             let (currentID, distance) = queue[index]
             index += 1
-            for relationship in relationships.sorted(by: relationshipOrder) where relationship.kind == .parent {
+            for relationship in orderedRelationships where relationship.kind == .parent {
+                guard !Task.isCancelled else { return result }
                 let nextID: String?
                 if followsParent, relationship.toPersonID == currentID {
                     nextID = relationship.fromPersonID

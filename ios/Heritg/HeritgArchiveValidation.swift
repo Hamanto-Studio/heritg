@@ -29,6 +29,7 @@ nonisolated extension HeritgArchive {
             guard person.treeID == payload.tree.id,
                   PersonGender(rawValue: person.genderRaw) != nil,
                   BirthDatePrecision(rawValue: person.birthDatePrecisionRaw) != nil,
+                  person.birthOrderOverride.map({ $0 > 0 && $0 <= ChildOrder.maximum }) ?? true,
                   person.birthDate == nil || person.deathDate == nil || person.deathDate! >= person.birthDate! else {
                 throw HeritgArchiveError.invalidArchive
             }

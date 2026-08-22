@@ -15,6 +15,7 @@ struct AddRelativeSheet: View {
     @State private var hasMarriageDate = false
     @State private var showsMarriageDatePicker = true
     @State private var city = ""
+    @State private var childOrder = ""
     @State private var selectedCoParentID: String?
     @State private var errorMessage: String?
     @FocusState private var nameIsFocused: Bool
@@ -198,6 +199,17 @@ struct AddRelativeSheet: View {
                     .font(.headline)
 
                 TextField("City", text: $city)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Child order", text: $childOrder)
+                        .keyboardType(.numberPad)
+                        .accessibilityLabel("Child order")
+                        .accessibilityHint("Leave blank to use birth dates")
+                        .accessibilityIdentifier("relative.childOrder")
+                    Text("Leave blank to use birth dates")
+                        .font(.footnote)
+                        .foregroundStyle(HeritgColor.subtleText)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -261,6 +273,7 @@ struct AddRelativeSheet: View {
 
     private func save(role: RelativeRole) {
         do {
+            let parsedChildOrder = try ChildOrder.parse(childOrder)
             let coParent = role.allowsCoParent
                 ? coParents.first { $0.id == selectedCoParentID }
                 : nil
@@ -268,6 +281,7 @@ struct AddRelativeSheet: View {
                 birthDate: hasBirthdayData ? birthDate : nil,
                 deathDate: nil,
                 birthDatePrecision: .exact,
+                birthOrderOverride: parsedChildOrder,
                 notes: "",
                 addressLine: "",
                 city: city,

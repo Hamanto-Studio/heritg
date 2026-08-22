@@ -9,8 +9,42 @@ final class PersistenceController {
     static let productionStoreURL = NSPersistentContainer.defaultDirectoryURL()
         .appendingPathComponent("default.store")
 
-    static let managedObjectModel: NSManagedObjectModel = {
+    private static let legacyManagedObjectModel = makeManagedObjectModel(
+        includesBirthOrderOverride: false
+    )
+
+    static let managedObjectModel = makeManagedObjectModel(
+        includesBirthOrderOverride: true
+    )
+
+    private static func makeManagedObjectModel(
+        includesBirthOrderOverride: Bool
+    ) -> NSManagedObjectModel {
         let model = NSManagedObjectModel()
+        var personAttributes = [
+            attribute("id", .stringAttributeType, defaultValue: ""),
+            attribute("treeID", .stringAttributeType, defaultValue: ""),
+            attribute("displayName", .stringAttributeType, defaultValue: ""),
+            attribute("genderRaw", .stringAttributeType, defaultValue: PersonGender.unspecified.rawValue),
+            attribute("createdAt", .dateAttributeType),
+            attribute("birthDate", .dateAttributeType, optional: true),
+            attribute("deathDate", .dateAttributeType, optional: true),
+            attribute("birthDatePrecisionRaw", .stringAttributeType, defaultValue: BirthDatePrecision.exact.rawValue),
+            attribute("notes", .stringAttributeType, defaultValue: ""),
+            attribute("addressLine", .stringAttributeType, defaultValue: ""),
+            attribute("city", .stringAttributeType, defaultValue: ""),
+            attribute("province", .stringAttributeType, defaultValue: ""),
+            attribute("country", .stringAttributeType, defaultValue: ""),
+            attribute("postalCode", .stringAttributeType, defaultValue: ""),
+            attribute("profilePhotoData", .binaryDataAttributeType, optional: true, externalStorage: true),
+        ]
+        if includesBirthOrderOverride {
+            personAttributes.append(attribute(
+                "birthOrderOverride",
+                .integer64AttributeType,
+                optional: true
+            ))
+        }
         model.entities = [
             entity(
                 named: "FamilyTree",
@@ -26,23 +60,7 @@ final class PersistenceController {
             entity(
                 named: "Person",
                 className: NSStringFromClass(Person.self),
-                attributes: [
-                    attribute("id", .stringAttributeType, defaultValue: ""),
-                    attribute("treeID", .stringAttributeType, defaultValue: ""),
-                    attribute("displayName", .stringAttributeType, defaultValue: ""),
-                    attribute("genderRaw", .stringAttributeType, defaultValue: PersonGender.unspecified.rawValue),
-                    attribute("createdAt", .dateAttributeType),
-                    attribute("birthDate", .dateAttributeType, optional: true),
-                    attribute("deathDate", .dateAttributeType, optional: true),
-                    attribute("birthDatePrecisionRaw", .stringAttributeType, defaultValue: BirthDatePrecision.exact.rawValue),
-                    attribute("notes", .stringAttributeType, defaultValue: ""),
-                    attribute("addressLine", .stringAttributeType, defaultValue: ""),
-                    attribute("city", .stringAttributeType, defaultValue: ""),
-                    attribute("province", .stringAttributeType, defaultValue: ""),
-                    attribute("country", .stringAttributeType, defaultValue: ""),
-                    attribute("postalCode", .stringAttributeType, defaultValue: ""),
-                    attribute("profilePhotoData", .binaryDataAttributeType, optional: true, externalStorage: true),
-                ]
+                attributes: personAttributes
             ),
             entity(
                 named: "FamilyRelationship",
@@ -60,7 +78,7 @@ final class PersistenceController {
             ),
         ]
         return model
-    }()
+    }
 
     let container: NSPersistentContainer
 
@@ -68,6 +86,14 @@ final class PersistenceController {
         inMemory: Bool = PersistenceController.shouldUseInMemoryStore,
         storeURL: URL? = nil
     ) {
+        let resolvedStoreURL = storeURL ?? Self.productionStoreURL
+        if !inMemory {
+            do {
+                try Self.migrateStoreIfNeeded(at: resolvedStoreURL)
+            } catch {
+                fatalError("Could not migrate Core Data store: \(error)")
+            }
+        }
         container = NSPersistentContainer(
             name: "Heritg",
             managedObjectModel: Self.managedObjectModel
@@ -76,7 +102,7 @@ final class PersistenceController {
         let description = NSPersistentStoreDescription()
         description.type = inMemory ? NSInMemoryStoreType : NSSQLiteStoreType
         if !inMemory {
-            description.url = storeURL ?? Self.productionStoreURL
+            description.url = resolvedStoreURL
         }
         description.shouldMigrateStoreAutomatically = true
         description.shouldInferMappingModelAutomatically = true
@@ -110,6 +136,66 @@ final class PersistenceController {
             arguments.contains("-ui-testing") ||
             ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" ||
             NSClassFromString("XCTestCase") != nil
+    }
+
+    private static func migrateStoreIfNeeded(at url: URL) throws {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        let metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
+            ofType: NSSQLiteStoreType,
+            at: url,
+            options: nil
+        )
+        guard !managedObjectModel.isConfiguration(
+            withName: nil,
+            compatibleWithStoreMetadata: metadata
+        ), legacyManagedObjectModel.isConfiguration(
+            withName: nil,
+            compatibleWithStoreMetadata: metadata
+        ) else {
+            return
+        }
+
+        let mapping = try NSMappingModel.inferredMappingModel(
+            forSourceModel: legacyManagedObjectModel,
+            destinationModel: managedObjectModel
+        )
+        let temporaryURL = url.deletingLastPathComponent().appendingPathComponent(
+            ".\(url.lastPathComponent)-migration-\(UUID().uuidString)"
+        )
+        let storeOptions: [AnyHashable: Any] = [
+            NSPersistentHistoryTrackingKey: true as NSNumber,
+            NSPersistentStoreRemoteChangeNotificationPostOptionKey: true as NSNumber,
+        ]
+        let migration = NSMigrationManager(
+            sourceModel: legacyManagedObjectModel,
+            destinationModel: managedObjectModel
+        )
+        defer {
+            let cleanup = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
+            try? cleanup.destroyPersistentStore(
+                at: temporaryURL,
+                ofType: NSSQLiteStoreType,
+                options: storeOptions
+            )
+        }
+        try migration.migrateStore(
+            from: url,
+            sourceType: NSSQLiteStoreType,
+            options: storeOptions,
+            with: mapping,
+            toDestinationURL: temporaryURL,
+            destinationType: NSSQLiteStoreType,
+            destinationOptions: storeOptions
+        )
+
+        let coordinator = NSPersistentStoreCoordinator(managedObjectModel: managedObjectModel)
+        try coordinator.replacePersistentStore(
+            at: url,
+            destinationOptions: storeOptions,
+            withPersistentStoreFrom: temporaryURL,
+            sourceOptions: storeOptions,
+            ofType: NSSQLiteStoreType
+        )
     }
 
     private static func entity(
