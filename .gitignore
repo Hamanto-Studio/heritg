@@ -45,6 +45,8 @@ captures/
 .externalNativeBuild/
 .cxx/
 .vercel/
+.vercel-cli-cache/
 *.ged
 web/.heritg-debug-context.json
 web/.heritg-debug-context.tmp
+web/vercel.staging.json
