@@ -81,6 +81,11 @@ in Vercel project `heritg-staging`. The candidate cannot replace the current
 staging deployment before verification. After responsive and synthetic-data
 checks, promote the exact candidate:
 
+Vercel attributes CLI deployments to the current Git commit author. That
+author email must belong to a member of the Vercel project; otherwise Vercel
+marks the deployment `BLOCKED` before running the build. Resolve account
+attribution before retrying rather than promoting or aliasing a blocked build.
+
 ```sh
 npm --prefix web run deploy:staging:promote -- https://CANDIDATE.vercel.app
 ```
