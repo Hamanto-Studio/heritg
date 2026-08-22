@@ -1,5 +1,6 @@
 package tech.robihamanto.heritg.android
 
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.util.LruCache
 import androidx.compose.foundation.Image
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.core.os.ConfigurationCompat
 import tech.robihamanto.heritg.android.core.domain.LifeSummary
 import tech.robihamanto.heritg.android.core.domain.PersonSnapshot
 import tech.robihamanto.heritg.android.core.domain.RelationshipSnapshot
@@ -36,6 +38,9 @@ import tech.robihamanto.heritg.android.core.model.Person
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
+
+internal val Configuration.primaryLocale: Locale
+    get() = ConfigurationCompat.getLocales(this)[0] ?: Locale.getDefault()
 
 private val LightColors = lightColorScheme(
     primary = Color(0xFF6F5735),

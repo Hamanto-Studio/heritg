@@ -126,7 +126,7 @@ internal fun DateField(
     deleteLabel: Int,
 ) {
     var showPicker by remember { mutableStateOf(false) }
-    val locale = LocalConfiguration.current.locales[0]
+    val locale = LocalConfiguration.current.primaryLocale
     AnimatedContent(
         targetState = value.isNotBlank(),
         transitionSpec = { fadeIn() togetherWith fadeOut() using SizeTransform(clip = false) },
