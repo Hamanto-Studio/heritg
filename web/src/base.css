@@ -40,6 +40,77 @@ body {
   background: var(--tree-canvas);
 }
 
+html[data-deployment-environment="staging"] {
+  --canvas: #f3e8ff;
+  --tree-canvas: #f5f3ff;
+  --base: #fdfaff;
+  --elevated: #faf5ff;
+  --recessed: #ede9fe;
+  --text: #2e1065;
+  --subtle: #6b4f88;
+  --line: #c4b5fd;
+  --brand: #7c3aed;
+  --brand-deep: #5b21b6;
+  --shadow: 0 18px 46px rgba(76, 29, 149, 0.16);
+  --shadow-soft: 0 8px 24px rgba(76, 29, 149, 0.12);
+}
+
+.staging-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.staging-banner {
+  align-items: center;
+  background: #4c1d95;
+  border-bottom: 3px solid #fbbf24;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 16px;
+  justify-content: center;
+  min-height: 52px;
+  padding: 8px max(18px, env(safe-area-inset-right, 0px)) 8px max(18px, env(safe-area-inset-left, 0px));
+  text-align: center;
+  z-index: 200;
+}
+
+.staging-banner strong {
+  color: #fde68a;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.staging-banner span {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.staging-content {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+@media (max-width: 620px) {
+  .staging-banner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 64px;
+    padding-bottom: 7px;
+    padding-top: 7px;
+    text-align: left;
+  }
+
+  .staging-banner span {
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+}
+
 button,
 input,
 select,
