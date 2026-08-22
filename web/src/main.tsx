@@ -16,13 +16,28 @@ import { SharedTreeApp } from "./SharedTreeApp";
 import { AppProvider } from "./store";
 
 const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
+const isStaging = __DEPLOYMENT_ENV__ === "staging";
+const application = (
+  <AppProvider>
+    {isSharedRoute ? <SharedTreeApp /> : <App />}
+  </AppProvider>
+);
+
+if (isStaging) {
+  document.title = "Heritg Staging | Test Data Only";
+  document.documentElement.dataset.deploymentEnvironment = "staging";
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppProvider>
-      {isSharedRoute ? <SharedTreeApp /> : (
-        <App />
-      )}
-    </AppProvider>
+    {isStaging ? (
+      <div className="staging-shell">
+        <aside className="staging-banner" role="note">
+          <strong>Heritg Staging</strong>
+          <span>Test data only. Data may be reset. Do not use this as your family archive.</span>
+        </aside>
+        <div className="staging-content">{application}</div>
+      </div>
+    ) : application}
   </StrictMode>
 );
