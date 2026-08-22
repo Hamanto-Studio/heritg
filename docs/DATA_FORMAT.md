@@ -103,6 +103,7 @@ Each object has these fields:
 | `createdAt` | instant string |
 | `birthDate`, `deathDate` | calendar-date string or null |
 | `birthDatePrecision` | `exact`, `month`, or `year` |
+| `birthOrderOverride` | integer from `1` through `9007199254740991`, or null |
 | `notes`, `addressLine`, `city`, `province`, `country`, `postalCode` | string |
 | `profilePhoto` | media-reference object or null |
 
@@ -202,8 +203,9 @@ Readers enforce these limits before commit:
 | ID, title, display name, or address component | 4,096 UTF-8 bytes |
 | Notes per person | 1 MiB UTF-8 bytes |
 | One media item | 10 MiB |
+| Manual child order | `1...9007199254740991` |
 
-Tree IDs must match on every record. Person and relationship IDs must be unique. Selection and relationship endpoints must resolve. Self-relationships, invalid subtype/kind pairs, duplicate relationship semantics, and death before birth are invalid.
+Tree IDs must match on every record. Person and relationship IDs must be unique. Selection and relationship endpoints must resolve. Self-relationships, invalid subtype/kind pairs, duplicate relationship semantics, death before birth, and manual child-order values outside the documented range are invalid. Duplicate manual child-order values are allowed because they are user metadata, not structural keys.
 
 On import, portable tree, person, and relationship IDs are preserved. Before insertion, the importer checks all three ID namespaces against the existing store. Any collision rejects the complete archive with no merge or ID rewriting. This makes first import stable and repeated import explicit. All models are inserted in a non-autosaving context and saved once; any failure rolls back.
 

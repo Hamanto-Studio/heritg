@@ -8,7 +8,10 @@ prefix.
 
 ### Web
 
-- No unreleased changes yet.
+- Added an isolated, search-hidden staging environment with distinctive purple
+  branding and a persistent warning that it is for disposable test data only.
+- Improved sibling generation placement and kept child connector rails a
+  consistent distance from person cards.
 
 ### iOS
 
@@ -18,6 +21,11 @@ prefix.
   corners, junctions, and crossing bridges while retaining native canvas
   gestures and controls.
 - Improved archive, relationship, photo, and export compatibility coverage.
+- Added automatic and manually editable child-order badges to the canvas and
+  PNG/SVG exports, including backward-compatible archive and Core Data
+  migration support.
+- Matched the latest Web generation grouping, descendant-branch shifting,
+  40-point child stems, and square short-terminal connector corners.
 
 ### Android
 

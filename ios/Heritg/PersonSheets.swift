@@ -4,38 +4,56 @@ struct NewPersonSheet: View {
     let title: String
     let actionTitle: String
     let accessibilityPrefix: String
-    let onSave: (String) throws -> Void
+    let onSave: (String, Int?) throws -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
+    @State private var childOrder = ""
     @State private var errorMessage: String?
-    @FocusState private var nameIsFocused: Bool
+    @FocusState private var focusedField: NewPersonField?
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                TextField("Name", text: $name)
-                    .textInputAutocapitalization(.words)
-                    .submitLabel(.done)
-                    .focused($nameIsFocused)
-                    .padding(14)
-                    .background(HeritgColor.recessed)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .accessibilityLabel("Name")
-                    .accessibilityIdentifier("\(accessibilityPrefix).nameField")
-                    .onSubmit(save)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    TextField("Name", text: $name)
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.next)
+                        .focused($focusedField, equals: .name)
+                        .padding(14)
+                        .background(HeritgColor.recessed)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .accessibilityLabel("Name")
+                        .accessibilityIdentifier("\(accessibilityPrefix).nameField")
+                        .onSubmit { focusedField = .childOrder }
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(HeritgColor.danger)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityIdentifier("\(accessibilityPrefix).error")
+                    VStack(alignment: .leading, spacing: 6) {
+                        TextField("Child order", text: $childOrder)
+                            .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .childOrder)
+                            .padding(14)
+                            .background(HeritgColor.recessed)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .accessibilityLabel("Child order")
+                            .accessibilityHint("Leave blank to use birth dates")
+                            .accessibilityIdentifier("\(accessibilityPrefix).childOrder")
+                        Text("Leave blank to use birth dates")
+                            .font(.footnote)
+                            .foregroundStyle(HeritgColor.subtleText)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(HeritgColor.danger)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("\(accessibilityPrefix).error")
+                    }
+
+                    Spacer()
                 }
-
-                Spacer()
+                .padding(20)
             }
-            .padding(20)
             .background(HeritgColor.canvas)
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
@@ -49,20 +67,29 @@ struct NewPersonSheet: View {
                     Button(actionTitle, action: save)
                         .accessibilityIdentifier("\(accessibilityPrefix).save")
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") { focusedField = nil }
+                }
             }
         }
-        .presentationDetents([.height(300)])
+        .presentationDetents([.medium])
         .presentationDragIndicator(.visible)
-        .onAppear { nameIsFocused = true }
+        .onAppear { focusedField = .name }
     }
 
     private func save() {
         do {
-            try onSave(name)
+            try onSave(name, ChildOrder.parse(childOrder))
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private enum NewPersonField: Hashable {
+        case name
+        case childOrder
     }
 }
 
@@ -80,6 +107,7 @@ struct PersonSheet: View {
     @State private var hasBirthdayData: Bool
     @State private var deathDate: Date
     @State private var hasDeathDate: Bool
+    @State private var childOrder: String
     @State private var city: String
     @State private var profilePhotoData: Data?
     @State private var confirmingDelete = false
@@ -109,6 +137,7 @@ struct PersonSheet: View {
         _hasBirthdayData = State(initialValue: person.birthDate != nil)
         _deathDate = State(initialValue: person.deathDate ?? .now)
         _hasDeathDate = State(initialValue: person.deathDate != nil)
+        _childOrder = State(initialValue: person.birthOrderOverrideValue.map(String.init) ?? "")
         _city = State(initialValue: person.city)
         _profilePhotoData = State(initialValue: person.profilePhotoData)
     }
@@ -203,7 +232,7 @@ struct PersonSheet: View {
             .textInputAutocapitalization(.words)
             .submitLabel(.next)
             .focused($focusedField, equals: .name)
-            .onSubmit { focusedField = .city }
+            .onSubmit { focusedField = .childOrder }
             .padding(14)
             .background(HeritgColor.recessed)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -237,6 +266,18 @@ struct PersonSheet: View {
                 deathDate: $deathDate,
                 hasDeathDate: $hasDeathDate
             )
+
+            VStack(alignment: .leading, spacing: 4) {
+                TextField("Child order", text: $childOrder)
+                    .keyboardType(.numberPad)
+                    .focused($focusedField, equals: .childOrder)
+                    .accessibilityLabel("Child order")
+                    .accessibilityHint("Leave blank to use birth dates")
+                    .accessibilityIdentifier("person.childOrder")
+                Text("Leave blank to use birth dates")
+                    .font(.footnote)
+                    .foregroundStyle(HeritgColor.subtleText)
+            }
 
             TextField("City", text: $city)
                 .textInputAutocapitalization(.words)
@@ -394,10 +435,12 @@ struct PersonSheet: View {
 
     private func savePerson() {
         perform {
+            let parsedChildOrder = try ChildOrder.parse(childOrder)
             try onSave(name, gender, PersonDetails(
                 birthDate: hasBirthdayData ? birthDate : nil,
                 deathDate: hasDeathDate ? deathDate : nil,
-                birthDatePrecision: .exact,
+                birthDatePrecision: person.birthDatePrecision,
+                birthOrderOverride: parsedChildOrder,
                 notes: person.notes,
                 addressLine: person.addressLine,
                 city: city,
@@ -481,6 +524,7 @@ struct PersonSheet: View {
         name != person.displayName ||
             gender != person.gender ||
             draftBirthDate != person.birthDate ||
+            childOrder != (person.birthOrderOverrideValue.map(String.init) ?? "") ||
             (hasDeathDate ? deathDate : nil) != person.deathDate ||
             city != person.city ||
             profilePhotoData != person.profilePhotoData ||
@@ -505,6 +549,7 @@ struct PersonSheet: View {
 
     private enum PersonField: Hashable {
         case name
+        case childOrder
         case city
     }
 }

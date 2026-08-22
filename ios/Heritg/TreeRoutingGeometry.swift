@@ -4,6 +4,7 @@ import Foundation
 nonisolated enum TreeRoutingGeometry {
     static let clearance: CGFloat = 8
     static let epsilon: CGFloat = 0.001
+    static let childRailClearance: CGFloat = 40
 
     enum ObstacleKind: String, Equatable, Sendable {
         case avatar

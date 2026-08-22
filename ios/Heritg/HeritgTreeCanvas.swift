@@ -14,6 +14,7 @@ struct HeritgTreeCanvas: View {
     let onCreateFirstPerson: () -> Void
     let onShowTrees: () -> Void
     let onShowPeople: () -> Void
+    let onShowShare: () -> Void
     let onShowSettings: () -> Void
     let onEditPerson: (String, String) -> Void
 
@@ -102,10 +103,14 @@ struct HeritgTreeCanvas: View {
 
     private var layoutProgressIndicator: some View {
         VStack {
+            Spacer()
+
             HStack(spacing: 10) {
                 ProgressView()
                 Text("Updating relationships...")
-                    .font(.callout.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -113,10 +118,8 @@ struct HeritgTreeCanvas: View {
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("tree.selectionProgress")
-
-            Spacer()
         }
-        .padding(.top, 12)
+        .padding(.bottom, 12)
         .allowsHitTesting(false)
     }
 
@@ -358,6 +361,10 @@ struct HeritgTreeCanvas: View {
         projectedOffset: CGSize
     ) -> some View {
         let role = roleLabel(for: node)
+        let accessibilityValue = [
+            focusedPersonID == nil ? nil : role,
+            node.birthOrder.map(ChildOrder.localizedLabel),
+        ].compactMap { $0 }.joined(separator: ", ")
         let position = TreeViewportTransform.project(
             node.position,
             from: drawingBounds,
@@ -379,7 +386,7 @@ struct HeritgTreeCanvas: View {
         .buttonStyle(.plain)
         .position(position)
         .accessibilityLabel(node.person.name)
-        .accessibilityValue(focusedPersonID == nil ? "" : role)
+        .accessibilityValue(accessibilityValue)
         .accessibilityHint("Selects this person")
         .accessibilityIdentifier("person.node.\(node.person.id)")
     }
@@ -433,6 +440,9 @@ struct HeritgTreeCanvas: View {
                     Text(verbatim: String(birthOrder))
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(HeritgColor.text)
+                        .minimumScaleFactor(0.25)
+                        .lineLimit(1)
+                        .padding(1)
                 }
                 .frame(width: 20, height: 20)
                 .position(x: anchor.x - 23, y: anchor.y - 23)
@@ -666,6 +676,7 @@ struct HeritgTreeCanvas: View {
             availableGenerationLevels: availableGenerationLevels,
             onShowTrees: onShowTrees,
             onShowPeople: onShowPeople,
+            onShowShare: onShowShare,
             onShowSettings: onShowSettings,
             onZoomIn: zoomIn,
             onZoomOut: zoomOut,

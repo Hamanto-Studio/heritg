@@ -84,6 +84,72 @@ struct TreeLayoutDeterminismTests {
         #expect(baseline.edges.map(\.id) == permuted.edges.map(\.id))
     }
 
+    @Test func childrenSharingParentsStayOnOneRowAcrossAsymmetricAncestry() throws {
+        let people = [
+            person("spouse-grandfather", "Spouse grandfather"),
+            person("spouse-grandmother", "Spouse grandmother"),
+            person("spouse-father", "Spouse father"),
+            person("spouse-mother", "Spouse mother"),
+            person("father", "Father"),
+            person("mother", "Mother"),
+            person("older-child", "Older child", gender: .male, birth: 1961),
+            person("older-child-spouse", "Older child spouse", gender: .female, birth: 1970),
+            person("younger-child", "Younger child", gender: .male, birth: 1978),
+        ]
+        let relationships = [
+            parent("spouse-grandfather", "spouse-father", id: "spouse-grandfather"),
+            parent("spouse-grandmother", "spouse-father", id: "spouse-grandmother"),
+            parent("spouse-father", "older-child-spouse", id: "spouse-father"),
+            parent("spouse-mother", "older-child-spouse", id: "spouse-mother"),
+            parent("father", "older-child", id: "older-father"),
+            parent("mother", "older-child", id: "older-mother"),
+            parent("father", "younger-child", id: "younger-father"),
+            parent("mother", "younger-child", id: "younger-mother"),
+            RelationshipSnapshot(
+                id: "older-child-partnership",
+                fromPersonID: "older-child",
+                toPersonID: "older-child-spouse",
+                kind: .partner
+            ),
+        ]
+
+        let layout = TreeLayout.make(
+            focusedPersonID: nil,
+            people: people,
+            relationships: relationships
+        )
+        let permuted = TreeLayout.make(
+            focusedPersonID: nil,
+            people: Array(people.reversed()),
+            relationships: Array(relationships.reversed())
+        )
+        let older = try #require(layout.nodes.first { $0.id == "older-child" })
+        let spouse = try #require(layout.nodes.first { $0.id == "older-child-spouse" })
+        let younger = try #require(layout.nodes.first { $0.id == "younger-child" })
+
+        #expect(older.position.y == younger.position.y)
+        #expect(spouse.position.y == older.position.y)
+        #expect(older.position.x < younger.position.x)
+        #expect(abs(older.position.x - spouse.position.x) == TreeVisualMetrics.horizontalSpacing)
+        #expect(coordinates(layout) == coordinates(permuted))
+    }
+
+    @Test func focusedLayoutNormalizesMalformedDuplicateInput() {
+        let focus = person("focus", "Focus")
+        let child = person("child", "Child")
+        let relationship = parent("focus", "child", id: "parent-child")
+        let layout = TreeLayout.make(
+            focusedPersonID: "focus",
+            people: [focus, focus, person("", "Blank"), child],
+            relationships: [relationship, relationship],
+            selectedPersonID: "focus"
+        )
+
+        #expect(layout.nodes.map(\.id).filter { $0 == "focus" }.count == 1)
+        #expect(layout.nodes.map(\.id).filter { $0 == "child" }.count == 1)
+        #expect(layout.edges.map(\.id) == ["parent-child"])
+    }
+
     private func coordinates(_ layout: TreeLayoutResult) -> [String: CGPoint] {
         Dictionary(uniqueKeysWithValues: layout.nodes.map { ($0.id, $0.position) })
     }

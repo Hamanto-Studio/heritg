@@ -40,6 +40,7 @@ struct HeritgArchiveTests {
         #expect(decoded.tree.title == "Synthetic Family")
         #expect(decoded.people.map(\.id) == ["person-alpha", "person-beta"])
         #expect(decoded.people[0].displayName == "Ayu \u{00c9}lodie")
+        #expect(decoded.people[0].birthOrderOverride == nil)
         #expect(calendarKey(decoded.people[0].birthDate) == "1985-04-12")
         #expect(decoded.people[0].profilePhotoData == payload.people[0].profilePhotoData)
         #expect(decoded.relationships[0].id == "relationship-alpha-beta")
@@ -55,6 +56,18 @@ struct HeritgArchiveTests {
         #expect(try HeritgArchive.protection(of: archive) == .encrypted)
         #expect(sha256(archive) == "bc8df41b6991455fdad8150c610e56f32d0146ee117bbb7cb2636d3732595440")
         #expect(try HeritgArchive.decrypt(archive, password: "").tree.id == payload.tree.id)
+    }
+
+    @Test func archiveRoundTripPreservesManualBirthOrder() throws {
+        let payload = validPayload(birthOrderOverride: ChildOrder.maximum)
+        let archive = try HeritgArchiveFormat.encode(payload)
+        let peopleJSON = try #require(try HeritgZIP.decode(archive)["people.jsonl"])
+
+        #expect(String(data: peopleJSON, encoding: .utf8)?.contains(
+            "\"birthOrderOverride\":\(ChildOrder.maximum)"
+        ) == true)
+        #expect(try HeritgArchiveFormat.decode(archive).people[0].birthOrderOverride ==
+            ChildOrder.maximum)
     }
 
     @Test func deterministicEncryptionNormalizesUnicodePasswordsAndAuthenticatesBytes() throws {
@@ -212,7 +225,8 @@ struct HeritgArchiveTests {
 
     private func validPayload(
         relationshipTargetID: String = "person-beta",
-        notes: String = "Synthetic notes only"
+        notes: String = "Synthetic notes only",
+        birthOrderOverride: Int? = nil
     ) -> HeritgArchivePayload {
         HeritgArchivePayload(
             schemaVersion: 1,
@@ -234,6 +248,7 @@ struct HeritgArchiveTests {
                     birthDate: calendarDate(year: 1985, month: 4, day: 12),
                     deathDate: nil,
                     birthDatePrecisionRaw: BirthDatePrecision.exact.rawValue,
+                    birthOrderOverride: birthOrderOverride,
                     notes: notes,
                     addressLine: "",
                     city: "Bandung",
@@ -251,6 +266,7 @@ struct HeritgArchiveTests {
                     birthDate: calendarDate(year: 1983, month: 9, day: 2),
                     deathDate: nil,
                     birthDatePrecisionRaw: BirthDatePrecision.month.rawValue,
+                    birthOrderOverride: nil,
                     notes: "",
                     addressLine: "",
                     city: "",

@@ -25,6 +25,7 @@ nonisolated struct HeritgArchivePerson: Codable, Sendable {
     let birthDate: Date?
     let deathDate: Date?
     let birthDatePrecisionRaw: String
+    let birthOrderOverride: Int?
     let notes: String
     let addressLine: String
     let city: String
@@ -90,6 +91,7 @@ nonisolated struct HeritgArchivePersonRecord: Codable, Sendable {
     let birthDate: String?
     let deathDate: String?
     let birthDatePrecision: String
+    let birthOrderOverride: Int?
     let notes: String
     let addressLine: String
     let city: String

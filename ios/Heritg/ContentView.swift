@@ -30,8 +30,9 @@ struct ContentView: View {
     @State private var isCreatingFirstPerson = false
     @State private var isShowingPeople = false
     @State private var isShowingSettings = false
+    @State private var isShowingShare = false
     @State private var isShowingTrees = false
-    @State private var pendingExportTreeID: String?
+    @State private var pendingShareTreeID: String?
     @State private var importNotice: String?
     @State private var importError: String?
     @State private var isImportingGEDCOM = false
@@ -63,11 +64,23 @@ struct ContentView: View {
                 title: String(localized: "Start your family tree", locale: AppLanguage.selectedLocale),
                 actionTitle: String(localized: "Add person", locale: AppLanguage.selectedLocale),
                 accessibilityPrefix: "firstPerson"
-            ) { name in
+            ) { name, birthOrderOverride in
                 guard let activeTree else { return }
                 let person = try FamilyGraph.createPerson(
                     named: name,
                     in: activeTree,
+                    details: PersonDetails(
+                        birthDate: nil,
+                        deathDate: nil,
+                        birthDatePrecision: .exact,
+                        birthOrderOverride: birthOrderOverride,
+                        notes: "",
+                        addressLine: "",
+                        city: "",
+                        province: "",
+                        country: "",
+                        postalCode: ""
+                    ),
                     context: modelContext
                 )
                 focusedPersonID = person.id
@@ -90,7 +103,28 @@ struct ContentView: View {
                 )
             }
         }
-        .fullScreenCover(isPresented: $isShowingTrees, onDismiss: presentPendingExport) {
+        .sheet(isPresented: $isShowingShare) {
+            if let activeTree {
+                NavigationStack {
+                    ShareSettingsView(
+                        tree: activeTree,
+                        people: people,
+                        relationships: relationships,
+                        selectedPersonID: resolvedFocusID,
+                        generationLimits: appliedGenerationLimits
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { isShowingShare = false }
+                                .accessibilityIdentifier("share.close")
+                        }
+                    }
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        .fullScreenCover(isPresented: $isShowingTrees, onDismiss: presentPendingShare) {
             treeLibrary(allowsDismiss: true)
         }
         .alert("Import Completed", isPresented: importNoticeBinding) {
@@ -233,6 +267,7 @@ struct ContentView: View {
                 onCreateFirstPerson: { isCreatingFirstPerson = true },
                 onShowTrees: showTreeLibrary,
                 onShowPeople: { isShowingPeople = true },
+                onShowShare: { isShowingShare = true },
                 onShowSettings: { isShowingSettings = true },
                 onEditPerson: editPerson
             )
@@ -314,7 +349,7 @@ struct ContentView: View {
                 try FamilyGraph.renameTree(tree, to: name, in: modelContext)
             },
             onDelete: deleteTree,
-            onExport: requestExport,
+            onShare: requestShare,
             onImport: importGEDCOM,
             onImportError: { importError = $0 },
             onImportArchive: { payload in
@@ -333,6 +368,7 @@ struct ContentView: View {
         linkTargetPerson = nil
         isShowingPeople = false
         isShowingSettings = false
+        isShowingShare = false
     }
 
     private func showTreeLibrary() {
@@ -353,23 +389,23 @@ struct ContentView: View {
         }
     }
 
-    private func requestExport(_ tree: FamilyTree) {
+    private func requestShare(_ tree: FamilyTree) {
         selectTree(tree)
-        pendingExportTreeID = tree.id
+        pendingShareTreeID = tree.id
         if horizontalSizeClass == .regular {
             splitViewVisibility = .detailOnly
-            presentPendingExport()
+            presentPendingShare()
         } else if isShowingTrees {
             isShowingTrees = false
         } else {
-            presentPendingExport()
+            presentPendingShare()
         }
     }
 
-    private func presentPendingExport() {
-        guard pendingExportTreeID == activeTreeID else { return }
-        pendingExportTreeID = nil
-        isShowingSettings = true
+    private func presentPendingShare() {
+        guard pendingShareTreeID == activeTreeID else { return }
+        pendingShareTreeID = nil
+        isShowingShare = true
     }
 
     private func importGEDCOM(data: Data, sourceName: String) async throws {

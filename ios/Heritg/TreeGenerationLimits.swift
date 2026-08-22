@@ -225,7 +225,8 @@ extension Person {
             lifeSummary: lifeSummary,
             city: city,
             birthDate: birthDate,
-            birthDatePrecision: birthDatePrecision
+            birthDatePrecision: birthDatePrecision,
+            birthOrderOverride: birthOrderOverrideValue
         )
     }
 }

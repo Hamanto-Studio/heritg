@@ -1,0 +1,22 @@
+[
+  {
+    "origin": [
+      "https://staging.heritg.us"
+    ],
+    "method": [
+      "GET",
+      "HEAD",
+      "PUT"
+    ],
+    "responseHeader": [
+      "Content-Type",
+      "ETag",
+      "x-goog-generation",
+      "x-goog-hash",
+      "x-goog-if-generation-match",
+      "x-goog-meta-heritg-envelope",
+      "x-goog-meta-heritg-state"
+    ],
+    "maxAgeSeconds": 900
+  }
+]

@@ -12,6 +12,10 @@ const buildEnvironment = (globalThis as {
 const useExcalidrawFallback = buildEnvironment?.HERITG_CANVAS_RENDERER === "excalidraw" ||
   buildEnvironment?.VITE_HERITG_CANVAS_RENDERER === "excalidraw";
 const debugContextEnabled = buildEnvironment?.HERITG_DEBUG_CONTEXT === "1";
+const deploymentEnvironment = buildEnvironment?.HERITG_DEPLOYMENT_ENV === "staging"
+  ? "staging"
+  : "production";
+const isStaging = deploymentEnvironment === "staging";
 const debugContextPath = new URL("./.heritg-debug-context.json", import.meta.url);
 const debugContextTemporaryPath = new URL("./.heritg-debug-context.tmp", import.meta.url);
 
@@ -71,26 +75,40 @@ const activeFamilyDebugPlugin = (): Plugin => ({
   }
 });
 
+const deploymentBrandPlugin = (): Plugin => ({
+  name: "heritg-deployment-brand",
+  transformIndexHtml(html) {
+    if (!isStaging) return html;
+    return html
+      .replace("<title>Heritg</title>", "<title>Heritg Staging | Test Data Only</title>")
+      .replace('<meta name="theme-color" content="#f7f3ec" />', '<meta name="theme-color" content="#4c1d95" />');
+  }
+});
+
 export default defineConfig({
   base: "/",
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false"),
     __EXCALIDRAW_FALLBACK__: JSON.stringify(useExcalidrawFallback),
-    __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled)
+    __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
+    __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment)
   },
   plugins: [
     react(),
+    deploymentBrandPlugin(),
     activeFamilyDebugPlugin(),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["favicon.png", "apple-touch-icon.png"],
       manifest: {
-        name: "Heritg Family Tree",
-        short_name: "Heritg",
-        description: "Private, offline family trees stored on your device.",
-        theme_color: "#f7f3ec",
-        background_color: "#f5f5f3",
+        name: isStaging ? "Heritg Staging - Test Data Only" : "Heritg Family Tree",
+        short_name: isStaging ? "Heritg Staging" : "Heritg",
+        description: isStaging
+          ? "Temporary Heritg staging environment for synthetic test data only."
+          : "Private, offline family trees stored on your device.",
+        theme_color: isStaging ? "#4c1d95" : "#f7f3ec",
+        background_color: isStaging ? "#f3e8ff" : "#f5f5f3",
         display: "standalone",
         start_url: "/",
         scope: "/",

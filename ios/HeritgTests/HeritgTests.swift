@@ -52,6 +52,7 @@ struct HeritgTests {
         #expect(people.map(\.displayName).sorted() == ["Ayu", "Bima"])
         #expect(first.gender == .female)
         #expect(first.birthDatePrecision == .year)
+        #expect(first.birthOrderOverrideValue == nil)
         #expect(first.notes == "Family notes")
         #expect(first.addressLine == "1 Example Road")
         #expect(first.city == "Bandung")
@@ -65,10 +66,20 @@ struct HeritgTests {
         #expect(relationship.toPersonID == "person-2")
 
         tree.title = "Migrated Family"
+        first.birthOrderOverrideValue = ChildOrder.maximum
         try context.save()
         context.reset()
         #expect(try context.fetch(FamilyTree.fetchRequest()).first?.title == "Migrated Family")
         try closePersistentStores(in: controller)
+
+        let reopened = PersistenceController(inMemory: false, storeURL: storeURL)
+        let reopenedPerson = try #require(
+            reopened.container.viewContext.fetch(Person.fetchRequest()).first {
+                $0.id == "person-1"
+            }
+        )
+        #expect(reopenedPerson.birthOrderOverrideValue == ChildOrder.maximum)
+        try closePersistentStores(in: reopened)
     }
 
     @MainActor

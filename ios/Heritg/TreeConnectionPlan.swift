@@ -517,7 +517,7 @@ nonisolated struct TreeConnectionPlan: Equatable, Sendable {
                 ))
                 : 0
             let parentJoinY = parentStartY + 8 + CGFloat(laneIndex) * spacing
-            let childRailOffset = 8 + CGFloat(laneCount - 1 - laneIndex) * spacing
+            let childRailOffset = TreeRoutingGeometry.childRailClearance
             let baseTrunkX = average(families[familyIndex].parentPorts.map(\.x))
             let nearestChildX = families[familyIndex].children.sorted {
                 let leftDistance = abs($0.x - baseTrunkX)
