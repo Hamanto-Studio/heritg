@@ -72,14 +72,19 @@ Never point staging at the production Cloud Run service or production bucket.
 Create a preview candidate from the repository root:
 
 ```sh
-HERITG_STAGING_API_ORIGIN=https://STAGING-SERVICE.run.app npm --prefix web run deploy:staging
+HERITG_STAGING_API_ORIGIN=https://STAGING-SERVICE.run.app \
+HERITG_GOOGLE_CLIENT_ID=1079742937646-76202p8a4fjf7hbef5cijvc003oauu3e.apps.googleusercontent.com \
+npm --prefix web run deploy:staging
 ```
 
 The command renders a gitignored `web/vercel.staging.json`, sets
-`HERITG_DEPLOYMENT_ENV=staging` for the Vite build, and creates a preview only
-in Vercel project `heritg-staging`. The candidate cannot replace the current
-staging deployment before verification. After responsive and synthetic-data
-checks, promote the exact candidate:
+`HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID
+for the Vite build, and creates a preview only in Vercel project
+`heritg-staging`. The Google client must authorize exactly
+`https://staging.heritg.us`; do not reuse a production client. The candidate
+cannot replace the current staging deployment before verification. After
+responsive, synthetic-data, and encrypted-sharing compatibility checks, promote
+the exact candidate:
 
 Vercel attributes CLI deployments to the current Git commit author. That
 author email must belong to a member of the Vercel project; otherwise Vercel

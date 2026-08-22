@@ -10,7 +10,7 @@
 
 <p align="center">
   <strong>A private, local-first home for your family history.</strong><br />
-  No account. No advertising. Your family tree stays on your device by default.
+  No account required. No advertising. Your family tree stays on your device by default.
 </p>
 
 <p align="center">

@@ -1,0 +1,258 @@
+const API_BASE = "/api/v1/auth";
+export const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
+
+const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
+const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const ERROR_CODES = new Set([
+  "invalid_request",
+  "unauthenticated",
+  "forbidden",
+  "rate_limited",
+  "service_unavailable"
+]);
+
+export interface LoginMaterial {
+  nonce: string;
+  state: string;
+  expiresAt: string;
+}
+
+export interface AccountSession {
+  accountId: string;
+  expiresAt: string;
+}
+
+export interface LoginResult extends AccountSession {
+  csrfToken: string;
+}
+
+export class AccountAuthError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string
+  ) {
+    super("Account authentication failed");
+    this.name = "AccountAuthError";
+  }
+}
+
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+export interface GoogleIdentity {
+  accounts: {
+    id: {
+      initialize(options: {
+        client_id: string;
+        nonce: string;
+        auto_select: false;
+        ux_mode: "popup";
+        use_fedcm_for_button: true;
+        callback(response: GoogleCredentialResponse): void;
+      }): void;
+      renderButton(element: HTMLElement, options: {
+        type: "standard";
+        theme: "outline";
+        size: "large";
+        width: number;
+        locale: "en" | "id";
+      }): void;
+      disableAutoSelect(): void;
+    };
+  };
+}
+
+declare global {
+  interface Window {
+    google?: GoogleIdentity;
+  }
+}
+
+let googleIdentityPromise: Promise<GoogleIdentity> | undefined;
+
+const objectWithExactKeys = (value: unknown, keys: readonly string[]): value is Record<string, unknown> => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+};
+
+const validDate = (value: unknown): value is string =>
+  typeof value === "string" && Number.isFinite(Date.parse(value));
+
+const parseLoginMaterial = (value: unknown): LoginMaterial => {
+  if (!objectWithExactKeys(value, ["nonce", "state", "expiresAt"]) ||
+    typeof value.nonce !== "string" || !TOKEN_PATTERN.test(value.nonce) ||
+    typeof value.state !== "string" || !TOKEN_PATTERN.test(value.state) ||
+    !validDate(value.expiresAt)) {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+  return { nonce: value.nonce, state: value.state, expiresAt: value.expiresAt };
+};
+
+const parseSession = (value: unknown): AccountSession => {
+  if (!objectWithExactKeys(value, ["accountId", "expiresAt"]) ||
+    typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
+    !validDate(value.expiresAt)) {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+  return { accountId: value.accountId, expiresAt: value.expiresAt };
+};
+
+const parseLogin = (value: unknown): LoginResult => {
+  if (!objectWithExactKeys(value, ["accountId", "csrfToken", "expiresAt"]) ||
+    typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
+    typeof value.csrfToken !== "string" || !TOKEN_PATTERN.test(value.csrfToken) ||
+    !validDate(value.expiresAt)) {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+  return { accountId: value.accountId, csrfToken: value.csrfToken, expiresAt: value.expiresAt };
+};
+
+const request = async (
+  path: string,
+  init: RequestInit,
+  fetchImpl: typeof fetch
+): Promise<unknown> => {
+  const response = await fetchImpl(path.startsWith("/api/") ? path : `${API_BASE}${path}`, {
+    ...init,
+    credentials: "include",
+    cache: "no-store",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  const payload: unknown = await response.json().catch(() => undefined);
+  if (!response.ok) {
+    const code = objectWithExactKeys(payload, ["error"]) &&
+      objectWithExactKeys(payload.error, ["code", "message"]) &&
+      typeof payload.error.code === "string" && ERROR_CODES.has(payload.error.code)
+      ? payload.error.code
+      : "service_unavailable";
+    throw new AccountAuthError(response.status, code);
+  }
+  return payload;
+};
+
+export const getLoginMaterial = async (
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<LoginMaterial> => parseLoginMaterial(await request("/login-nonce", {
+  method: "GET",
+  signal
+}, fetchImpl));
+
+export const loginWithGoogle = async (
+  idToken: string,
+  material: Pick<LoginMaterial, "nonce" | "state">,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<LoginResult> => parseLogin(await request("/google", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
+  signal
+}, fetchImpl));
+
+export const getAccountSession = async (
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<AccountSession> => parseSession(await request("/session", {
+  method: "GET",
+  signal
+}, fetchImpl));
+
+export const logoutAccount = async (
+  csrfToken: string,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> => {
+  const payload = await request("/logout", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-csrf-token": csrfToken
+    },
+    body: "{}",
+    signal
+  }, fetchImpl);
+  if (!objectWithExactKeys(payload, ["status"]) || payload.status !== "logged_out") {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+};
+
+export const deleteAccount = async (
+  csrfToken: string,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> => {
+  const payload = await request("/api/v1/account", {
+    method: "DELETE",
+    headers: {
+      "content-type": "application/json",
+      "x-csrf-token": csrfToken
+    },
+    body: "{}",
+    signal
+  }, fetchImpl);
+  if (!objectWithExactKeys(payload, ["status"]) || payload.status !== "deleted") {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+};
+
+export const readCsrfCookie = (cookie = document.cookie): string | undefined => {
+  for (const item of cookie.split(";")) {
+    const separator = item.indexOf("=");
+    if (separator < 0) continue;
+    const name = item.slice(0, separator).trim();
+    if (name !== "__Host-heritg_csrf" && name !== "heritg_csrf") continue;
+    try {
+      const value = decodeURIComponent(item.slice(separator + 1));
+      if (TOKEN_PATTERN.test(value)) return value;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
+};
+
+export const loadGoogleIdentity = (): Promise<GoogleIdentity> => {
+  if (window.google) return Promise.resolve(window.google);
+  if (googleIdentityPromise && document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)) {
+    return googleIdentityPromise;
+  }
+  googleIdentityPromise = undefined;
+
+  const promise = new Promise<GoogleIdentity>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`);
+    const script = existing ?? document.createElement("script");
+    const cleanup = () => {
+      script.removeEventListener("load", loaded);
+      script.removeEventListener("error", failed);
+      window.clearTimeout(timeout);
+    };
+    const failed = () => {
+      cleanup();
+      script.remove();
+      reject(new AccountAuthError(503, "identity_unavailable"));
+    };
+    const loaded = () => {
+      cleanup();
+      if (window.google) resolve(window.google);
+      else failed();
+    };
+    script.addEventListener("load", loaded, { once: true });
+    script.addEventListener("error", failed, { once: true });
+    const timeout = window.setTimeout(failed, 10_000);
+    if (!existing) {
+      script.src = GOOGLE_IDENTITY_SCRIPT;
+      script.async = true;
+      document.head.append(script);
+    }
+  }).catch((error) => {
+    googleIdentityPromise = undefined;
+    throw error;
+  });
+  googleIdentityPromise = promise;
+  return promise;
+};
