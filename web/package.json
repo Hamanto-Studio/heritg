@@ -21,7 +21,8 @@
     "deploy:promote": "node scripts/promote-production.mjs",
     "deploy:staging": "node scripts/deploy-staging.mjs",
     "deploy:staging:promote": "node scripts/promote-staging.mjs",
-    "dns:staging": "node scripts/configure-staging-dns.mjs"
+    "dns:staging": "node scripts/configure-staging-dns.mjs",
+    "dns:staging:remove-beta": "node scripts/configure-staging-dns.mjs --remove-beta"
   },
   "dependencies": {
     "@daypicker/react": "10.0.1",

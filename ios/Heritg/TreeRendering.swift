@@ -1,6 +1,33 @@
 import SwiftUI
 
+nonisolated struct TreeViewportFit: Equatable, Sendable {
+    let scale: CGFloat
+    let offset: CGSize
+}
+
 nonisolated enum TreeViewportTransform {
+    static func fit(
+        sceneRect: CGRect,
+        contentBounds: CGRect,
+        viewportSize: CGSize,
+        viewportFactor: CGFloat,
+        minimumScale: CGFloat = 0.08,
+        maximumScale: CGFloat = 1.8
+    ) -> TreeViewportFit {
+        let naturalScale = min(
+            sceneRect.width == 0 ? .infinity : viewportSize.width * viewportFactor / sceneRect.width,
+            sceneRect.height == 0 ? .infinity : viewportSize.height * viewportFactor / sceneRect.height
+        )
+        let scale = min(max(naturalScale, minimumScale), maximumScale)
+        return TreeViewportFit(
+            scale: scale,
+            offset: CGSize(
+                width: (contentBounds.midX - sceneRect.midX) * scale,
+                height: (contentBounds.midY - sceneRect.midY) * scale
+            )
+        )
+    }
+
     static func offset(
         afterMagnifying currentOffset: CGSize,
         by magnification: CGFloat,
@@ -55,8 +82,6 @@ nonisolated enum TreeViewportTransform {
 }
 
 nonisolated enum TreeVisualMetrics {
-    static let overviewEnterScale: CGFloat = 0.3
-    static let overviewExitScale: CGFloat = 0.42
     static let minimumTapTarget: CGFloat = 44
     static let avatarDiameter: CGFloat = 64
     static let avatarRadius = avatarDiameter / 2
@@ -67,54 +92,94 @@ nonisolated enum TreeVisualMetrics {
     static let labelHeight: CGFloat = 72
     static let nodeLabelWidth: CGFloat = 190
     static let nodeLabelTopSpacing: CGFloat = 10
+    static let nameFontSize: CGFloat = 14
+    static let nameLineHeight: CGFloat = 17
+    static let nameHeight: CGFloat = 20
+    static let roleTop: CGFloat = 64
+    static let roleHeight: CGFloat = 18
+    static let lifeTop: CGFloat = 84
+    static let lifeHeight: CGFloat = 16
 
-    static func compactName(_ value: String) -> String {
+    static func formattedName(_ value: String) -> TreeFormattedPersonName {
         let normalized = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         let fallback = normalized.isEmpty ? "Unnamed person" : normalized
         let units = Array(fallback.utf16)
-        guard units.count > 34 else { return fallback }
-        let prefix = String(decoding: units.prefix(31), as: UTF16.self)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return "\(prefix)..."
+        let displayed = units.count > 47
+            ? String(decoding: units.prefix(44), as: UTF16.self)
+                .trimmingCharacters(in: .whitespacesAndNewlines) + "..."
+            : fallback
+        let displayedUnits = Array(displayed.utf16)
+        guard displayedUnits.count > 24 else {
+            return TreeFormattedPersonName(
+                fullName: fallback,
+                lines: [displayed],
+                text: displayed,
+                extraHeight: 0
+            )
+        }
+        let split = displayedUnits.indices
+            .filter {
+                displayedUnits[$0] == 32 && $0 <= 24 && displayedUnits.count - $0 - 1 <= 24
+            }
+            .min {
+                abs($0 - (displayedUnits.count - $0 - 1)) <
+                    abs($1 - (displayedUnits.count - $1 - 1))
+            }
+        let lines: [String]
+        if let split {
+            lines = [
+                String(decoding: displayedUnits[..<split], as: UTF16.self),
+                String(decoding: displayedUnits.dropFirst(split + 1), as: UTF16.self),
+            ]
+        } else {
+            lines = [
+                String(decoding: displayedUnits.prefix(24), as: UTF16.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+                String(decoding: displayedUnits.dropFirst(24), as: UTF16.self)
+                    .trimmingCharacters(in: .whitespacesAndNewlines),
+            ]
+        }
+        return TreeFormattedPersonName(
+            fullName: fallback,
+            lines: lines,
+            text: lines.joined(separator: "\n"),
+            extraHeight: nameLineHeight
+        )
     }
 
-    static func nameFontSize(_ value: String) -> CGFloat {
-        CGFloat(max(9, min(16, 320 / max(20, value.utf16.count))))
-    }
-
-    static func shouldRenderOverview(currentlyOverview: Bool, scale: CGFloat) -> Bool {
-        currentlyOverview ? scale < overviewExitScale : scale < overviewEnterScale
+    static func formattedCity(_ value: String) -> String? {
+        let normalized = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        guard !normalized.isEmpty else { return nil }
+        let units = Array(normalized.utf16)
+        guard units.count > 34 else { return normalized }
+        return String(decoding: units.prefix(31), as: UTF16.self)
+            .trimmingCharacters(in: .whitespacesAndNewlines) + "..."
     }
 
     static func actionCompensation(at scale: CGFloat) -> CGFloat {
         let safeScale = max(scale, 0.001)
-        return actionLayoutScale(at: safeScale) / safeScale
+        return actionVisualScale(at: safeScale) / safeScale
     }
 
     static func actionVisualScale(at scale: CGFloat) -> CGFloat {
-        min(1, max(scale, 0.001))
+        min(1, max(0.34, scale))
     }
 
     static func actionDistance(index: CGFloat, at scale: CGFloat) -> CGFloat {
         avatarRadius + 12
-            + (22 + index * (minimumTapTarget + 4)) * actionCompensation(at: scale)
+            + (22 + index * minimumTapTarget) * actionCompensation(at: scale)
     }
 
     static func actionHitTarget(at scale: CGFloat) -> CGFloat {
-        minimumTapTarget * actionLayoutScale(at: scale)
-    }
-
-    private static func actionLayoutScale(at scale: CGFloat) -> CGFloat {
-        min(1, max(0.5, scale))
+        minimumTapTarget * actionVisualScale(at: scale)
     }
 
     static func connectorWidth(at scale: CGFloat) -> CGFloat {
-        max(TreeConnectorStyle.width * scale, 0.75)
+        TreeConnectorStyle.width * scale
     }
 
     static func connectorDash(at scale: CGFloat) -> [CGFloat] {
-        let visibleScale = max(scale, 0.25)
-        return TreeConnectorStyle.siblingDash.map { $0 * visibleScale }
+        TreeConnectorStyle.siblingDash.map { $0 * scale }
     }
 
     static func nodeLabelHeight(showsRelationship: Bool, showsLifeSummary: Bool) -> CGFloat {
@@ -140,6 +205,13 @@ nonisolated enum TreeVisualMetrics {
             )
     }
 
+}
+
+nonisolated struct TreeFormattedPersonName: Equatable, Sendable {
+    let fullName: String
+    let lines: [String]
+    let text: String
+    let extraHeight: CGFloat
 }
 
 nonisolated enum TreeConnector {

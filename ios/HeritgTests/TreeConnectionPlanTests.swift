@@ -54,7 +54,7 @@ struct TreeConnectionPlanTests {
 
         #expect(plan.families.count == 2)
         #expect(Set(sharedPorts).count == 2)
-        #expect(Set(plan.families.map(\.branchOffset)).count == 2)
+        #expect(Set(plan.families.map(\.laneIndex)).count == 2)
     }
 
     @Test func familyRoutesExposeRealJunctionsInsideTheirBounds() {
@@ -78,12 +78,12 @@ struct TreeConnectionPlanTests {
         #expect(junctions[0].y < junctions[1].y)
     }
 
-    @Test func connectorProjectionRoundsElbowsWithoutCreatingAJunction() {
+    @Test func connectorProjectionRoundsOrdinaryElbowsWithoutCreatingAJunction() {
         let segments = [
-            TreeConnector.Segment(start: .zero, end: CGPoint(x: 40, y: 0)),
+            TreeConnector.Segment(start: .zero, end: CGPoint(x: 0, y: 60)),
             TreeConnector.Segment(
-                start: CGPoint(x: 40, y: 0),
-                end: CGPoint(x: 40, y: 40)
+                start: CGPoint(x: 0, y: 60),
+                end: CGPoint(x: 80, y: 60)
             ),
         ]
         let path = TreeConnector.path(for: segments)
@@ -94,6 +94,22 @@ struct TreeConnectionPlanTests {
 
         #expect(quadraticCurveCount == 1)
         #expect(TreeConnectorStyle.branchJunctions(in: segments).isEmpty)
+    }
+
+    @Test func connectorProjectionKeepsShortTerminalCornersSquareInBothDirections() {
+        let points = [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 80, y: 0),
+            CGPoint(x: 80, y: TreeRoutingGeometry.childRailClearance),
+        ]
+
+        for values in [points, Array(points.reversed())] {
+            #expect(TreeConnectorStyle.roundedPathCommands(for: values) == [
+                .move(values[0]),
+                .line(values[1]),
+                .line(values[2]),
+            ])
+        }
     }
 
     @Test func graphProjectionFindsOnlyThreeDirectionJunctions() {
@@ -289,8 +305,53 @@ struct TreeConnectionPlanTests {
         }.map(\.start.y))
 
         #expect(plan.families.count == 1)
-        #expect(railYs == [220, 480])
+        #expect(railYs == [188, 448])
         #expect(TreeConnectionPlan.segmentsFormConnectedNetwork(family.segments))
+    }
+
+    @Test func marriedAndUnmarriedChildrenUseTheSameFortyPointStem() throws {
+        let positions = [
+            "parent-a": CGPoint(x: -130, y: 0),
+            "parent-b": CGPoint(x: 130, y: 0),
+            "spouse": CGPoint(x: -390, y: 260),
+            "married-child": CGPoint(x: -130, y: 260),
+            "unmarried-child": CGPoint(x: 130, y: 260),
+        ]
+        let base = makeLayout(
+            positions: positions,
+            parentPairs: [
+                ("parent-a", "married-child"), ("parent-b", "married-child"),
+                ("parent-a", "unmarried-child"), ("parent-b", "unmarried-child"),
+            ]
+        )
+        let marriage = TreeEdgeLayout(
+            id: "child-marriage",
+            fromPersonID: "spouse",
+            toPersonID: "married-child",
+            from: positions["spouse"]!,
+            to: positions["married-child"]!,
+            kind: .partner
+        )
+        let plan = TreeConnectionPlan.make(
+            from: TreeLayoutResult(nodes: base.nodes, edges: base.edges + [marriage]),
+            showsRelationshipLabels: true,
+            controlsVisible: false,
+            sourcePersonCount: base.nodes.count
+        )
+        let family = try #require(plan.families.first)
+        let childTop = 260 - TreeVisualMetrics.avatarRadius
+
+        for childID in ["married-child", "unmarried-child"] {
+            let childX = positions[childID]!.x
+            let candidate = family.segments.first { segment in
+                segment.orientation == .vertical &&
+                    segment.start.x == childX &&
+                    (segment.start.y == childTop || segment.end.y == childTop)
+            }
+            let stem = try #require(candidate)
+            #expect(stem.length == TreeRoutingGeometry.childRailClearance)
+        }
+        #expect(plan.isValid)
     }
 
     @Test func lifeTextExtendsCanonicalNodeObstacleAndParentPort() {
@@ -369,6 +430,27 @@ struct TreeConnectionPlanTests {
         #expect(raster.size.width * raster.size.height <= TreeRasterExportSize.maximumPixelCount + 10_000)
     }
 
+    @Test func exportSizingReusesAPrecomputedConnectionPlan() {
+        let layout = makeLayout(
+            positions: [
+                "parent": CGPoint(x: 0, y: 0),
+                "child": CGPoint(x: 0, y: 260),
+            ],
+            parentPairs: [("parent", "child")]
+        )
+        let plan = TreeConnectionPlan.make(
+            from: layout,
+            showsRelationshipLabels: false,
+            controlsVisible: false,
+            sourcePersonCount: layout.nodes.count
+        )
+
+        let generated = TreeRasterExportSize(layout: layout, showsRelationshipLabels: false)
+        let reused = TreeRasterExportSize(layout: layout, connectionPlan: plan)
+
+        #expect(reused == generated)
+    }
+
     @Test func svgExportPreservesVectorContentAndEmbeddedPhotos() throws {
         let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { context in
             UIColor.red.setFill()
@@ -409,7 +491,7 @@ struct TreeConnectionPlanTests {
         let svg = try #require(String(data: data, encoding: .utf8))
 
         #expect(XMLParser(data: data).parse())
-        #expect(svg.contains("<line"))
+        #expect(svg.contains("<path"))
         #expect(svg.contains("A&amp;B &lt;Parent&gt;"))
         #expect(svg.contains("data:image/jpeg;base64,\(photo.base64EncodedString())"))
         #expect(svg.contains("clip-path=\"url(#photo-0)\""))

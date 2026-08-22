@@ -50,3 +50,10 @@ captures/
 web/.heritg-debug-context.json
 web/.heritg-debug-context.tmp
 web/vercel.staging.json
+web/vercel.beta.json
+example/
+# Local parity fixtures derived from private family exports.
+ios/HeritgTests/SukamtoWebCanvasGolden-*.json
+ios/HeritgTests/WebCanvasParityTests.swift
+*.store-shm
+*.store-wal

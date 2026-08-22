@@ -26,8 +26,8 @@ struct TreeExportRoutingTests {
         let svg = try #require(String(data: data, encoding: .utf8))
 
         #expect(route.segments.count > 1)
-        for segment in route.segments {
-            #expect(svg.contains(svgLine(segment)))
+        for path in TreeConnectorStyle.connectorPaths(for: route.segments) {
+            #expect(svg.contains(TreeSVGExporter.connectorPathSVG(for: path.points)))
         }
         #expect(svg.contains(
             "<rect x=\"\(number(label.rect.minX))\" y=\"\(number(label.rect.minY))\" " +
@@ -76,6 +76,23 @@ struct TreeExportRoutingTests {
         )
 
         #expect(hasNonWhitePixel(near: outputPoint, in: image))
+    }
+
+    @Test func svgRoundsOrdinaryElbowsButKeepsShortTerminalCornersSquare() {
+        let rounded = TreeSVGExporter.connectorPathSVG(for: [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 0, y: 60),
+            CGPoint(x: 80, y: 60),
+        ])
+        let square = TreeSVGExporter.connectorPathSVG(for: [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 80, y: 0),
+            CGPoint(x: 80, y: 40),
+        ])
+
+        #expect(rounded.contains(" Q "))
+        #expect(!square.contains(" Q "))
+        #expect(square.contains("L 80.00 0.00 L 80.00 40.00"))
     }
 
     private func obstacleLayout() -> TreeLayoutResult {

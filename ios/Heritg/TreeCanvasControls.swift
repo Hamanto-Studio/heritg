@@ -5,6 +5,7 @@ struct TreeCanvasControls: View {
     let availableGenerationLevels: TreeAvailableGenerationLevels
     let onShowTrees: () -> Void
     let onShowPeople: () -> Void
+    let onShowShare: () -> Void
     let onShowSettings: () -> Void
     let onZoomIn: () -> Void
     let onZoomOut: () -> Void
@@ -22,6 +23,13 @@ struct TreeCanvasControls: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
             HStack(spacing: 10) {
+                Button("Share", systemImage: "square.and.arrow.up", action: onShowShare)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(HeritgIconButtonStyle())
+                    .accessibilityLabel("Share family tree")
+                    .accessibilityHint("Choose a backup, GEDCOM file, or image to share")
+                    .accessibilityIdentifier("tree.share")
+
                 Button("All people", systemImage: "person.2", action: onShowPeople)
                     .labelStyle(.iconOnly)
                     .buttonStyle(HeritgIconButtonStyle())

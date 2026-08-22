@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import UIKit
 
-struct TreeRasterExportSize: Equatable {
+nonisolated struct TreeRasterExportSize: Equatable, Sendable {
     static let targetScale: CGFloat = 3
     static let maximumDimension: CGFloat = 8_192
     static let maximumPixelCount: CGFloat = 24_000_000
@@ -19,7 +19,11 @@ struct TreeRasterExportSize: Equatable {
             controlsVisible: false,
             sourcePersonCount: layout.nodes.count
         )
-        let bounds = plan.drawingBounds(including: layout.nodes)
+        self.init(layout: layout, connectionPlan: plan)
+    }
+
+    init(layout: TreeLayoutResult, connectionPlan: TreeConnectionPlan) {
+        let bounds = connectionPlan.drawingBounds(including: layout.nodes)
         let logicalWidth = max(bounds.width, 1)
         let logicalHeight = max(bounds.height + Self.logicalFooterHeight, 1)
         let dimensionScale = Self.maximumDimension / max(logicalWidth, logicalHeight)
@@ -36,16 +40,17 @@ struct TreeRasterExportSize: Equatable {
 enum TreeSVGExporter {
     static func data(
         layout: TreeLayoutResult,
+        connectionPlan: TreeConnectionPlan? = nil,
         showsRelationshipLabels: Bool,
         exportedAt: Date,
         locale: Locale
     ) -> Data {
-        let plan = TreeConnectionPlan.make(
-            from: layout,
-            showsRelationshipLabels: showsRelationshipLabels,
-            controlsVisible: false,
-            sourcePersonCount: layout.nodes.count
-        )
+        let plan = connectionPlan ?? TreeConnectionPlan.make(
+                from: layout,
+                showsRelationshipLabels: showsRelationshipLabels,
+                controlsVisible: false,
+                sourcePersonCount: layout.nodes.count
+            )
         let bounds = plan.drawingBounds(including: layout.nodes)
         let footerHeight: CGFloat = 56
         let totalHeight = bounds.height + footerHeight
@@ -67,13 +72,13 @@ enum TreeSVGExporter {
 
         svg += "<g fill=\"none\" stroke=\"#8c8c8c\" stroke-opacity=\"0.45\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\n"
         for family in plan.families {
-            for segment in family.segments {
-                svg += line(segment.start, segment.end)
+            for path in TreeConnectorStyle.connectorPaths(for: family.segments) {
+                svg += connectorPathSVG(for: path.points)
             }
         }
         for route in plan.nonParentRoutes {
-            for segment in route.segments {
-                svg += line(segment.start, segment.end)
+            for path in TreeConnectorStyle.connectorPaths(for: route.segments) {
+                svg += connectorPathSVG(for: path.points)
             }
         }
         svg += "</g>\n"
@@ -108,7 +113,8 @@ enum TreeSVGExporter {
             svg += nodeSVG(
                 node,
                 index: index,
-                showsRelationshipLabels: showsRelationshipLabels
+                showsRelationshipLabels: showsRelationshipLabels,
+                locale: locale
             )
         }
 
@@ -135,7 +141,8 @@ enum TreeSVGExporter {
     private static func nodeSVG(
         _ node: TreeNodeLayout,
         index: Int,
-        showsRelationshipLabels: Bool
+        showsRelationshipLabels: Bool,
+        locale: Locale
     ) -> String {
         let x = node.position.x
         let y = node.position.y
@@ -147,6 +154,22 @@ enum TreeSVGExporter {
             let initial = String(node.person.name.prefix(1)).uppercased()
             svg += text(initial, x: x, y: y + 8, size: 24, color: "#000000", weight: 700)
         }
+        if let birthOrder = node.birthOrder {
+            let badgeX = x - 23
+            let badgeY = y - 23
+            svg += "<g data-birth-order=\"\(birthOrder)\"><title>\(xmlEscaped(ChildOrder.localizedLabel(for: birthOrder, locale: locale)))</title>\n"
+            svg += "<circle cx=\"\(number(badgeX))\" cy=\"\(number(badgeY))\" r=\"10\" fill=\"#ffffff\" stroke=\"#a6a6a6\" stroke-opacity=\"0.7\" stroke-width=\"2\"/>\n"
+            svg += text(
+                String(birthOrder),
+                x: badgeX,
+                y: badgeY + 3.5,
+                size: 10,
+                color: "#000000",
+                weight: 700,
+                extra: badgeTextFitting(String(birthOrder), fontSize: 10)
+            )
+            svg += "</g>\n"
+        }
 
         var baseline = y + 58
         svg += fittedText(node.person.name, x: x, y: baseline, size: 16, weight: 700)
@@ -157,6 +180,10 @@ enum TreeSVGExporter {
         if let lifeSummary = node.person.lifeSummary {
             baseline += 16
             svg += fittedText(lifeSummary, x: x, y: baseline, size: 11, color: "#777777")
+        }
+        if let city = TreeVisualMetrics.formattedCity(node.person.city) {
+            baseline += 16
+            svg += fittedText(city, x: x, y: baseline, size: 11, color: "#777777")
         }
         return svg
     }
@@ -198,6 +225,21 @@ enum TreeSVGExporter {
         return "<line x1=\"\(number(start.x))\" y1=\"\(number(start.y))\" x2=\"\(number(end.x))\" y2=\"\(number(end.y))\"\(extra)/>\n"
     }
 
+    static func connectorPathSVG(for points: [CGPoint]) -> String {
+        let commands = TreeConnectorStyle.roundedPathCommands(for: points).map { command in
+            switch command {
+            case let .move(point):
+                return "M \(number(point.x)) \(number(point.y))"
+            case let .line(point):
+                return "L \(number(point.x)) \(number(point.y))"
+            case let .quadraticCurve(point, control):
+                return "Q \(number(control.x)) \(number(control.y)) " +
+                    "\(number(point.x)) \(number(point.y))"
+            }
+        }.joined(separator: " ")
+        return "<path d=\"\(commands)\"/>\n"
+    }
+
     private static func textWidth(
         _ value: String,
         fontSize: CGFloat,
@@ -206,6 +248,12 @@ enum TreeSVGExporter {
         (value as NSString).size(withAttributes: [
             .font: UIFont.systemFont(ofSize: fontSize, weight: weight),
         ]).width
+    }
+
+    private static func badgeTextFitting(_ value: String, fontSize: CGFloat) -> String {
+        textWidth(value, fontSize: fontSize, weight: .bold) > 16
+            ? " textLength=\"16\" lengthAdjust=\"spacingAndGlyphs\""
+            : ""
     }
 
     private static func mimeType(_ data: Data) -> String {

@@ -129,10 +129,58 @@ enum BirthDatePrecision: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 }
 
+nonisolated enum ChildOrder {
+    static let maximum = 9_007_199_254_740_991
+
+    static func parse(_ value: String) throws -> Int? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard let order = Int(trimmed), order > 0, order <= maximum else {
+            throw FamilyGraphError.invalidBirthOrder
+        }
+        return order
+    }
+
+    static func localizedLabel(for order: Int) -> String {
+        localizedLabel(for: order, locale: AppLanguage.selectedLocale)
+    }
+
+    static func localizedLabel(for order: Int, locale: Locale) -> String {
+        if locale.language.languageCode?.identifier == "id" {
+            switch order {
+            case 1: return "Anak pertama"
+            case 2: return "Anak kedua"
+            case 3: return "Anak ketiga"
+            default: return "Anak ke-\(order)"
+            }
+        }
+        switch order {
+        case 1: return "First child"
+        case 2: return "Second child"
+        case 3: return "Third child"
+        default:
+            let remainder = order % 100
+            let suffix: String
+            if 11...13 ~= remainder {
+                suffix = "th"
+            } else {
+                switch order % 10 {
+                case 1: suffix = "st"
+                case 2: suffix = "nd"
+                case 3: suffix = "rd"
+                default: suffix = "th"
+                }
+            }
+            return "\(order)\(suffix) child"
+        }
+    }
+}
+
 struct PersonDetails {
     var birthDate: Date?
     var deathDate: Date?
     var birthDatePrecision: BirthDatePrecision
+    var birthOrderOverride: Int? = nil
     var notes: String
     var addressLine: String
     var city: String
@@ -313,6 +361,7 @@ final class Person: NSManagedObject, Identifiable {
     @NSManaged var birthDate: Date?
     @NSManaged var deathDate: Date?
     @NSManaged var birthDatePrecisionRaw: String
+    @NSManaged var birthOrderOverride: NSNumber?
     @NSManaged var notes: String
     @NSManaged var addressLine: String
     @NSManaged var city: String
@@ -336,6 +385,11 @@ final class Person: NSManagedObject, Identifiable {
     var birthDatePrecision: BirthDatePrecision {
         get { BirthDatePrecision(rawValue: birthDatePrecisionRaw) ?? .exact }
         set { birthDatePrecisionRaw = newValue.rawValue }
+    }
+
+    var birthOrderOverrideValue: Int? {
+        get { birthOrderOverride?.intValue }
+        set { birthOrderOverride = newValue.map { NSNumber(value: Int64($0)) } }
     }
 
     var age: Int? {
@@ -438,7 +492,7 @@ extension Person {
     }
 }
 
-enum FamilyRoleLabel {
+nonisolated enum FamilyRoleLabel {
     static func label(
         relativeGender: PersonGender,
         relationshipKind: RelationshipKind,
