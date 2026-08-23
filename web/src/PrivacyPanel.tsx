@@ -1,21 +1,26 @@
-import { Download, ExternalLink, KeyRound, ShieldCheck, WifiOff } from "lucide-react";
+import { Cloud, Download, ExternalLink, KeyRound, ShieldCheck, WifiOff } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import type { Translator } from "./i18n";
 import { SidePanel } from "./ui";
 
 export function PrivacyPanel({
   onClose,
+  syncEnabled = false,
   t
 }: {
   onClose: () => void;
+  syncEnabled?: boolean;
   t: Translator;
 }) {
-  const items = [
+  const items: ReadonlyArray<readonly [LucideIcon, string, string]> = [
     [ShieldCheck, t("privacyStorageTitle"), t("privacyStorageDetail")],
     [KeyRound, t("privacyKeyTitle"), t("privacyKeyDetail")],
-    [WifiOff, t("privacyLocalTitle"), t("privacyLocalDetail")],
+    syncEnabled
+      ? [Cloud, t("privacySyncTitle"), t("privacySyncDetail")]
+      : [WifiOff, t("privacyLocalTitle"), t("privacyLocalDetail")],
     [Download, t("privacyExportTitle"), t("privacyExportDetail")]
-  ] as const;
+  ];
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("privacyProtection")}>

@@ -1,5 +1,7 @@
 import {
   CircleHelp,
+  Cloud,
+  CloudOff,
   Eye,
   EyeOff,
   FolderOpen,
@@ -28,6 +30,8 @@ import { createTranslator } from "./i18n";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
+import { FamilyPaywallDialog } from "./FamilyPaywallDialog";
+import { useFamily } from "./FamilyProvider";
 import { RelativeDialog } from "./RelativeDialog";
 import { ReportBugSheet } from "./ReportBugSheet";
 import { SettingsDialog } from "./SettingsDialog";
@@ -44,6 +48,7 @@ type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report
 
 export function App() {
   const store = useAppStore();
+  const family = useFamily();
   const { data, actions } = store;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel>();
@@ -228,6 +233,17 @@ export function App() {
           <Menu aria-hidden="true" size={19} />
         </button> : null}
 
+        {controlsVisible && !activeTree ? (
+          <button
+            aria-label={t("settings")}
+            className="icon-button empty-workspace-settings"
+            onClick={() => setRightPanel("settings")}
+            type="button"
+          >
+            <Settings2 aria-hidden="true" size={19} />
+          </button>
+        ) : null}
+
         {showTreeOnboarding ? (
           <div className="tree-pane-hint" id="tree-menu-onboarding" role="note">
             <svg aria-hidden="true" viewBox="0 0 64 78">
@@ -293,6 +309,19 @@ export function App() {
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               {controlsVisible ? <div className="workspace-tools">
+                {family.subscription.status === "active" && family.sync.enabled ? (
+                  <button
+                    aria-label={`${t("automaticSync")}: ${t(family.sync.phase === "upToDate" ? "syncUpToDate" : family.sync.phase === "offline" ? "syncOffline" : family.sync.phase === "error" ? "syncAttention" : "syncing")}`}
+                    className={`icon-button sync-workspace-button sync-${family.sync.phase}`}
+                    onClick={() => {
+                      setGenerationOpen(false);
+                      setRightPanel("settings");
+                    }}
+                    type="button"
+                  >
+                    {family.sync.phase === "offline" || family.sync.phase === "error" ? <CloudOff aria-hidden="true" size={19} /> : <Cloud aria-hidden="true" size={19} />}
+                  </button>
+                ) : null}
                 {__SHARING_ENABLED__ ? (
                   <button
                     aria-label={t("shareTree")}
@@ -526,14 +555,17 @@ export function App() {
         />
       ) : null}
 
-      {activeTree && rightPanel === "settings" ? (
+      {rightPanel === "settings" ? (
         <SettingsDialog
           actions={actions}
           data={data}
           onClose={() => setRightPanel(undefined)}
+          family={family}
           t={t}
         />
       ) : null}
+
+      {family.paywallOpen ? <FamilyPaywallDialog family={family} t={t} /> : null}
 
       {activeTree && rightPanel === "share" ? (
         <SharePanel
@@ -559,7 +591,7 @@ export function App() {
       ) : null}
 
       {rightPanel === "privacy" ? (
-        <PrivacyPanel onClose={() => setRightPanel(undefined)} t={t} />
+        <PrivacyPanel onClose={() => setRightPanel(undefined)} syncEnabled={family.sync.enabled} t={t} />
       ) : null}
 
       {rightPanel === "report" ? (

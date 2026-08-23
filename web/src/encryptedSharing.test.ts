@@ -174,6 +174,44 @@ describe("password-protected share protocol", () => {
       .rejects.toThrow(/at least 8 characters/i);
   });
 
+  it("uses authenticated allocation for a continuous Family share", async () => {
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      requests.push({ url, init });
+      if (url === "/api/v1/account/share-uploads") {
+        return response({
+          shareId,
+          deletionToken: "A".repeat(43),
+          uploadUrl: "https://storage.googleapis.com/synthetic/family-upload",
+          requiredHeaders: { "content-type": "application/vnd.heritg.share" },
+          shareExpiresAt: null
+        }, 201);
+      }
+      if (url.includes("storage.googleapis.com")) {
+        return new Response(null, { status: 200, headers: { "x-goog-generation": "123" } });
+      }
+      return response({ status: "active" });
+    }) as unknown as typeof fetch;
+
+    const created = await createEncryptedShare(syntheticData, "tree-share-fixture", {
+      csrfToken: "C".repeat(43),
+      familyRetention: "while_family_active",
+      fetchImpl,
+      origin: "https://heritg.us",
+      password: "SharePassword123!"
+    });
+
+    expect(created.expiresAt).toBeNull();
+    expect(requests[0]?.url).toBe("/api/v1/account/share-uploads");
+    expect(requests[0]?.init?.credentials).toBe("include");
+    expect(requests[0]?.init?.headers).toMatchObject({ "x-csrf-token": "C".repeat(43) });
+    expect(JSON.parse(String(requests[0]?.init?.body))).toMatchObject({
+      envelopeVersion: SHARE_ENVELOPE_VERSION,
+      retention: "while_family_active"
+    });
+  });
+
   it("requires the password to decrypt a new share and never sends it to the service", async () => {
     const archive = await exportCanonicalHeritgArchive(syntheticData, "tree-share-fixture");
     const decomposedPassword = "Cafe\u0301Tree1";

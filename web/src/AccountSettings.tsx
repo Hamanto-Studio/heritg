@@ -159,6 +159,7 @@ export function AccountSettings({ language, t, googleClientId = __GOOGLE_CLIENT_
       csrfToken.current = result.csrfToken;
       setSession({ accountId: result.accountId, expiresAt: result.expiresAt });
       setStatus("authenticated");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) setStatus("error");
     }
@@ -180,6 +181,7 @@ export function AccountSettings({ language, t, googleClientId = __GOOGLE_CLIENT_
       csrfToken.current = undefined;
       setSession(undefined);
       setStatus("anonymous");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) {
         setActionError("logout");
@@ -205,6 +207,7 @@ export function AccountSettings({ language, t, googleClientId = __GOOGLE_CLIENT_
       csrfToken.current = undefined;
       setSession(undefined);
       setStatus("anonymous");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) {
         setActionError("delete");

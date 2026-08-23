@@ -1,6 +1,7 @@
 import { Copy, Download, FileImage, FileText, HardDrive, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { readCsrfCookie } from "./accountAuth";
 import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
 import { exportHeritgArchive } from "./heritgArchive";
 import { PasswordField, PasswordRequirementList } from "./PasswordField";
@@ -14,9 +15,11 @@ import {
   sharePasswordIsReady,
   sharePasswordRequirements,
   type CreatedShare,
+  type FamilyShareRetention,
   type ShareDataSelection,
   type SharePhase
 } from "./encryptedSharing";
+import { useFamily } from "./FamilyProvider";
 import type { Translator } from "./i18n";
 import type { AppData, FamilyTree } from "./types";
 import { ButtonLoader, SidePanel } from "./ui";
@@ -35,6 +38,9 @@ interface SharePanelProps {
 }
 
 type ShareMethod = "link" | "heritg" | "gedcom" | "images";
+type ShareRetention = "7" | "30" | "90" | FamilyShareRetention;
+
+const familyRetentions = new Set<ShareRetention>(["365_days", "1095_days", "while_family_active"]);
 
 const phaseKey = (phase: SharePhase) => `sharePhase${phase[0].toUpperCase()}${phase.slice(1)}` as
   "sharePhaseExporting" | "sharePhaseAllocating" | "sharePhaseEncrypting" | "sharePhaseUploading" | "sharePhaseActivating";
@@ -51,7 +57,8 @@ export function SharePanel({
   exportPng,
   exportSvg
 }: SharePanelProps) {
-  const [expiryDays, setExpiryDays] = useState(30);
+  const family = useFamily();
+  const [retention, setRetention] = useState<ShareRetention>("30");
   const [sharePassword, setSharePassword] = useState("");
   const [sharePasswordConfirmation, setSharePasswordConfirmation] = useState("");
   const [shareSelection, setShareSelection] = useState<ShareDataSelection>({
@@ -60,6 +67,7 @@ export function SharePanel({
   const [phase, setPhase] = useState<SharePhase>();
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
+  const [sharesLoaded, setSharesLoaded] = useState(false);
   const [revokingId, setRevokingId] = useState<string>();
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
@@ -67,15 +75,17 @@ export function SharePanel({
   const [shareMethod, setShareMethod] = useState<ShareMethod>("link");
   const operationRef = useRef<AbortController | undefined>(undefined);
   const sharingRef = useRef(false);
-  const treeShares = useMemo(
-    () => managedShares.filter((share) => share.treeId === tree.id),
-    [managedShares, tree.id]
-  );
+  const familyActive = family.subscription.status === "active";
+  const freeShareLimitReached = !familyActive && managedShares.length > 0;
 
   useEffect(() => {
     let active = true;
     void loadManagedShares()
-      .then((shares) => { if (active) setManagedShares(shares); })
+      .then((shares) => {
+        if (!active) return;
+        setManagedShares(shares);
+        setSharesLoaded(true);
+      })
       .catch((reason: unknown) => {
         if (active) onError(reason instanceof Error ? reason.message : t("managedSharesLoadFailed"));
       });
@@ -91,12 +101,15 @@ export function SharePanel({
   ).format(new Date(value));
 
   const createShare = () => {
-    if (operationRef.current) return;
+    if (operationRef.current || !sharesLoaded || freeShareLimitReached) return;
     const controller = new AbortController();
     operationRef.current = controller;
     setCreatedShare(undefined);
+    const familyRetention = familyRetentions.has(retention) ? retention as FamilyShareRetention : undefined;
     void createEncryptedShare(data, tree.id, {
-      expiryDays,
+      ...(familyRetention
+        ? { familyRetention, csrfToken: readCsrfCookie() }
+        : { expiryDays: Number(retention) }),
       password: sharePassword,
       selection: shareSelection,
       onProgress: setPhase,
@@ -256,21 +269,21 @@ export function SharePanel({
                 <Link2 aria-hidden="true" size={23} />
                 <div><h3>{t("shareReadOnlyCopy")}</h3><p className="settings-detail">{t("shareLinkMethodDetail")}</p></div>
               </div>
-              {treeShares.length ? (
+              {managedShares.length ? (
                 <section className="managed-shares" aria-labelledby="managed-shares-title">
                   <div className="managed-shares-heading">
                     <h3 id="managed-shares-title">{t("activeShareLinks")}</h3>
-                    <span>{treeShares.length}</span>
+                    <span>{managedShares.length}</span>
                   </div>
                   <p>{t("managedSharesDetail")}</p>
                   <div className="managed-share-list">
-                    {treeShares.map((share) => (
+                    {managedShares.map((share) => (
                       <div className="managed-share-row" key={share.shareId}>
-                        <span><strong>{share.treeTitle || t("sharedSnapshot")}</strong><small>{t("shareExpires", { date: formatDate(share.expiresAt) })}</small></span>
+                        <span><strong>{share.treeTitle || t("sharedSnapshot")}</strong><small>{share.expiresAt ? t("shareExpires", { date: formatDate(share.expiresAt) }) : t("shareWhileFamilyActive")}</small></span>
                         <input aria-label={t("shareLink")} readOnly value={new URL(`/s/${encodeURIComponent(share.shareId)}`, window.location.origin).toString()} />
                         <div className="managed-share-actions">
                           <button aria-label={t("copyShareLink")} className="icon-button quiet small" onClick={() => copyManagedLink(share)} type="button"><Copy aria-hidden="true" size={16} /></button>
-                          <button aria-label={`${t("revokeShare")}: ${formatDate(share.expiresAt)}`} className="icon-button quiet small danger-text" disabled={revokingId === share.shareId} onClick={() => revoke(share)} type="button">
+                          <button aria-label={`${t("revokeShare")}: ${share.expiresAt ? formatDate(share.expiresAt) : t("shareWhileFamilyActive")}`} className="icon-button quiet small danger-text" disabled={revokingId === share.shareId} onClick={() => revoke(share)} type="button">
                             {revokingId === share.shareId ? <ButtonLoader /> : <Trash2 aria-hidden="true" size={16} />}
                           </button>
                         </div>
@@ -286,12 +299,14 @@ export function SharePanel({
                 <PasswordField autoComplete="new-password" disabled={Boolean(phase) || !peopleCount} hideLabel={t("hidePassword")} id="share-password" label={t("sharePassword")} onChange={setSharePassword} showLabel={t("showPassword")} value={sharePassword} />
                 <PasswordRequirementList highlightUnmet={sharePassword.length > 0} items={[["minimumLength", t("archivePasswordMinimumLength")], ["lowercase", t("archivePasswordLowercase")], ["uppercase", t("archivePasswordUppercase")], ["number", t("archivePasswordNumber")], ["special", t("archivePasswordSpecial")]]} label={t("archivePasswordChecklist")} requirements={shareRequirements} />
                 <PasswordField autoComplete="new-password" disabled={Boolean(phase) || !peopleCount} error={passwordMismatchError} hideLabel={t("hidePassword")} id="share-password-confirmation" label={t("confirmSharePassword")} onChange={setSharePasswordConfirmation} showLabel={t("showPassword")} value={sharePasswordConfirmation} />
-                <label className="field share-expiry">{t("shareExpiry")}<select disabled={Boolean(phase) || !peopleCount} onChange={(event) => setExpiryDays(Number(event.target.value))} value={expiryDays}><option value={7}>{t("shareSevenDays")}</option><option value={30}>{t("shareThirtyDays")}</option><option value={90}>{t("shareNinetyDays")}</option></select></label>
+                <label className="field share-expiry">{t("shareExpiry")}<select disabled={Boolean(phase) || !peopleCount} onChange={(event) => setRetention(event.target.value as ShareRetention)} value={retention}><optgroup label={t("freePlan")}><option value="7">{t("shareSevenDays")}</option><option value="30">{t("shareThirtyDays")}</option><option value="90">{t("shareNinetyDays")}</option></optgroup><optgroup disabled={!familyActive} label="Heritg Family"><option value="365_days">{t("shareOneYear")}</option><option value="1095_days">{t("shareThreeYears")}</option><option value="while_family_active">{t("shareWhileFamilyActive")}</option></optgroup></select></label>
+                {!familyActive ? <button className="button tertiary full" onClick={family.openPaywall} type="button">{t("unlockLongerFamilyLinks")}</button> : null}
+                {freeShareLimitReached ? <p className="share-unavailable" role="status">{t("freeShareLimitReached")}</p> : null}
                 {!peopleCount ? <p className="share-unavailable">{t("shareNeedsPerson")}</p> : null}
-                <button aria-busy={Boolean(phase) || undefined} className="button primary full" disabled={Boolean(phase) || !peopleCount || !passwordReady} onClick={createShare} type="button">{phase ? <ButtonLoader size={17} /> : <Link2 aria-hidden="true" size={17} />} {progress ?? t("createShareLink")}</button>
+                <button aria-busy={Boolean(phase) || undefined} className="button primary full" disabled={Boolean(phase) || !sharesLoaded || !peopleCount || !passwordReady || freeShareLimitReached} onClick={createShare} type="button">{phase ? <ButtonLoader size={17} /> : <Link2 aria-hidden="true" size={17} />} {progress ?? t("createShareLink")}</button>
                 {progress ? <p className="share-progress" role="status">{progress}</p> : null}
                 {createdShare ? (
-                  <section className="share-result" aria-labelledby="share-ready-title"><strong id="share-ready-title">{t("shareReady")}</strong><p>{t("shareExpires", { date: formatDate(createdShare.expiresAt) })}</p><input aria-label={t("shareLink")} readOnly value={createdShare.url} /><div className="share-result-actions"><button className="button primary" onClick={copyLink} type="button"><Copy aria-hidden="true" size={16} /> {t("copyShareLink")}</button>{typeof navigator.share === "function" ? <button aria-busy={isSharing || undefined} className="button secondary" disabled={isSharing} onClick={shareLink} type="button">{isSharing ? <ButtonLoader /> : <Send aria-hidden="true" size={16} />} {t("shareLink")}</button> : null}</div><small>{t("shareLinkNotSaved")}</small></section>
+                  <section className="share-result" aria-labelledby="share-ready-title"><strong id="share-ready-title">{t("shareReady")}</strong><p>{createdShare.expiresAt ? t("shareExpires", { date: formatDate(createdShare.expiresAt) }) : t("shareWhileFamilyActive")}</p><input aria-label={t("shareLink")} readOnly value={createdShare.url} /><div className="share-result-actions"><button className="button primary" onClick={copyLink} type="button"><Copy aria-hidden="true" size={16} /> {t("copyShareLink")}</button>{typeof navigator.share === "function" ? <button aria-busy={isSharing || undefined} className="button secondary" disabled={isSharing} onClick={shareLink} type="button">{isSharing ? <ButtonLoader /> : <Send aria-hidden="true" size={16} />} {t("shareLink")}</button> : null}</div><small>{t("shareLinkNotSaved")}</small></section>
                 ) : null}
               </div>
             </>

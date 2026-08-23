@@ -13,13 +13,14 @@ import "./relationship.css";
 import "./responsive.css";
 import { App } from "./App";
 import { SharedTreeApp } from "./SharedTreeApp";
+import { FamilyProvider } from "./FamilyProvider";
 import { AppProvider } from "./store";
 
 const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
 const isStaging = __DEPLOYMENT_ENV__ === "staging";
 const application = (
   <AppProvider>
-    {isSharedRoute ? <SharedTreeApp /> : <App />}
+    {isSharedRoute ? <SharedTreeApp /> : <FamilyProvider><App /></FamilyProvider>}
   </AppProvider>
 );
 
