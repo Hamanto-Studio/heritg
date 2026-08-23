@@ -70,6 +70,21 @@ describe("account authentication deployment policy", () => {
     expect(viteConfig).toContain("/^\\/auth\\/email\\/?$/");
   });
 
+  it("keeps every account API request network-only in the service worker", () => {
+    const viteConfig = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
+    expect(viteConfig).toContain("urlPattern: /\\/api\\/v1\\//");
+    expect(viteConfig).toContain('handler: "NetworkOnly"');
+    expect(viteConfig).toContain("navigateFallbackDenylist: [/^\\/(?:api\\/|health$|ready$)/, /^\\/auth\\/email\\/?$/]");
+  });
+
+  it("activates the updated worker immediately and excludes email callbacks from navigation fallback", () => {
+    const viteConfig = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
+    expect(viteConfig).toContain('registerType: "autoUpdate"');
+    expect(viteConfig).toContain("skipWaiting: true");
+    expect(viteConfig).toContain("clientsClaim: true");
+    expect(viteConfig).toContain("/^\\/auth\\/email\\/?$/");
+  });
+
   it("rejects missing, malformed, and non-staging deployment identity config", () => {
     expect(validateStagingAuthConfig(undefined, undefined, undefined)).toContain("HERITG_STAGING_API_ORIGIN");
     expect(validateStagingAuthConfig("not-a-url", STAGING_GOOGLE_CLIENT_ID, "site-key")).toContain("valid URL");
