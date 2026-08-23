@@ -20,8 +20,10 @@ consistent.
 | Encrypted share creation | Optional on web | Create an expiring immutable read-only family-tree snapshot | AES-256-GCM ciphertext; size and expiration metadata; no viewing key | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User explicitly creates a link and chooses its expiration |
 | Encrypted share viewing | Optional on web | Download and decrypt a shared snapshot in memory | Ciphertext and access timing; password and derived viewing key remain client-side | Cloud Run and private Cloud Storage in Jakarta | Recipient opens the link and enters its separately shared password |
 | Encrypted share management | Optional on web | Revoke active links from the creating browser | Encrypted share ID, deletion capability, and expiration | Encrypted IndexedDB on the sender's device | Sender revokes the link or clears site data |
-| Google Identity Services | Optional on web | Establish an explicit Google-authenticated HERITG account session | One-time Google identity proof and nonce; Google account and network metadata processed by Google | Google and the HERITG same-origin account API | User explicitly opens account settings and chooses Google sign-in |
-| HERITG account session | Optional on web | Maintain a pseudonymous authenticated session | Hash-derived Google subject, opaque account ID, hashed session and CSRF values, creation and expiration times; no family content | Cloud Run and Firestore in Jakarta; secure host-only browser cookies | User signs out; session expires; user deletes the account from Settings |
+| Email magic-link request | Optional on web | Send one generic signup/signin link without disclosing account existence | Submitted email address in request/component memory, keyed email hash, single-use verification metadata, delivery and standard network metadata; no family content | HERITG same-origin account API and Resend | Raw address remains only in mounted Settings memory for resend; it is not persisted; unproved records expire |
+| Resend email delivery | Optional on web | Deliver the requested transactional sign-in email | Recipient address, message content, delivery status, and standard email/network metadata | Resend | Triggered only by a user request; provider retention and deletion obligations apply |
+| Google Identity Services | Optional migration fallback on web | Establish an explicit Google-authenticated HERITG account session | One-time Google identity proof and nonce; Google account and network metadata processed by Google | Google and the HERITG same-origin account API | User explicitly chooses the separate Google fallback; it is not automatically linked to email |
+| HERITG account session | Optional on web | Create an account after email proof or sign in an existing account, then maintain its session | Keyed hash of normalized email or hash-derived Google subject, opaque account ID, hashed session and CSRF values, creation and expiration times; no raw email or family content | Cloud Run and Firestore in Jakarta; secure host-only browser cookies | User signs out; session expires; user deletes the account from Settings |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
 | App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
@@ -37,7 +39,7 @@ consistent.
 | Firebase Crashlytics | Not integrated | Optional diagnostics would require separate consent and sanitization |
 | Advertising and attribution SDKs | Not integrated | Cross-app tracking and advertising profiles are prohibited |
 | Session replay and heatmaps | Not integrated | Prohibited by the analytics policy |
-| Hosted editable family database and tree sync | Not available | Google sign-in alone does not upload, unlock, back up, or synchronize local family trees |
+| Hosted editable family database and tree sync | Not available | Email or Google sign-in does not upload, unlock, back up, or synchronize local family trees |
 
 ## Provider Approval Requirements
 
@@ -64,7 +66,7 @@ Monitoring, Remote Config, or Cloud Messaging.
 | User-selected files | GEDCOM, HERITG archives, exported images and documents | Prohibited | Prohibited | Allowed when required by the feature |
 | Product events | Approved events in `ANALYTICS.md` | Optional with consent | Not applicable | Temporary queue only if implemented |
 | Technical diagnostics | Error code, stack trace, app version, OS version | Not applicable | Optional with separate consent | Temporary queue only if implemented |
-| Direct and pseudonymous identifiers | Email, phone number, Google subject, account ID, advertising ID | Prohibited | Prohibited | Optional account IDs and hash-derived Google subjects are restricted to account authentication; email and phone are not persisted |
+| Direct and pseudonymous identifiers | Email, phone number, Google subject, account ID, advertising ID | Prohibited | Prohibited | Raw email is transient request/delivery data and mounted-component memory only; HERITG persists a keyed email hash, optional account IDs, and hash-derived Google subjects for authentication |
 | Credentials | API secrets, private keys, service accounts, signing passwords | Prohibited | Prohibited | Never bundled with the app |
 
 ## Review Triggers

@@ -119,9 +119,11 @@ export default defineConfig({
         ]
       },
       workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/(?:api\/|health$|ready$)/],
+        navigateFallbackDenylist: [/^\/(?:api\/|health$|ready$)/, /^\/auth\/email\/?$/],
         runtimeCaching: [
           {
             urlPattern: /\/api\/v1\//,

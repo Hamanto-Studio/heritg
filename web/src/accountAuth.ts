@@ -3,6 +3,8 @@ export const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
+const EMAIL_LOCAL_PATTERN = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/u;
+const EMAIL_DOMAIN_LABEL_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
 const ERROR_CODES = new Set([
   "invalid_request",
   "unauthenticated",
@@ -29,7 +31,8 @@ export interface LoginResult extends AccountSession {
 export class AccountAuthError extends Error {
   constructor(
     readonly status: number,
-    readonly code: string
+    readonly code: string,
+    readonly retryAfterSeconds?: number
   ) {
     super("Account authentication failed");
     this.name = "AccountAuthError";
@@ -110,10 +113,25 @@ const parseLogin = (value: unknown): LoginResult => {
   return { accountId: value.accountId, csrfToken: value.csrfToken, expiresAt: value.expiresAt };
 };
 
+const parseEmailRequest = (value: unknown): void => {
+  if (!objectWithExactKeys(value, ["status"]) || value.status !== "accepted") {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+};
+
+export const parseRetryAfterSeconds = (value: string | null, now = Date.now()): number | undefined => {
+  if (!value) return undefined;
+  if (/^\d+$/u.test(value)) return Number(value);
+  const deadline = Date.parse(value);
+  if (!Number.isFinite(deadline)) return undefined;
+  return Math.max(0, Math.ceil((deadline - now) / 1_000));
+};
+
 const request = async (
   path: string,
   init: RequestInit,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  expectedStatus?: number
 ): Promise<unknown> => {
   const response = await fetchImpl(path.startsWith("/api/") ? path : `${API_BASE}${path}`, {
     ...init,
@@ -129,7 +147,15 @@ const request = async (
       typeof payload.error.code === "string" && ERROR_CODES.has(payload.error.code)
       ? payload.error.code
       : "service_unavailable";
-    throw new AccountAuthError(response.status, code);
+    throw new AccountAuthError(
+      response.status,
+      code,
+      response.status === 429 ? parseRetryAfterSeconds(response.headers.get("retry-after")) : undefined
+    );
+  }
+  if (expectedStatus !== undefined &&
+    (response.status !== expectedStatus || response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json")) {
+    throw new AccountAuthError(502, "invalid_response");
   }
   return payload;
 };
@@ -153,6 +179,51 @@ export const loginWithGoogle = async (
   body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
   signal
 }, fetchImpl));
+
+export const isConservativeEmail = (value: string): boolean => {
+  if (value.length > 254 || value !== value.trim() || /[\s\u0000-\u001f\u007f]/u.test(value)) return false;
+  const separator = value.indexOf("@");
+  if (separator <= 0 || separator !== value.lastIndexOf("@")) return false;
+  const local = value.slice(0, separator);
+  const domain = value.slice(separator + 1);
+  if (local.length > 64 || !EMAIL_LOCAL_PATTERN.test(local) || local.startsWith(".") ||
+    local.endsWith(".") || local.includes("..")) return false;
+  const labels = domain.split(".");
+  return labels.length >= 2 && labels.every((label) => EMAIL_DOMAIN_LABEL_PATTERN.test(label));
+};
+
+export const maskEmail = (value: string): string | undefined => {
+  if (!isConservativeEmail(value)) return undefined;
+  const separator = value.indexOf("@");
+  const local = value.slice(0, separator);
+  const domain = value.slice(separator + 1);
+  return `${local[0]}${local.length > 1 ? "***" : "*"}@${domain}`;
+};
+
+export const requestEmailLogin = async (
+  email: string,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> => parseEmailRequest(await request("/email/request", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ email }),
+  signal
+}, fetchImpl, 202));
+
+export const verifyEmailLogin = async (
+  token: string,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<LoginResult> => {
+  if (!TOKEN_PATTERN.test(token)) throw new AccountAuthError(400, "invalid_request");
+  return parseLogin(await request("/email/verify", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token }),
+    signal
+  }, fetchImpl, 200));
+};
 
 export const getAccountSession = async (
   signal?: AbortSignal,

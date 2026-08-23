@@ -93,6 +93,13 @@ sharing service receives family data only as ciphertext. The URL contains a
 share identifier, not an encryption key. Viewing is read-only, but a recipient
 may explicitly save an independent editable copy in their browser.
 
+Web users may also optionally create or access a Heritg account through one
+generic emailed magic-link flow. A new account is created only after the link
+proves control of the address; the same UI signs in an existing account without
+revealing which case applies. Google is retained as a separate migration
+fallback and is not automatically linked to email. Neither account method
+uploads, backs up, unlocks, or synchronizes the local family-tree database.
+
 Web imports `.heritg`, legacy HERITG JSON, and GEDCOM files. It exports complete
 `.heritg` backups, GEDCOM, PNG, and SVG.
 
@@ -267,7 +274,12 @@ Browser storage is isolated by origin, so localhost, preview deployments, and
 production do not share trees or encryption keys. Export and import a backup to
 move a tree between origins. The development server has no local sharing-service
 proxy; run `HERITG_SHARING_ENABLED=false npm run dev` when testing without the
-production sharing backend.
+production sharing backend. Email delivery also requires the matching backend
+environment to have its Resend sender, API credential, callback origin, and
+retention configuration enabled; no Resend credential or browser CSP origin is
+needed in the Web build. Existing installed PWAs controlled by the previous
+service worker require one update and reload before magic-link callback routes
+are enabled.
 
 Before opening a pull request, run `npm run release:check`, `npm run lint`,
 `npm test`, and `npm run build` from `web/`. Versioned deployments follow the

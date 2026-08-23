@@ -38,15 +38,16 @@ import { TreeSidebar } from "./TreeSidebar";
 import { useAppStore } from "./store";
 import type { GenerationLimits, Person } from "./types";
 import { ErrorNotice, LoadingScreen, Modal } from "./ui";
+import { saveUiLanguage } from "./uiLanguage";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
 type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report";
 
-export function App() {
+export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const store = useAppStore();
   const { data, actions } = store;
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [rightPanel, setRightPanel] = useState<RightPanel>();
+  const [rightPanel, setRightPanel] = useState<RightPanel | undefined>(initialPanel);
   const [generationOpen, setGenerationOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [generationLimitsByTree, setGenerationLimitsByTree] = useState<Record<string, GenerationLimits>>({});
@@ -58,6 +59,7 @@ export function App() {
   const [operationError, setOperationError] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
   const t = createTranslator(data?.language ?? "en");
+  const uiLanguage = data?.language;
   const activeTree = data?.trees.find((tree) => tree.id === data.selectedTreeId)
     ?? data?.trees[0];
   const activeTreeId = activeTree?.id;
@@ -87,8 +89,9 @@ export function App() {
   const showSettingsOnboarding = Boolean(controlsVisible && activeTree && !people.length && !rightPanel);
 
   useEffect(() => {
-    document.documentElement.lang = data?.language === "id" ? "id" : "en";
-  }, [data?.language]);
+    document.documentElement.lang = uiLanguage === "id" ? "id" : "en";
+    if (uiLanguage) saveUiLanguage(uiLanguage);
+  }, [uiLanguage]);
 
   useEffect(() => {
     if (!toast) return;
@@ -526,7 +529,7 @@ export function App() {
         />
       ) : null}
 
-      {activeTree && rightPanel === "settings" ? (
+      {rightPanel === "settings" ? (
         <SettingsDialog
           actions={actions}
           data={data}
