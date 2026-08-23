@@ -2,7 +2,13 @@ import { Copy, Download, FileImage, FileText, HardDrive, Link2, Send, ShieldChec
 import { useEffect, useRef, useState } from "react";
 
 import { readCsrfCookie } from "./accountAuth";
-import { loadManagedShares, saveManagedShares, type ManagedShare } from "./db";
+import {
+  loadManagedShares,
+  releaseManagedShareSlot,
+  reserveManagedShareSlot,
+  saveManagedShares,
+  type ManagedShare
+} from "./db";
 import { exportHeritgArchive } from "./heritgArchive";
 import { PasswordField, PasswordRequirementList } from "./PasswordField";
 import { downloadBlob, downloadText, exportGedcom, safeFilename } from "./portability";
@@ -68,6 +74,7 @@ export function SharePanel({
   const [createdShare, setCreatedShare] = useState<CreatedShare>();
   const [managedShares, setManagedShares] = useState<ManagedShare[]>([]);
   const [sharesLoaded, setSharesLoaded] = useState(false);
+  const [shareSlotBlocked, setShareSlotBlocked] = useState(false);
   const [revokingId, setRevokingId] = useState<string>();
   const [archivePassword, setArchivePassword] = useState("");
   const [archivePasswordConfirmation, setArchivePasswordConfirmation] = useState("");
@@ -76,7 +83,7 @@ export function SharePanel({
   const operationRef = useRef<AbortController | undefined>(undefined);
   const sharingRef = useRef(false);
   const familyActive = pro.subscription.status === "active";
-  const freeShareLimitReached = !familyActive && managedShares.length > 0;
+  const freeShareLimitReached = !familyActive && (shareSlotBlocked || managedShares.length > 0);
 
   useEffect(() => {
     let active = true;
@@ -100,11 +107,29 @@ export function SharePanel({
     { dateStyle: "medium" }
   ).format(new Date(value));
 
-  const createShare = () => {
+  const createShare = async () => {
     if (operationRef.current || !sharesLoaded || freeShareLimitReached) return;
     const controller = new AbortController();
     operationRef.current = controller;
     setCreatedShare(undefined);
+    let reservation: string | undefined;
+    if (!familyActive) {
+      try {
+        reservation = await reserveManagedShareSlot();
+      } catch (reason) {
+        operationRef.current = undefined;
+        onError(reason instanceof Error ? reason.message : t("managedSharesLoadFailed"));
+        return;
+      }
+      if (!reservation) {
+        operationRef.current = undefined;
+        setShareSlotBlocked(true);
+        onError(t("freeShareLimitReached"));
+        return;
+      }
+      setShareSlotBlocked(true);
+    }
+    let saved = false;
     const familyRetention = familyRetentions.has(retention) ? retention as FamilyShareRetention : undefined;
     void createEncryptedShare(data, tree.id, {
       ...(familyRetention
@@ -126,6 +151,7 @@ export function SharePanel({
       const next = [record, ...managedShares.filter((item) => item.shareId !== record.shareId)];
       await saveManagedShares(next);
       setManagedShares(next);
+      saved = true;
       setCreatedShare(result);
       setSharePassword("");
       setSharePasswordConfirmation("");
@@ -133,6 +159,7 @@ export function SharePanel({
       if (controller.signal.aborted) return;
       onError(reason instanceof Error ? reason.message : t("errorTitle"));
     }).finally(() => {
+      if (!saved && reservation) void releaseManagedShareSlot(reservation).then(() => setShareSlotBlocked(false));
       if (operationRef.current === controller) operationRef.current = undefined;
       setPhase(undefined);
     });
