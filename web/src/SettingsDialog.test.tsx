@@ -65,7 +65,6 @@ describe("relationship terminology settings", () => {
     expect(indonesian).toContain("Bahasa hubungan keluarga");
     expect(indonesian).toContain("Basa Jawa · Yogyakarta");
     expect(indonesian).toContain("Basa Jawa · Jawa Timur");
-<<<<<<< HEAD
     expect(english).toContain("Relationship language");
     expect(english).toContain("Basa Jawa · Yogyakarta");
     expect(english).toContain("Basa Jawa · East Java");
@@ -77,15 +76,5 @@ describe("relationship terminology settings", () => {
     expect(english).toContain("Batak Angkola");
     expect(english).toContain("Batak Simalungun");
     expect(english).toContain("Pakpak/Dairi");
-=======
-    expect(indonesian).toContain("Mandailing");
-    expect(indonesian).toContain("Batak Angkola");
-    expect(english).toContain("Relationship language");
-    expect(english).toContain("Basa Jawa · Yogyakarta");
-    expect(english).toContain("Basa Jawa · East Java");
-    expect(english).toContain("Mandailing");
-    expect(english).toContain("Batak Angkola");
-    expect(english).not.toContain("Optional Heritg account");
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   });
 });

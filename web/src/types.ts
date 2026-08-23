@@ -1,5 +1,4 @@
 export type Gender = "female" | "male" | "unspecified";
-<<<<<<< HEAD
 export const RELATIONSHIP_TERMINOLOGIES = [
   "id",
   "jv-yogyakarta",
@@ -15,14 +14,6 @@ export const RELATIONSHIP_TERMINOLOGIES = [
 ] as const;
 export type RelationshipTerminology = typeof RELATIONSHIP_TERMINOLOGIES[number];
 export const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
-=======
-export type RelationshipTerminology =
-  | "id"
-  | "jv-yogyakarta"
-  | "jv-east-java"
-  | "btm-mandailing"
-  | "akb-angkola";
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 export type RelationshipLanguage = "en" | RelationshipTerminology;
 export type RelationshipKind = "parent" | "partner" | "sibling";
 export type RelationshipSubtype =

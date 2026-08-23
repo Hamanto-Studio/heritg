@@ -1,11 +1,7 @@
 import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
-<<<<<<< HEAD
 import { AccountSettings } from "./AccountSettings";
 import type { MessageKey, Translator } from "./i18n";
-=======
-import type { Translator } from "./i18n";
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 import { relationshipLanguageForData } from "./kinship";
 import { passwordRequirements } from "./passwordPolicy";
 import type { AppActions } from "./store";
@@ -71,6 +67,8 @@ export function SettingsDialog({
         <p>{t("privateDescription")}</p>
       </div>
 
+      <AccountSettings language={data.language} t={t} />
+
       <div className="settings-group">
         <h3>{t("language")}</h3>
         <section className="settings-card">
@@ -119,7 +117,6 @@ export function SettingsDialog({
             </div>
           </div>
           <div className="language-options relationship-language-options">
-<<<<<<< HEAD
             {relationshipLanguageOptions.map(([language, label]) => (
               <button
                 aria-pressed={relationshipLanguage === language}
@@ -131,56 +128,6 @@ export function SettingsDialog({
                 {t(label)}
               </button>
             ))}
-=======
-            <button
-              aria-pressed={relationshipLanguage === "en"}
-              className={relationshipLanguage === "en" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("en")}
-              type="button"
-            >
-              {t("english")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "id"}
-              className={relationshipLanguage === "id" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("id")}
-              type="button"
-            >
-              {t("indonesianRelationships")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "jv-yogyakarta"}
-              className={relationshipLanguage === "jv-yogyakarta" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("jv-yogyakarta")}
-              type="button"
-            >
-              {t("javaneseYogyakarta")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "jv-east-java"}
-              className={relationshipLanguage === "jv-east-java" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("jv-east-java")}
-              type="button"
-            >
-              {t("javaneseEastJava")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "btm-mandailing"}
-              className={relationshipLanguage === "btm-mandailing" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("btm-mandailing")}
-              type="button"
-            >
-              {t("mandailingRelationships")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "akb-angkola"}
-              className={relationshipLanguage === "akb-angkola" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("akb-angkola")}
-              type="button"
-            >
-              {t("angkolaRelationships")}
-            </button>
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
           </div>
         </section>
       </div>

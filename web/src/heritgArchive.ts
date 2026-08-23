@@ -511,11 +511,7 @@ async function archiveEntries(
     createdAt: exactInstant(tree.createdAt),
     id: tree.id,
     ...(tree.lastSelectedPersonId ? { lastSelectedPersonId: tree.lastSelectedPersonId } : {}),
-<<<<<<< HEAD
     ...(sharedView && clean.relationshipLanguage
-=======
-    ...(sharedView && data.relationshipLanguage
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
       ? { relationshipLanguage: clean.relationshipLanguage }
       : {}),
     schemaVersion: SCHEMA_VERSION,

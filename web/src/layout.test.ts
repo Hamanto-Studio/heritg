@@ -163,7 +163,6 @@ describe("kinship labels", () => {
   it("uses regional Javanese seniority and cousin terminology", () => {
     const people = [
       person("grandparent"),
-      person("maternal-grandparent"),
       person("older-aunt", "female", "1960-01-01"),
       person("father", "male", "1965-01-01"),
       person("cousin", "male", "1988-01-01"),
@@ -206,36 +205,19 @@ describe("kinship labels", () => {
       .toBe("Mas");
   });
 
-<<<<<<< HEAD
   it("uses Cirebon and Sundanese seniority rather than generic translations", () => {
-=======
-  it("resolves independent Mandailing and Angkola partuturon profiles", () => {
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
     const people = [
       person("grandparent"),
       person("older-aunt", "female", "1960-01-01"),
       person("father", "male", "1965-01-01"),
-<<<<<<< HEAD
       person("older-sister", "female", "1988-01-01"),
       person("focus", "male", "1990-01-01"),
       person("cousin", "male", "1985-01-01"),
       person("nephew", "male", "2010-01-01")
-=======
-      person("mother", "female"),
-      person("tulang", "male"),
-      person("anak-namboru", "male"),
-      person("boru-tulang", "female"),
-      person("focus", "male"),
-      person("daughter", "female"),
-      person("hela", "male"),
-      person("son", "male"),
-      person("sons-wife", "female")
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
     ];
     const relationships = [
       parent("grandparent", "older-aunt"),
       parent("grandparent", "father"),
-<<<<<<< HEAD
       parent("father", "older-sister"),
       parent("father", "focus"),
       parent("older-aunt", "cousin"),
@@ -348,49 +330,11 @@ describe("kinship labels", () => {
     const people = [
       person("grandparent"), person("father", "male"),
       person("adoptive-aunt", "female"), person("focus"), person("cousin")
-=======
-      parent("father", "focus"),
-      parent("mother", "focus"),
-      parent("older-aunt", "anak-namboru"),
-      parent("maternal-grandparent", "mother"),
-      parent("maternal-grandparent", "tulang"),
-      parent("tulang", "boru-tulang"),
-      parent("focus", "daughter"),
-      partner("daughter", "hela", "daughter-marriage"),
-      parent("focus", "son"),
-      partner("son", "sons-wife", "son-marriage")
-    ];
-
-    expect(kinshipLabel("father", "focus", people, relationships, "btm-mandailing"))
-      .toBe("Amang");
-    expect(kinshipLabel("older-aunt", "focus", people, relationships, "btm-mandailing"))
-      .toBe("Namboru");
-    expect(kinshipLabel("anak-namboru", "focus", people, relationships, "btm-mandailing"))
-      .toBe("Anak namboru");
-    expect(kinshipLabel("boru-tulang", "focus", people, relationships, "akb-angkola"))
-      .toBe("Boru tulang");
-    expect(kinshipLabel("hela", "focus", people, relationships, "btm-mandailing"))
-      .toBe("Hela");
-    expect(kinshipLabel("sons-wife", "focus", people, relationships, "akb-angkola"))
-      .toBe("Parumaen");
-    expect(kinshipLabel("sons-wife", "focus", people, relationships, "btm-mandailing"))
-      .toBe("Menantu perempuan");
-  });
-
-  it("uses cultural lineage terms only for biological paths", () => {
-    const people = [
-      person("grandparent"),
-      person("father", "male"),
-      person("adoptive-aunt", "female"),
-      person("adoptive-cousin", "male"),
-      person("focus")
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
     ];
     const relationships = [
       parent("grandparent", "father"),
       parent("grandparent", "adoptive-aunt", "adoption", "adoptiveParent"),
       parent("father", "focus"),
-<<<<<<< HEAD
       parent("adoptive-aunt", "cousin")
     ];
 
@@ -549,25 +493,6 @@ describe("kinship labels", () => {
       .toBe("Kerabat generasi atas");
     expect(kinshipLabel("great-grandparent", "focus", people, relationships, "bts-simalungun"))
       .toBe("Ompung nini");
-=======
-      parent("adoptive-aunt", "adoptive-cousin")
-    ];
-
-    expect(kinshipLabel(
-      "adoptive-cousin",
-      "focus",
-      people,
-      relationships,
-      "btm-mandailing"
-    )).toBe("Sepupu");
-    expect(kinshipLabel(
-      "adoptive-cousin",
-      "focus",
-      people,
-      relationships,
-      "akb-angkola"
-    )).toBe("Sepupu");
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   });
 });
 

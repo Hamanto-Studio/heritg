@@ -2,12 +2,8 @@ import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./typ
 import { selectFocusedFamily } from "./familyCopy";
 import type {
   AppData, DirectRole, FamilyRelationship, FamilyTree, Gender, Person,
-<<<<<<< HEAD
   RelationshipKind, RelationshipLanguage, RelationshipSubtype,
   RelationshipTerminology, ViewportState
-=======
-  RelationshipKind, RelationshipLanguage, RelationshipSubtype, ViewportState
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 } from "./types";
 import {
   DIRECT_ROLE_DEFAULTS,
@@ -499,11 +495,7 @@ export function setRelationshipLanguage(
   data: AppData,
   language: RelationshipLanguage
 ): AppData {
-<<<<<<< HEAD
   if (!RELATIONSHIP_LANGUAGES.includes(language)) {
-=======
-  if (!["en", "id", "jv-yogyakarta", "jv-east-java", "btm-mandailing", "akb-angkola"].includes(language)) {
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
     throw new DomainError("invalidData");
   }
   const terminology = language === "en" ? data.relationshipTerminology : language;
@@ -549,19 +541,11 @@ export function assertAppData(value: unknown): asserts value is AppData {
     throw new DomainError("invalidData");
   }
   if (value.relationshipTerminology !== undefined &&
-<<<<<<< HEAD
       !RELATIONSHIP_TERMINOLOGIES.includes(value.relationshipTerminology as RelationshipTerminology)) {
     throw new DomainError("invalidData");
   }
   if (value.relationshipLanguage !== undefined &&
       !RELATIONSHIP_LANGUAGES.includes(value.relationshipLanguage as RelationshipLanguage)) {
-=======
-      !["id", "jv-yogyakarta", "jv-east-java", "btm-mandailing", "akb-angkola"].includes(String(value.relationshipTerminology))) {
-    throw new DomainError("invalidData");
-  }
-  if (value.relationshipLanguage !== undefined &&
-      !["en", "id", "jv-yogyakarta", "jv-east-java", "btm-mandailing", "akb-angkola"].includes(String(value.relationshipLanguage))) {
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
     throw new DomainError("invalidData");
   }
   if (!Array.isArray(value.trees) || !Array.isArray(value.people) ||

@@ -25,7 +25,6 @@ const emailCallback = prepareEmailCallback(window.location, window.history);
 const emailCallbackToken = emailCallback.token;
 const emailVerification = emailCallbackToken ? verifyEmailLogin(emailCallbackToken) : undefined;
 const isStaging = __DEPLOYMENT_ENV__ === "staging";
-<<<<<<< HEAD
 const callbackLanguage = applyUiLanguage(document.documentElement);
 
 function Application() {
@@ -38,19 +37,16 @@ function Application() {
   }
   return (
     <AppProvider>
-      {isSharedRoute ? <SharedTreeApp /> : <App initialPanel={callbackDestination === "settings" ? "settings" : undefined} />}
+      {isSharedRoute ? <SharedTreeApp /> : (
+        <ProProvider>
+          <App initialPanel={callbackDestination === "settings" ? "settings" : undefined} />
+        </ProProvider>
+      )}
     </AppProvider>
   );
 }
 
 const application = <Application />;
-=======
-const application = (
-  <AppProvider>
-    {isSharedRoute ? <SharedTreeApp /> : <ProProvider><App /></ProProvider>}
-  </AppProvider>
-);
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 
 if (isStaging) {
   document.title = "Heritg Staging | Test Data Only";

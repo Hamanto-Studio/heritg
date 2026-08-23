@@ -96,7 +96,6 @@ export default defineConfig({
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
     __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment),
     __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? ""),
-    __EMAIL_AUTH_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_EMAIL_AUTH_ENABLED === "true"),
     __PRO_ENABLED__: JSON.stringify(proEnabled),
     __REVENUECAT_PUBLIC_API_KEY__: JSON.stringify(revenueCatPublicApiKey)
   },

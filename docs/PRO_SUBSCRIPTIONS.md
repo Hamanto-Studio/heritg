@@ -13,12 +13,9 @@ Enable the client only when both build variables are present:
 - `HERITG_PRO_ENABLED=true`
 - `HERITG_REVENUECAT_PUBLIC_API_KEY=<RevenueCat Web public key>`
 
-Google sign-in is configured independently with `HERITG_GOOGLE_CLIENT_ID`. The
-passwordless email client remains disabled unless
-`HERITG_EMAIL_AUTH_ENABLED=true`. Enable that flag only after the environment
-implements and verifies `POST /api/v1/auth/magic-links`, including email
-delivery, single-use expiry, return URL allowlisting, and abuse controls. With
-the flag absent, the account UI offers Google sign-in only.
+Google sign-in is configured independently with `HERITG_GOOGLE_CLIENT_ID`.
+Passwordless email uses the environment's existing account service and email
+delivery configuration; it has no separate Web build flag.
 
 The Web key is public. RevenueCat secret keys, webhook credentials, payment
 secrets, session-signing keys, database credentials, and storage credentials
@@ -39,10 +36,10 @@ mutations.
   email address or family data.
 - `POST /auth/google`: exchanges the environment-bound Google identity proof
   allocated through `GET /auth/login-nonce`.
-- `POST /auth/magic-links`: optional passwordless email entry point. It accepts
-  an email address and allowlisted `returnTo`, and returns only
-  `{ "status": "accepted" }`. Tokens must be single-use, short-lived, and
-  stored hashed. This route is not implemented in the current backend.
+- `POST /auth/email/request`: requests a single-use, short-lived email link
+  without revealing whether an account exists.
+- `POST /auth/email/verify`: consumes the link token and creates the same secure
+  session used by Google sign-in.
 - `POST /auth/logout`: revokes the session without deleting local data.
 - `DELETE /account`: permanently deletes the hosted account without deleting
   the browser's local archive.
@@ -76,8 +73,8 @@ as `isPro`, account IDs, and timestamps are untrusted.
 5. Update `PRIVACY.md`, `docs/DATA_PROCESSING.md`, product copy, and subprocessors
    before enabling hosted processing.
 6. Test modified clients claiming fake Family Plan access; official APIs must reject them.
-7. Before enabling passwordless email, test delivery and magic-link return in
-   installed PWAs and Mobile Safari; keep Google as the working fallback.
+7. Test passwordless email delivery and callback handling in installed PWAs and
+   Mobile Safari; keep Google as a working fallback.
 8. Keep all `/api/v1/` service-worker traffic `NetworkOnly`.
 
 Cancellation or expiration pauses hosted synchronization and never disables or

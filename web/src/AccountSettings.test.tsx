@@ -28,44 +28,6 @@ afterEach(async () => {
 });
 
 describe("account settings", () => {
-  it("shows email sign-in only when the deployment enables it", async () => {
-    container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
-    await act(async () => {
-      root?.render(
-        <AccountSettings
-          googleClientId="staging.apps.googleusercontent.com"
-          language="en"
-          passwordlessEmailEnabled
-          t={createTranslator("en")}
-        />
-      );
-    });
-
-    expect(container.querySelector('input[type="email"]')).not.toBeNull();
-    expect(container.textContent).toContain("Send one-time link");
-    expect(container.textContent).toContain("Family data is sent to our servers only when synchronization is enabled.");
-    const googleButton = [...container.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Continue with Google"));
-    const emailInput = container.querySelector('input[type="email"]');
-    expect(googleButton?.querySelector(".google-mark")).not.toBeNull();
-    const relativePosition = googleButton?.compareDocumentPosition(emailInput as Node) ?? 0;
-    expect(relativePosition & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
-
-    await act(async () => {
-      root?.render(
-        <AccountSettings
-          googleClientId="staging.apps.googleusercontent.com"
-          language="en"
-          passwordlessEmailEnabled={false}
-          t={createTranslator("en")}
-        />
-      );
-    });
-    expect(container.querySelector('input[type="email"]')).toBeNull();
-  });
-
   it("loads Google Identity only after the user prepares sign-in", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       void _init;
@@ -97,7 +59,6 @@ describe("account settings", () => {
         <AccountSettings
           googleClientId="staging.apps.googleusercontent.com"
           language="en"
-          passwordlessEmailEnabled
           t={createTranslator("en")}
         />
       );
@@ -107,6 +68,10 @@ describe("account settings", () => {
     const prepare = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with Google"));
     expect(prepare).toBeDefined();
+    expect(prepare?.querySelector(".google-mark")).not.toBeNull();
+    const emailInput = container.querySelector('input[type="email"]');
+    const relativePosition = prepare?.compareDocumentPosition(emailInput as Node) ?? 0;
+    expect(relativePosition & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
     await act(async () => {
       prepare?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -133,7 +98,6 @@ describe("account settings", () => {
     }));
     expect(renderButton).toHaveBeenCalledOnce();
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ text: "continue_with" }));
-    expect(container.querySelector('input[type="email"]')).not.toBeNull();
 
     await act(async () => {
       root?.render(
@@ -222,13 +186,7 @@ describe("account settings", () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(
-        <AccountSettings
-          googleClientId="staging.apps.googleusercontent.com"
-          language="en"
-          t={createTranslator("en")}
-        />
-      );
+      root?.render(<AccountSettings language="en" t={createTranslator("en")} />);
     });
 
     const deleteButton = [...container.querySelectorAll("button")]
@@ -247,7 +205,6 @@ describe("account settings", () => {
       method: "DELETE",
       headers: expect.objectContaining({ "x-csrf-token": token })
     }));
-<<<<<<< HEAD
     expect(container.textContent).toContain("Continue with email");
   });
 
@@ -370,8 +327,5 @@ describe("account settings", () => {
       root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
     });
     expect(container.textContent).toContain("Try again in 90s");
-=======
-    expect(container.textContent).toContain("Continue with Google");
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   });
 });

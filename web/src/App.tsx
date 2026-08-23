@@ -28,10 +28,7 @@ import {
 import { availableGenerationLevels } from "./layout";
 import { createTranslator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
-<<<<<<< HEAD
-=======
 import { FamilyPanel } from "./FamilyPanel";
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
@@ -554,11 +551,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         />
       ) : null}
 
-<<<<<<< HEAD
-      {rightPanel === "settings" ? (
-=======
       {rightPanel === "settings" && pro.sync.phase !== "conflict" ? (
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
         <SettingsDialog
           actions={actions}
           data={data}

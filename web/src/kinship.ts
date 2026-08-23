@@ -13,14 +13,7 @@ type JavaneseTerminology = Extract<
   RelationshipTerminology,
   "jv-yogyakarta" | "jv-east-java"
 >;
-<<<<<<< HEAD
 type CulturalTerminology = Exclude<RelationshipTerminology, "id" | JavaneseTerminology>;
-=======
-type PartuturonTerminology = Extract<
-  RelationshipTerminology,
-  "btm-mandailing" | "akb-angkola"
->;
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 
 export const effectiveKinshipLanguage = (
   language: AppData["language"],
@@ -108,21 +101,8 @@ const createKinshipIndex = (
       addIndexedId(index.parents, relationship.toPersonId, relationship.fromPersonId);
       addIndexedId(index.children, relationship.fromPersonId, relationship.toPersonId);
       if (relationship.subtype === "biologicalParent") {
-<<<<<<< HEAD
         addIndexedId(index.biologicalParents, relationship.toPersonId, relationship.fromPersonId);
         addIndexedId(index.biologicalChildren, relationship.fromPersonId, relationship.toPersonId);
-=======
-        addIndexedId(
-          index.biologicalParents,
-          relationship.toPersonId,
-          relationship.fromPersonId
-        );
-        addIndexedId(
-          index.biologicalChildren,
-          relationship.fromPersonId,
-          relationship.toPersonId
-        );
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
       }
     } else if (relationship.kind === "partner" && activeUnionSubtypes.has(relationship.subtype)) {
       addIndexedId(index.activePartners, relationship.fromPersonId, relationship.toPersonId);
@@ -514,24 +494,11 @@ export function directRelationshipLabel(
 ): string | undefined {
   const label = directRelationshipLabelEnglish(person, relativeToPersonId, relationships);
   if (!label) return undefined;
-<<<<<<< HEAD
   if (language === "jv-yogyakarta" || language === "jv-east-java") {
     return javaneseBasicLabel(label, language);
   }
   if (language !== "en" && language !== "id") return culturalBasicLabel(label, language);
   return localizedLabel(label, language);
-=======
-  if (language === "btm-mandailing" || language === "akb-angkola") {
-    if (label === "Father") return "Amang";
-    if (label === "Mother") return "Inang";
-    if (label === "Son") return "Anak";
-    if (label === "Daughter") return "Boru";
-    return localizedLabel(label, "id");
-  }
-  return language === "jv-yogyakarta" || language === "jv-east-java"
-    ? javaneseBasicLabel(label, language)
-    : localizedLabel(label, language);
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 }
 
 const ancestorDistances = (
@@ -918,123 +885,11 @@ const regionalKinshipLabel = (
   return javaneseBasicLabel(label, terminology);
 };
 
-<<<<<<< HEAD
-=======
-interface PartuturonTerms {
-  father: string;
-  mother: string;
-  son: string;
-  daughter: string;
-  olderSibling: string;
-  youngerSibling: string;
-  crossGenderSibling: string;
-  grandfather: string;
-  grandmother: string;
-  grandparent: string;
-  grandchild: string;
-  fathersOlderBrother: string;
-  fathersYoungerBrother: string;
-  fathersSister: string;
-  mothersBrother: string;
-  mothersOlderSister: string;
-  mothersYoungerSister: string;
-  fathersOlderBrothersWife: string;
-  fathersYoungerBrothersWife: string;
-  fathersSistersHusband: string;
-  mothersBrothersWife: string;
-  mothersOlderSistersHusband: string;
-  mothersYoungerSistersHusband: string;
-  fathersSistersSon: string;
-  mothersBrothersDaughter: string;
-  sistersChild: string;
-  brothersSon: string;
-  daughterHusband: string;
-  sonsWife?: string;
-  wifeBrother: string;
-  sistersHusband: string;
-  femaleInLaw: string;
-  coHusband: string;
-}
-
-// Kept as independent profiles: shared spellings are attestations, not aliases.
-const MANDAILING_TERMS: PartuturonTerms = {
-  father: "Amang",
-  mother: "Inang",
-  son: "Anak",
-  daughter: "Boru",
-  olderSibling: "Angkang",
-  youngerSibling: "Anggi",
-  crossGenderSibling: "Iboto",
-  grandfather: "Ompung halaklahi",
-  grandmother: "Ompung boru",
-  grandparent: "Ompung",
-  grandchild: "Pahompu",
-  fathersOlderBrother: "Amang tua",
-  fathersYoungerBrother: "Amang uda",
-  fathersSister: "Namboru",
-  mothersBrother: "Tulang",
-  mothersOlderSister: "Inang tobang",
-  mothersYoungerSister: "Bujing",
-  fathersOlderBrothersWife: "Inang tua",
-  fathersYoungerBrothersWife: "Nanguda",
-  fathersSistersHusband: "Amang boru",
-  mothersBrothersWife: "Nantulang",
-  mothersOlderSistersHusband: "Amang tobang",
-  mothersYoungerSistersHusband: "Amang menek",
-  fathersSistersSon: "Anak namboru",
-  mothersBrothersDaughter: "Boru tulang",
-  sistersChild: "Bere",
-  brothersSon: "Amang na poso",
-  daughterHusband: "Hela",
-  wifeBrother: "Tunggane",
-  sistersHusband: "Lae",
-  femaleInLaw: "Eda",
-  coHusband: "Parabean"
-};
-
-const ANGKOLA_TERMS: PartuturonTerms = {
-  father: "Amang",
-  mother: "Inang",
-  son: "Anak",
-  daughter: "Boru",
-  olderSibling: "Angkang",
-  youngerSibling: "Anggi",
-  crossGenderSibling: "Iboto",
-  grandfather: "Ompung halaklahi",
-  grandmother: "Ompung boru",
-  grandparent: "Ompung",
-  grandchild: "Pahompu",
-  fathersOlderBrother: "Amang tua",
-  fathersYoungerBrother: "Amang uda",
-  fathersSister: "Namboru",
-  mothersBrother: "Tulang",
-  mothersOlderSister: "Inang tobang",
-  mothersYoungerSister: "Bujing",
-  fathersOlderBrothersWife: "Inang tua",
-  fathersYoungerBrothersWife: "Nanguda",
-  fathersSistersHusband: "Amang boru",
-  mothersBrothersWife: "Nantulang",
-  mothersOlderSistersHusband: "Amang tobang",
-  mothersYoungerSistersHusband: "Amang menek",
-  fathersSistersSon: "Anak namboru",
-  mothersBrothersDaughter: "Boru tulang",
-  sistersChild: "Bere",
-  brothersSon: "Amang na poso",
-  daughterHusband: "Hela",
-  sonsWife: "Parumaen",
-  wifeBrother: "Tunggane",
-  sistersHusband: "Lae",
-  femaleInLaw: "Eda",
-  coHusband: "Pariban"
-};
-
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 const biologicalSiblings = (firstId: string, secondId: string, index: KinshipIndex) => {
   if (firstId === secondId) return false;
   const explicit = index.relationshipsByPair.get(pairKey(firstId, secondId))?.some(
     (relationship) => relationship.kind === "sibling" && relationship.subtype === "sibling"
   );
-<<<<<<< HEAD
   return Boolean(explicit) || [...indexedIds(index.biologicalParents, firstId)].some(
     (parentId) => indexedIds(index.biologicalParents, secondId).has(parentId)
   );
@@ -1085,35 +940,6 @@ const siblingLabelForProfile = (
       if (seniority > 0) return "Anggi";
       return oppositeSex ? "Turang" : "Sibeltek";
   }
-=======
-  return explicit || [...indexedIds(index.biologicalParents, firstId)].some((parentId) =>
-    indexedIds(index.biologicalParents, secondId).has(parentId)
-  );
-};
-
-const personWithGender = (
-  id: string,
-  gender: Gender,
-  index: KinshipIndex
-) => index.peopleById.get(id)?.gender === gender;
-
-const siblingSeniorityLabel = (
-  person: Person,
-  reference: Person,
-  terms: PartuturonTerms
-) => {
-  if (person.gender !== "unspecified" && reference.gender !== "unspecified" &&
-      person.gender !== reference.gender) {
-    return terms.crossGenderSibling;
-  }
-  if (person.gender === "unspecified" || person.gender !== reference.gender) return undefined;
-  const seniority = compareSeniority(person, reference);
-  return seniority < 0
-    ? terms.olderSibling
-    : seniority > 0
-      ? terms.youngerSibling
-      : undefined;
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 };
 
 interface ParentSiblingConnection {
@@ -1121,7 +947,6 @@ interface ParentSiblingConnection {
   sibling: Person;
 }
 
-<<<<<<< HEAD
 const parentSiblingConnections = (
   siblingId: string,
   referenceId: string,
@@ -1192,53 +1017,10 @@ const parentSiblingLabelForProfile = (
       if (terminology === "bbc-toba") return "Inang";
       return older ? "Inang tobang" : younger ? "Bujing" : "Inang";
     }
-=======
-const parentSiblingConnection = (
-  siblingId: string,
-  referenceId: string,
-  index: KinshipIndex
-): ParentSiblingConnection | undefined => {
-  const sibling = index.peopleById.get(siblingId);
-  if (!sibling) return undefined;
-  const parent = [...indexedIds(index.biologicalParents, referenceId)]
-    .sort(compareText)
-    .map((parentId) => index.peopleById.get(parentId))
-    .find((parent): parent is Person =>
-      Boolean(parent && biologicalSiblings(siblingId, parent.id, index))
-    );
-  return parent ? { parent, sibling } : undefined;
-};
-
-const parentSiblingLabel = (
-  connection: ParentSiblingConnection,
-  terms: PartuturonTerms
-) => {
-  const { parent, sibling } = connection;
-  if (parent.gender === "male") {
-    if (sibling.gender === "female") return terms.fathersSister;
-    if (sibling.gender !== "male") return undefined;
-    const seniority = compareSeniority(sibling, parent);
-    return seniority < 0
-      ? terms.fathersOlderBrother
-      : seniority > 0
-        ? terms.fathersYoungerBrother
-        : undefined;
-  }
-  if (parent.gender === "female") {
-    if (sibling.gender === "male") return terms.mothersBrother;
-    if (sibling.gender !== "female") return undefined;
-    const seniority = compareSeniority(sibling, parent);
-    return seniority < 0
-      ? terms.mothersOlderSister
-      : seniority > 0
-        ? terms.mothersYoungerSister
-        : undefined;
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   }
   return undefined;
 };
 
-<<<<<<< HEAD
 interface CousinConnection {
   personParent: Person;
   referenceParent: Person;
@@ -1474,104 +1256,19 @@ const affinalLabelForProfile = (
         (spouseSiblingPartners.some((partner) => partner.gender === "male") ||
           siblingSpouses.some((sibling) => sibling.gender === "male"))) return "Eda";
     return undefined;
-=======
-const partuturonAffinalLabel = (
-  person: Person,
-  reference: Person,
-  terms: PartuturonTerms,
-  index: KinshipIndex
-) => {
-  for (const partnerId of [...indexedIds(index.activePartners, person.id)].sort(compareText)) {
-    const connection = parentSiblingConnection(partnerId, reference.id, index);
-    if (!connection) continue;
-    const seniority = compareSeniority(connection.sibling, connection.parent);
-    if (connection.parent.gender === "male") {
-      if (connection.sibling.gender === "female" && person.gender === "male") {
-        return terms.fathersSistersHusband;
-      }
-      if (connection.sibling.gender === "male" && person.gender === "female") {
-        return seniority < 0
-          ? terms.fathersOlderBrothersWife
-          : seniority > 0
-            ? terms.fathersYoungerBrothersWife
-            : undefined;
-      }
-    }
-    if (connection.parent.gender === "female") {
-      if (connection.sibling.gender === "male" && person.gender === "female") {
-        return terms.mothersBrothersWife;
-      }
-      if (connection.sibling.gender === "female" && person.gender === "male") {
-        return seniority < 0
-          ? terms.mothersOlderSistersHusband
-          : seniority > 0
-            ? terms.mothersYoungerSistersHusband
-            : undefined;
-      }
-    }
-  }
-
-  if (person.gender === "male" && [...indexedIds(index.biologicalChildren, reference.id)]
-      .some((childId) => personWithGender(childId, "female", index) &&
-        indexedIds(index.activePartners, childId).has(person.id))) {
-    return terms.daughterHusband;
-  }
-  if (terms.sonsWife && person.gender === "female" &&
-      [...indexedIds(index.biologicalChildren, reference.id)]
-        .some((childId) => personWithGender(childId, "male", index) &&
-          indexedIds(index.activePartners, childId).has(person.id))) {
-    return terms.sonsWife;
-  }
-  if (reference.gender === "male" && person.gender === "male" &&
-      [...indexedIds(index.activePartners, reference.id)].some((partnerId) =>
-        personWithGender(partnerId, "female", index) &&
-        biologicalSiblings(person.id, partnerId, index))) {
-    return terms.wifeBrother;
-  }
-  if (reference.gender === "male" && person.gender === "male" &&
-      [...indexedIds(index.activePartners, person.id)].some((partnerId) =>
-        personWithGender(partnerId, "female", index) &&
-        biologicalSiblings(partnerId, reference.id, index))) {
-    return terms.sistersHusband;
-  }
-  if (reference.gender === "female" && person.gender === "female" &&
-      ([...indexedIds(index.activePartners, person.id)].some((partnerId) =>
-        personWithGender(partnerId, "male", index) &&
-        biologicalSiblings(reference.id, partnerId, index)) ||
-      [...indexedIds(index.activePartners, reference.id)].some((partnerId) =>
-        personWithGender(partnerId, "male", index) &&
-        biologicalSiblings(person.id, partnerId, index)))) {
-    return terms.femaleInLaw;
-  }
-  if (reference.gender === "male" && person.gender === "male" &&
-      [...indexedIds(index.activePartners, reference.id)].some((referencePartnerId) =>
-        personWithGender(referencePartnerId, "female", index) &&
-        [...indexedIds(index.activePartners, person.id)].some((personPartnerId) =>
-          personWithGender(personPartnerId, "female", index) &&
-          biologicalSiblings(referencePartnerId, personPartnerId, index)))) {
-    return terms.coHusband;
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   }
   return undefined;
 };
 
-<<<<<<< HEAD
 const culturalKinshipLabel = (
   englishLabel: string,
   personId: string,
   referenceId: string,
   terminology: CulturalTerminology,
-=======
-const partuturonKinshipLabel = (
-  personId: string,
-  referenceId: string,
-  terminology: PartuturonTerminology,
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   index: KinshipIndex
 ) => {
   const person = index.peopleById.get(personId);
   const reference = index.peopleById.get(referenceId);
-<<<<<<< HEAD
   if (!person || !reference) return culturalBasicLabel(englishLabel, terminology);
   if (["Brother", "Sister", "Sibling"].includes(englishLabel) &&
       biologicalSiblings(person.id, reference.id, index)) {
@@ -1613,73 +1310,6 @@ const partuturonKinshipLabel = (
   return affinal ?? culturalBasicLabel(englishLabel, terminology);
 };
 
-=======
-  if (!person || !reference || person.id === reference.id) return undefined;
-  const terms = terminology === "btm-mandailing" ? MANDAILING_TERMS : ANGKOLA_TERMS;
-
-  if (indexedIds(index.biologicalParents, reference.id).has(person.id)) {
-    return gendered(person.gender, terms.father, terms.mother, "Orang tua");
-  }
-  if (indexedIds(index.biologicalChildren, reference.id).has(person.id)) {
-    return gendered(person.gender, terms.son, terms.daughter, "Anak");
-  }
-  if (biologicalSiblings(person.id, reference.id, index)) {
-    return siblingSeniorityLabel(person, reference, terms);
-  }
-  if ([...indexedIds(index.biologicalChildren, person.id)].some((childId) =>
-      indexedIds(index.biologicalParents, reference.id).has(childId))) {
-    return gendered(person.gender, terms.grandfather, terms.grandmother, terms.grandparent);
-  }
-  if ([...indexedIds(index.biologicalParents, person.id)].some((parentId) =>
-      indexedIds(index.biologicalChildren, reference.id).has(parentId))) {
-    return terms.grandchild;
-  }
-
-  const parentSibling = parentSiblingConnection(person.id, reference.id, index);
-  if (parentSibling) return parentSiblingLabel(parentSibling, terms);
-
-  for (const fatherId of [...indexedIds(index.biologicalParents, reference.id)]
-    .filter((id) => personWithGender(id, "male", index))) {
-    for (const auntId of indexedIds(index.biologicalParents, person.id)) {
-      if (personWithGender(auntId, "female", index) &&
-          biologicalSiblings(auntId, fatherId, index) && person.gender === "male") {
-        return terms.fathersSistersSon;
-      }
-    }
-  }
-  for (const motherId of [...indexedIds(index.biologicalParents, reference.id)]
-    .filter((id) => personWithGender(id, "female", index))) {
-    for (const uncleId of indexedIds(index.biologicalParents, person.id)) {
-      if (personWithGender(uncleId, "male", index) &&
-          biologicalSiblings(uncleId, motherId, index) && person.gender === "female") {
-        return terms.mothersBrothersDaughter;
-      }
-    }
-  }
-  if (reference.gender === "male" && [...indexedIds(index.biologicalParents, person.id)]
-      .some((parentId) => personWithGender(parentId, "female", index) &&
-        biologicalSiblings(parentId, reference.id, index))) {
-    return terms.sistersChild;
-  }
-  if (reference.gender === "female" && person.gender === "male" &&
-      [...indexedIds(index.biologicalParents, person.id)]
-        .some((parentId) => personWithGender(parentId, "male", index) &&
-          biologicalSiblings(parentId, reference.id, index))) {
-    return terms.brothersSon;
-  }
-  return partuturonAffinalLabel(person, reference, terms, index);
-};
-
-const partuturonOrFallbackLabel = (
-  englishLabel: string,
-  personId: string,
-  relativeToPersonId: string,
-  terminology: PartuturonTerminology,
-  index: KinshipIndex
-) => partuturonKinshipLabel(personId, relativeToPersonId, terminology, index) ??
-  localizedLabel(englishLabel, "id");
-
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 export function kinshipLabel(
   personId: string,
   relativeToPersonId: string,
@@ -1690,7 +1320,6 @@ export function kinshipLabel(
   const index = createKinshipIndex(people, relationships);
   const label = kinshipLabelEnglish(personId, relativeToPersonId, people, relationships, index);
   if (!label) return undefined;
-<<<<<<< HEAD
   if (language === "jv-yogyakarta" || language === "jv-east-java") {
     return regionalKinshipLabel(
       label,
@@ -1705,23 +1334,6 @@ export function kinshipLabel(
     return culturalKinshipLabel(label, personId, relativeToPersonId, language, index);
   }
   return localizedLabel(label, language);
-=======
-  if (language === "btm-mandailing" || language === "akb-angkola") {
-    return partuturonOrFallbackLabel(
-      label, personId, relativeToPersonId, language, index
-    );
-  }
-  return language === "jv-yogyakarta" || language === "jv-east-java"
-    ? regionalKinshipLabel(
-        label,
-        personId,
-        relativeToPersonId,
-        relationships,
-        language,
-        index
-      )
-    : localizedLabel(label, language);
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 }
 
 export function deriveKinshipLabels(
@@ -1737,7 +1349,6 @@ export function deriveKinshipLabels(
       const label = kinshipLabelEnglish(
         person.id, selectedPersonId, people, relationships, index
       ) ?? "Family member";
-<<<<<<< HEAD
       if (language === "jv-yogyakarta" || language === "jv-east-java") {
         labels[person.id] = regionalKinshipLabel(
           label,
@@ -1754,26 +1365,6 @@ export function deriveKinshipLabels(
       } else {
         labels[person.id] = localizedLabel(label, language);
       }
-=======
-      labels[person.id] = language === "jv-yogyakarta" || language === "jv-east-java"
-        ? regionalKinshipLabel(
-            label,
-            person.id,
-            selectedPersonId,
-            relationships,
-            language,
-            index
-          )
-        : language === "btm-mandailing" || language === "akb-angkola"
-          ? partuturonOrFallbackLabel(
-              label,
-              person.id,
-              selectedPersonId,
-              language,
-              index
-            )
-          : localizedLabel(label, language);
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
       return labels;
     }, {});
 }

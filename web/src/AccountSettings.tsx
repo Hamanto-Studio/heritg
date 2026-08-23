@@ -1,10 +1,5 @@
-<<<<<<< HEAD
 import { Cloud, LogOut, Mail, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-=======
-import { Cloud, LogOut, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 
 import {
   AccountAuthError,
@@ -17,11 +12,7 @@ import {
   logoutAccount,
   maskEmail,
   readCsrfCookie,
-<<<<<<< HEAD
   requestEmailLogin,
-=======
-  requestPasswordlessEmail,
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   type AccountSession,
   type GoogleIdentity,
   type LoginMaterial
@@ -55,12 +46,7 @@ interface AccountSettingsProps {
   language: AppData["language"];
   t: Translator;
   googleClientId?: string;
-<<<<<<< HEAD
   cooldownState?: EmailCooldownState;
-}
-
-=======
-  passwordlessEmailEnabled?: boolean;
 }
 
 function GoogleMark() {
@@ -74,16 +60,11 @@ function GoogleMark() {
   );
 }
 
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 export function AccountSettings({
   language,
   t,
   googleClientId = __GOOGLE_CLIENT_ID__,
-<<<<<<< HEAD
   cooldownState = sharedEmailCooldown
-=======
-  passwordlessEmailEnabled = __EMAIL_AUTH_ENABLED__
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 }: AccountSettingsProps) {
   const [initialCsrfToken] = useState(readCsrfCookie);
   const csrfToken = useRef<string | undefined>(initialCsrfToken);
@@ -92,16 +73,12 @@ export function AccountSettings({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [actionError, setActionError] = useState<ActionError>();
   const [email, setEmail] = useState("");
-<<<<<<< HEAD
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [emailInvalid, setEmailInvalid] = useState(false);
   const [maskedEmail, setMaskedEmail] = useState<string>();
   const [cooldown, setCooldown] = useState(() => cooldownState.remaining());
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
   const requestedEmail = useRef<string | undefined>(undefined);
-=======
-  const [emailRequest, setEmailRequest] = useState<"idle" | "sending" | "sent" | "error">("idle");
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   const loginMaterial = useRef<LoginMaterial | undefined>(undefined);
   const googleIdentity = useRef<GoogleIdentity | undefined>(undefined);
   const googleButton = useRef<HTMLDivElement>(null);
@@ -357,20 +334,6 @@ export function AccountSettings({
     }
   };
 
-  const sendEmailLink = async (event: FormEvent) => {
-    event.preventDefault();
-    const destination = new URL(window.location.pathname, window.location.origin).href;
-    setEmailRequest("sending");
-    const controller = nextRequest();
-    try {
-      await requestPasswordlessEmail(email.trim(), destination, controller.signal);
-      if (!mounted.current || controller.signal.aborted) return;
-      setEmailRequest("sent");
-    } catch {
-      if (mounted.current && !controller.signal.aborted) setEmailRequest("error");
-    }
-  };
-
   return (
     <div className="settings-group">
       <h3>{t("account")}</h3>
@@ -384,9 +347,24 @@ export function AccountSettings({
         </div>
 
         {status === "checking" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountChecking")}</p> : null}
-<<<<<<< HEAD
         {status === "anonymous" ? (
           <div className="account-sign-in">
+            <div className="account-google-primary">
+              {googleStatus === "idle" ? (
+                <button className="button account-google-button" onClick={() => void prepareGoogle()} type="button">
+                  <GoogleMark /> {t("accountPrepare")}
+                </button>
+              ) : null}
+              {googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
+                <div className="google-sign-in">
+                  <div aria-label={t("accountGoogleButton")} ref={googleButton} />
+                  {googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
+                  {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
+                </div>
+              ) : null}
+              {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
+            </div>
+            <div className="account-method-divider"><span>{t("accountEmailAlternative")}</span></div>
             <form onSubmit={(event) => {
               event.preventDefault();
               submitEmail();
@@ -430,35 +408,7 @@ export function AccountSettings({
                 {cooldown > 0 ? t("accountEmailResendWait", { seconds: cooldown }) : t("accountEmailResend")}
               </button>
             ) : null}
-            <div className="account-alternative">
-              <span>{t("accountGoogleFallback")}</span>
-              {googleStatus === "idle" ? (
-                <button className="button ghost" onClick={() => void prepareGoogle()} type="button">
-                  {t("accountPrepare")}
-                </button>
-              ) : null}
-              {googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
-                <div className="google-sign-in">
-                  <div aria-label={t("accountGoogleButton")} ref={googleButton} />
-                  {googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
-                  {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
-                </div>
-              ) : null}
-              {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
-              <p className="settings-detail">{t("accountProvidersSeparate")}</p>
-            </div>
-=======
-        {status === "anonymous" && googleClientId ? (
-          <button className="button account-google-button" onClick={() => void prepareGoogle()} type="button">
-            <GoogleMark /> {t("accountPrepare")}
-          </button>
-        ) : null}
-        {status === "preparing" || status === "ready" || status === "signingIn" ? (
-          <div className="google-sign-in">
-            <div aria-label={t("accountGoogleButton")} ref={googleButton} />
-            {status === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
-            {status === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
+            <p className="settings-detail account-provider-note">{t("accountProvidersSeparate")}</p>
           </div>
         ) : null}
         {status === "authenticated" && session ? (
@@ -493,32 +443,9 @@ export function AccountSettings({
         ) : null}
         {status === "loggingOut" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountLoggingOut")}</p> : null}
         {status === "deleting" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountDeleting")}</p> : null}
-        {(status === "anonymous" || status === "ready") && passwordlessEmailEnabled ? (
-          <>
-            {googleClientId ? <div className="account-method-divider"><span>{t("accountOr")}</span></div> : null}
-            {emailRequest === "sent" ? (
-              <p className="account-status" role="status">{t("magicLinkSentDetail", { email })}</p>
-            ) : (
-              <form className="account-sign-in" onSubmit={(event) => void sendEmailLink(event)}>
-                <label htmlFor="account-email">{t("emailAddress")}</label>
-                <div>
-                  <input autoComplete="email" id="account-email" inputMode="email" onChange={(event) => setEmail(event.target.value)} placeholder={t("emailPlaceholder")} required type="email" value={email} />
-                  <button aria-busy={emailRequest === "sending" || undefined} className="button secondary" disabled={emailRequest === "sending"} type="submit">
-                    {emailRequest === "sending" ? <ButtonLoader /> : null}{t("sendSignInLink")}
-                  </button>
-                </div>
-                {emailRequest === "error" ? <p className="danger-text" role="alert">{t("accountEmailError")}</p> : null}
-              </form>
-            )}
-          </>
-        ) : null}
         {status === "error" ? (
           <div className="account-error" role="alert">
-<<<<<<< HEAD
             <p>{t("accountError")}</p>
-=======
-            <p>{googleClientId || passwordlessEmailEnabled ? t("accountError") : t("accountUnavailable")}</p>
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
             <button className="button secondary" onClick={() => void checkSession()} type="button">
               {t("accountRetry")}
             </button>

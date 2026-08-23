@@ -31,13 +31,6 @@ const SUBTYPES_BY_KIND: Record<RelationshipKind, ReadonlySet<RelationshipSubtype
   sibling: new Set(SUBTYPES.slice(9))
 };
 const PRECISIONS = ["exact", "month", "year"] as const;
-<<<<<<< HEAD
-=======
-const RELATIONSHIP_TERMINOLOGIES = [
-  "id", "jv-yogyakarta", "jv-east-java", "btm-mandailing", "akb-angkola"
-] as const;
-const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 type JsonObject = Record<string, unknown>;
 type IdFactory = () => string;

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Relationship language profiles
 
 Heritg's regional relationship profiles are kinship resolvers, not translated word lists. They
@@ -99,31 +98,3 @@ marriageability, or ceremonial roles from genealogy alone.
 
 These profiles are conservative software mappings. Expansion into marga- or adat-dependent roles
 requires explicit model data and review by fluent cultural practitioners for the relevant profile.
-=======
-# Mandailing and Angkola kinship profiles
-
-Heritg treats these as independent relationship-language profiles:
-
-- `btm-mandailing`: Mandailing, ISO 639-3 `btm`, Glottocode `bata1291`
-- `akb-angkola`: Batak Angkola, ISO 639-3 `akb`, Glottocode `bata1290`
-
-Shared terms are separately attested vocabulary, not inheritance or aliases between profiles.
-
-## Resolver boundaries
-
-The Web resolver currently applies profile terms only when the graph proves the required biological or active-marriage path. Biological profile paths accept `biologicalParent` edges and explicit `sibling` edges. Adoptive, foster, guardian, step, half-sibling, unsupported, and ambiguous paths use descriptive Indonesian labels.
-
-Implemented categories include direct biological family, sibling seniority, grandparents and grandchildren, parent siblings and their spouses, selected nieces/nephews and cross-cousins, and explicitly attested in-law paths. Examples include `Fa.Si.So -> Anak namboru` and `Mo.Br.Da -> Boru tulang`.
-
-The resolver does not infer marga-dependent marriageability, cyclic `mulak` terms, or Dalihan Na Tolu social-lineage roles. Those require explicit marga, tarombo generation, local Mandailing marriage-variant, and path-provenance data. Marriageability must remain separate from the displayed kinship term.
-
-## Sources
-
-- Rosliana Lubis, "Partuturon dalam Masyarakat Angkola": https://web.archive.org/web/20101231221020id_/http://repository.usu.ac.id/bitstream/123456789/15557/1/log-apr2006-%20%284%29.pdf
-- Husniah Ramadhani Pulungan, "Mencegah Terjadinya Pernikahan Sedarah dengan Memahami Partuturon dalam Masyarakat Batak Angkola-Mandailing": https://doi.org/10.24952/fitrah.v1i2.321
-- Abbas Pulungan, *Dalihan Na Tolu*: https://archive.org/details/abbas-pulungan-dalihan-na-tolu-2018
-- Mandailing language identity: https://glottolog.org/resource/languoid/id/bata1291
-- Angkola language identity: https://glottolog.org/resource/languoid/id/bata1290
-
-Profile vocabulary and new graph-dependent rules should be reviewed by Mandailing and Angkola cultural or language experts before expanding these boundaries.
->>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
