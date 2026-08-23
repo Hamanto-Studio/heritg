@@ -818,12 +818,17 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   fill: none;
   height: 58px;
   margin-left: auto;
-  margin-right: -30px;
+  margin-right: -8px;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.7;
   width: 76px;
+}
+
+.canvas-controls-hint span {
+  display: block;
+  margin-right: 16px;
 }
 
 .empty-canvas {
