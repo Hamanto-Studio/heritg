@@ -1,9 +1,19 @@
-import { Globe2, Languages, ShieldCheck } from "lucide-react";
+import {
+  Cloud,
+  CloudOff,
+  Crown,
+  Globe2,
+  Languages,
+  RefreshCw,
+  ShieldCheck
+} from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AccountSettings } from "./AccountSettings";
 import type { MessageKey, Translator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { passwordRequirements } from "./passwordPolicy";
+import type { FamilyContextValue, SyncPhase } from "./familyTypes";
+import { unavailableFamilyContext } from "./familyTypes";
 import type { AppActions } from "./store";
 import type { AppData, RelationshipLanguage } from "./types";
 import { ButtonLoader, SidePanel } from "./ui";
@@ -13,6 +23,7 @@ interface SettingsDialogProps {
   actions: AppActions;
   t: Translator;
   onClose: () => void;
+  family?: FamilyContextValue;
 }
 
 const relationshipLanguageOptions: ReadonlyArray<readonly [RelationshipLanguage, MessageKey]> = [
@@ -42,12 +53,29 @@ export function SettingsDialog({
   data,
   actions,
   t,
-  onClose
+  onClose,
+  family = unavailableFamilyContext
 }: SettingsDialogProps) {
   const [pendingLanguage, setPendingLanguage] = useState<AppData["language"]>();
   const [isPending, startTransition] = useTransition();
   const changingLanguage = useRef(false);
   const relationshipLanguage = relationshipLanguageForData(data);
+
+  const syncStatusKey = (phase: SyncPhase) => {
+    switch (phase) {
+      case "disabled": return "syncDisabled" as const;
+      case "upToDate": return "syncUpToDate" as const;
+      case "offline": return "syncOffline" as const;
+      case "authenticationRequired": return "signInRequired" as const;
+      case "subscriptionRequired": return "familyRequired" as const;
+      case "readOnly": return "syncReadOnly" as const;
+      case "error": return "syncError" as const;
+      default: return "syncUnavailable" as const;
+    }
+  };
+
+  const activeSubscription = family.subscription.status === "active" ? family.subscription : undefined;
+  const familyActive = Boolean(activeSubscription);
 
   useEffect(() => {
     if (!isPending) changingLanguage.current = false;
@@ -64,7 +92,68 @@ export function SettingsDialog({
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
       <div className="settings-intro">
         <h3>{t("privateSimple")}</h3>
-        <p>{t("privateDescription")}</p>
+        <p>{t(family.sync.enabled ? "privateSyncDescription" : "privateDescription")}</p>
+      </div>
+
+      <div className="settings-group">
+        <h3>{t("subscription")}</h3>
+        <section className={`settings-card family-settings-card ${familyActive ? "active" : ""}`}>
+          <div className="settings-card-header">
+            <Crown aria-hidden="true" size={23} />
+            <div>
+              <div className="settings-title-line">
+                <strong>{t("heritgFamily")}</strong>
+                <span className={`family-badge ${familyActive ? "active" : ""}`}>
+                  {familyActive ? t("familyPlan") : t("freePlan")}
+                </span>
+              </div>
+              <p className="settings-detail">
+                {family.subscription.status === "active"
+                  ? t("familyActiveDetail")
+                  : family.subscription.status === "readOnly" ? t("familyExpiredDetail") : t("familyPlanDetail")}
+              </p>
+            </div>
+          </div>
+          <div className="settings-card-actions">
+            {activeSubscription?.managementUrl ? <button className="button secondary" onClick={family.manageSubscription} type="button">{t("manageSubscription")}</button> : null}
+            {familyActive ? (
+              <button className="button secondary" onClick={() => void family.refreshSubscription()} type="button"><RefreshCw aria-hidden="true" size={16} />{t("refreshSubscription")}</button>
+            ) : (
+              <button className="button primary" onClick={family.openPaywall} type="button">{family.configured ? t("viewFamilyPlans") : t("previewFamily")}</button>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="settings-group">
+        <h3>{t("automaticSync")}</h3>
+        <section className="settings-card sync-settings-card">
+          <div className="settings-card-header">
+            {family.sync.phase === "offline" || family.sync.phase === "unavailable" ? <CloudOff aria-hidden="true" size={23} /> : <Cloud aria-hidden="true" size={23} />}
+            <div>
+              <div className="settings-title-line">
+                <strong>{t("automaticSync")}</strong>
+                <span className={`sync-status sync-${family.sync.phase}`}>{t(syncStatusKey(family.sync.phase))}</span>
+              </div>
+              <p className="settings-detail">{t("automaticSyncDetail")}</p>
+            </div>
+          </div>
+          {familyActive && family.sync.phase !== "unavailable" ? (
+            <button
+              aria-pressed={family.sync.enabled}
+              className={`sync-toggle ${family.sync.enabled ? "selected" : ""}`}
+              onClick={() => void family.setSyncEnabled(!family.sync.enabled)}
+              type="button"
+            >
+              <span aria-hidden="true" />
+              {family.sync.enabled ? t("disableSync") : t("enableSync")}
+            </button>
+          ) : !familyActive ? (
+            <button className="button secondary" onClick={family.openPaywall} type="button">{t("unlockWithFamily")}</button>
+          ) : null}
+          {family.sync.pendingChanges > 0 ? <p className="sync-meta" role="status">{t("syncPendingChanges", { count: family.sync.pendingChanges })}</p> : null}
+          {family.sync.error ? <p className="field-error" role="alert">{family.sync.error}</p> : null}
+        </section>
       </div>
 
       <AccountSettings language={data.language} t={t} />

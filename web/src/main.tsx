@@ -16,7 +16,7 @@ import { verifyEmailLogin } from "./accountAuth";
 import { EmailAuthCallback, prepareEmailCallback } from "./EmailAuthCallback";
 import { createTranslator } from "./i18n";
 import { SharedTreeApp } from "./SharedTreeApp";
-import { ProProvider } from "./ProProvider";
+import { FamilyProvider } from "./FamilyProvider";
 import { AppProvider } from "./store";
 import { applyUiLanguage } from "./uiLanguage";
 
@@ -38,9 +38,9 @@ function Application() {
   return (
     <AppProvider>
       {isSharedRoute ? <SharedTreeApp /> : (
-        <ProProvider>
+        <FamilyProvider>
           <App initialPanel={callbackDestination === "settings" ? "settings" : undefined} />
-        </ProProvider>
+        </FamilyProvider>
       )}
     </AppProvider>
   );

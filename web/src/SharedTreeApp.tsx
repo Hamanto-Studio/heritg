@@ -181,8 +181,10 @@ export function SharedTreeApp() {
     );
   }
 
-  const expiry = new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", { dateStyle: "medium" })
-    .format(new Date(loaded.expiresAt));
+  const expiry = loaded.expiresAt
+    ? new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", { dateStyle: "medium" })
+      .format(new Date(loaded.expiresAt))
+    : undefined;
 
   return (
     <div className="shared-app-shell">
@@ -235,7 +237,7 @@ export function SharedTreeApp() {
           <strong>{t("sharedReadOnly")}</strong>
           <span>{t("sharedReadOnlyDetail")}</span>
           <span>{t("sharedCopyDetail")}</span>
-          <small>{t("sharedExpires", { date: expiry })}</small>
+          <small>{expiry ? t("sharedExpires", { date: expiry }) : t("shareWhileFamilyActive")}</small>
           {saveError ? <small className="danger-text" role="alert">{saveError}</small> : null}
         </aside>
 

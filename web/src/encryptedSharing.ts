@@ -28,6 +28,7 @@ type Fetch = typeof fetch;
 
 export type SharePhase = "exporting" | "allocating" | "encrypting" | "uploading" | "activating";
 export type ShareDataSelection = ExportPrivacySelection;
+export type FamilyShareRetention = "365_days" | "1095_days" | "while_family_active";
 export const DEFAULT_SHARE_DATA_SELECTION = DEFAULT_EXPORT_PRIVACY_SELECTION;
 
 export class SharePasswordRequiredError extends Error {
@@ -47,6 +48,8 @@ export class ShareDecryptionError extends Error {
 export interface CreateShareOptions {
   password: string;
   expiryDays?: number;
+  familyRetention?: FamilyShareRetention;
+  csrfToken?: string;
   fetchImpl?: Fetch;
   origin?: string;
   onProgress?: (phase: SharePhase) => void;
@@ -58,13 +61,13 @@ export interface CreatedShare {
   shareId: string;
   deletionToken: string;
   url: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
 export interface LoadedShare {
   data: AppData;
   shareId: string;
-  expiresAt: string;
+  expiresAt: string | null;
   sharedView?: SharedViewPolicy;
 }
 
@@ -73,14 +76,14 @@ interface Allocation {
   deletionToken: string;
   uploadUrl: string;
   requiredHeaders: Record<string, string>;
-  shareExpiresAt: string;
+  shareExpiresAt: string | null;
 }
 
 interface DownloadGrant {
   downloadUrl: string;
   envelopeVersion: string;
   ciphertextBytes: number;
-  shareExpiresAt: string;
+  shareExpiresAt: string | null;
 }
 
 const authenticatedPasswordData = (shareId: string) => {
@@ -138,7 +141,9 @@ const apiPost = async (
   body: Record<string, unknown>,
   fetchImpl: Fetch,
   signal?: AbortSignal,
-  retryable = true
+  retryable = true,
+  authenticated = false,
+  headers: Record<string, string> = {}
 ): Promise<Record<string, unknown>> => {
   let response: Response | undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -146,10 +151,10 @@ const apiPost = async (
     try {
       response = await fetchImpl(path, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...headers },
         body: JSON.stringify(body),
         cache: "no-store",
-        credentials: "omit",
+        credentials: authenticated ? "include" : "omit",
         redirect: "error",
         referrerPolicy: "no-referrer",
         signal
@@ -191,11 +196,16 @@ const stringField = (value: Record<string, unknown>, field: string) => {
   return value[field] as string;
 };
 
+const nullableStringField = (value: Record<string, unknown>, field: string) => {
+  if (value[field] === null) return null;
+  return stringField(value, field);
+};
+
 const allocationFrom = (value: Record<string, unknown>): Allocation => {
   const shareId = stringField(value, "shareId");
   const deletionToken = stringField(value, "deletionToken");
   const uploadUrl = stringField(value, "uploadUrl");
-  const shareExpiresAt = stringField(value, "shareExpiresAt");
+  const shareExpiresAt = nullableStringField(value, "shareExpiresAt");
   if (!SHARE_ID_PATTERN.test(shareId) || !TOKEN_PATTERN.test(deletionToken)) {
     throw new Error("The sharing service returned an unreadable response. Please try again.");
   }
@@ -248,9 +258,13 @@ export async function createEncryptedShare(
   if (!sharePasswordMeetsRequirements(password)) {
     throw new Error(`Use a share password with at least ${SHARE_PASSWORD_MIN_LENGTH} characters, including uppercase, lowercase, a number, and a special character.`);
   }
+  const familyRetention = options.familyRetention;
   const expiryDays = options.expiryDays ?? 30;
-  if (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 90) {
+  if (!familyRetention && (!Number.isInteger(expiryDays) || expiryDays < 1 || expiryDays > 90)) {
     throw new Error("Choose an expiry between 1 and 90 days.");
+  }
+  if (familyRetention && !options.csrfToken) {
+    throw new Error("Sign in again before creating a Family link.");
   }
   options.onProgress?.("exporting");
   const prepared = prepareEncryptedShareData(
@@ -270,11 +284,15 @@ export async function createEncryptedShare(
   }
 
   options.onProgress?.("allocating");
-  const allocation = allocationFrom(await apiPost("/api/v1/share-uploads", {
+  const allocation = allocationFrom(await apiPost(familyRetention
+    ? "/api/v1/account/share-uploads"
+    : "/api/v1/share-uploads", {
     envelopeVersion: SHARE_ENVELOPE_VERSION,
     ciphertextBytes,
-    expiryDays
-  }, fetchImpl, options.signal));
+    ...(familyRetention ? { retention: familyRetention } : { expiryDays })
+  }, fetchImpl, options.signal, true, Boolean(familyRetention), familyRetention
+    ? { "x-csrf-token": options.csrfToken! }
+    : {}));
 
   try {
     options.onProgress?.("encrypting");
@@ -347,7 +365,7 @@ export async function loadEncryptedShare(
     downloadUrl: stringField(grantValue, "downloadUrl"),
     envelopeVersion: stringField(grantValue, "envelopeVersion"),
     ciphertextBytes: grantValue.ciphertextBytes as number,
-    shareExpiresAt: stringField(grantValue, "shareExpiresAt")
+    shareExpiresAt: nullableStringField(grantValue, "shareExpiresAt")
   };
   if (grant.envelopeVersion !== SHARE_ENVELOPE_VERSION ||
       !Number.isSafeInteger(grant.ciphertextBytes) ||

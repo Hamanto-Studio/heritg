@@ -595,7 +595,6 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   min-height: 44px;
   padding: 0 14px;
 }
-
 .tree-pane-hint {
   color: var(--brand-deep);
   font-family: var(--font-display);

@@ -32,13 +32,12 @@ import { FamilyPanel } from "./FamilyPanel";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
-import { ProPaywallDialog } from "./ProPaywallDialog";
-import { usePro } from "./ProProvider";
+import { FamilyPaywallDialog } from "./FamilyPaywallDialog";
+import { useFamily } from "./FamilyProvider";
 import { RelativeDialog } from "./RelativeDialog";
 import { ReportBugSheet } from "./ReportBugSheet";
 import { SettingsDialog } from "./SettingsDialog";
 import { SharePanel } from "./SharePanel";
-import { SyncResolutionDialog } from "./SyncResolutionDialog";
 import { HelpPanel } from "./HelpPanel";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import { TreeSidebar } from "./TreeSidebar";
@@ -52,7 +51,7 @@ type RightPanel = "people" | "settings" | "family" | "share" | "help" | "privacy
 
 export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const store = useAppStore();
-  const pro = usePro();
+  const family = useFamily();
   const { data, actions } = store;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [rightPanel, setRightPanel] = useState<RightPanel | undefined>(initialPanel);
@@ -312,11 +311,19 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               {controlsVisible ? <div className="workspace-tools">
-                {pro.subscription.status === "active" && pro.sync.enabled ? <button
-                  aria-label={`${t("automaticSync")}: ${t(pro.sync.phase === "upToDate" ? "syncUpToDate" : pro.sync.phase === "offline" ? "syncOffline" : pro.sync.phase === "error" || pro.sync.phase === "conflict" ? "syncAttention" : "syncing")}`}
-                  className={`icon-button sync-workspace-button sync-${pro.sync.phase}`}
-                  onClick={() => { setGenerationOpen(false); setRightPanel("family"); }} type="button"
-                >{pro.sync.phase === "offline" || pro.sync.phase === "error" ? <CloudOff aria-hidden="true" size={19} /> : <Cloud aria-hidden="true" size={19} />}</button> : null}
+                {family.subscription.status === "active" && family.sync.enabled ? (
+                  <button
+                    aria-label={`${t("automaticSync")}: ${t(family.sync.phase === "upToDate" ? "syncUpToDate" : family.sync.phase === "offline" ? "syncOffline" : family.sync.phase === "error" ? "syncAttention" : "syncing")}`}
+                    className={`icon-button sync-workspace-button sync-${family.sync.phase}`}
+                    onClick={() => {
+                      setGenerationOpen(false);
+                      setRightPanel("settings");
+                    }}
+                    type="button"
+                  >
+                    {family.sync.phase === "offline" || family.sync.phase === "error" ? <CloudOff aria-hidden="true" size={19} /> : <Cloud aria-hidden="true" size={19} />}
+                  </button>
+                ) : null}
                 <button className="button secondary workspace-family-button" onClick={() => { setGenerationOpen(false); setRightPanel("family"); }} type="button"><UsersRound aria-hidden="true" size={17} /><span>{t("heritgFamily")}</span></button>
                 {__SHARING_ENABLED__ ? (
                   <button
@@ -551,21 +558,21 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         />
       ) : null}
 
-      {rightPanel === "settings" && pro.sync.phase !== "conflict" ? (
+      {rightPanel === "settings" ? (
         <SettingsDialog
           actions={actions}
           data={data}
           onClose={() => setRightPanel(undefined)}
+          family={family}
           t={t}
         />
       ) : null}
 
-      {rightPanel === "family" && pro.sync.phase !== "conflict" ? (
-        <FamilyPanel onClose={() => setRightPanel(undefined)} pro={pro} t={t} />
+      {rightPanel === "family" ? (
+        <FamilyPanel family={family} onClose={() => setRightPanel(undefined)} t={t} />
       ) : null}
 
-      {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} /> : null}
-      {pro.sync.phase === "conflict" ? <SyncResolutionDialog pro={pro} t={t} /> : null}
+      {family.paywallOpen ? <FamilyPaywallDialog family={family} t={t} /> : null}
 
       {activeTree && rightPanel === "share" ? (
         <SharePanel
@@ -591,7 +598,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       ) : null}
 
       {rightPanel === "privacy" ? (
-        <PrivacyPanel onClose={() => setRightPanel(undefined)} syncEnabled={pro.sync.enabled} t={t} />
+        <PrivacyPanel onClose={() => setRightPanel(undefined)} syncEnabled={family.sync.enabled} t={t} />
       ) : null}
 
       {rightPanel === "report" ? (

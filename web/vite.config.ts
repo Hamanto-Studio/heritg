@@ -13,7 +13,7 @@ const useExcalidrawFallback = buildEnvironment?.HERITG_CANVAS_RENDERER === "exca
   buildEnvironment?.VITE_HERITG_CANVAS_RENDERER === "excalidraw";
 const debugContextEnabled = buildEnvironment?.HERITG_DEBUG_CONTEXT === "1";
 const revenueCatPublicApiKey = buildEnvironment?.HERITG_REVENUECAT_PUBLIC_API_KEY ?? "";
-const proEnabled = buildEnvironment?.HERITG_PRO_ENABLED === "true";
+const familyEnabled = buildEnvironment?.HERITG_FAMILY_ENABLED === "true";
 const deploymentEnvironment = buildEnvironment?.HERITG_DEPLOYMENT_ENV === "staging"
   ? "staging"
   : "production";
@@ -96,7 +96,8 @@ export default defineConfig({
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
     __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment),
     __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? ""),
-    __PRO_ENABLED__: JSON.stringify(proEnabled),
+    __FAMILY_ENABLED__: JSON.stringify(familyEnabled),
+    __PRO_ENABLED__: JSON.stringify(familyEnabled),
     __REVENUECAT_PUBLIC_API_KEY__: JSON.stringify(revenueCatPublicApiKey)
   },
   plugins: [
