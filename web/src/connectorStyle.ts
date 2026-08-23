@@ -1,4 +1,5 @@
 import {
+  CHILD_RAIL_CLEARANCE,
   ROUTE_EPSILON,
   pointOnSegment,
   pointsEqual,
@@ -198,6 +199,14 @@ export const crossingBridgePath = (
 const distance = (left: RoutePoint, right: RoutePoint) =>
   Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
 
+const isShortTerminalCorner = (
+  points: readonly RoutePoint[],
+  index: number
+) => (index === 1 &&
+    distance(points[0], points[1]) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON) ||
+  (index === points.length - 2 &&
+    distance(points.at(-2)!, points.at(-1)!) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON);
+
 const pointToward = (from: RoutePoint, to: RoutePoint, amount: number): RoutePoint => ({
   x: from.x + Math.sign(to.x - from.x) * Math.min(amount, Math.abs(to.x - from.x)),
   y: from.y + Math.sign(to.y - from.y) * Math.min(amount, Math.abs(to.y - from.y))
@@ -233,7 +242,7 @@ export const roundedConnectorPoints = (
     const current = points[index];
     const next = points[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner) {
+    if (!isCorner || isShortTerminalCorner(points, index)) {
       result.push(current);
       continue;
     }
@@ -265,7 +274,7 @@ export const roundedConnectorPath = (
     const current = translated[index];
     const next = translated[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner) {
+    if (!isCorner || isShortTerminalCorner(translated, index)) {
       commands.push(`L ${pathNumber(current.x)} ${pathNumber(current.y)}`);
       continue;
     }
