@@ -60,15 +60,13 @@ describe("modern connector rendering", () => {
     expect(svgPath).toBe("M 0 0 L 0 48 Q 0 60 12 60 L 80 60");
   });
 
-  it("rounds short terminal child stems without moving their endpoints", () => {
+  it("keeps short terminal child stems square without moving their endpoints", () => {
     const points = [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 40 }];
 
     expect(roundedConnectorPoints(points)[0]).toEqual(points[0]);
     expect(roundedConnectorPoints(points).at(-1)).toEqual(points.at(-1));
-    expect(roundedConnectorPath(points)).toBe("M 0 0 L 68 0 Q 80 0 80 12 L 80 40");
-    expect(roundedConnectorPath([...points].reverse())).toBe(
-      "M 80 40 L 80 12 Q 80 0 68 0 L 0 0"
-    );
+    expect(roundedConnectorPath(points)).toBe("M 0 0 L 80 0 L 80 40");
+    expect(roundedConnectorPath([...points].reverse())).toBe("M 80 40 L 80 0 L 0 0");
   });
 
   it("renders unrelated line crossings as an intentional curved bridge", () => {

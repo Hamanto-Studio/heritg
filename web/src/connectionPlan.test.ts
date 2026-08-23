@@ -546,7 +546,7 @@ describe("family connection planning", () => {
       .flatMap((match) => match[1].split(","));
     expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
     expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
-    expect(chart.svg).toContain('d="M 151 172 L 151 176 Q 151 180 155 180 L 281 180"');
+    expect(chart.svg).toContain('d="M 151 172 L 151 180 L 281 180"');
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });
