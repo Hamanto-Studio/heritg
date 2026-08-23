@@ -2,7 +2,7 @@
 
 Status: UI and client boundaries implemented; production service disabled by default.
 
-Heritg Family+ adds account-based encrypted synchronization and collaboration for up to five people. Local editing, import,
+Heritg Family+ adds account-based encrypted synchronization and collaboration for up to 5 people. Local editing, import,
 export, backup, sharing, deletion, and local family-tree access remain free. The
 browser is never an entitlement authority.
 

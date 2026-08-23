@@ -33,6 +33,7 @@ describe("bug report diagnostics", () => {
     const message = createBugReportMessage({
       appLanguage: "en",
       appVersion: "1.3.4 (193)",
+      buildVersion: "abc1234-202608231530",
       peopleCount: 44,
       relationshipCount: 73,
       generatedAt: "2026-08-18T12:00:00.000Z"
@@ -40,6 +41,7 @@ describe("bug report diagnostics", () => {
 
     expect(message).toContain("App: Heritg Web");
     expect(message).toContain("App Version: 1.3.4 (193)");
+    expect(message).toContain("Build Version: abc1234-202608231530");
     expect(message).toContain("Subscription Level: Free (local-only Web)");
     expect(message).toContain("Locale: en-ID (App: English)");
     expect(message).toContain("Installation: Installed PWA");

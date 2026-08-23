@@ -13,6 +13,9 @@ const useExcalidrawFallback = buildEnvironment?.HERITG_CANVAS_RENDERER === "exca
   buildEnvironment?.VITE_HERITG_CANVAS_RENDERER === "excalidraw";
 const debugContextEnabled = buildEnvironment?.HERITG_DEBUG_CONTEXT === "1";
 const familyBillingEnabled = buildEnvironment?.HERITG_FAMILY_BILLING_ENABLED === "true";
+const buildTimestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 12);
+const buildCommit = buildEnvironment?.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+const buildVersion = buildEnvironment?.HERITG_BUILD_VERSION ?? [buildCommit, buildTimestamp].filter(Boolean).join("-");
 const deploymentEnvironment = buildEnvironment?.HERITG_DEPLOYMENT_ENV === "staging"
   ? "staging"
   : "production";
@@ -90,6 +93,7 @@ export default defineConfig({
   base: "/",
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
+    __BUILD_VERSION__: JSON.stringify(buildVersion),
     __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false"),
     __EXCALIDRAW_FALLBACK__: JSON.stringify(useExcalidrawFallback),
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
