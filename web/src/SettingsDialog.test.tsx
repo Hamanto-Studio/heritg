@@ -9,8 +9,6 @@ import {
 } from "./SettingsDialog";
 import { createInitialAppData } from "./domain";
 import { createTranslator } from "./i18n";
-import type { ProContextValue } from "./proTypes";
-import { unavailableProContext } from "./proTypes";
 import type { AppActions } from "./store";
 
 describe("encrypted backup password validation", () => {
@@ -81,53 +79,20 @@ describe("relationship terminology settings", () => {
   });
 });
 
-describe("Family+ settings", () => {
-  const renderSettings = (pro: ProContextValue) => renderToStaticMarkup(
-    <SettingsDialog
-      actions={{} as AppActions}
-      data={createInitialAppData("en")}
-      onClose={() => undefined}
-      pro={pro}
-      t={createTranslator("en")}
-    />
-  );
+describe("Settings content", () => {
+  it("does not duplicate Family+ or introductory content", () => {
+    const markup = renderToStaticMarkup(
+      <SettingsDialog
+        actions={{} as AppActions}
+        data={createInitialAppData("en")}
+        onClose={() => undefined}
+        t={createTranslator("en")}
+      />
+    );
 
-  it("shows authoritative active access and synchronization state", () => {
-    const markup = renderSettings({
-      ...unavailableProContext,
-      configured: true,
-      account: { status: "signedIn", user: { id: "A".repeat(22), name: null, email: null, expiresAt: "2027-08-23T00:00:00Z" } },
-      subscription: { status: "active", expiresAt: "2028-08-23T00:00:00Z" },
-      sync: { enabled: true, phase: "upToDate", pendingChanges: 0 }
-    });
-
-    expect(markup).toContain("Heritg Family+");
-    expect(markup).toContain("Active");
-    expect(markup).toContain("Refresh access");
-    expect(markup).toContain("Up to date");
-    expect(markup).toContain("Disable synchronization");
-    expect(markup).toContain("synchronizes an encrypted hosted copy");
-  });
-
-  it("keeps cloud downloads available during read-only grace", () => {
-    const markup = renderSettings({
-      ...unavailableProContext,
-      configured: true,
-      subscription: { status: "expired", expiredAt: "2028-11-21T00:00:00Z" },
-      sync: { enabled: false, phase: "disabled", pendingChanges: 0 }
-    });
-
-    expect(markup).toContain("Cloud changes remain downloadable");
-    expect(markup).toContain("Read-only grace");
-    expect(markup).toContain("Enable synchronization");
-  });
-
-  it("uses one Family+ card and describes inactive access explicitly", () => {
-    const markup = renderSettings(unavailableProContext);
-
-    expect(markup).toContain("Not activated");
-    expect(markup).toContain("Preview Family+");
-    expect(markup.match(/Preview Family\+/gu)).toHaveLength(1);
-    expect(markup).not.toContain(">Free<");
+    expect(markup).not.toContain("Private family trees, kept simple");
+    expect(markup).not.toContain("Family+ access");
+    expect(markup).not.toContain("Heritg Family+");
+    expect(markup).not.toContain("Automatic synchronization");
   });
 });

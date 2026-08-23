@@ -983,19 +983,6 @@
   margin-top: 3px;
 }
 
-.settings-intro {
-  margin-bottom: 20px;
-}
-
-.settings-intro h3 {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  margin-bottom: 7px;
-}
-
-.settings-intro p,
 .settings-detail {
   color: var(--subtle);
   font-size: 0.86rem;

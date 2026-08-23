@@ -563,7 +563,6 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
           actions={actions}
           data={data}
           onClose={() => setRightPanel(undefined)}
-          pro={pro}
           t={t}
         />
       ) : null}

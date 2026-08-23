@@ -26,7 +26,9 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("24 months of Family+");
     expect(markup).toContain("Equivalent to");
     expect(markup).toContain("One-time payment");
-    expect(markup).toContain("Every change, ready on every device");
+    expect(markup).toContain("Automatic synchronization");
+    expect(markup).toContain("Keep an encrypted hosted copy current across devices signed in to this account.");
+    expect(markup).not.toContain("Every change, ready on every device");
     expect(markup).toContain("Invite up to 5 people");
     expect(markup).toContain("Encrypted and still yours");
     expect(markup).toContain("Heritg Family+");
