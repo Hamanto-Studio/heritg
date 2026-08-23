@@ -28,7 +28,7 @@ import {
 import { availableGenerationLevels } from "./layout";
 import { createTranslator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
-import { FamilyPanel } from "./FamilyPanel";
+import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
@@ -48,7 +48,7 @@ import { ErrorNotice, LoadingScreen, Modal } from "./ui";
 import { saveUiLanguage } from "./uiLanguage";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
-type RightPanel = "people" | "settings" | "family" | "share" | "help" | "privacy" | "report";
+type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report";
 
 export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const store = useAppStore();
@@ -184,6 +184,12 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     setGenerationOpen(false);
   };
 
+  const openFamilyPlus = () => {
+    setGenerationOpen(false);
+    setRightPanel(undefined);
+    pro.openPaywall();
+  };
+
   const emptyWelcome = !people.length ? (
     <section className="welcome-canvas" aria-labelledby="welcome-title">
       <div className="welcome-brand">
@@ -222,7 +228,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         onError={setOperationError}
         onImported={() => setToast(t("imported"))}
         onShowHelp={() => setRightPanel("help")}
-        onShowFamily={() => setRightPanel("family")}
+        onShowFamily={openFamilyPlus}
         onShowPrivacy={() => setRightPanel("privacy")}
         onReportBug={() => setRightPanel("report")}
         open={sidebarOpen}
@@ -243,7 +249,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         </button> : null}
 
         {controlsVisible && !activeTree ? <div className="empty-workspace-tools">
-          <button className="button secondary workspace-family-button" onClick={() => setRightPanel("family")} type="button"><UsersRound aria-hidden="true" size={17} /><span>{t("heritgFamily")}</span></button>
+          <button aria-label={t("heritgFamily")} className="button secondary workspace-family-button" onClick={openFamilyPlus} type="button"><FamilyPlusMark size={20} /><FamilyPlusWordmark /></button>
           <button aria-label={t("settings")} className="icon-button" onClick={() => setRightPanel("settings")} type="button"><Settings2 aria-hidden="true" size={19} /></button>
         </div> : null}
 
@@ -315,9 +321,9 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                 {pro.subscription.status === "active" && pro.sync.enabled ? <button
                   aria-label={`${t("automaticSync")}: ${t(pro.sync.phase === "upToDate" ? "syncUpToDate" : pro.sync.phase === "offline" ? "syncOffline" : pro.sync.phase === "error" || pro.sync.phase === "conflict" ? "syncAttention" : "syncing")}`}
                   className={`icon-button sync-workspace-button sync-${pro.sync.phase}`}
-                  onClick={() => { setGenerationOpen(false); setRightPanel("family"); }} type="button"
-                >{pro.sync.phase === "offline" || pro.sync.phase === "error" ? <CloudOff aria-hidden="true" size={19} /> : <Cloud aria-hidden="true" size={19} />}</button> : null}
-                <button className="button secondary workspace-family-button" onClick={() => { setGenerationOpen(false); setRightPanel("family"); }} type="button"><UsersRound aria-hidden="true" size={17} /><span>{t("heritgFamily")}</span></button>
+                   onClick={() => { setGenerationOpen(false); setRightPanel("settings"); }} type="button"
+                 >{pro.sync.phase === "offline" || pro.sync.phase === "error" ? <CloudOff aria-hidden="true" size={19} /> : <Cloud aria-hidden="true" size={19} />}</button> : null}
+                 <button aria-label={t("heritgFamily")} className="button secondary workspace-family-button" onClick={openFamilyPlus} type="button"><FamilyPlusMark size={20} /><FamilyPlusWordmark /></button>
                 {__SHARING_ENABLED__ ? (
                   <button
                     aria-label={t("shareTree")}
@@ -558,10 +564,6 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
           onClose={() => setRightPanel(undefined)}
           t={t}
         />
-      ) : null}
-
-      {rightPanel === "family" && pro.sync.phase !== "conflict" ? (
-        <FamilyPanel onClose={() => setRightPanel(undefined)} pro={pro} t={t} />
       ) : null}
 
       {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} /> : null}

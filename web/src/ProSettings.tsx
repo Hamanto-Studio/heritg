@@ -1,4 +1,5 @@
-import { Cloud, CloudOff, Crown, RefreshCw } from "lucide-react";
+import { Cloud, CloudOff, RefreshCw } from "lucide-react";
+import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import type { Translator } from "./i18n";
 import type { ProContextValue, SyncPhase } from "./proTypes";
 import { ButtonLoader, ErrorNotice } from "./ui";
@@ -27,8 +28,8 @@ export function ProSettings({ pro, t, onOpenPaywall }: { pro: ProContextValue; t
     <div className="settings-group">
       <h3>{t("subscription")}</h3>
       <section className={`settings-card pro-settings-card ${active ? "active" : ""}`}>
-        <div className="settings-card-header"><Crown aria-hidden="true" size={23} /><div>
-          <div className="settings-title-line"><strong>{t("heritgPro")}</strong><span className={`pro-badge ${active ? "active" : ""}`}>{active ? t("proPlan") : t("freePlan")}</span></div>
+        <div className="settings-card-header"><FamilyPlusMark size={25} /><div>
+          <div className="settings-title-line"><strong><FamilyPlusWordmark /></strong><span className={`pro-badge ${active ? "active" : ""}`}>{active ? t("proPlan") : t("freePlan")}</span></div>
           <p className="settings-detail">{active ? active.willRenew ? t("proActiveDetail") : t("proCanceledDetail") : pro.subscription.status === "expired" ? t("proExpiredDetail") : t("proPlanDetail")}</p>
         </div></div>
         <div className="settings-card-actions">

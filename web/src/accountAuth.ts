@@ -5,6 +5,8 @@ const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const EMAIL_LOCAL_PATTERN = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/u;
 const EMAIL_DOMAIN_LABEL_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
+const SESSION_CHANGE_EVENT = "heritg:account-session-changed";
+const SESSION_CHANGE_STORAGE_KEY = "heritg:account-session-change";
 const ERROR_CODES = new Set([
   "invalid_request",
   "unauthenticated",
@@ -286,6 +288,27 @@ export const readCsrfCookie = (cookie = document.cookie): string | undefined => 
     }
   }
   return undefined;
+};
+
+export const notifyAccountSessionChanged = (): void => {
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
+  try {
+    window.localStorage.setItem(SESSION_CHANGE_STORAGE_KEY, `${Date.now()}:${Math.random()}`);
+  } catch {
+    // The same-tab event still keeps this window consistent when storage is unavailable.
+  }
+};
+
+export const subscribeToAccountSessionChanges = (listener: () => void): (() => void) => {
+  const storageChanged = (event: StorageEvent) => {
+    if (event.key === SESSION_CHANGE_STORAGE_KEY) listener();
+  };
+  window.addEventListener(SESSION_CHANGE_EVENT, listener);
+  window.addEventListener("storage", storageChanged);
+  return () => {
+    window.removeEventListener(SESSION_CHANGE_EVENT, listener);
+    window.removeEventListener("storage", storageChanged);
+  };
 };
 
 export const loadGoogleIdentity = (): Promise<GoogleIdentity> => {

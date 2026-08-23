@@ -1,5 +1,7 @@
-import { Check, Cloud, Crown, ShieldCheck } from "lucide-react";
+import { ArrowRight, Laptop, Smartphone } from "lucide-react";
 
+import { FamilyPlusBenefits } from "./FamilyPlusBenefits";
+import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import type { Translator } from "./i18n";
 import type { ProContextValue } from "./proTypes";
 import { SidePanel } from "./ui";
@@ -22,17 +24,29 @@ export function FamilyPanel({
 
       <section className="settings-card family-plan-overview">
         <div className="settings-card-header">
-          <Crown aria-hidden="true" size={23} />
+          <FamilyPlusMark size={25} />
           <div>
-            <strong>{t("heritgPro")}</strong>
+            <strong><FamilyPlusWordmark /></strong>
             <p className="settings-detail">{t("proPlanDetail")}</p>
           </div>
         </div>
-        <ul className="pro-benefits family-plan-benefits">
-          <li><Cloud aria-hidden="true" size={18} /><span><strong>{t("proBenefitSync")}</strong>{t("proBenefitSyncDetail")}</span></li>
-          <li><ShieldCheck aria-hidden="true" size={18} /><span><strong>{t("proBenefitBackup")}</strong>{t("proBenefitBackupDetail")}</span></li>
-          <li><Check aria-hidden="true" size={18} /><span><strong>{t("proBenefitLocal")}</strong>{t("proBenefitLocalDetail")}</span></li>
-        </ul>
+
+        <div className="family-plan-comparison">
+          <div className="family-plan-state current">
+            <span>{t("withoutFamilyPlus")}</span>
+            <Smartphone aria-hidden="true" size={22} />
+            <strong>{t("thisDeviceOnly")}</strong>
+          </div>
+          <ArrowRight aria-hidden="true" className="family-plan-state-arrow" size={18} />
+          <div className="family-plan-state connected">
+            <span>{t("withFamilyPlus")}</span>
+            <Laptop aria-hidden="true" size={22} />
+            <strong>{t("connectedDevices")}</strong>
+          </div>
+        </div>
+
+        <FamilyPlusBenefits t={t} />
+
         <button
           className="button primary family-plan-cta"
           onClick={() => {

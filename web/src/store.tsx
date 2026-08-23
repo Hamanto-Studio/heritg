@@ -7,7 +7,7 @@ import {
   type ReactNode
 } from "react";
 
-import { loadAppData, saveAppData } from "./db";
+import { ACCOUNT_SYNC_LOCK_NAME, loadAppData, saveAppData, saveSyncedState, type SyncMapping } from "./db";
 import { publishActiveFamilyDebugContext } from "./debugContext";
 import {
   addRelationship as addRelationshipToData,
@@ -92,6 +92,10 @@ export interface AppActions {
   setViewport(treeId: string, viewport: ViewportState): void;
   replaceData(data: unknown): void;
   importData(data: unknown): void;
+  replaceDataPersisted(data: unknown, expectedDataFingerprint: string): Promise<boolean>;
+  applySyncedData(data: unknown, expectedDataFingerprint: string, accountId: string, mappings: readonly SyncMapping[]): Promise<boolean>;
+  prepareSyncData(): Promise<{ data: AppData; currentDataFingerprint: string }>;
+  flushLocalSaves(): Promise<void>;
 }
 
 export interface AppStoreValue extends AppActions {
@@ -107,6 +111,13 @@ const AppStoreContext = createContext<AppStoreValue | undefined>(undefined);
 
 const asError = (value: unknown) =>
   value instanceof Error ? value : new Error("Unable to access local family data.");
+
+export const syncTreeVersion = (data: AppData): string => data.trees
+  .map((tree) => `${tree.id}:${tree.updatedAt}`)
+  .sort()
+  .join("|");
+
+export const syncDataFingerprint = (data: AppData): string => JSON.stringify(data);
 
 const validateCoParent = (
   data: AppData,
@@ -151,16 +162,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const dataRef = useRef<AppData | null>(null);
   const mountedRef = useRef(false);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const saveErrorRef = useRef<Error | undefined>(undefined);
+  const persistedFingerprintRef = useRef<string | undefined>(undefined);
+  const queuedFingerprintRef = useRef<string | undefined>(undefined);
   const deferredSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const skipNextAutomaticSaveRef = useRef(false);
+  const skipAutomaticSaveDataRef = useRef<AppData | undefined>(undefined);
 
   const queueSave = (next: AppData) => {
-    saveQueueRef.current = saveQueueRef.current
+    const expectedFingerprint = queuedFingerprintRef.current;
+    const nextFingerprint = syncDataFingerprint(next);
+    queuedFingerprintRef.current = nextFingerprint;
+    const persisted = saveQueueRef.current
       .catch(() => undefined)
-      .then(() => saveAppData(next))
-      .catch((reason: unknown) => {
-        if (mountedRef.current) setError(asError(reason));
+      .then(async () => {
+        const persist = async () => {
+          const stored = await loadAppData();
+          const storedFingerprint = stored ? syncDataFingerprint(stored) : undefined;
+          if (storedFingerprint !== expectedFingerprint && storedFingerprint !== persistedFingerprintRef.current) {
+            throw new Error("Family data changed in another tab. Reload before continuing.");
+          }
+          await saveAppData(next);
+          persistedFingerprintRef.current = nextFingerprint;
+        };
+        if (navigator.locks) await navigator.locks.request(ACCOUNT_SYNC_LOCK_NAME, persist);
+        else await persist();
+        saveErrorRef.current = undefined;
       });
+    saveQueueRef.current = persisted.catch((reason: unknown) => {
+      const nextError = asError(reason);
+      saveErrorRef.current = nextError;
+      if (mountedRef.current) setError(nextError);
+    });
+    return persisted;
   };
 
   useEffect(() => {
@@ -176,6 +210,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then((stored) => {
         if (!active) return;
         const next = stored ? replaceAppData(stored) : createInitialAppData();
+        persistedFingerprintRef.current = stored ? syncDataFingerprint(next) : undefined;
+        queuedFingerprintRef.current = persistedFingerprintRef.current;
         dataRef.current = next;
         setData(next);
         setIsLoading(false);
@@ -192,6 +228,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoading || !data) return;
+    if (skipAutomaticSaveDataRef.current) {
+      const skip = skipAutomaticSaveDataRef.current === data;
+      skipAutomaticSaveDataRef.current = undefined;
+      if (skip) return;
+    }
     if (skipNextAutomaticSaveRef.current) {
       skipNextAutomaticSaveRef.current = false;
       return;
@@ -448,6 +489,65 @@ export function AppProvider({ children }: { children: ReactNode }) {
     commit(() => [next, undefined]);
   }
 
+  async function replaceDataPersisted(replacement: unknown, expectedDataFingerprint: string) {
+    const current = dataRef.current;
+    if (!current || syncDataFingerprint(current) !== expectedDataFingerprint) return false;
+    const next = replaceAppData(replacement);
+    skipAutomaticSaveDataRef.current = next;
+    dataRef.current = next;
+    setData(next);
+    try {
+      await queueSave(next);
+    } catch (cause) {
+      if (dataRef.current === next) {
+        dataRef.current = current;
+        setData(current);
+      }
+      throw cause;
+    }
+    return true;
+  }
+
+  async function applySyncedData(replacement: unknown, expectedDataFingerprint: string, accountId: string, mappings: readonly SyncMapping[]) {
+    const current = dataRef.current;
+    if (!current || syncDataFingerprint(current) !== expectedDataFingerprint) return false;
+    const next = replaceAppData(replacement);
+    const previousFingerprint = persistedFingerprintRef.current;
+    const previousQueuedFingerprint = queuedFingerprintRef.current;
+    persistedFingerprintRef.current = syncDataFingerprint(next);
+    queuedFingerprintRef.current = persistedFingerprintRef.current;
+    skipAutomaticSaveDataRef.current = next;
+    dataRef.current = next;
+    setData(next);
+    try {
+      await saveSyncedState(accountId, next, mappings);
+    } catch (cause) {
+      persistedFingerprintRef.current = previousFingerprint;
+      if (dataRef.current === next) {
+        queuedFingerprintRef.current = previousQueuedFingerprint;
+        dataRef.current = current;
+        setData(current);
+      }
+      throw cause;
+    }
+    return true;
+  }
+
+  async function prepareSyncData() {
+    const current = dataRef.current;
+    if (!current) throw new Error("The family data store is not ready.");
+    const stored = await loadAppData();
+    return {
+      data: stored ? replaceAppData(stored) : current,
+      currentDataFingerprint: syncDataFingerprint(dataRef.current ?? current)
+    };
+  }
+
+  async function flushLocalSaves() {
+    await saveQueueRef.current;
+    if (saveErrorRef.current) throw saveErrorRef.current;
+  }
+
   const actions: AppActions = {
     createTree,
     copyFocusedTree,
@@ -467,7 +567,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRelationshipLanguage,
     setViewport,
     replaceData,
-    importData: replaceData
+    importData: replaceData,
+    replaceDataPersisted,
+    applySyncedData,
+    prepareSyncData,
+    flushLocalSaves
   };
   const value: AppStoreValue = {
     data,

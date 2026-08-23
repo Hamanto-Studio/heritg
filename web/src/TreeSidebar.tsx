@@ -10,7 +10,6 @@ import {
   Trash2,
   TreePine,
   Upload,
-  UsersRound,
   X
 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
@@ -21,6 +20,7 @@ import {
   importHeritgArchive
 } from "./heritgArchive";
 import { FocusedTreeCopyDialog } from "./FocusedTreeCopyDialog";
+import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import { PasswordField } from "./PasswordField";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
 import type { AppActions } from "./store";
@@ -290,9 +290,9 @@ export function TreeSidebar({
           </label>
         </div>
         <div className="sidebar-utilities">
-          <button onClick={() => { onShowFamily(); onClose(); }} type="button">
-            <UsersRound aria-hidden="true" size={17} />
-            <span><strong>{t("heritgFamily")}</strong><small>{t("heritgFamilyNavigationDetail")}</small></span>
+          <button className="family-plus-navigation" onClick={() => { onShowFamily(); onClose(); }} type="button">
+             <FamilyPlusMark size={20} />
+             <span><strong><FamilyPlusWordmark /></strong><small>{t("heritgFamilyNavigationDetail")}</small></span>
           </button>
           <button onClick={() => { onShowPrivacy(); onClose(); }} type="button">
             <ShieldCheck aria-hidden="true" size={17} />

@@ -2,10 +2,15 @@ import { act, createElement, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const dbMocks = vi.hoisted(() => ({
-  loadAppData: vi.fn(),
-  saveAppData: vi.fn()
-}));
+const dbMocks = vi.hoisted(() => {
+  const state: { data?: unknown } = {};
+  return {
+    state,
+    loadAppData: vi.fn(async () => state.data),
+    saveAppData: vi.fn(async (data: unknown) => { state.data = data; }),
+    saveSyncedState: vi.fn(async (_accountId: string, data: unknown) => { state.data = data; })
+  };
+});
 
 vi.mock("./db", () => dbMocks);
 
@@ -16,6 +21,7 @@ import {
 } from "./domain";
 import {
   AppProvider,
+  syncDataFingerprint,
   useAppStore,
   type AppActions
 } from "./store";
@@ -84,8 +90,10 @@ const currentData = () => {
 beforeEach(async () => {
   actions = undefined;
   renderedData = null;
-  dbMocks.loadAppData.mockResolvedValueOnce(family());
-  dbMocks.saveAppData.mockResolvedValue(undefined);
+  dbMocks.state.data = family();
+  dbMocks.loadAppData.mockImplementation(async () => dbMocks.state.data);
+  dbMocks.saveAppData.mockImplementation(async (data: unknown) => { dbMocks.state.data = data; });
+  dbMocks.saveSyncedState.mockImplementation(async (_accountId: string, data: unknown) => { dbMocks.state.data = data; });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -106,6 +114,21 @@ afterEach(async () => {
 });
 
 describe("atomic relationship store actions", () => {
+  it("rolls back a synchronized replacement when atomic persistence fails", async () => {
+    const before = currentData();
+    const replacement: AppData = {
+      ...before,
+      trees: before.trees.map((tree) => tree.id === "tree-a" ? { ...tree, title: "Cloud family", updatedAt: "2026-02-01T00:00:00.000Z" } : tree)
+    };
+    dbMocks.saveSyncedState.mockRejectedValueOnce(new Error("storage failed"));
+
+    await act(async () => {
+      await expect(currentActions().applySyncedData(replacement, syncDataFingerprint(before), "a".repeat(22), [])).rejects.toThrow("storage failed");
+    });
+
+    expect(currentData()).toBe(before);
+  });
+
   it("publishes and persists a complete focused family copy atomically", async () => {
     dbMocks.saveAppData.mockClear();
     let copiedTreeId = "";
@@ -175,7 +198,7 @@ describe("atomic relationship store actions", () => {
     });
 
     await vi.waitFor(() => {
-      const saved = dbMocks.saveAppData.mock.calls.at(-1)?.[0];
+      const saved = dbMocks.saveAppData.mock.calls.at(-1)?.[0] as AppData | undefined;
       expect(saved?.trees[0].title).toBe("Renamed tree");
       expect(saved?.viewports["tree-a"]).toEqual({ scrollX: 30, scrollY: 40, zoom: 2 });
     });
