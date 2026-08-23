@@ -3,16 +3,23 @@ import type {
   FamilyRelationship,
   Gender,
   Person,
+  RelationshipLanguage,
   RelationshipSubtype,
   RelationshipTerminology
 } from "./types";
 
-export type KinshipLanguage = AppData["language"] | Exclude<RelationshipTerminology, "id">;
+export type KinshipLanguage = RelationshipLanguage;
 
 export const effectiveKinshipLanguage = (
   language: AppData["language"],
   terminology: RelationshipTerminology = "id"
 ): KinshipLanguage => language === "en" ? "en" : terminology;
+
+export const relationshipLanguageForData = (data: AppData): RelationshipLanguage =>
+  data.relationshipLanguage ?? effectiveKinshipLanguage(
+    data.language,
+    data.relationshipTerminology
+  );
 
 const ancestrySubtypes = new Set<RelationshipSubtype>([
   "biologicalParent",

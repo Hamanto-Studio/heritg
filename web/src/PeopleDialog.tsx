@@ -1,14 +1,14 @@
 import { ArrowRight, Search, UsersRound } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
-import { deriveKinshipLabels, effectiveKinshipLanguage } from "./kinship";
+import { deriveKinshipLabels } from "./kinship";
 import type { Translator } from "./i18n";
 import { personLifeSummary } from "./lifeSummary";
 import type {
   AppData,
   FamilyRelationship,
   Person,
-  RelationshipTerminology
+  RelationshipLanguage
 } from "./types";
 import { PersonAvatar, SidePanel } from "./ui";
 
@@ -17,7 +17,7 @@ interface PeopleDialogProps {
   relationships: FamilyRelationship[];
   selectedPersonId?: string;
   language: AppData["language"];
-  relationshipTerminology?: RelationshipTerminology;
+  relationshipLanguage?: RelationshipLanguage;
   t: Translator;
   onClose: () => void;
   onSelect: (personId: string) => void;
@@ -28,7 +28,7 @@ export function PeopleDialog({
   relationships,
   selectedPersonId,
   language,
-  relationshipTerminology = "id",
+  relationshipLanguage = "id",
   t,
   onClose,
   onSelect
@@ -41,10 +41,10 @@ export function PeopleDialog({
           selectedPersonId,
           people,
           relationships,
-          effectiveKinshipLanguage(language, relationshipTerminology)
+          relationshipLanguage
         )
       : {},
-    [language, people, relationshipTerminology, relationships, selectedPersonId]
+    [people, relationshipLanguage, relationships, selectedPersonId]
   );
   const filtered = [...people]
     .sort((left, right) => left.displayName.localeCompare(right.displayName))

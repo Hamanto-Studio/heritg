@@ -13,8 +13,9 @@ import {
   renameTree,
   replaceAppData,
   selectPerson,
+  setLanguage,
+  setRelationshipLanguage,
   setViewport,
-  setRelationshipTerminology,
   updatePerson
 } from "./domain";
 import {
@@ -65,16 +66,22 @@ describe("initial app data", () => {
     expect(english.people).toEqual([]);
     expect(english.relationships).toEqual([]);
     expect(indonesian.trees[0].title).toBe("Silsilah Keluarga Saya");
+    expect(english.relationshipLanguage).toBe("en");
+    expect(indonesian.relationshipLanguage).toBe("id");
     expect(indonesian.relationshipTerminology).toBe("id");
   });
 
-  it("stores a regional relationship terminology independently of interface language", () => {
+  it("stores relationship language independently of interface language", () => {
     const source = initial();
-    const updated = setRelationshipTerminology(source, "jv-yogyakarta");
+    const updated = setLanguage(
+      setRelationshipLanguage(source, "jv-yogyakarta"),
+      "id"
+    );
 
-    expect(updated.language).toBe("en");
+    expect(updated.language).toBe("id");
+    expect(updated.relationshipLanguage).toBe("jv-yogyakarta");
     expect(updated.relationshipTerminology).toBe("jv-yogyakarta");
-    expect(() => setRelationshipTerminology(source, "invalid" as "id"))
+    expect(() => setRelationshipLanguage(source, "invalid" as "en"))
       .toThrowError(DomainError);
   });
 });
@@ -405,10 +412,18 @@ describe("import replacement", () => {
     expect(source.trees[0].title).toBe("My Family Tree");
   });
 
-  it("defaults legacy data to Indonesian relationship terminology", () => {
+  it("migrates legacy data using its previous effective relationship language", () => {
     const legacy = initial();
+    legacy.language = "id";
+    legacy.relationshipTerminology = "jv-yogyakarta";
+    delete legacy.relationshipLanguage;
+
+    expect(replaceAppData(legacy).relationshipLanguage).toBe("jv-yogyakarta");
+
+    legacy.language = "en";
     delete legacy.relationshipTerminology;
 
+    expect(replaceAppData(legacy).relationshipLanguage).toBe("en");
     expect(replaceAppData(legacy).relationshipTerminology).toBe("id");
   });
 
@@ -453,6 +468,11 @@ describe("import replacement", () => {
 
   it("rejects unsupported relationship terminology", () => {
     const invalid = { ...initial(), relationshipTerminology: "jv-unknown" };
+    expect(() => replaceAppData(invalid)).toThrowError(DomainError);
+  });
+
+  it("rejects an unsupported relationship language", () => {
+    const invalid = { ...initial(), relationshipLanguage: "jv-unknown" };
     expect(() => replaceAppData(invalid)).toThrowError(DomainError);
   });
 });
