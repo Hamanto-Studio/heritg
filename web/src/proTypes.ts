@@ -1,6 +1,6 @@
 export type SubscriptionPlan = "two_year" | "five_year";
 
-export interface ProUser { id: string; expiresAt: string }
+export interface ProUser { id: string; name: string | null; email: string | null; expiresAt: string }
 export interface ProOffer {
   plan: SubscriptionPlan;
   price: string;

@@ -24,6 +24,7 @@ const token = "a".repeat(43);
 const state = "b".repeat(43);
 const accountId = "c".repeat(22);
 const expiresAt = "2026-09-21T10:00:00.000Z";
+const identity = { name: "Test User", email: "person@example.com" };
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { "content-type": "application/json" }
@@ -65,7 +66,7 @@ describe("account authentication API", () => {
   it("exchanges only the Google proof and allocated nonce state", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;
-      return jsonResponse({ accountId, csrfToken: token, expiresAt });
+      return jsonResponse({ accountId, ...identity, csrfToken: token, expiresAt });
     });
 
     await loginWithGoogle("google-proof", { nonce: token, state }, undefined, fetchMock);
@@ -80,17 +81,17 @@ describe("account authentication API", () => {
   it("requests an email link with the exact accepted response contract", async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ status: "accepted" }, 202));
 
-    await expect(requestEmailLogin("person@example.com", undefined, fetchMock)).resolves.toBeUndefined();
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, fetchMock)).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/email/request", expect.objectContaining({
       method: "POST",
       credentials: "include",
       cache: "no-store",
       referrerPolicy: "no-referrer",
-      body: JSON.stringify({ email: "person@example.com" })
+      body: JSON.stringify({ email: "person@example.com", turnstileToken: "turnstile-proof" })
     }));
 
     const expanded = vi.fn(async () => jsonResponse({ status: "accepted", accountExists: true }, 202));
-    await expect(requestEmailLogin("person@example.com", undefined, expanded)).rejects.toMatchObject({
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, expanded)).rejects.toMatchObject({
       status: 502,
       code: "invalid_response"
     });
@@ -99,10 +100,10 @@ describe("account authentication API", () => {
   it("verifies only an exact fragment token and strictly parses login results", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;
-      return jsonResponse({ accountId, csrfToken: token, expiresAt });
+      return jsonResponse({ accountId, ...identity, csrfToken: token, expiresAt });
     });
 
-    await expect(verifyEmailLogin(state, undefined, fetchMock)).resolves.toEqual({ accountId, csrfToken: token, expiresAt });
+    await expect(verifyEmailLogin(state, undefined, fetchMock)).resolves.toEqual({ accountId, ...identity, csrfToken: token, expiresAt });
     const [, init] = fetchMock.mock.calls[0];
     expect(JSON.parse(String(init?.body))).toEqual({ token: state });
     expect(init).toEqual(expect.objectContaining({ credentials: "include", cache: "no-store", referrerPolicy: "no-referrer" }));
@@ -113,17 +114,17 @@ describe("account authentication API", () => {
 
   it("requires exact email statuses and JSON media types", async () => {
     const acceptedAtWrongStatus = vi.fn(async () => jsonResponse({ status: "accepted" }, 200));
-    await expect(requestEmailLogin("person@example.com", undefined, acceptedAtWrongStatus))
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, acceptedAtWrongStatus))
       .rejects.toMatchObject({ status: 502, code: "invalid_response" });
 
     const requestWrongMediaType = vi.fn(async () => new Response(JSON.stringify({ status: "accepted" }), {
       status: 202,
       headers: { "content-type": "text/plain" }
     }));
-    await expect(requestEmailLogin("person@example.com", undefined, requestWrongMediaType))
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, requestWrongMediaType))
       .rejects.toMatchObject({ status: 502, code: "invalid_response" });
 
-    const login = { accountId, csrfToken: token, expiresAt };
+    const login = { accountId, ...identity, csrfToken: token, expiresAt };
     const verifiedAtWrongStatus = vi.fn(async () => jsonResponse(login, 202));
     await expect(verifyEmailLogin(state, undefined, verifiedAtWrongStatus))
       .rejects.toMatchObject({ status: 502, code: "invalid_response" });
@@ -145,10 +146,10 @@ describe("account authentication API", () => {
   it("restores sessions with included credentials", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;
-      return jsonResponse({ accountId, expiresAt });
+      return jsonResponse({ accountId, ...identity, expiresAt });
     });
 
-    await expect(getAccountSession(undefined, fetchMock)).resolves.toEqual({ accountId, expiresAt });
+    await expect(getAccountSession(undefined, fetchMock)).resolves.toEqual({ accountId, ...identity, expiresAt });
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/session", expect.objectContaining({
       method: "GET",
       credentials: "include"
@@ -195,7 +196,7 @@ describe("account authentication API", () => {
   it("rejects malformed or expanded response objects", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;
-      return jsonResponse({ accountId, expiresAt, unexpected: true });
+      return jsonResponse({ accountId, ...identity, expiresAt, unexpected: true });
     });
     await expect(getAccountSession(undefined, fetchMock)).rejects.toMatchObject({
       status: 502,

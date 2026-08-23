@@ -90,7 +90,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
     if (generation !== sessionGenerationRef.current) return;
     const sameAccount = currentAccountIdRef.current === session.accountId;
     currentAccountIdRef.current = session.accountId;
-    setAccount({ status: "signedIn", user: { id: session.accountId, expiresAt: session.expiresAt } });
+    setAccount({ status: "signedIn", user: { id: session.accountId, name: session.name, email: session.email, expiresAt: session.expiresAt } });
     if (!configured) {
       setSyncAccess({ canRead: false, canWrite: false });
       setSubscription({ status: "unavailable" });
@@ -277,7 +277,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       headers: { "x-csrf-token": csrfToken },
       body: "{}"
     });
-    await applySession({ accountId: account.user.id, expiresAt: account.user.expiresAt });
+    await applySession({ accountId: account.user.id, name: account.user.name, email: account.user.email, expiresAt: account.user.expiresAt });
   };
   const purchase = async (plan: SubscriptionPlan) => {
     if (account.status !== "signedIn") return;

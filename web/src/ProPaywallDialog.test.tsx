@@ -14,7 +14,7 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("disabled");
   });
   it("uses localized one-time prices and shows Indonesian payment methods", () => {
-    const pro = context({ configured: true, account: { status: "signedIn", user: { id: "account-1", expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "free", offers: [
+    const pro = context({ configured: true, account: { status: "signedIn", user: { id: "account-1", name: null, email: null, expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "free", offers: [
       { plan: "two_year", price: "$120.00", priceMicros: 120_000_000, currency: "USD" },
       { plan: "five_year", price: "$240.00", priceMicros: 240_000_000, currency: "USD" }
     ] } });

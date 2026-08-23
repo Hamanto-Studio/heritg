@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountSettings, createEmailCooldownState } from "./AccountSettings";
 import { GOOGLE_IDENTITY_SCRIPT, type GoogleIdentity } from "./accountAuth";
@@ -14,12 +14,23 @@ const state = "b".repeat(43);
 let container: HTMLDivElement | undefined;
 let root: Root | undefined;
 
+beforeEach(() => {
+  window.turnstile = {
+    render: vi.fn((_element, options) => {
+      options.callback("verified-human");
+      return "test-widget";
+    }),
+    remove: vi.fn()
+  };
+});
+
 afterEach(async () => {
   if (root) await act(async () => root?.unmount());
   vi.useRealTimers();
   container?.remove();
   document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)?.remove();
   delete window.google;
+  delete window.turnstile;
   document.cookie = "heritg_csrf=; Max-Age=0; Path=/";
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -28,7 +39,7 @@ afterEach(async () => {
 });
 
 describe("account settings", () => {
-  it("loads Google Identity only after the user prepares sign-in", async () => {
+  it("preloads Google Identity so the first Google button click starts sign-in", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       void _init;
       if (String(input).endsWith("/session")) {
@@ -39,6 +50,8 @@ describe("account settings", () => {
       if (String(input).endsWith("/google")) {
         return new Response(JSON.stringify({
           accountId: "c".repeat(22),
+          name: "Test User",
+          email: "person@example.com",
           csrfToken: token,
           expiresAt: "2026-09-23T10:10:00.000Z"
         }), { status: 200 });
@@ -63,20 +76,12 @@ describe("account settings", () => {
         />
       );
     });
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
 
-    expect(document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)).toBeNull();
-    const prepare = [...container.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Continue with Google"));
-    expect(prepare).toBeDefined();
-    expect(prepare?.querySelector(".google-mark")).not.toBeNull();
-    expect(container.querySelector('input[type="email"]')).toBeNull();
-
-    await act(async () => {
-      prepare?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      await Promise.resolve();
-    });
     const script = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`);
     expect(script).not.toBeNull();
+    expect(container.querySelector('[aria-label="Continue with Google"]')).not.toBeNull();
+    expect(container.querySelector('input[type="email"]')).toBeNull();
 
     const initialize = vi.fn();
     const renderButton = vi.fn();
@@ -106,7 +111,7 @@ describe("account settings", () => {
         />
       );
     });
-    expect(container.textContent).toContain("Lanjutkan dengan email");
+    expect(container.textContent).toContain("Lanjut pakai email");
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ locale: "id" }));
 
     const callback = initialize.mock.calls[0]?.[0]?.callback as ((value: { credential: string }) => void) | undefined;
@@ -117,7 +122,9 @@ describe("account settings", () => {
     });
 
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/google"))).toHaveLength(1);
-    expect(container.textContent).toContain("Sudah masuk");
+    expect(container.textContent).toContain("Udah login");
+    expect(container.textContent).toContain("Test User");
+    expect(container.textContent).toContain("person@example.com");
   });
 
   it("ignores a GIS credential delivered after unmount", async () => {
@@ -173,6 +180,8 @@ describe("account settings", () => {
       if (String(input).endsWith("/session")) {
         return new Response(JSON.stringify({
           accountId: "c".repeat(22),
+          name: "Test User",
+          email: "person@example.com",
           expiresAt: "2026-09-23T10:10:00.000Z"
         }), { status: 200 });
       }
@@ -184,7 +193,7 @@ describe("account settings", () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
 
     const deleteButton = [...container.querySelectorAll("button")]
@@ -207,17 +216,23 @@ describe("account settings", () => {
   });
 
   it("shows one sign-in method at a time and keeps Google primary", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      error: { code: "unauthenticated", message: "Authentication required" }
-    }), { status: 401 })));
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => String(input).endsWith("/login-nonce")
+      ? new Response(JSON.stringify({
+        nonce: token,
+        state,
+        expiresAt: "2026-08-23T10:10:00.000Z"
+      }), { status: 200 })
+      : new Response(JSON.stringify({
+        error: { code: "unauthenticated", message: "Authentication required" }
+      }), { status: 401 })));
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} />);
     });
 
-    expect(container.textContent).toContain("Continue with Google");
+    expect(container.querySelector('[aria-label="Continue with Google"]')).not.toBeNull();
     expect(container.querySelector('input[type="email"]')).toBeNull();
     expect(container.querySelectorAll(".account-method-divider")).toHaveLength(1);
     const chooseEmail = [...container.querySelectorAll("button")]
@@ -254,7 +269,7 @@ describe("account settings", () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
 
     const chooseEmail = [...container.querySelectorAll("button")]
@@ -284,7 +299,10 @@ describe("account settings", () => {
     });
     const emailRequests = fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/email/request"));
     expect(emailRequests).toHaveLength(1);
-    expect(JSON.parse(String(emailRequests[0]?.[1]?.body))).toEqual({ email: "new-or-existing@example.com" });
+    expect(JSON.parse(String(emailRequests[0]?.[1]?.body))).toEqual({
+      email: "new-or-existing@example.com",
+      turnstileToken: "verified-human"
+    });
     expect(container.textContent).toContain("n***@example.com");
     expect(container.textContent).not.toContain("new-or-existing@example.com");
 
@@ -302,7 +320,7 @@ describe("account settings", () => {
     await act(async () => root?.unmount());
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
     const remountedChooseEmail = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with email"));
@@ -336,7 +354,7 @@ describe("account settings", () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
     const chooseEmail = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with email"));
@@ -358,7 +376,7 @@ describe("account settings", () => {
     expect(container.textContent).not.toContain("limited@example.com");
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
     const remountedChooseEmail = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with email"));

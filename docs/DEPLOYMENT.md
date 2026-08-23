@@ -65,6 +65,13 @@ environment-specific client configuration while Google remains the separate
 migration fallback. Email and Google identities must not be described as
 automatically linked.
 
+Email-link requests are protected by Cloudflare Turnstile. Compile only the
+public widget key into Web with `HERITG_TURNSTILE_SITE_KEY`; keep the matching
+secret in GCP Secret Manager and expose it to the backend through
+`TURNSTILE_SECRET_NAME` and a pinned `TURNSTILE_SECRET_VERSION`. The widget must
+authorize the exact deployment hostname. Never place its secret in Vercel or
+browser code.
+
 The current worker activates and claims clients immediately and excludes both
 `/auth/email` and `/auth/email/` from its navigation fallback. A browser still
 controlled by an older installed worker cannot receive those rules retroactively:
@@ -92,38 +99,36 @@ delivered, opened, scrubbed at the callback, verified once, and followed by
 session restore, sign-out, and account deletion checks. These account checks do
 not upload or alter the browser's local family tree.
 
-Create a preview candidate from the repository root:
+Deploy the current worktree directly to staging from any branch:
 
 ```sh
 HERITG_STAGING_API_ORIGIN=https://STAGING-SERVICE.run.app \
 HERITG_GOOGLE_CLIENT_ID=1079742937646-76202p8a4fjf7hbef5cijvc003oauu3e.apps.googleusercontent.com \
+HERITG_TURNSTILE_SITE_KEY=STAGING_PUBLIC_WIDGET_KEY \
 npm --prefix web run deploy:staging
 ```
 
 The command renders a gitignored `web/vercel.staging.json`, sets
-`HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID
-for the Vite build, and creates a preview only in Vercel project
-`heritg-staging`. The Google client must authorize exactly
-`https://staging.heritg.us`; do not reuse a production client. The candidate
-cannot replace the current staging deployment before verification. After
-responsive, synthetic-data, and encrypted-sharing compatibility checks, promote
-the exact candidate:
+`HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID,
+and deploys directly to the isolated `heritg-staging` Vercel project. The Google
+client must authorize exactly `https://staging.heritg.us`; do not reuse a
+production client.
+
+Staging may be deployed from any branch and a dirty worktree. It does not
+require approval, a commit, `main`, a release branch, tests, manual verification,
+or a candidate promotion. The visible build identifier is generated as
+`<short-sha>[-dirty]-<UTC timestamp>` so every staging screen can be matched to
+the deployed code state. The script deploys a temporary copy of the current Web
+worktree without `.git` metadata, so Vercel commit-author attribution does not
+restrict staging deployment to a particular branch or author.
 
 Vercel attributes CLI deployments to the current Git commit author. That
 author email must belong to a member of the Vercel project; otherwise Vercel
 marks the deployment `BLOCKED` before running the build. Resolve account
 attribution before retrying rather than promoting or aliasing a blocked build.
 
-```sh
-npm --prefix web run deploy:staging:promote -- https://CANDIDATE.vercel.app
-```
-
-Promotion runs the complete encrypted upload, activation, download, decryption,
-and revocation verifier before and after assigning `staging.heritg.us`. Staging
-verification skips the separate GitHub Pages landing check; production
-verification continues to require it. The staging command promotes by assigning
-the canonical alias to the exact tested preview; it never rebuilds that preview
-under a different Vercel environment.
+Production release preparation, candidate verification, promotion approval,
+tagging, and publication remain unchanged and must never use this staging path.
 
 Attach `staging.heritg.us` only to Vercel project `heritg-staging`. In Cloudflare,
 create a DNS-only CNAME using the exact target Vercel assigns. Inspect and

@@ -35,7 +35,15 @@ tag is published; corrections go into a new patch release.
 
 ## Required checks
 
-Before preview deployment:
+Fast staging deployments to the isolated `heritg-staging` project may run from
+any branch and a dirty worktree. They require no approval, release preparation,
+tests, manual checks, candidate promotion, or deployment verification. The
+staging command directly updates `staging.heritg.us` and injects a visible build
+identifier in the form `<short-sha>[-dirty]-<UTC timestamp>`. It deploys a
+temporary copy of the current Web worktree without Git metadata, allowing any
+branch author while retaining the source SHA in the build label.
+
+Before a production release candidate deployment:
 
 - Repository is clean and current with the intended release commit.
 - Branch is exactly `release/web/<version>`.
@@ -103,6 +111,9 @@ confirmation before:
 2. Promoting a deployment to production.
 3. Creating or pushing the release tag.
 4. Publishing the GitHub Release.
+
+Deploying or replacing `staging.heritg.us` through the isolated staging project
+does not require confirmation. This exception never applies to production.
 
 Approval to publish the tag and GitHub Release may be requested as one gate,
 but publication is mandatory for every version that reaches production.

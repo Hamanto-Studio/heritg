@@ -1132,6 +1132,9 @@
 .account-email-status:empty {
   display: none;
 }
+.account-turnstile { min-height: 65px; }
+.account-turnstile > div { max-width: 100%; }
+.account-bot-detail { color: var(--subtle); font-size: 0.74rem; margin: 0; }
 
 .account-email-status p,
 .account-alternative > span,
@@ -1177,6 +1180,13 @@
   gap: 10px;
 }
 
+.account-identity {
+  display: flex;
+  flex-direction: column;
+}
+.account-identity strong { font-size: 0.9rem; }
+.account-identity span { color: var(--subtle); font-size: 0.78rem; }
+
 .account-session .button,
 .account-error .button {
   justify-self: start;
@@ -1211,6 +1221,23 @@
   background: color-mix(in srgb, var(--brand) 7%, var(--base));
   border-color: color-mix(in srgb, var(--brand) 46%, var(--line));
 }
+.settings-group .pro-settings-card {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--family-plus-soft) 44%, var(--base)), var(--base) 48%);
+  border-color: var(--family-plus-line);
+}
+.settings-group .pro-settings-card.active {
+  background: color-mix(in srgb, var(--family-plus) 8%, var(--base));
+  border-color: color-mix(in srgb, var(--family-plus) 48%, var(--family-plus-line));
+}
+.pro-settings-sync {
+  align-items: flex-start;
+  border-top: 1px solid var(--family-plus-line);
+  display: flex;
+  gap: 11px;
+  padding-top: 12px;
+}
+.pro-settings-sync > svg { color: var(--family-plus-deep); flex: 0 0 auto; margin-top: 1px; }
+.pro-settings-sync > div { min-width: 0; }
 .pro-badge,
 .sync-status {
   border: 1px solid var(--line);
@@ -1337,6 +1364,7 @@
   background: linear-gradient(145deg, var(--family-plus), var(--family-plus-deep));
   box-shadow: 0 7px 20px rgba(77, 52, 91, 0.2), inset 0 1px rgba(255, 255, 255, 0.14);
 }
+.pro-settings-card .button.primary { width: 100%; }
 
 .pro-purchase-button.button.primary:hover,
 .pro-settings-card .button.primary:hover { background: linear-gradient(145deg, var(--family-plus-deep), var(--family-plus-hover)); }

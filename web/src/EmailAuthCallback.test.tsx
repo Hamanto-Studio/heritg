@@ -11,6 +11,8 @@ import { createTranslator } from "./i18n";
 const token = "a".repeat(43);
 const result: LoginResult = {
   accountId: "c".repeat(22),
+  name: null,
+  email: "person@example.com",
   csrfToken: "b".repeat(43),
   expiresAt: "2026-09-23T10:10:00.000Z"
 };
