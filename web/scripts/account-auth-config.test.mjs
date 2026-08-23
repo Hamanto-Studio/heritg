@@ -48,6 +48,7 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain("validateStagingAuthConfig(origin, googleClientId, turnstileSiteKey)");
     expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
     expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=staging");
+    expect(deploy).toContain("HERITG_FAMILY_BILLING_ENABLED=true");
     expect(deploy).toContain("HERITG_BUILD_VERSION");
     expect(deploy).toContain('"--prod"');
     expect(deploy).toContain('git", ["rev-parse", "--short=7", "HEAD"]');

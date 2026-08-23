@@ -88,7 +88,6 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
 
   const applySession = useCallback(async (session: AccountSession, generation = sessionGenerationRef.current) => {
     if (generation !== sessionGenerationRef.current) return;
-    const sameAccount = currentAccountIdRef.current === session.accountId;
     currentAccountIdRef.current = session.accountId;
     setAccount({ status: "signedIn", user: { id: session.accountId, name: session.name, email: session.email, expiresAt: session.expiresAt } });
     if (!configured) {
@@ -104,11 +103,11 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== session.accountId) return;
     setSubscription(subscriptionFromEntitlement(entitlement, billing.offers));
     setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
-    setSync((current) => ({
-      enabled: sameAccount && current.enabled && entitlement.canRead,
-      phase: sameAccount && current.enabled && entitlement.canRead ? "comparing" : entitlement.canWrite ? "disabled" : entitlement.canRead ? "disabled" : "subscriptionRequired",
+    setSync({
+      enabled: entitlement.canRead,
+      phase: entitlement.canRead ? "comparing" : "subscriptionRequired",
       pendingChanges: 0
-    }));
+    });
   }, [configured]);
 
   const loadSession = useCallback(async () => {
