@@ -248,7 +248,7 @@ describe("cross-platform .heritg archive", () => {
 
   it("preserves relationship language independently in shared archives", async () => {
     const archive = await exportCanonicalHeritgArchive(
-      { ...syntheticData, relationshipLanguage: "jv-east-java" },
+      { ...syntheticData, relationshipLanguage: "bbc-toba" },
       "tree-synthetic",
       undefined,
       {
@@ -264,7 +264,30 @@ describe("cross-platform .heritg archive", () => {
 
     const restored = await importHeritgArchive(archive);
     expect(restored.language).toBe("en");
-    expect(restored.relationshipLanguage).toBe("jv-east-java");
+    expect(restored.relationshipLanguage).toBe("bbc-toba");
+  });
+
+  it("preserves migrated legacy terminology in shared archives", async () => {
+    const archive = await exportCanonicalHeritgArchive(
+      {
+        ...syntheticData,
+        language: "id",
+        relationshipTerminology: "btx-karo"
+      },
+      "tree-synthetic",
+      undefined,
+      {
+        sharedView: {
+          birthDates: true,
+          relationshipDates: true,
+          photos: true,
+          ages: true,
+          ageByPersonId: {}
+        }
+      }
+    );
+
+    expect((await importHeritgArchive(archive)).relationshipLanguage).toBe("btx-karo");
   });
 
   it("rejects identifier collisions atomically when importing into existing data", async () => {

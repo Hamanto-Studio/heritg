@@ -1,6 +1,6 @@
 import { encodeBase64, parsePlistDictionary } from "rork-plist";
 
-import { newId } from "./types";
+import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./types";
 import { downloadBlob, downloadText, safeFilename } from "./images";
 import {
   DEFAULT_EXPORT_PRIVACY_SELECTION,
@@ -31,8 +31,6 @@ const SUBTYPES_BY_KIND: Record<RelationshipKind, ReadonlySet<RelationshipSubtype
   sibling: new Set(SUBTYPES.slice(9))
 };
 const PRECISIONS = ["exact", "month", "year"] as const;
-const RELATIONSHIP_TERMINOLOGIES = ["id", "jv-yogyakarta", "jv-east-java"] as const;
-const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 type JsonObject = Record<string, unknown>;
 type IdFactory = () => string;

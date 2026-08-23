@@ -68,5 +68,13 @@ describe("relationship terminology settings", () => {
     expect(english).toContain("Relationship language");
     expect(english).toContain("Basa Jawa · Yogyakarta");
     expect(english).toContain("Basa Jawa · East Java");
+    expect(english).toContain("Basa Cerbon · Cirebon");
+    expect(english).toContain("Basa Sunda · Priangan");
+    expect(english).toContain("Batak Toba");
+    expect(english).toContain("Batak Karo");
+    expect(english).toContain("Batak Mandailing");
+    expect(english).toContain("Batak Angkola");
+    expect(english).toContain("Batak Simalungun");
+    expect(english).toContain("Pakpak/Dairi");
   });
 });

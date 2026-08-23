@@ -117,8 +117,8 @@ const appData: AppData = {
   ],
   selectedTreeId: "tree-original",
   language: "id",
-  relationshipLanguage: "jv-yogyakarta",
-  relationshipTerminology: "id",
+  relationshipLanguage: "su-priangan",
+  relationshipTerminology: "su-priangan",
   viewports: {
     "tree-original": { scrollX: 120, scrollY: -40, zoom: 1.25 }
   }
@@ -197,7 +197,7 @@ describe("HERITG JSON backups", () => {
     ]);
     expect(restored.people[0].photoDataUrl).toBe(appData.people[0].photoDataUrl);
     expect(restored.people[2].birthOrderOverride).toBe(1);
-    expect(restored.relationshipLanguage).toBe("jv-yogyakarta");
+    expect(restored.relationshipLanguage).toBe("su-priangan");
     expect(restored.relationships[0]).toMatchObject({
       id: "new-partners",
       treeId: "new-tree",

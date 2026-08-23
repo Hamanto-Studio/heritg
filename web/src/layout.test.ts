@@ -204,6 +204,296 @@ describe("kinship labels", () => {
     expect(kinshipLabel("sibling", "focus", people, relationships, "jv-east-java"))
       .toBe("Mas");
   });
+
+  it("uses Cirebon and Sundanese seniority rather than generic translations", () => {
+    const people = [
+      person("grandparent"),
+      person("older-aunt", "female", "1960-01-01"),
+      person("father", "male", "1965-01-01"),
+      person("older-sister", "female", "1988-01-01"),
+      person("focus", "male", "1990-01-01"),
+      person("cousin", "male", "1985-01-01"),
+      person("nephew", "male", "2010-01-01")
+    ];
+    const relationships = [
+      parent("grandparent", "older-aunt"),
+      parent("grandparent", "father"),
+      parent("father", "older-sister"),
+      parent("father", "focus"),
+      parent("older-aunt", "cousin"),
+      parent("older-sister", "nephew")
+    ];
+
+    expect(kinshipLabel("father", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Mama");
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Uwa");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Yayu");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Misanan");
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "su-priangan"))
+      .toBe("Ua istri");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "su-priangan"))
+      .toBe("Lanceuk awéwé");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "su-priangan"))
+      .toBe("Kapilanceuk");
+    expect(kinshipLabel("nephew", "focus", people, relationships, "su-priangan"))
+      .toBe("Alo lalaki");
+  });
+
+  it("keeps each Batak profile path-aware and independent", () => {
+    const people = [
+      person("paternal-grandparent"), person("maternal-grandparent"),
+      person("older-aunt", "female", "1960-01-01"),
+      person("father", "male", "1965-01-01"),
+      person("mother", "female", "1967-01-01"),
+      person("maternal-uncle", "male", "1963-01-01"),
+      person("maternal-aunt", "female", "1962-01-01"),
+      person("older-sister", "female", "1988-01-01"),
+      person("focus", "male", "1990-01-01"),
+      person("aunt-son", "male"), person("aunt-daughter", "female"),
+      person("uncle-daughter", "female"), person("sisters-child", "male")
+    ];
+    const relationships = [
+      parent("paternal-grandparent", "older-aunt"),
+      parent("paternal-grandparent", "father"),
+      parent("maternal-grandparent", "mother"),
+      parent("maternal-grandparent", "maternal-uncle"),
+      parent("maternal-grandparent", "maternal-aunt"),
+      parent("father", "older-sister"), parent("mother", "older-sister"),
+      parent("father", "focus"), parent("mother", "focus"),
+      parent("older-aunt", "aunt-son"), parent("older-aunt", "aunt-daughter"),
+      parent("maternal-uncle", "uncle-daughter"),
+      parent("older-sister", "sisters-child")
+    ];
+
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "bbc-toba"))
+      .toBe("Namboru");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "bbc-toba"))
+      .toBe("Iboto");
+    expect(kinshipLabel("uncle-daughter", "focus", people, relationships, "bbc-toba"))
+      .toBe("Pariban");
+    expect(kinshipLabel("sisters-child", "focus", people, relationships, "bbc-toba"))
+      .toBe("Ibebere");
+
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "btx-karo"))
+      .toBe("Bibi");
+    expect(kinshipLabel("maternal-aunt", "focus", people, relationships, "btx-karo"))
+      .toBe("Bibi");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "btx-karo"))
+      .toBe("Kaka");
+    expect(kinshipLabel("aunt-son", "focus", people, relationships, "btx-karo"))
+      .toBe("Impal");
+
+    for (const profile of ["btm-mandailing", "akb-angkola"] as const) {
+      expect(kinshipLabel("older-aunt", "focus", people, relationships, profile))
+        .toBe("Namboru");
+      expect(kinshipLabel("older-sister", "focus", people, relationships, profile))
+        .toBe("Iboto");
+      expect(kinshipLabel("aunt-son", "focus", people, relationships, profile))
+        .toBe("Anak namboru");
+      expect(kinshipLabel("uncle-daughter", "focus", people, relationships, profile))
+        .toBe("Boru tulang");
+    }
+
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "bts-simalungun"))
+      .toBe("Amboru");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "bts-simalungun"))
+      .toBe("Botou");
+    expect(kinshipLabel("aunt-daughter", "focus", people, relationships, "bts-simalungun"))
+      .toBe("Botou banua");
+
+    expect(kinshipLabel("older-aunt", "focus", people, relationships, "btd-pakpak"))
+      .toBe("Namberu");
+    expect(kinshipLabel("older-sister", "focus", people, relationships, "btd-pakpak"))
+      .toBe("Kaka");
+    expect(kinshipLabel("aunt-son", "focus", people, relationships, "btd-pakpak"))
+      .toBe("Impal");
+    expect(kinshipLabel("sisters-child", "focus", people, relationships, "btd-pakpak"))
+      .toBe("Bebere");
+  });
+
+  it("uses safe profile fallbacks for unsupported relationship subtypes", () => {
+    const people = [person("focus"), person("adoptive-father", "male")];
+    const relationships = [
+      parent("adoptive-father", "focus", "adoption", "adoptiveParent")
+    ];
+
+    expect(kinshipLabel("adoptive-father", "focus", people, relationships, "bbc-toba"))
+      .toBe("Ayah angkat");
+    expect(kinshipLabel("adoptive-father", "focus", people, relationships, "su-priangan"))
+      .toBe("Ayah angkat");
+  });
+
+  it("does not apply biological profile terms through adoptive collateral paths", () => {
+    const people = [
+      person("grandparent"), person("father", "male"),
+      person("adoptive-aunt", "female"), person("focus"), person("cousin")
+    ];
+    const relationships = [
+      parent("grandparent", "father"),
+      parent("grandparent", "adoptive-aunt", "adoption", "adoptiveParent"),
+      parent("father", "focus"),
+      parent("adoptive-aunt", "cousin")
+    ];
+
+    expect(kinshipLabel("cousin", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Kerabat melalui adopsi");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "su-priangan"))
+      .toBe("Kerabat melalui adopsi");
+
+    const secondCousinPeople = [
+      person("root"), person("adoptive-grandparent"), person("reference-grandparent"),
+      person("cousin-parent"), person("reference-parent"),
+      person("second-cousin"), person("second-focus")
+    ];
+    const secondCousinRelationships = [
+      parent("root", "adoptive-grandparent", "root-adoption", "adoptiveParent"),
+      parent("root", "reference-grandparent"),
+      parent("adoptive-grandparent", "cousin-parent"),
+      parent("reference-grandparent", "reference-parent"),
+      parent("cousin-parent", "second-cousin"),
+      parent("reference-parent", "second-focus")
+    ];
+    expect(kinshipLabel(
+      "second-cousin", "second-focus", secondCousinPeople,
+      secondCousinRelationships, "su-priangan"
+    )).toBe("Kerabat melalui adopsi");
+    expect(kinshipLabel(
+      "second-cousin", "second-focus", secondCousinPeople,
+      secondCousinRelationships, "jv-cirebon"
+    )).toBe("Kerabat melalui adopsi");
+  });
+
+  it("requires non-overlapping birth ranges for seniority-specific terms", () => {
+    const people = [
+      person("grandparent"),
+      { ...person("aunt", "female", "1960-09-02"), birthDatePrecision: "month" as const },
+      person("father", "male", "1960-09-01"),
+      person("focus")
+    ];
+    const relationships = [
+      parent("grandparent", "aunt"), parent("grandparent", "father"),
+      parent("father", "focus")
+    ];
+
+    expect(kinshipLabel("aunt", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Seduluré wongtuwa");
+    expect(kinshipLabel("aunt", "focus", people, relationships, "su-priangan"))
+      .toBe("Dulur awéwé bapa");
+
+    const earlyPeople = [
+      person("early-parent"), person("early-sibling", "male", "0099-01-01"),
+      person("early-focus", "male", "0100-01-01")
+    ];
+    const earlyRelationships = [
+      parent("early-parent", "early-sibling"), parent("early-parent", "early-focus")
+    ];
+    expect(kinshipLabel(
+      "early-sibling", "early-focus", earlyPeople, earlyRelationships, "jv-cirebon"
+    )).toBe("Kakang");
+  });
+
+  it("resolves path-specific in-laws across every active partner", () => {
+    const people = [
+      person("focus", "male"), person("first-wife", "female"),
+      person("second-wife", "female", "1985-01-01"), person("second-wife-father", "male"),
+      person("wife-parent"), person("wife-older-brother", "male", "1980-01-01")
+    ];
+    const relationships = [
+      partner("focus", "first-wife", "first-marriage"),
+      partner("focus", "second-wife", "second-marriage"),
+      parent("second-wife-father", "second-wife"),
+      parent("wife-parent", "second-wife"),
+      parent("wife-parent", "wife-older-brother")
+    ];
+
+    expect(kinshipLabel("second-wife-father", "focus", people, relationships, "btx-karo"))
+      .toBe("Mama");
+    expect(kinshipLabel("wife-older-brother", "focus", people, relationships, "su-priangan"))
+      .toBe("Lanceuk dahuan");
+    expect(kinshipLabel("wife-older-brother", "focus", people, relationships, "bbc-toba"))
+      .toBe("Tunggane");
+  });
+
+  it("requires the complete gendered route for reciprocal Batak in-laws", () => {
+    const people = [
+      person("family-parent"), person("focus", "female"), person("brother", "male"),
+      person("brothers-wife", "female"), person("husband-parent"),
+      person("husband", "male"), person("husbands-sister", "female")
+    ];
+    const relationships = [
+      parent("family-parent", "focus"), parent("family-parent", "brother"),
+      partner("brother", "brothers-wife", "brother-marriage"),
+      parent("husband-parent", "husband"), parent("husband-parent", "husbands-sister"),
+      partner("focus", "husband", "focus-marriage")
+    ];
+
+    expect(kinshipLabel("brothers-wife", "focus", people, relationships, "bbc-toba"))
+      .toBe("Eda");
+    expect(kinshipLabel("husbands-sister", "focus", people, relationships, "btx-karo"))
+      .toBe("Eda");
+
+    const sameSexPeople = [
+      person("same-sex-focus", "male"), person("same-sex-husband", "male"),
+      person("husbands-brother", "male"), person("same-sex-parent")
+    ];
+    const sameSexRelationships = [
+      parent("same-sex-parent", "same-sex-husband"),
+      parent("same-sex-parent", "husbands-brother"),
+      partner("same-sex-focus", "same-sex-husband", "same-sex-marriage")
+    ];
+    expect(kinshipLabel(
+      "husbands-brother", "same-sex-focus", sameSexPeople,
+      sameSexRelationships, "bbc-toba"
+    )).toBe("Ipar laki-laki");
+  });
+
+  it("does not collapse removed cousins into same-generation customary terms", () => {
+    const people = [
+      person("root"), person("cousin-parent"), person("reference-grandparent"),
+      person("cousin"), person("reference-parent"), person("focus")
+    ];
+    const relationships = [
+      parent("root", "cousin-parent"), parent("cousin-parent", "cousin"),
+      parent("root", "reference-grandparent"),
+      parent("reference-grandparent", "reference-parent"),
+      parent("reference-parent", "focus")
+    ];
+
+    expect(kinshipLabel("cousin", "focus", people, relationships))
+      .toBe("First cousin once removed");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Sepupu");
+    expect(kinshipLabel("cousin", "focus", people, relationships, "su-priangan"))
+      .toBe("Sepupu");
+  });
+
+  it("uses generation names only for direct ancestor and descendant chains", () => {
+    const people = [
+      person("top-ancestor"), person("great-grandparent"), person("grandparent"),
+      person("great-uncle", "male"), person("great-great-uncle", "male"),
+      person("parent"), person("focus")
+    ];
+    const relationships = [
+      parent("top-ancestor", "great-grandparent"),
+      parent("top-ancestor", "great-great-uncle"),
+      parent("great-grandparent", "grandparent"),
+      parent("great-grandparent", "great-uncle"),
+      parent("grandparent", "parent"),
+      parent("parent", "focus")
+    ];
+
+    expect(kinshipLabel("great-grandparent", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Buyut");
+    expect(kinshipLabel("great-uncle", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Kerabat generasi atas");
+    expect(kinshipLabel("great-great-uncle", "focus", people, relationships, "jv-cirebon"))
+      .toBe("Kerabat generasi atas");
+    expect(kinshipLabel("great-grandparent", "focus", people, relationships, "bts-simalungun"))
+      .toBe("Ompung nini");
+  });
 });
 
 describe("deterministic family layout", () => {

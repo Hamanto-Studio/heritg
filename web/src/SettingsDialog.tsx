@@ -1,11 +1,11 @@
 import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AccountSettings } from "./AccountSettings";
-import type { Translator } from "./i18n";
+import type { MessageKey, Translator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { passwordRequirements } from "./passwordPolicy";
 import type { AppActions } from "./store";
-import type { AppData } from "./types";
+import type { AppData, RelationshipLanguage } from "./types";
 import { ButtonLoader, SidePanel } from "./ui";
 
 interface SettingsDialogProps {
@@ -14,6 +14,21 @@ interface SettingsDialogProps {
   t: Translator;
   onClose: () => void;
 }
+
+const relationshipLanguageOptions: ReadonlyArray<readonly [RelationshipLanguage, MessageKey]> = [
+  ["en", "english"],
+  ["id", "indonesianRelationships"],
+  ["jv-yogyakarta", "javaneseYogyakarta"],
+  ["jv-east-java", "javaneseEastJava"],
+  ["jv-cirebon", "cirebonRelationships"],
+  ["su-priangan", "sundaneseRelationships"],
+  ["bbc-toba", "tobaRelationships"],
+  ["btx-karo", "karoRelationships"],
+  ["btm-mandailing", "mandailingRelationships"],
+  ["akb-angkola", "angkolaRelationships"],
+  ["bts-simalungun", "simalungunRelationships"],
+  ["btd-pakpak", "pakpakRelationships"]
+];
 
 export const archivePasswordRequirements = (password: string) => passwordRequirements(password);
 
@@ -102,38 +117,17 @@ export function SettingsDialog({
             </div>
           </div>
           <div className="language-options relationship-language-options">
-            <button
-              aria-pressed={relationshipLanguage === "en"}
-              className={relationshipLanguage === "en" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("en")}
-              type="button"
-            >
-              {t("english")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "id"}
-              className={relationshipLanguage === "id" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("id")}
-              type="button"
-            >
-              {t("indonesianRelationships")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "jv-yogyakarta"}
-              className={relationshipLanguage === "jv-yogyakarta" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("jv-yogyakarta")}
-              type="button"
-            >
-              {t("javaneseYogyakarta")}
-            </button>
-            <button
-              aria-pressed={relationshipLanguage === "jv-east-java"}
-              className={relationshipLanguage === "jv-east-java" ? "selected" : ""}
-              onClick={() => actions.setRelationshipLanguage("jv-east-java")}
-              type="button"
-            >
-              {t("javaneseEastJava")}
-            </button>
+            {relationshipLanguageOptions.map(([language, label]) => (
+              <button
+                aria-pressed={relationshipLanguage === language}
+                className={relationshipLanguage === language ? "selected" : ""}
+                key={language}
+                onClick={() => actions.setRelationshipLanguage(language)}
+                type="button"
+              >
+                {t(label)}
+              </button>
+            ))}
           </div>
         </section>
       </div>
