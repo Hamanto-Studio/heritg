@@ -1,5 +1,19 @@
 export type Gender = "female" | "male" | "unspecified";
-export type RelationshipTerminology = "id" | "jv-yogyakarta" | "jv-east-java";
+export const RELATIONSHIP_TERMINOLOGIES = [
+  "id",
+  "jv-yogyakarta",
+  "jv-east-java",
+  "jv-cirebon",
+  "su-priangan",
+  "bbc-toba",
+  "btx-karo",
+  "btm-mandailing",
+  "akb-angkola",
+  "bts-simalungun",
+  "btd-pakpak"
+] as const;
+export type RelationshipTerminology = typeof RELATIONSHIP_TERMINOLOGIES[number];
+export const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
 export type RelationshipLanguage = "en" | RelationshipTerminology;
 export type RelationshipKind = "parent" | "partner" | "sibling";
 export type RelationshipSubtype =

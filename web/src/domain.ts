@@ -1,8 +1,9 @@
-import { newId } from "./types";
+import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./types";
 import { selectFocusedFamily } from "./familyCopy";
 import type {
   AppData, DirectRole, FamilyRelationship, FamilyTree, Gender, Person,
-  RelationshipKind, RelationshipLanguage, RelationshipSubtype, ViewportState
+  RelationshipKind, RelationshipLanguage, RelationshipSubtype,
+  RelationshipTerminology, ViewportState
 } from "./types";
 import {
   DIRECT_ROLE_DEFAULTS,
@@ -494,7 +495,7 @@ export function setRelationshipLanguage(
   data: AppData,
   language: RelationshipLanguage
 ): AppData {
-  if (!["en", "id", "jv-yogyakarta", "jv-east-java"].includes(language)) {
+  if (!RELATIONSHIP_LANGUAGES.includes(language)) {
     throw new DomainError("invalidData");
   }
   const terminology = language === "en" ? data.relationshipTerminology : language;
@@ -540,11 +541,11 @@ export function assertAppData(value: unknown): asserts value is AppData {
     throw new DomainError("invalidData");
   }
   if (value.relationshipTerminology !== undefined &&
-      !["id", "jv-yogyakarta", "jv-east-java"].includes(String(value.relationshipTerminology))) {
+      !RELATIONSHIP_TERMINOLOGIES.includes(value.relationshipTerminology as RelationshipTerminology)) {
     throw new DomainError("invalidData");
   }
   if (value.relationshipLanguage !== undefined &&
-      !["en", "id", "jv-yogyakarta", "jv-east-java"].includes(String(value.relationshipLanguage))) {
+      !RELATIONSHIP_LANGUAGES.includes(value.relationshipLanguage as RelationshipLanguage)) {
     throw new DomainError("invalidData");
   }
   if (!Array.isArray(value.trees) || !Array.isArray(value.people) ||

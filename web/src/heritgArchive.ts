@@ -511,7 +511,7 @@ async function archiveEntries(
     createdAt: exactInstant(tree.createdAt),
     id: tree.id,
     ...(tree.lastSelectedPersonId ? { lastSelectedPersonId: tree.lastSelectedPersonId } : {}),
-    ...(sharedView && data.relationshipLanguage
+    ...(sharedView && clean.relationshipLanguage
       ? { relationshipLanguage: clean.relationshipLanguage }
       : {}),
     schemaVersion: SCHEMA_VERSION,

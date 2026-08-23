@@ -24,6 +24,7 @@ import {
   isPartnerRole,
   roleForRelationship
 } from "./relationshipRoles";
+import { RELATIONSHIP_TERMINOLOGIES } from "./types";
 import type {
   AppData,
   DirectRole,
@@ -81,6 +82,10 @@ describe("initial app data", () => {
     expect(updated.language).toBe("id");
     expect(updated.relationshipLanguage).toBe("jv-yogyakarta");
     expect(updated.relationshipTerminology).toBe("jv-yogyakarta");
+    for (const relationshipLanguage of RELATIONSHIP_TERMINOLOGIES) {
+      expect(setRelationshipLanguage(source, relationshipLanguage).relationshipLanguage)
+        .toBe(relationshipLanguage);
+    }
     expect(() => setRelationshipLanguage(source, "invalid" as "en"))
       .toThrowError(DomainError);
   });
@@ -415,10 +420,10 @@ describe("import replacement", () => {
   it("migrates legacy data using its previous effective relationship language", () => {
     const legacy = initial();
     legacy.language = "id";
-    legacy.relationshipTerminology = "jv-yogyakarta";
+    legacy.relationshipTerminology = "btx-karo";
     delete legacy.relationshipLanguage;
 
-    expect(replaceAppData(legacy).relationshipLanguage).toBe("jv-yogyakarta");
+    expect(replaceAppData(legacy).relationshipLanguage).toBe("btx-karo");
 
     legacy.language = "en";
     delete legacy.relationshipTerminology;
