@@ -110,9 +110,15 @@ npm --prefix web run deploy:staging
 
 The command renders a gitignored `web/vercel.staging.json`, sets
 `HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID,
-and deploys directly to the isolated `heritg-staging` Vercel project. The Google
+enables the account/Family+ integration for staging verification, and deploys
+directly to the isolated `heritg-staging` Vercel project. The Google
 client must authorize exactly `https://staging.heritg.us`; do not reuse a
 production client.
+
+The backend still fails closed unless the `heritg-be` repository variable
+`STAGING_FAMILY_SYNC_ENABLED` is exactly `true`. Set it and deploy the staging
+backend before testing cross-device synchronization; the Web build flag alone
+does not grant read or write access.
 
 Staging may be deployed from any branch and a dirty worktree. It does not
 require approval, a commit, `main`, a release branch, tests, manual verification,
