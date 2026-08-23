@@ -10,6 +10,7 @@ import {
   Trash2,
   TreePine,
   Upload,
+  UsersRound,
   X
 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
@@ -42,6 +43,7 @@ interface TreeSidebarProps {
   onError: (message: string) => void;
   onImported: () => void;
   onShowHelp: () => void;
+  onShowFamily: () => void;
   onShowPrivacy: () => void;
   onReportBug: () => void;
 }
@@ -61,6 +63,7 @@ export function TreeSidebar({
   onError,
   onImported,
   onShowHelp,
+  onShowFamily,
   onShowPrivacy,
   onReportBug
 }: TreeSidebarProps) {
@@ -287,6 +290,10 @@ export function TreeSidebar({
           </label>
         </div>
         <div className="sidebar-utilities">
+          <button onClick={() => { onShowFamily(); onClose(); }} type="button">
+            <UsersRound aria-hidden="true" size={17} />
+            <span><strong>{t("heritgFamily")}</strong><small>{t("heritgFamilyNavigationDetail")}</small></span>
+          </button>
           <button onClick={() => { onShowPrivacy(); onClose(); }} type="button">
             <ShieldCheck aria-hidden="true" size={17} />
             <span><strong>{t("privacyProtection")}</strong><small>{t("protectedOnDevice")}</small></span>

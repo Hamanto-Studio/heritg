@@ -581,6 +581,21 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   z-index: 13;
 }
 
+.empty-workspace-tools {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  position: absolute;
+  right: max(22px, env(safe-area-inset-right, 0px));
+  top: max(18px, env(safe-area-inset-top, 0px));
+  z-index: 13;
+}
+
+.workspace-family-button {
+  min-height: 44px;
+  padding: 0 14px;
+}
+
 .tree-pane-hint {
   color: var(--brand-deep);
   font-family: var(--font-display);

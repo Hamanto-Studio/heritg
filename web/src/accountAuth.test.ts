@@ -13,8 +13,12 @@ import {
   maskEmail,
   parseRetryAfterSeconds,
   readCsrfCookie,
+<<<<<<< HEAD
   requestEmailLogin,
   verifyEmailLogin,
+=======
+  requestPasswordlessEmail,
+>>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
   type GoogleIdentity
 } from "./accountAuth";
 
@@ -138,6 +142,20 @@ describe("account authentication API", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/session", expect.objectContaining({
       method: "GET",
       credentials: "include"
+    }));
+  });
+
+  it("requests a passwordless email without persisting its address", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      void _input; void _init;
+      return jsonResponse({ status: "accepted" }, 202);
+    });
+
+    await requestPasswordlessEmail("family@example.com", "https://staging.heritg.us/", undefined, fetchMock);
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/magic-links", expect.objectContaining({
+      method: "POST",
+      credentials: "include",
+      body: JSON.stringify({ email: "family@example.com", returnTo: "https://staging.heritg.us/" })
     }));
   });
 

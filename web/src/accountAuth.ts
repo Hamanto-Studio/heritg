@@ -59,6 +59,7 @@ export interface GoogleIdentity {
         theme: "outline";
         size: "large";
         width: number;
+        text: "continue_with";
         locale: "en" | "id";
       }): void;
       disableAutoSelect(): void;
@@ -180,6 +181,7 @@ export const loginWithGoogle = async (
   signal
 }, fetchImpl));
 
+<<<<<<< HEAD
 export const isConservativeEmail = (value: string): boolean => {
   if (value.length > 254 || value !== value.trim() || /[\s\u0000-\u001f\u007f]/u.test(value)) return false;
   const separator = value.indexOf("@");
@@ -223,6 +225,23 @@ export const verifyEmailLogin = async (
     body: JSON.stringify({ token }),
     signal
   }, fetchImpl, 200));
+=======
+export const requestPasswordlessEmail = async (
+  email: string,
+  returnTo: string,
+  signal?: AbortSignal,
+  fetchImpl: typeof fetch = fetch
+): Promise<void> => {
+  const payload = await request("/magic-links", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, returnTo }),
+    signal
+  }, fetchImpl);
+  if (!objectWithExactKeys(payload, ["status"]) || payload.status !== "accepted") {
+    throw new AccountAuthError(502, "invalid_response");
+  }
+>>>>>>> fcd9ccd (Web: Add Heritg Family plan preview)
 };
 
 export const getAccountSession = async (
