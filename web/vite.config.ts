@@ -12,8 +12,6 @@ const buildEnvironment = (globalThis as {
 const useExcalidrawFallback = buildEnvironment?.HERITG_CANVAS_RENDERER === "excalidraw" ||
   buildEnvironment?.VITE_HERITG_CANVAS_RENDERER === "excalidraw";
 const debugContextEnabled = buildEnvironment?.HERITG_DEBUG_CONTEXT === "1";
-const revenueCatPublicApiKey = buildEnvironment?.HERITG_REVENUECAT_PUBLIC_API_KEY ?? "";
-const familyEnabled = buildEnvironment?.HERITG_FAMILY_ENABLED === "true";
 const deploymentEnvironment = buildEnvironment?.HERITG_DEPLOYMENT_ENV === "staging"
   ? "staging"
   : "production";
@@ -95,10 +93,7 @@ export default defineConfig({
     __EXCALIDRAW_FALLBACK__: JSON.stringify(useExcalidrawFallback),
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
     __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment),
-    __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? ""),
-    __FAMILY_ENABLED__: JSON.stringify(familyEnabled),
-    __PRO_ENABLED__: JSON.stringify(familyEnabled),
-    __REVENUECAT_PUBLIC_API_KEY__: JSON.stringify(revenueCatPublicApiKey)
+    __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? "")
   },
   plugins: [
     react(),
@@ -127,7 +122,6 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         globPatterns: ["**/*.{js,css,html,png,svg,woff2}"],
-        globIgnores: ["**/Purchases.es-*.js"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/(?:api\/|health$|ready$)/, /^\/auth\/email\/?$/],
         runtimeCaching: [

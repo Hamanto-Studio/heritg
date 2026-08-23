@@ -1507,11 +1507,6 @@
   text-align: center;
 }
 
-.revenuecat-checkout-target:not(:empty) {
-  min-height: 360px;
-  margin-top: 14px;
-}
-
 .sync-copy-grid {
   display: grid;
   gap: 9px;

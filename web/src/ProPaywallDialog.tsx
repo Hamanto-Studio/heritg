@@ -1,5 +1,5 @@
 import { Check, Cloud, Crown, ShieldCheck } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Translator } from "./i18n";
 import type { ProContextValue, SubscriptionPlan } from "./proTypes";
 import { ButtonLoader, ErrorNotice, Modal } from "./ui";
@@ -7,7 +7,6 @@ import { ButtonLoader, ErrorNotice, Modal } from "./ui";
 const offersFor = (pro: ProContextValue) => "offers" in pro.subscription ? pro.subscription.offers : [];
 export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
   const [plan, setPlan] = useState<SubscriptionPlan>("yearly");
-  const checkoutRef = useRef<HTMLDivElement>(null);
   const offers = offersFor(pro);
   const monthly = offers.find((offer) => offer.plan === "monthly");
   const yearly = offers.find((offer) => offer.plan === "yearly");
@@ -29,8 +28,8 @@ export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
     </fieldset>
     {!pro.configured ? <div className="pro-availability" role="status"><strong>{t("proComingSoon")}</strong><span>{t("proComingSoonDetail")}</span></div> : null}
     {pro.configured && !signedIn ? <div className="pro-availability" role="status"><strong>{t("signInRequired")}</strong><span>{t("signInBeforePurchase")}</span></div> : null}
-    <ErrorNotice message={pro.error} /><div className="revenuecat-checkout-target" ref={checkoutRef} />
-    <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !selectedOffer || purchasing} onClick={() => void pro.purchase(effectivePlan, checkoutRef.current ?? undefined)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? t("openingCheckout") : !pro.configured ? t("subscriptionsComingSoon") : t("subscribeToPro")}</button>
+    <ErrorNotice message={pro.error} />
+    <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !selectedOffer || purchasing} onClick={() => void pro.purchase(effectivePlan)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? t("openingCheckout") : !pro.configured ? t("subscriptionsComingSoon") : t("subscribeToPro")}</button>
     <p className="pro-legal">{t("subscriptionLegal")}</p>
   </Modal>;
 }

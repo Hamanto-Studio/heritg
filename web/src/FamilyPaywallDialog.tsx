@@ -1,5 +1,5 @@
 import { Check, Cloud, Crown, ShieldCheck } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import type { Translator } from "./i18n";
 import type { FamilyContextValue, SubscriptionPlan } from "./familyTypes";
@@ -16,7 +16,6 @@ export function FamilyPaywallDialog({
   t: Translator;
 }) {
   const [plan, setPlan] = useState<SubscriptionPlan>("yearly");
-  const checkoutRef = useRef<HTMLDivElement>(null);
   const offers = offersFor(family);
   const monthly = offers.find((offer) => offer.plan === "monthly");
   const yearly = offers.find((offer) => offer.plan === "yearly");
@@ -71,12 +70,11 @@ export function FamilyPaywallDialog({
       {!family.configured ? <div className="family-availability" role="status"><strong>{t("familyComingSoon")}</strong><span>{t("familyComingSoonDetail")}</span></div> : null}
       {family.configured && !signedIn ? <div className="family-availability" role="status"><strong>{t("signInRequired")}</strong><span>{t("signInBeforePurchase")}</span></div> : null}
       <ErrorNotice message={family.error} />
-      <div className="revenuecat-checkout-target" ref={checkoutRef} />
       <button
         aria-busy={purchasing || undefined}
         className="button primary family-purchase-button"
         disabled={!family.configured || !signedIn || !selectedOffer || purchasing}
-        onClick={() => void family.purchase(effectivePlan, checkoutRef.current ?? undefined)}
+        onClick={() => void family.purchase(effectivePlan)}
         type="button"
       >
         {purchasing ? <ButtonLoader /> : null}

@@ -13,7 +13,7 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("Subscriptions are not enabled in this deployment");
     expect(markup).toContain("disabled");
   });
-  it("uses localized RevenueCat prices and calculated yearly savings", () => {
+  it("uses localized offer prices and calculated yearly savings", () => {
     const pro = context({ configured: true, account: { status: "signedIn", user: { id: "account-1", expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "free", offers: [
       { plan: "monthly", price: "$10.00", priceMicros: 10_000_000, currency: "USD" },
       { plan: "yearly", price: "$96.00", priceMicros: 96_000_000, currency: "USD" }
