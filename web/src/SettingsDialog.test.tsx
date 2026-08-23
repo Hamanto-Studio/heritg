@@ -43,7 +43,7 @@ describe("encrypted backup password validation", () => {
 });
 
 describe("relationship terminology settings", () => {
-  it("shows regional terminology choices only with the Indonesian interface", () => {
+  it("shows every relationship language independently of interface language", () => {
     const actions = {} as AppActions;
     const indonesian = renderToStaticMarkup(
       <SettingsDialog
@@ -62,9 +62,11 @@ describe("relationship terminology settings", () => {
       />
     );
 
-    expect(indonesian).toContain("Istilah hubungan keluarga");
+    expect(indonesian).toContain("Bahasa hubungan keluarga");
     expect(indonesian).toContain("Basa Jawa · Yogyakarta");
     expect(indonesian).toContain("Basa Jawa · Jawa Timur");
-    expect(english).not.toContain("Relationship terminology");
+    expect(english).toContain("Relationship language");
+    expect(english).toContain("Basa Jawa · Yogyakarta");
+    expect(english).toContain("Basa Jawa · East Java");
   });
 });

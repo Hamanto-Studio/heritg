@@ -31,7 +31,7 @@ import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { ExportPrivacySelection } from "./exportPrivacy";
 import type { Translator } from "./i18n";
-import { deriveKinshipLabels, effectiveKinshipLanguage } from "./kinship";
+import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import {
   projectConnectionPlanToElements,
@@ -43,7 +43,7 @@ import type {
   GenerationLimits,
   Person,
   PositionedPerson,
-  RelationshipTerminology,
+  RelationshipLanguage,
   SceneLifeSummaryOptions,
   ViewportState
 } from "./types";
@@ -65,7 +65,7 @@ export interface TreeCanvasProps {
   selectedPersonId?: string;
   generationLimits: GenerationLimits;
   language: AppData["language"];
-  relationshipTerminology?: RelationshipTerminology;
+  relationshipLanguage?: RelationshipLanguage;
   initialViewport?: ViewportState;
   t: Translator;
   onAddRelative: (personId: string) => void;
@@ -316,7 +316,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   selectedPersonId,
   generationLimits,
   language,
-  relationshipTerminology = "id",
+  relationshipLanguage = "id",
   initialViewport,
   t,
   onAddRelative,
@@ -359,9 +359,9 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
       relationships,
       layoutSelectionId,
       generationLimits,
-      effectiveKinshipLanguage(language, relationshipTerminology)
+      relationshipLanguage
     ),
-    [generationLimits, language, layoutSelectionId, people, relationshipTerminology, relationships]
+    [generationLimits, layoutSelectionId, people, relationshipLanguage, relationships]
   );
   const layout = useMemo(() => {
     if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
@@ -371,7 +371,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
       selectedPersonId,
       people,
       relationships,
-      effectiveKinshipLanguage(language, relationshipTerminology)
+      relationshipLanguage
     );
     return {
       ...geometryLayout,
@@ -380,7 +380,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
         role: labels[person.id] ?? ""
       }))
     };
-  }, [geometryLayout, language, people, relationshipTerminology, relationships, selectedPersonId, selectionFiltersLayout]);
+  }, [geometryLayout, people, relationshipLanguage, relationships, selectedPersonId, selectionFiltersLayout]);
   const routingLayout = useMemo(() => ({
     ...geometryLayout,
     people: geometryLayout.people.map((person) => ({ ...person, role: " " }))

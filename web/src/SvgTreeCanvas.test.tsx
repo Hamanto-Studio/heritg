@@ -8,7 +8,7 @@ import type {
   AppData,
   FamilyRelationship,
   Person,
-  RelationshipTerminology,
+  RelationshipLanguage,
   ViewportState
 } from "./types";
 
@@ -105,7 +105,7 @@ describe("SvgTreeCanvas", () => {
     canvasPeople: Person[] = [person],
     canvasRelationships: FamilyRelationship[] = [],
     initialViewport?: ViewportState,
-    relationshipTerminology?: RelationshipTerminology,
+    relationshipLanguage?: RelationshipLanguage,
     language: AppData["language"] = "en"
   ) => {
     act(() => root.render(
@@ -122,7 +122,7 @@ describe("SvgTreeCanvas", () => {
         onViewportChange={vi.fn()}
         people={canvasPeople}
         relationships={canvasRelationships}
-        relationshipTerminology={relationshipTerminology}
+        relationshipLanguage={relationshipLanguage}
         selectedPersonId={selectedPersonId}
         t={(key) => key}
         treeId="tree"
@@ -263,7 +263,7 @@ describe("SvgTreeCanvas", () => {
       relationships,
       undefined,
       "jv-yogyakarta",
-      "id"
+      "en"
     );
 
     expect(container.querySelector('[data-person-id="sibling"] .svg-person-role')?.textContent)

@@ -9,6 +9,7 @@ import {
 } from "./encryptedSharing";
 import { saveAppData } from "./db";
 import { createTranslator } from "./i18n";
+import { relationshipLanguageForData } from "./kinship";
 import { mergeImportedData } from "./portability";
 import { PasswordField } from "./PasswordField";
 import { useAppStore } from "./store";
@@ -190,7 +191,7 @@ export function SharedTreeApp() {
           generationLimits={unlimitedGenerationLimits}
           initialViewport={viewportRef.current}
           language={language}
-          relationshipTerminology={loaded.data.relationshipTerminology ?? "id"}
+          relationshipLanguage={relationshipLanguageForData(loaded.data)}
           lifeSummaryOptions={loaded.sharedView ? {
             showAge: loaded.sharedView.ages,
             showBirthDate: loaded.sharedView.birthDates,

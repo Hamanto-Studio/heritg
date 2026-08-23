@@ -23,7 +23,7 @@ import {
   selectPerson as selectPersonInData,
   selectTree as selectTreeInData,
   setLanguage as setLanguageInData,
-  setRelationshipTerminology as setRelationshipTerminologyInData,
+  setRelationshipLanguage as setRelationshipLanguageInData,
   setViewport as setViewportInData,
   updatePerson as updatePersonInData,
   DomainError,
@@ -33,7 +33,7 @@ import {
 } from "./domain";
 import { allowsCoParent } from "./relationshipRoles";
 import { newId } from "./types";
-import type { AppData, DirectRole, RelationshipTerminology, ViewportState } from "./types";
+import type { AppData, DirectRole, RelationshipLanguage, ViewportState } from "./types";
 
 export interface RelationshipDraftInput {
   relativePersonId: string;
@@ -88,7 +88,7 @@ export interface AppActions {
   ): void;
   removeRelationship(relationshipId: string): void;
   setLanguage(language: AppLanguage): void;
-  setRelationshipTerminology(terminology: RelationshipTerminology): void;
+  setRelationshipLanguage(language: RelationshipLanguage): void;
   setViewport(treeId: string, viewport: ViewportState): void;
   replaceData(data: unknown): void;
   importData(data: unknown): void;
@@ -430,8 +430,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     commit((current) => [setLanguageInData(current, language), undefined]);
   }
 
-  function setRelationshipTerminology(terminology: RelationshipTerminology) {
-    commit((current) => [setRelationshipTerminologyInData(current, terminology), undefined]);
+  function setRelationshipLanguage(language: RelationshipLanguage) {
+    commit((current) => [setRelationshipLanguageInData(current, language), undefined]);
   }
 
   function setViewport(treeId: string, viewport: ViewportState) {
@@ -464,7 +464,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     linkRelative,
     removeRelationship,
     setLanguage,
-    setRelationshipTerminology,
+    setRelationshipLanguage,
     setViewport,
     replaceData,
     importData: replaceData

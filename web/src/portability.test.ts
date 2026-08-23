@@ -117,6 +117,7 @@ const appData: AppData = {
   ],
   selectedTreeId: "tree-original",
   language: "id",
+  relationshipLanguage: "jv-yogyakarta",
   relationshipTerminology: "id",
   viewports: {
     "tree-original": { scrollX: 120, scrollY: -40, zoom: 1.25 }
@@ -171,7 +172,7 @@ describe("HERITG JSON backups", () => {
 
     expect(parsed.format).toBe(HERITG_FORMAT);
     expect(parsed.exportedAt).toBe(timestamp);
-    expect(parsed.data).toEqual(appData);
+    expect(parsed.data).toEqual(validateAppData(appData));
 
     const restored = importHeritgBackup(source, {
       idFactory: sequence(
@@ -196,6 +197,7 @@ describe("HERITG JSON backups", () => {
     ]);
     expect(restored.people[0].photoDataUrl).toBe(appData.people[0].photoDataUrl);
     expect(restored.people[2].birthOrderOverride).toBe(1);
+    expect(restored.relationshipLanguage).toBe("jv-yogyakarta");
     expect(restored.relationships[0]).toMatchObject({
       id: "new-partners",
       treeId: "new-tree",
