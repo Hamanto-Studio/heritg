@@ -79,14 +79,16 @@
     display: none;
   }
 
-  .workspace-share-button {
+  .workspace-share-button,
+  .workspace-family-button {
     border-radius: 50%;
     font-size: 0;
     padding: 0;
     width: 44px;
   }
 
-  .workspace-share-button span { display: none; }
+  .workspace-share-button span,
+  .workspace-family-button span { display: none; }
 }
 
 @media (max-width: 520px) {

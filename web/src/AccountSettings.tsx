@@ -49,6 +49,17 @@ interface AccountSettingsProps {
   cooldownState?: EmailCooldownState;
 }
 
+function GoogleMark() {
+  return (
+    <svg aria-hidden="true" className="google-mark" viewBox="0 0 18 18">
+      <path d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.716v2.258h2.909c1.702-1.567 2.684-3.874 2.684-6.615Z" fill="#4285F4" />
+      <path d="M9 18c2.43 0 4.468-.806 5.956-2.18l-2.909-2.258c-.806.54-1.836.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z" fill="#34A853" />
+      <path d="M3.963 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.169.281-1.707V4.961H.956A9 9 0 0 0 0 9c0 1.452.347 2.827.956 4.039l3.007-2.332Z" fill="#FBBC05" />
+      <path d="M9 3.579c1.321 0 2.507.454 3.441 1.346l2.581-2.581C13.464.892 11.426 0 9 0A9 9 0 0 0 .956 4.961l3.007 2.332C4.672 5.164 6.656 3.579 9 3.579Z" fill="#EA4335" />
+    </svg>
+  );
+}
+
 export function AccountSettings({
   language,
   t,
@@ -159,7 +170,8 @@ export function AccountSettings({
       type: "standard",
       theme: "outline",
       size: "large",
-      width: 260,
+      width: 300,
+      text: "continue_with",
       locale: language === "id" ? "id" : "en"
     });
   }, [googleStatus, language]);
@@ -261,6 +273,7 @@ export function AccountSettings({
       clearEmailMemory();
       setSession({ accountId: result.accountId, expiresAt: result.expiresAt });
       setStatus("authenticated");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) setGoogleStatus("error");
     }
@@ -284,6 +297,7 @@ export function AccountSettings({
       clearEmailMemory();
       setGoogleStatus("idle");
       setStatus("anonymous");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) {
         setActionError("logout");
@@ -311,6 +325,7 @@ export function AccountSettings({
       clearEmailMemory();
       setGoogleStatus("idle");
       setStatus("anonymous");
+      window.dispatchEvent(new Event("heritg:account-session-changed"));
     } catch {
       if (mounted.current && !controller.signal.aborted) {
         setActionError("delete");
@@ -334,6 +349,22 @@ export function AccountSettings({
         {status === "checking" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountChecking")}</p> : null}
         {status === "anonymous" ? (
           <div className="account-sign-in">
+            <div className="account-google-primary">
+              {googleStatus === "idle" ? (
+                <button className="button account-google-button" onClick={() => void prepareGoogle()} type="button">
+                  <GoogleMark /> {t("accountPrepare")}
+                </button>
+              ) : null}
+              {googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
+                <div className="google-sign-in">
+                  <div aria-label={t("accountGoogleButton")} ref={googleButton} />
+                  {googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
+                  {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
+                </div>
+              ) : null}
+              {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
+            </div>
+            <div className="account-method-divider"><span>{t("accountEmailAlternative")}</span></div>
             <form onSubmit={(event) => {
               event.preventDefault();
               submitEmail();
@@ -377,23 +408,7 @@ export function AccountSettings({
                 {cooldown > 0 ? t("accountEmailResendWait", { seconds: cooldown }) : t("accountEmailResend")}
               </button>
             ) : null}
-            <div className="account-alternative">
-              <span>{t("accountGoogleFallback")}</span>
-              {googleStatus === "idle" ? (
-                <button className="button ghost" onClick={() => void prepareGoogle()} type="button">
-                  {t("accountPrepare")}
-                </button>
-              ) : null}
-              {googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
-                <div className="google-sign-in">
-                  <div aria-label={t("accountGoogleButton")} ref={googleButton} />
-                  {googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
-                  {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
-                </div>
-              ) : null}
-              {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
-              <p className="settings-detail">{t("accountProvidersSeparate")}</p>
-            </div>
+            <p className="settings-detail account-provider-note">{t("accountProvidersSeparate")}</p>
           </div>
         ) : null}
         {status === "authenticated" && session ? (

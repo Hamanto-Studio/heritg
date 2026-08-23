@@ -59,6 +59,7 @@ export interface GoogleIdentity {
         theme: "outline";
         size: "large";
         width: number;
+        text: "continue_with";
         locale: "en" | "id";
       }): void;
       disableAutoSelect(): void;

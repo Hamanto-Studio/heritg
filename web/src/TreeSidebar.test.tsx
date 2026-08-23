@@ -91,6 +91,7 @@ describe("TreeSidebar file import", () => {
         onError={vi.fn()}
         onImported={vi.fn()}
         onShowHelp={vi.fn()}
+        onShowFamily={vi.fn()}
         onShowPrivacy={vi.fn()}
         onReportBug={vi.fn()}
         open
@@ -115,6 +116,7 @@ describe("TreeSidebar file import", () => {
         onError={vi.fn()}
         onImported={vi.fn()}
         onReportBug={onReportBug}
+        onShowFamily={vi.fn()}
         onShowHelp={vi.fn()}
         onShowPrivacy={vi.fn()}
         open
@@ -127,6 +129,33 @@ describe("TreeSidebar file import", () => {
     act(() => button?.click());
 
     expect(onReportBug).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("opens Heritg Family from the sidebar utility", () => {
+    const onClose = vi.fn();
+    const onShowFamily = vi.fn();
+    act(() => root.render(
+      <TreeSidebar
+        actions={actions}
+        data={data}
+        onClose={onClose}
+        onError={vi.fn()}
+        onImported={vi.fn()}
+        onReportBug={vi.fn()}
+        onShowFamily={onShowFamily}
+        onShowHelp={vi.fn()}
+        onShowPrivacy={vi.fn()}
+        open
+        t={t}
+      />
+    ));
+
+    const button = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((candidate) => candidate.textContent?.includes("heritgFamily"));
+    act(() => button?.click());
+
+    expect(onShowFamily).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
@@ -143,6 +172,7 @@ describe("TreeSidebar family copies", () => {
         onClose={onClose}
         onError={vi.fn()}
         onImported={vi.fn()}
+        onShowFamily={vi.fn()}
         onShowHelp={vi.fn()}
         onShowPrivacy={vi.fn()}
         onReportBug={vi.fn()}

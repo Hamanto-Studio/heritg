@@ -68,6 +68,10 @@ describe("account settings", () => {
     const prepare = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with Google"));
     expect(prepare).toBeDefined();
+    expect(prepare?.querySelector(".google-mark")).not.toBeNull();
+    const emailInput = container.querySelector('input[type="email"]');
+    const relativePosition = prepare?.compareDocumentPosition(emailInput as Node) ?? 0;
+    expect(relativePosition & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
 
     await act(async () => {
       prepare?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -93,6 +97,7 @@ describe("account settings", () => {
       ux_mode: "popup"
     }));
     expect(renderButton).toHaveBeenCalledOnce();
+    expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ text: "continue_with" }));
 
     await act(async () => {
       root?.render(
