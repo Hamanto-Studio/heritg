@@ -39,7 +39,24 @@ Keep iOS and Android entries in the shared changelog untouched.
 Use `--ci` only in CI. It skips branch, clean-tree, and existing-tag checks but
 still validates metadata, changelog structure, workflows, and Vercel policy.
 
-## Stage and verify
+## Deploy staging quickly
+
+Staging is an iteration environment, not a release gate.
+
+1. Deploy directly with `npm --prefix web run deploy:staging` from any branch.
+   A clean worktree, `main`, release branch, version bump, changelog update,
+   commit, tag, PR, approval, test run, manual check, and deployment verifier
+   are not required.
+2. The command deploys directly to the isolated `heritg-staging` Vercel project
+   and updates `staging.heritg.us`; do not create or promote a candidate first.
+   It packages the current Web worktree without `.git` metadata so any branch
+   author can deploy through the authenticated staging account.
+3. Every staging build must display `<short-sha>[-dirty]-<UTC timestamp>` beside
+   the app version. `-dirty` means the deployed files include uncommitted work.
+4. Never use this fast path for `heritg.us`, a production release branch, tag,
+   or GitHub Release.
+
+## Stage and verify production
 
 1. Confirm `npx --yes vercel@58.4.4 whoami` succeeds. If not, pause and ask the
    user to run `npx --yes vercel@58.4.4 login` locally. Never request a token in

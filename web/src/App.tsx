@@ -219,6 +219,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   return (
     <div className="app-shell">
       <TreeSidebar
+        account={pro.account.status === "signedIn" ? pro.account.user : undefined}
         actions={actions}
         data={data}
         onClose={() => {

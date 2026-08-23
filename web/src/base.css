@@ -100,8 +100,7 @@ html[data-deployment-environment="staging"] {
 }
 
 .staging-content .tree-sidebar,
-.staging-content .side-panel,
-.staging-content .modal-backdrop {
+.staging-content .side-panel {
   position: absolute;
 }
 

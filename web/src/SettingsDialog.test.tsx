@@ -96,12 +96,13 @@ describe("Family+ settings", () => {
     const markup = renderSettings({
       ...unavailableProContext,
       configured: true,
-      account: { status: "signedIn", user: { id: "A".repeat(22), expiresAt: "2027-08-23T00:00:00Z" } },
+      account: { status: "signedIn", user: { id: "A".repeat(22), name: null, email: null, expiresAt: "2027-08-23T00:00:00Z" } },
       subscription: { status: "active", expiresAt: "2028-08-23T00:00:00Z" },
       sync: { enabled: true, phase: "upToDate", pendingChanges: 0 }
     });
 
     expect(markup).toContain("Heritg Family+");
+    expect(markup).toContain("Active");
     expect(markup).toContain("Refresh access");
     expect(markup).toContain("Up to date");
     expect(markup).toContain("Disable synchronization");
@@ -119,5 +120,14 @@ describe("Family+ settings", () => {
     expect(markup).toContain("Cloud changes remain downloadable");
     expect(markup).toContain("Read-only grace");
     expect(markup).toContain("Enable synchronization");
+  });
+
+  it("uses one Family+ card and describes inactive access explicitly", () => {
+    const markup = renderSettings(unavailableProContext);
+
+    expect(markup).toContain("Not activated");
+    expect(markup).toContain("Preview Family+");
+    expect(markup.match(/Preview Family\+/gu)).toHaveLength(1);
+    expect(markup).not.toContain(">Free<");
   });
 });
