@@ -107,7 +107,7 @@ describe("email authentication callback", () => {
   it("renders Indonesian callback copy when selected", async () => {
     await mount(Promise.resolve(result), "id");
     await act(async () => Promise.resolve());
-    expect(container?.textContent).toContain("Anda sudah masuk");
+    expect(container?.textContent).toContain("Kamu udah login");
   });
 
   it("shows safe verification errors and ignores completion after unmount", async () => {

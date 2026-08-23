@@ -148,7 +148,7 @@ describe("canvas avatar projection", () => {
       { birthDates: true, relationshipDates: false, photos: true, ages: true }
     ).svg;
     expect(english).toContain(`Married ${formatDisplayDate("2020-01-02", "en")}`);
-    expect(indonesian).toContain(`Menikah ${formatDisplayDate("2020-01-02", "id")}`);
+    expect(indonesian).toContain(`Nikah ${formatDisplayDate("2020-01-02", "id")}`);
     expect(withoutRelationshipDates).not.toContain(`Married ${formatDisplayDate("2020-01-02", "en")}`);
   });
 

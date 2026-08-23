@@ -21,7 +21,7 @@ describe("relationship labels", () => {
     expect(relationshipLabelText(formerRelationship, "en"))
       .toBe("Married Jan 2, 2004 · Divorced Mar 4, 2020");
     expect(relationshipLabelText(formerRelationship, "id"))
-      .toBe("Menikah 2 Jan 2004 · Bercerai 4 Mar 2020");
+      .toBe("Nikah 2 Jan 2004 · Cerai 4 Mar 2020");
   });
 
   it("exposes a divorce-only label and ignores non-partner relationships", () => {
