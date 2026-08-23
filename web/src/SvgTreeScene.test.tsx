@@ -136,4 +136,39 @@ describe("SvgTreeScene", () => {
     expect(markup).toContain('stroke="#9c825f"');
     expect(markup).toContain('data-birth-order="1"');
   });
+
+  it("renders distinct gender fills while selection remains a separate outline", () => {
+    const genderPeople = [
+      person("female", "Female Example", "female"),
+      person("male", "Male Example", "male"),
+      person("unspecified", "Unspecified Example")
+    ];
+    const baseGenderLayout = createTreeLayout(genderPeople, []);
+    const genderLayout = {
+      ...baseGenderLayout,
+      people: baseGenderLayout.people.map((value) =>
+        value.id === "female" ? { ...value, birthOrder: 1 } : value
+      )
+    };
+    const markup = renderToStaticMarkup(
+      <svg>
+        <SvgTreeScene
+          connectionPlan={createConnectionPlan(genderLayout)}
+          language="en"
+          layout={genderLayout}
+          overview={false}
+          selectedPersonId="female"
+        />
+      </svg>
+    );
+
+    expect(markup).toContain('data-gender="female"');
+    expect(markup).toContain('fill="#f4e4e8"');
+    expect(markup).toContain('data-gender="male"');
+    expect(markup).toContain('fill="#e2ebf2"');
+    expect(markup).toContain('data-gender="unspecified"');
+    expect(markup).toContain('fill="#ede5d8"');
+    expect(markup).toContain('stroke="#9c825f"');
+    expect(markup).toContain('data-birth-order="1"');
+  });
 });
