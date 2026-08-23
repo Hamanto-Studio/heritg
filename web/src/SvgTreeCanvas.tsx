@@ -23,7 +23,7 @@ import { birthOrderLabel } from "./birthOrder";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { TreeCanvasHandle, TreeCanvasProps } from "./ExcalidrawTreeCanvas";
 import { downloadBlob, safeFilename } from "./images";
-import { deriveKinshipLabels, effectiveKinshipLanguage } from "./kinship";
+import { deriveKinshipLabels } from "./kinship";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import { formatPersonName } from "./personName";
 import { SvgTreeScene } from "./SvgTreeScene";
@@ -190,7 +190,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   selectedPersonId,
   generationLimits,
   language,
-  relationshipTerminology = "id",
+  relationshipLanguage = "id",
   initialViewport,
   t,
   onAddRelative,
@@ -232,7 +232,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     layoutSelectionId,
     generationLimits,
     language,
-    relationshipTerminology,
+    relationshipLanguage,
     controlsVisible: !readOnly && people.length <= 24
   });
   const geometryLayout = useMemo<TreeLayout>(() => {
@@ -258,7 +258,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
       selectedPersonId,
       people,
       relationships,
-      effectiveKinshipLanguage(language, relationshipTerminology)
+      relationshipLanguage
     );
     return {
       ...geometryLayout,
@@ -267,7 +267,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         role: labels[person.id] ?? ""
       }))
     };
-  }, [geometryLayout, language, people, relationshipTerminology, relationships, selectedPersonId, selectionFiltersLayout]);
+  }, [geometryLayout, people, relationshipLanguage, relationships, selectedPersonId, selectionFiltersLayout]);
   const connectionPlan = preparedTree?.connectionPlan ?? {
     families: [],
     nonParentRoutes: [],

@@ -25,6 +25,7 @@ import {
 
 import { availableGenerationLevels } from "./layout";
 import { createTranslator } from "./i18n";
+import { relationshipLanguageForData } from "./kinship";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
@@ -109,6 +110,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       </main>
     );
   }
+
+  const relationshipLanguage = relationshipLanguageForData(data);
 
   const selectAndFocus = (personId: string) => {
     setGenerationOpen(false);
@@ -247,9 +250,9 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               generationLimits={generationLimits}
               emptyContent={emptyWelcome}
               initialViewport={data.viewports[activeTree.id]}
-              key={`${activeTree.id}-${data.language}-${data.relationshipTerminology ?? "id"}`}
+              key={`${activeTree.id}-${data.language}-${relationshipLanguage}`}
               language={data.language}
-              relationshipTerminology={data.relationshipTerminology ?? "id"}
+              relationshipLanguage={relationshipLanguage}
               onAddRelative={addRelativeTo}
               onCanvasInteract={dismissCanvasPanels}
               onDeselectPerson={() => {
@@ -519,7 +522,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       {rightPanel === "people" ? (
         <PeopleDialog
           language={data.language}
-          relationshipTerminology={data.relationshipTerminology ?? "id"}
+          relationshipLanguage={relationshipLanguage}
           onClose={() => setRightPanel(undefined)}
           onSelect={selectAndFocus}
           people={people}

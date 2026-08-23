@@ -246,6 +246,27 @@ describe("cross-platform .heritg archive", () => {
     });
   });
 
+  it("preserves relationship language independently in shared archives", async () => {
+    const archive = await exportCanonicalHeritgArchive(
+      { ...syntheticData, relationshipLanguage: "jv-east-java" },
+      "tree-synthetic",
+      undefined,
+      {
+        sharedView: {
+          birthDates: true,
+          relationshipDates: true,
+          photos: true,
+          ages: true,
+          ageByPersonId: {}
+        }
+      }
+    );
+
+    const restored = await importHeritgArchive(archive);
+    expect(restored.language).toBe("en");
+    expect(restored.relationshipLanguage).toBe("jv-east-java");
+  });
+
   it("rejects identifier collisions atomically when importing into existing data", async () => {
     const archive = await exportHeritgArchive(syntheticData, "tree-synthetic", "");
     await expect(importHeritgArchive(archive, "", { into: syntheticData })).rejects.toThrow(/identifier/i);

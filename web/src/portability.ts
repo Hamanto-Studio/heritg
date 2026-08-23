@@ -32,6 +32,7 @@ const SUBTYPES_BY_KIND: Record<RelationshipKind, ReadonlySet<RelationshipSubtype
 };
 const PRECISIONS = ["exact", "month", "year"] as const;
 const RELATIONSHIP_TERMINOLOGIES = ["id", "jv-yogyakarta", "jv-east-java"] as const;
+const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 type JsonObject = Record<string, unknown>;
 type IdFactory = () => string;
@@ -275,18 +276,28 @@ export function validateAppData(value: unknown): AppData {
       zoom
     };
   }
+  const language = enumValue(root.language, ["en", "id"], "data.language");
+  const relationshipTerminology = enumValue(
+    root.relationshipTerminology ?? "id",
+    RELATIONSHIP_TERMINOLOGIES,
+    "data.relationshipTerminology"
+  );
+  const relationshipLanguage = root.relationshipLanguage === undefined
+    ? language === "en" ? "en" : relationshipTerminology
+    : enumValue(
+        root.relationshipLanguage,
+        RELATIONSHIP_LANGUAGES,
+        "data.relationshipLanguage"
+      );
   return {
     version: 1,
     trees,
     people,
     relationships,
     selectedTreeId,
-    language: enumValue(root.language, ["en", "id"], "data.language"),
-    relationshipTerminology: enumValue(
-      root.relationshipTerminology ?? "id",
-      RELATIONSHIP_TERMINOLOGIES,
-      "data.relationshipTerminology"
-    ),
+    language,
+    relationshipLanguage,
+    relationshipTerminology,
     viewports
   };
 }
@@ -344,6 +355,7 @@ export const mergeImportedData = (imported: AppData, options: BackupImportOption
     relationships: imported.relationships.map((relationship) => ({ ...relationship, id: relationshipIds.get(relationship.id)!, treeId: treeIds.get(relationship.treeId)!, fromPersonId: personIds.get(relationship.fromPersonId)!, toPersonId: personIds.get(relationship.toPersonId)! })),
     selectedTreeId: imported.selectedTreeId ? treeIds.get(imported.selectedTreeId) : undefined,
     language: imported.language,
+    relationshipLanguage: imported.relationshipLanguage,
     relationshipTerminology: imported.relationshipTerminology ?? "id",
     viewports: Object.fromEntries(Object.entries(imported.viewports).map(([treeId, viewport]) => [treeIds.get(treeId)!, viewport]))
   };
@@ -355,6 +367,7 @@ export const mergeImportedData = (imported: AppData, options: BackupImportOption
     relationships: [...target.relationships, ...remapped.relationships],
     selectedTreeId: remapped.selectedTreeId ?? target.selectedTreeId,
     language: target.language,
+    relationshipLanguage: target.relationshipLanguage,
     relationshipTerminology: target.relationshipTerminology ?? "id",
     viewports: { ...target.viewports, ...remapped.viewports }
   });

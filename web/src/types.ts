@@ -1,5 +1,6 @@
 export type Gender = "female" | "male" | "unspecified";
 export type RelationshipTerminology = "id" | "jv-yogyakarta" | "jv-east-java";
+export type RelationshipLanguage = "en" | RelationshipTerminology;
 export type RelationshipKind = "parent" | "partner" | "sibling";
 export type RelationshipSubtype =
   | "biologicalParent"
@@ -105,6 +106,7 @@ export interface AppData {
   relationships: FamilyRelationship[];
   selectedTreeId?: string;
   language: "en" | "id";
+  relationshipLanguage?: RelationshipLanguage;
   relationshipTerminology?: RelationshipTerminology;
   viewports: Record<string, ViewportState>;
 }
@@ -154,6 +156,7 @@ export const emptyAppData = (): AppData => ({
   people: [],
   relationships: [],
   language: navigator.language.toLowerCase().startsWith("id") ? "id" : "en",
+  relationshipLanguage: navigator.language.toLowerCase().startsWith("id") ? "id" : "en",
   relationshipTerminology: "id",
   viewports: {}
 });

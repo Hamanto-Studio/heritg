@@ -2,7 +2,7 @@ import { newId } from "./types";
 import { selectFocusedFamily } from "./familyCopy";
 import type {
   AppData, DirectRole, FamilyRelationship, FamilyTree, Gender, Person,
-  RelationshipKind, RelationshipSubtype, RelationshipTerminology, ViewportState
+  RelationshipKind, RelationshipLanguage, RelationshipSubtype, ViewportState
 } from "./types";
 import {
   DIRECT_ROLE_DEFAULTS,
@@ -147,6 +147,7 @@ export function createInitialAppData(
     people: [],
     relationships: [],
     language: selectedLanguage,
+    relationshipLanguage: selectedLanguage === "id" ? "id" : "en",
     relationshipTerminology: "id",
     viewports: {}
   };
@@ -489,16 +490,18 @@ export function setLanguage(data: AppData, language: AppLanguage): AppData {
   return data.language === language ? data : { ...data, language };
 }
 
-export function setRelationshipTerminology(
+export function setRelationshipLanguage(
   data: AppData,
-  terminology: RelationshipTerminology
+  language: RelationshipLanguage
 ): AppData {
-  if (!["id", "jv-yogyakarta", "jv-east-java"].includes(terminology)) {
+  if (!["en", "id", "jv-yogyakarta", "jv-east-java"].includes(language)) {
     throw new DomainError("invalidData");
   }
-  return (data.relationshipTerminology ?? "id") === terminology
+  const terminology = language === "en" ? data.relationshipTerminology : language;
+  return data.relationshipLanguage === language &&
+    data.relationshipTerminology === terminology
     ? data
-    : { ...data, relationshipTerminology: terminology };
+    : { ...data, relationshipLanguage: language, relationshipTerminology: terminology };
 }
 
 export function setViewport(
@@ -538,6 +541,10 @@ export function assertAppData(value: unknown): asserts value is AppData {
   }
   if (value.relationshipTerminology !== undefined &&
       !["id", "jv-yogyakarta", "jv-east-java"].includes(String(value.relationshipTerminology))) {
+    throw new DomainError("invalidData");
+  }
+  if (value.relationshipLanguage !== undefined &&
+      !["en", "id", "jv-yogyakarta", "jv-east-java"].includes(String(value.relationshipLanguage))) {
     throw new DomainError("invalidData");
   }
   if (!Array.isArray(value.trees) || !Array.isArray(value.people) ||
@@ -613,6 +620,8 @@ export function replaceAppData(value: unknown): AppData {
   assertAppData(value);
   return {
     ...value,
+    relationshipLanguage: value.relationshipLanguage ??
+      (value.language === "en" ? "en" : value.relationshipTerminology ?? "id"),
     relationshipTerminology: value.relationshipTerminology ?? "id",
     trees: value.trees.map((tree) => ({ ...tree })),
     people: value.people.map((person) => ({ ...person })),

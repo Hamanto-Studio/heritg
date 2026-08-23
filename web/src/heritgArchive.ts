@@ -511,6 +511,9 @@ async function archiveEntries(
     createdAt: exactInstant(tree.createdAt),
     id: tree.id,
     ...(tree.lastSelectedPersonId ? { lastSelectedPersonId: tree.lastSelectedPersonId } : {}),
+    ...(sharedView && data.relationshipLanguage
+      ? { relationshipLanguage: clean.relationshipLanguage }
+      : {}),
     schemaVersion: SCHEMA_VERSION,
     ...(sharedView ? { sharedView } : {}),
     title: tree.title,
@@ -726,6 +729,7 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     relationships,
     selectedTreeId: tree.id,
     language: into?.language ?? "en",
+    relationshipLanguage: treeRecord.relationshipLanguage,
     viewports: { [tree.id]: { scrollX: 0, scrollY: 0, zoom: 1 } }
   });
   const sharedView = sharedViewPolicy(treeRecord.sharedView, new Set(people.map((person) => person.id)));
@@ -742,6 +746,8 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     relationships: [...target.relationships, ...relationships],
     selectedTreeId: tree.id,
     language: target.language,
+    relationshipLanguage: target.relationshipLanguage,
+    relationshipTerminology: target.relationshipTerminology,
     viewports: { ...target.viewports, [tree.id]: { scrollX: 0, scrollY: 0, zoom: 1 } }
   });
 }
