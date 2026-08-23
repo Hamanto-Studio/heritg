@@ -8,6 +8,7 @@ import {
   CONNECTOR_STYLE,
   branchJunctions,
   connectorPaths,
+  crossingBridgePath,
   roundedConnectorPath
 } from "./connectorStyle";
 import { LAYOUT_METRICS } from "./layout";
@@ -234,18 +235,33 @@ export function SvgTreeScene({
       )}
       {connectionPlan.crossings.map((point, index) => (
         <g key={`${point.x}:${point.y}:${index}`}>
-          <circle
-            cx={point.x}
-            cy={point.y}
-            fill={SCENE_COLORS.canvas}
-            r={CONNECTOR_STYLE.crossingRadius}
-          />
           <line
-            className={`svg-connector ${point.kind}`}
+            stroke={SCENE_COLORS.canvas}
+            strokeLinecap="butt"
+            strokeWidth={CONNECTOR_STYLE.width + 4}
             x1={point.x}
             x2={point.x}
-            y1={point.y - 6}
-            y2={point.y + 6}
+            y1={point.y - CONNECTOR_STYLE.crossingRadius - 5}
+            y2={point.y + CONNECTOR_STYLE.crossingRadius + 5}
+          />
+          <line
+            className={`svg-connector ${point.horizontalKind}`}
+            x1={point.x - CONNECTOR_STYLE.crossingRadius - 5}
+            x2={point.x + CONNECTOR_STYLE.crossingRadius + 7}
+            y1={point.y}
+            y2={point.y}
+          />
+          <path
+            d={crossingBridgePath(point)}
+            fill="none"
+            stroke={SCENE_COLORS.canvas}
+            strokeLinecap="round"
+            strokeWidth={CONNECTOR_STYLE.width + 4}
+          />
+          <path
+            className={`svg-connector ${point.kind}`}
+            d={crossingBridgePath(point)}
+            fill="none"
           />
         </g>
       ))}
