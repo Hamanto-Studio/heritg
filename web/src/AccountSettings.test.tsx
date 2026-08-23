@@ -65,6 +65,7 @@ describe("account settings", () => {
     });
 
     expect(document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)).toBeNull();
+    expect(container.querySelector('input[type="email"]')).toBeNull();
     const prepare = [...container.querySelectorAll("button")]
       .find((button) => button.textContent?.includes("Continue with Google"));
     expect(prepare).toBeDefined();
@@ -203,6 +204,31 @@ describe("account settings", () => {
     expect(container.textContent).toContain("Continue with email");
   });
 
+  it("shows one sign-in method at a time and keeps Google primary", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      error: { code: "unauthenticated", message: "Authentication required" }
+    }), { status: 401 })));
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings language="en" t={createTranslator("en")} />);
+    });
+
+    expect(container.textContent).toContain("Continue with Google");
+    expect(container.querySelector('input[type="email"]')).toBeNull();
+    const chooseEmail = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with email"));
+    await act(async () => chooseEmail?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(container.querySelector('input[type="email"]')).not.toBeNull();
+
+    const chooseGoogle = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with Google"));
+    await act(async () => chooseGoogle?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(container.querySelector('input[type="email"]')).toBeNull();
+    expect(container.textContent).toContain("Continue with email");
+  });
+
   it("uses one generic email flow, rejects invalid input, and enforces resend cooldown", async () => {
     vi.useFakeTimers();
     const cooldownState = createEmailCooldownState();
@@ -227,6 +253,11 @@ describe("account settings", () => {
       root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
     });
 
+    expect(container.querySelector('input[type="email"]')).toBeNull();
+    expect(container.textContent).toContain("Continue with Google");
+    const chooseEmail = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with email"));
+    await act(async () => chooseEmail?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const input = container.querySelector<HTMLInputElement>('input[type="email"]');
     const form = container.querySelector("form");
     if (!input || !form) throw new Error("Expected email form");
@@ -271,6 +302,9 @@ describe("account settings", () => {
     await act(async () => {
       root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
     });
+    const remountedChooseEmail = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with email"));
+    await act(async () => remountedChooseEmail?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const remountedContinue = [...container.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.textContent?.includes("Try again in"));
     expect(remountedContinue?.disabled).toBe(true);
@@ -302,6 +336,9 @@ describe("account settings", () => {
     await act(async () => {
       root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
     });
+    const chooseEmail = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with email"));
+    await act(async () => chooseEmail?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const input = container.querySelector<HTMLInputElement>('input[type="email"]');
     const form = container.querySelector("form");
     if (!input || !form) throw new Error("Expected email form");
@@ -321,6 +358,9 @@ describe("account settings", () => {
     await act(async () => {
       root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
     });
+    const remountedChooseEmail = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Continue with email"));
+    await act(async () => remountedChooseEmail?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(container.textContent).toContain("Try again in 90s");
   });
 });

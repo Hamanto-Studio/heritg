@@ -1042,15 +1042,26 @@
 
 .account-sign-in,
 .account-sign-in form,
-.account-alternative {
+.account-method-panel {
   display: grid;
   gap: 10px;
 }
 
 .account-sign-in form .button,
 .account-sign-in > .button,
-.account-alternative > .button {
+.account-method-panel > .button {
   justify-self: start;
+}
+
+.account-method-panel > .account-google-primary {
+  justify-self: stretch;
+}
+
+.account-method-switch {
+  color: var(--subtle);
+  font-size: 0.82rem;
+  min-height: 30px;
+  padding: 4px 2px;
 }
 
 .account-sign-in .field {

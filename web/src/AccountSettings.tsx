@@ -24,6 +24,7 @@ import { ButtonLoader } from "./ui";
 type Status = "checking" | "anonymous" | "authenticated" | "loggingOut" | "deleting" | "error";
 type EmailStatus = "idle" | "sending" | "sent" | "error";
 type GoogleStatus = "idle" | "preparing" | "ready" | "signingIn" | "error";
+type SignInMethod = "google" | "email";
 type ActionError = "logout" | "delete";
 const EMAIL_RESEND_SECONDS = 60;
 class EmailCooldownState {
@@ -67,6 +68,7 @@ export function AccountSettings({
   const [maskedEmail, setMaskedEmail] = useState<string>();
   const [cooldown, setCooldown] = useState(() => cooldownState.remaining());
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
+  const [signInMethod, setSignInMethod] = useState<SignInMethod>("google");
   const requestedEmail = useRef<string | undefined>(undefined);
   const loginMaterial = useRef<LoginMaterial | undefined>(undefined);
   const googleIdentity = useRef<GoogleIdentity | undefined>(undefined);
@@ -153,7 +155,8 @@ export function AccountSettings({
   }, [confirmingDelete]);
 
   useEffect(() => {
-    if (googleStatus !== "ready" || !googleButton.current || !googleIdentity.current) return;
+    if (signInMethod !== "google" || googleStatus !== "ready" ||
+        !googleButton.current || !googleIdentity.current) return;
     googleButton.current.replaceChildren();
     googleIdentity.current.accounts.id.renderButton(googleButton.current, {
       type: "standard",
@@ -162,7 +165,7 @@ export function AccountSettings({
       width: 260,
       locale: language === "id" ? "id" : "en"
     });
-  }, [googleStatus, language]);
+  }, [googleStatus, language, signInMethod]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -283,6 +286,7 @@ export function AccountSettings({
       setSession(undefined);
       clearEmailMemory();
       setGoogleStatus("idle");
+      setSignInMethod("google");
       setStatus("anonymous");
     } catch {
       if (mounted.current && !controller.signal.aborted) {
@@ -310,6 +314,7 @@ export function AccountSettings({
       setSession(undefined);
       clearEmailMemory();
       setGoogleStatus("idle");
+      setSignInMethod("google");
       setStatus("anonymous");
     } catch {
       if (mounted.current && !controller.signal.aborted) {
@@ -334,53 +339,10 @@ export function AccountSettings({
         {status === "checking" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountChecking")}</p> : null}
         {status === "anonymous" ? (
           <div className="account-sign-in">
-            <form onSubmit={(event) => {
-              event.preventDefault();
-              submitEmail();
-            }}>
-              <label className="field" htmlFor="account-email">
-                <span>{t("accountEmail")}</span>
-                <input
-                  aria-describedby={emailInvalid ? "account-email-error" : undefined}
-                  aria-invalid={emailInvalid || undefined}
-                  autoComplete="email"
-                  disabled={emailStatus === "sending"}
-                  id="account-email"
-                  inputMode="email"
-                  maxLength={254}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setEmailInvalid(false);
-                  }}
-                  required
-                  type="email"
-                  value={email}
-                />
-              </label>
-              {emailInvalid ? <p className="danger-text" id="account-email-error" role="alert">{t("accountEmailInvalid")}</p> : null}
-              <button className="button primary" disabled={emailStatus === "sending" || cooldown > 0} type="submit">
-                {emailStatus === "sending" ? <ButtonLoader /> : <Mail aria-hidden="true" size={16} />}
-                {cooldown > 0 && emailStatus !== "sent"
-                  ? t("accountEmailRetryWait", { seconds: cooldown })
-                  : t("accountEmailContinue")}
-              </button>
-            </form>
-            <div aria-atomic="true" aria-live="polite" className="account-email-status" role="status">
-              {emailStatus === "sending" ? <p>{t("accountEmailSending")}</p> : null}
-              {emailStatus === "sent" ? <p>{maskedEmail
-                ? t("accountEmailSentMasked", { email: maskedEmail })
-                : t("accountEmailSent")}</p> : null}
-              {emailStatus === "error" ? <p className="danger-text">{t("accountEmailError")}</p> : null}
-            </div>
-            {emailStatus === "sent" ? (
-              <button className="button secondary" disabled={cooldown > 0} onClick={resendEmail} type="button">
-                {cooldown > 0 ? t("accountEmailResendWait", { seconds: cooldown }) : t("accountEmailResend")}
-              </button>
-            ) : null}
-            <div className="account-alternative">
-              <span>{t("accountGoogleFallback")}</span>
+            {signInMethod === "google" ? (
+              <div className="account-method-panel">
               {googleStatus === "idle" ? (
-                <button className="button ghost" onClick={() => void prepareGoogle()} type="button">
+                <button className="button secondary account-google-primary" onClick={() => void prepareGoogle()} type="button">
                   {t("accountPrepare")}
                 </button>
               ) : null}
@@ -392,8 +354,64 @@ export function AccountSettings({
                 </div>
               ) : null}
               {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
-              <p className="settings-detail">{t("accountProvidersSeparate")}</p>
-            </div>
+                <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
+                  <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
+                </button>
+              </div>
+            ) : (
+              <div className="account-method-panel">
+                <form onSubmit={(event) => {
+                  event.preventDefault();
+                  submitEmail();
+                }}>
+                  <label className="field" htmlFor="account-email">
+                    <span>{t("accountEmail")}</span>
+                    <input
+                      aria-describedby={emailInvalid ? "account-email-error" : undefined}
+                      aria-invalid={emailInvalid || undefined}
+                      autoComplete="email"
+                      autoFocus
+                      disabled={emailStatus === "sending"}
+                      id="account-email"
+                      inputMode="email"
+                      maxLength={254}
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        setEmailInvalid(false);
+                      }}
+                      required
+                      type="email"
+                      value={email}
+                    />
+                  </label>
+                  {emailInvalid ? <p className="danger-text" id="account-email-error" role="alert">{t("accountEmailInvalid")}</p> : null}
+                  <button className="button primary" disabled={emailStatus === "sending" || cooldown > 0} type="submit">
+                    {emailStatus === "sending" ? <ButtonLoader /> : <Mail aria-hidden="true" size={16} />}
+                    {cooldown > 0 && emailStatus !== "sent"
+                      ? t("accountEmailRetryWait", { seconds: cooldown })
+                      : t("accountEmailContinue")}
+                  </button>
+                </form>
+                <div aria-atomic="true" aria-live="polite" className="account-email-status" role="status">
+                  {emailStatus === "sending" ? <p>{t("accountEmailSending")}</p> : null}
+                  {emailStatus === "sent" ? <p>{maskedEmail
+                    ? t("accountEmailSentMasked", { email: maskedEmail })
+                    : t("accountEmailSent")}</p> : null}
+                  {emailStatus === "error" ? <p className="danger-text">{t("accountEmailError")}</p> : null}
+                </div>
+                {emailStatus === "sent" ? (
+                  <button className="button secondary" disabled={cooldown > 0} onClick={resendEmail} type="button">
+                    {cooldown > 0 ? t("accountEmailResendWait", { seconds: cooldown }) : t("accountEmailResend")}
+                  </button>
+                ) : null}
+                <button className="button ghost account-method-switch" onClick={() => {
+                  clearEmailMemory();
+                  setSignInMethod("google");
+                }} type="button">
+                  {t("accountPrepare")}
+                </button>
+              </div>
+            )}
           </div>
         ) : null}
         {status === "authenticated" && session ? (
