@@ -37,5 +37,7 @@ execFileSync("npx", [
   "--build-env",
   "HERITG_DEPLOYMENT_ENV=staging",
   "--build-env",
+  "HERITG_FAMILY_BILLING_ENABLED=true",
+  "--build-env",
   `HERITG_GOOGLE_CLIENT_ID=${googleClientId}`
 ], { cwd: repositoryRoot, stdio: "inherit" });

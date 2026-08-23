@@ -46,6 +46,7 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain("validateStagingAuthConfig(origin, googleClientId)");
     expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
     expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=staging");
+    expect(deploy).toContain("HERITG_FAMILY_BILLING_ENABLED=true");
   });
 
   it("keeps every account API request network-only in the service worker", () => {
