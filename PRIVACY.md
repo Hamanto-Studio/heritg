@@ -31,8 +31,8 @@ The current processing register is published in
 
 HERITG may store information entered by the user, including names, family
 relationships, dates, photographs, notes, and imported genealogy records. This
-information is stored in the app's local container using Apple platform storage
-technologies on iOS and IndexedDB in the user's browser on the web.
+information is stored in the app's local container using platform storage
+technologies on iOS and Android and IndexedDB in the user's browser on the web.
 
 Hamanto Studio operates an optional pseudonymous Web account system but does
 not currently operate hosted editable family-tree sync. The optional Web
@@ -40,17 +40,19 @@ sharing service receives encrypted snapshots and lifecycle metadata, not
 plaintext, the share password, or its derived viewing key. Deleting a person, tree, or the application
 removes data according to the app, browser, and operating system behavior. Web
 users can also remove local data by clearing the site's browser storage. Device
-backups managed by Apple or browser-profile backup and synchronization features
-may retain local app data according to the user's platform settings and provider
-policies.
+backups managed by the operating system or browser-profile backup and
+synchronization features may retain local app data according to the user's
+platform settings and provider policies. HERITG disables Android application
+backup and device-to-device transfer for its local family database.
 
 ## Imports, Exports, and Sharing
 
 When a user imports a file, HERITG processes it on the device. When a user
-exports or shares a tree, the user chooses the destination through the Apple
-system interface on iOS or the browser's download interface on the web. Web JSON
-backups are identified as `.json`; the cross-platform `.heritg` archive format
-is documented separately in [`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
+exports or shares a tree, the user chooses the destination through the system
+share interface on iOS or Android or the browser's download interface on the
+web. Web JSON backups are identified as `.json`; the cross-platform `.heritg`
+archive format is documented separately in
+[`docs/DATA_FORMAT.md`](docs/DATA_FORMAT.md).
 
 After an export leaves HERITG, its handling is controlled by the selected app,
 service, recipient, and the user's choices. Exported family information may be
@@ -73,7 +75,7 @@ sender's ability to revoke a link early.
 ## Network Access
 
 The current app does not require network access for its core family-tree
-features. Opening an external support link or using an Apple-provided service
+features. Opening an external support link or using an operating-system service
 may contact that service under its own terms.
 
 Opening the web app downloads its public HTML, JavaScript, styles, fonts, and
@@ -191,15 +193,16 @@ policy is not to include Firebase Analytics or Google Analytics. Firebase Admin
 SDK credentials and service-account private keys must never be included in the
 application.
 
-## App Store and Purchases
+## Platform Stores and Purchases
 
-For iOS distribution, Apple processes App Store downloads, payments, receipts, and related account
-information under Apple's privacy policy. Hamanto Studio does not receive a
-user's full payment-card details from Apple.
+Apple and Google process App Store and Google Play downloads, payments,
+receipts, device information, and related account information under their own
+privacy policies. Hamanto Studio does not receive a user's full payment-card
+details from either platform.
 
-App Store Connect may provide Hamanto Studio with aggregate sales, download,
-conversion, and performance reports. These platform reports are separate from
-in-app behavioral analytics.
+App Store Connect and Google Play Console may provide Hamanto Studio with
+aggregate sales, download, conversion, device, and performance reports. These
+platform reports are separate from in-app behavioral analytics.
 
 ## Children and Family Members
 
@@ -231,6 +234,7 @@ feature must update the relevant public documentation in the same change.
 
 ## Contact
 
-For privacy questions, contact Hamanto Studio through
-[Telegram](https://t.me/robihamanto). Do not include family-tree data, private
-keys, credentials, or other sensitive information in the initial message.
+For privacy questions, email [robi@hamanto.com](mailto:robi@hamanto.com) or
+contact Hamanto Studio through [Telegram](https://t.me/robihamanto). Do not
+include family-tree data, private keys, credentials, or other sensitive
+information in the initial message.
