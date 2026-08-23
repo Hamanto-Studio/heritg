@@ -106,7 +106,7 @@ describe("account settings", () => {
         />
       );
     });
-    expect(container.textContent).toContain("Lanjutkan dengan email");
+    expect(container.textContent).toContain("Lanjut pakai email");
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ locale: "id" }));
 
     const callback = initialize.mock.calls[0]?.[0]?.callback as ((value: { credential: string }) => void) | undefined;
@@ -117,7 +117,7 @@ describe("account settings", () => {
     });
 
     expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/google"))).toHaveLength(1);
-    expect(container.textContent).toContain("Sudah masuk");
+    expect(container.textContent).toContain("Udah login");
   });
 
   it("ignores a GIS credential delivered after unmount", async () => {

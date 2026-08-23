@@ -64,9 +64,9 @@ describe("relationship terminology settings", () => {
       />
     );
 
-    expect(indonesian).toContain("Bahasa hubungan keluarga");
-    expect(indonesian).toContain("Basa Jawa · Yogyakarta");
-    expect(indonesian).toContain("Basa Jawa · Jawa Timur");
+    expect(indonesian).toContain("Sebutan status keluarga");
+    expect(indonesian).toContain("Basa Jawa (Yogyakarta)");
+    expect(indonesian).toContain("Basa Jawa (Jawa Timur)");
     expect(english).toContain("Relationship language");
     expect(english).toContain("Basa Jawa · Yogyakarta");
     expect(english).toContain("Basa Jawa · East Java");
