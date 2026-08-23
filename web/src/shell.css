@@ -246,6 +246,16 @@
 
 .sidebar-utilities button:hover { background: var(--recessed); }
 .sidebar-utilities svg { color: var(--brand-deep); }
+.sidebar-utilities .family-plus-navigation {
+  background: linear-gradient(90deg, var(--family-plus-soft), color-mix(in srgb, var(--family-plus-soft) 35%, var(--base)));
+  border: 1px solid var(--family-plus-line);
+  box-shadow: inset 3px 0 0 var(--family-plus);
+}
+.sidebar-utilities .family-plus-navigation:hover {
+  background: color-mix(in srgb, var(--family-plus) 12%, var(--base));
+}
+.sidebar-utilities .family-plus-navigation strong,
+.sidebar-utilities .family-plus-navigation svg { color: var(--family-plus-deep); }
 .sidebar-utilities strong,
 .sidebar-utilities small { display: block; }
 .sidebar-utilities strong { font-size: 0.8rem; }
@@ -595,6 +605,31 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   min-height: 44px;
   padding: 0 14px;
 }
+
+.workspace-family-button.button.secondary {
+  background: linear-gradient(145deg, var(--family-plus), var(--family-plus-deep));
+  border-color: var(--family-plus-deep);
+  box-shadow: 0 7px 20px rgba(77, 52, 91, 0.24), inset 0 1px rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.workspace-family-button.button.secondary:hover {
+  background: linear-gradient(145deg, var(--family-plus-deep), var(--family-plus-hover));
+  box-shadow: 0 9px 24px rgba(77, 52, 91, 0.3), inset 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.family-plus-mark {
+  color: var(--family-plus);
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.family-plus-wordmark {
+  white-space: nowrap;
+}
+
+.workspace-family-button .family-plus-mark { color: currentColor; }
+
 .tree-pane-hint {
   color: var(--brand-deep);
   font-family: var(--font-display);

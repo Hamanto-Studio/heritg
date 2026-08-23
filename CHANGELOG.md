@@ -8,6 +8,12 @@ prefix.
 
 ### Web
 
+- Added Heritg Family+ encrypted device synchronization, collaboration for up
+  to five people, and longer encrypted sharing links.
+- Changed Family+ checkout to direct, one-time two-year and five-year access
+  options with supported Indonesian payment methods.
+- Improved Family+ discovery with prominent, consistent benefits and a direct
+  centered checkout flow from every navigation entry.
 - Added an isolated, search-hidden staging environment with distinctive purple
   branding and a persistent warning that it is for disposable test data only.
 - Improved sibling generation placement and kept child connector rails a

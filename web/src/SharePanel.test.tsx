@@ -4,6 +4,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTranslator } from "./i18n";
+import { ProProvider } from "./ProProvider";
+import { unavailableProContext } from "./proTypes";
 import { SharePanel } from "./SharePanel";
 import { loadManagedShares } from "./db";
 import type { AppData, FamilyTree } from "./types";
@@ -130,5 +132,38 @@ describe("SharePanel methods", () => {
     const createButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.textContent?.includes("Create encrypted link"));
     expect(createButton?.disabled).toBe(true);
+  });
+
+  it("enables authenticated long-lived links for active Family+ access", async () => {
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <ProProvider value={{
+          ...unavailableProContext,
+          configured: true,
+          subscription: { status: "active", expiresAt: "2028-08-23T00:00:00Z" }
+        }}>
+          <SharePanel
+            data={data}
+            exportPng={vi.fn().mockResolvedValue(undefined)}
+            exportSvg={vi.fn().mockResolvedValue(undefined)}
+            onClose={vi.fn()}
+            onCopied={vi.fn()}
+            onError={vi.fn()}
+            onExported={vi.fn()}
+            peopleCount={1}
+            t={createTranslator("en")}
+            tree={tree}
+          />
+        </ProProvider>
+      );
+      await Promise.resolve();
+    });
+
+    const familyOptions = container.querySelector<HTMLOptGroupElement>('optgroup[label="Heritg Family+"]');
+    expect(familyOptions?.disabled).toBe(false);
+    expect(familyOptions?.textContent).toContain("1 year · Family+");
+    expect(container.textContent).not.toContain("Unlock longer links with Family+");
   });
 });

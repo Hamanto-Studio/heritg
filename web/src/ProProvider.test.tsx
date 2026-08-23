@@ -10,7 +10,7 @@ describe("ProProvider", () => {
     expect(renderToStaticMarkup(<ProProvider><Probe /></ProProvider>)).toContain("false:signedOut:unavailable:unavailable");
   });
   it("accepts authoritative state injection without local entitlement persistence", () => {
-    const value: ProContextValue = { ...unavailableProContext, configured: true, account: { status: "signedIn", user: { id: "account-1", expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "active", willRenew: true }, sync: { enabled: true, phase: "syncing", pendingChanges: 1 } };
+    const value: ProContextValue = { ...unavailableProContext, configured: true, account: { status: "signedIn", user: { id: "account-1", expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "active" }, sync: { enabled: true, phase: "syncing", pendingChanges: 1 } };
     expect(renderToStaticMarkup(<ProProvider value={value}><Probe /></ProProvider>)).toContain("true:signedIn:active:syncing");
   });
 });

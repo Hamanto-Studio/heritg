@@ -13,7 +13,7 @@ import {
 import type { AppData } from "./types";
 
 const DATABASE_NAME = "heritg";
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 const STORE_NAME = "appData";
 const STATE_KEY = "state";
 const KEY_STORE_NAME = "encryptionKeys";
@@ -21,6 +21,11 @@ const LOCAL_KEY = "localDataKey";
 const SHARE_STORE_NAME = "shareManagement";
 const SHARE_STATE_KEY = "records";
 const SHARE_CONTEXT = "heritg:share-management:v1";
+const SYNC_STORE_NAME = "syncMetadata";
+const SYNC_STATE_KEY_PREFIX = "mappings:";
+const SYNC_OWNER_KEY = "owner";
+const SYNC_CONTEXT = "heritg:sync-mappings:v1";
+export const ACCOUNT_SYNC_LOCK_NAME = "heritg-account-sync";
 
 export interface ManagedShare {
   shareId: string;
@@ -29,6 +34,14 @@ export interface ManagedShare {
   treeTitle: string;
   createdAt: string;
   expiresAt: string | null;
+}
+
+export interface SyncMapping {
+  localTreeId: string;
+  remoteTreeId: string;
+  revision: number;
+  syncKey: string;
+  lastSyncedUpdatedAt: string;
 }
 
 interface HeritgDatabase extends DBSchema {
@@ -42,6 +55,10 @@ interface HeritgDatabase extends DBSchema {
   };
   shareManagement: {
     key: typeof SHARE_STATE_KEY;
+    value: EncryptedLocalValue;
+  };
+  syncMetadata: {
+    key: string;
     value: EncryptedLocalValue;
   };
 }
@@ -60,6 +77,9 @@ const database = () => {
       }
       if (!db.objectStoreNames.contains(SHARE_STORE_NAME)) {
         db.createObjectStore(SHARE_STORE_NAME);
+      }
+      if (!db.objectStoreNames.contains(SYNC_STORE_NAME)) {
+        db.createObjectStore(SYNC_STORE_NAME);
       }
     }
   });
@@ -120,6 +140,111 @@ export async function saveManagedShares(records: readonly ManagedShare[]): Promi
   if (!records.every(validManagedShare)) throw new Error("Share management data is invalid.");
   const encrypted = await encryptLocalValue(records, await encryptionKey(), SHARE_CONTEXT);
   await (await database()).put(SHARE_STORE_NAME, encrypted, SHARE_STATE_KEY);
+}
+
+const localTreeIdPattern = /^[^\u0000-\u001f\u007f]{1,4096}$/u;
+const remoteTreeIdPattern = /^[A-Za-z0-9_-]{22}$/u;
+const syncKeyPattern = /^[A-Za-z0-9_-]{43}$/u;
+const accountIdPattern = /^[A-Za-z0-9_-]{22}$/u;
+
+const syncStateKey = (accountId: string): string => {
+  if (!accountIdPattern.test(accountId)) throw new Error("Sync account is invalid.");
+  return `${SYNC_STATE_KEY_PREFIX}${accountId}`;
+};
+
+export const isSyncMapping = (value: unknown): value is SyncMapping => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const item = value as Partial<SyncMapping>;
+  const keys = Object.keys(value).sort();
+  const expected = ["lastSyncedUpdatedAt", "localTreeId", "remoteTreeId", "revision", "syncKey"];
+  const updatedAt = typeof item.lastSyncedUpdatedAt === "string" ? Date.parse(item.lastSyncedUpdatedAt) : NaN;
+  return keys.length === expected.length && keys.every((key, index) => key === expected[index]) &&
+    typeof item.localTreeId === "string" && localTreeIdPattern.test(item.localTreeId) &&
+    typeof item.remoteTreeId === "string" && remoteTreeIdPattern.test(item.remoteTreeId) &&
+    Number.isSafeInteger(item.revision) && (item.revision as number) >= 0 &&
+    typeof item.syncKey === "string" && syncKeyPattern.test(item.syncKey) &&
+    typeof item.lastSyncedUpdatedAt === "string" && Number.isFinite(updatedAt) &&
+    new Date(updatedAt).toISOString() === item.lastSyncedUpdatedAt;
+};
+
+const validateSyncMappings = (value: unknown): SyncMapping[] => {
+  if (!Array.isArray(value) || !value.every(isSyncMapping)) throw new Error("Sync metadata is invalid.");
+  const localIds = new Set(value.map((item) => item.localTreeId));
+  const remoteIds = new Set(value.map((item) => item.remoteTreeId));
+  if (localIds.size !== value.length || remoteIds.size !== value.length) throw new Error("Sync metadata is invalid.");
+  return value;
+};
+
+export async function loadSyncMappings(accountId: string): Promise<SyncMapping[]> {
+  const key = syncStateKey(accountId);
+  const stored = await (await database()).get(SYNC_STORE_NAME, key);
+  if (!stored) return [];
+  if (!isEncryptedAppData(stored)) throw new Error("Sync metadata is invalid.");
+  return validateSyncMappings(await decryptLocalValue<unknown>(stored, await encryptionKey(), `${SYNC_CONTEXT}:${accountId}`));
+}
+
+export async function saveSyncMappings(accountId: string, records: readonly SyncMapping[]): Promise<void> {
+  const key = syncStateKey(accountId);
+  const validated = validateSyncMappings(records);
+  const encrypted = await encryptLocalValue(validated, await encryptionKey(), `${SYNC_CONTEXT}:${accountId}`);
+  await (await database()).put(SYNC_STORE_NAME, encrypted, key);
+}
+
+export async function loadSyncOwnerAccountId(): Promise<string | undefined> {
+  const stored = await (await database()).get(SYNC_STORE_NAME, SYNC_OWNER_KEY);
+  if (!stored) return undefined;
+  if (!isEncryptedAppData(stored)) throw new Error("Sync ownership metadata is invalid.");
+  const accountId = await decryptLocalValue<unknown>(stored, await encryptionKey(), `${SYNC_CONTEXT}:owner`);
+  if (typeof accountId !== "string" || !accountIdPattern.test(accountId)) {
+    throw new Error("Sync ownership metadata is invalid.");
+  }
+  return accountId;
+}
+
+export async function claimSyncOwnerAccountId(accountId: string): Promise<void> {
+  syncStateKey(accountId);
+  if (!navigator.locks) throw new Error("This browser cannot safely coordinate family synchronization between tabs.");
+  await navigator.locks.request("heritg-sync-owner", async () => {
+    const current = await loadSyncOwnerAccountId();
+    if (current && current !== accountId) throw new Error("This device's family data is linked to another account.");
+    if (current) return;
+    const encrypted = await encryptLocalValue(accountId, await encryptionKey(), `${SYNC_CONTEXT}:owner`);
+    await (await database()).put(SYNC_STORE_NAME, encrypted, SYNC_OWNER_KEY);
+  });
+}
+
+export async function saveSyncMetadata(accountId: string, records: readonly SyncMapping[]): Promise<void> {
+  const key = syncStateKey(accountId);
+  const validated = validateSyncMappings(records);
+  const localKey = await encryptionKey();
+  const [encryptedMappings, encryptedOwner] = await Promise.all([
+    encryptLocalValue(validated, localKey, `${SYNC_CONTEXT}:${accountId}`),
+    encryptLocalValue(accountId, localKey, `${SYNC_CONTEXT}:owner`)
+  ]);
+  const tx = (await database()).transaction(SYNC_STORE_NAME, "readwrite");
+  await Promise.all([
+    tx.store.put(encryptedMappings, key),
+    tx.store.put(encryptedOwner, SYNC_OWNER_KEY),
+    tx.done
+  ]);
+}
+
+export async function saveSyncedState(accountId: string, data: AppData, records: readonly SyncMapping[]): Promise<void> {
+  const key = syncStateKey(accountId);
+  const validated = validateSyncMappings(records);
+  const localKey = await encryptionKey();
+  const [encryptedData, encryptedMappings, encryptedOwner] = await Promise.all([
+    encryptAppData(data, localKey),
+    encryptLocalValue(validated, localKey, `${SYNC_CONTEXT}:${accountId}`),
+    encryptLocalValue(accountId, localKey, `${SYNC_CONTEXT}:owner`)
+  ]);
+  const tx = (await database()).transaction([STORE_NAME, SYNC_STORE_NAME], "readwrite");
+  await Promise.all([
+    tx.objectStore(STORE_NAME).put(encryptedData, STATE_KEY),
+    tx.objectStore(SYNC_STORE_NAME).put(encryptedMappings, key),
+    tx.objectStore(SYNC_STORE_NAME).put(encryptedOwner, SYNC_OWNER_KEY),
+    tx.done
+  ]);
 }
 
 export const loadData = loadAppData;

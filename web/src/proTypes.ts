@@ -1,4 +1,4 @@
-export type SubscriptionPlan = "monthly" | "yearly";
+export type SubscriptionPlan = "two_year" | "five_year";
 
 export interface ProUser { id: string; expiresAt: string }
 export interface ProOffer {
@@ -17,7 +17,7 @@ export type SubscriptionState =
   | { status: "unavailable" | "loading" }
   | { status: "free"; offers: ProOffer[] }
   | { status: "purchasing"; plan: SubscriptionPlan; offers: ProOffer[] }
-  | { status: "active"; plan?: SubscriptionPlan; renewsAt?: string; willRenew: boolean; manageUrl?: string }
+  | { status: "active"; plan?: SubscriptionPlan; expiresAt?: string; manageUrl?: string }
   | { status: "expired"; expiredAt?: string; offers: ProOffer[] }
   | { status: "error"; message: string; offers: ProOffer[] };
 
@@ -45,7 +45,7 @@ export interface ProContextValue {
   error?: string;
   openPaywall: () => void;
   closePaywall: () => void;
-  purchase: (plan: SubscriptionPlan, target?: HTMLElement) => Promise<void>;
+  purchase: (plan: SubscriptionPlan) => Promise<void>;
   refreshSubscription: () => Promise<void>;
   manageSubscription: () => void;
   setSyncEnabled: (enabled: boolean) => Promise<void>;

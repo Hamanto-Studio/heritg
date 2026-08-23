@@ -7,12 +7,11 @@ import {
   SharePasswordRequiredError,
   type LoadedShare
 } from "./encryptedSharing";
-import { saveAppData } from "./db";
 import { createTranslator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { mergeImportedData } from "./portability";
 import { PasswordField } from "./PasswordField";
-import { useAppStore } from "./store";
+import { syncDataFingerprint, useAppStore } from "./store";
 import { TreeCanvas, type TreeCanvasHandle } from "./TreeCanvas";
 import type { AppData, ViewportState } from "./types";
 
@@ -113,9 +112,9 @@ export function SharedTreeApp() {
       setSaveError(reason instanceof Error ? reason.message : t("errorTitle"));
       return;
     }
-    void saveAppData(merged)
-      .then(() => {
-        store.actions.replaceData(merged);
+    void store.actions.replaceDataPersisted(merged, syncDataFingerprint(store.data))
+      .then((saved) => {
+        if (!saved) throw new Error("Family data changed before the shared copy could be saved.");
         window.location.assign("/");
       })
       .catch((reason: unknown) => {

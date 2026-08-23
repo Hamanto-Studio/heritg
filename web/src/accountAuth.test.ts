@@ -11,9 +11,11 @@ import {
   loginWithGoogle,
   logoutAccount,
   maskEmail,
+  notifyAccountSessionChanged,
   parseRetryAfterSeconds,
   readCsrfCookie,
   requestEmailLogin,
+  subscribeToAccountSessionChanges,
   verifyEmailLogin,
   type GoogleIdentity
 } from "./accountAuth";
@@ -30,6 +32,18 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+describe("account session notifications", () => {
+  it("notifies the current window and other-tab storage listeners", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeToAccountSessionChanges(listener);
+    notifyAccountSessionChanged();
+    window.dispatchEvent(new StorageEvent("storage", { key: "heritg:account-session-change" }));
+    unsubscribe();
+
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("account authentication API", () => {

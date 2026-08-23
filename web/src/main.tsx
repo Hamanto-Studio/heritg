@@ -1,4 +1,4 @@
-import { StrictMode, useState } from "react";
+import { StrictMode, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 
 import "./base.css";
@@ -16,8 +16,8 @@ import { verifyEmailLogin } from "./accountAuth";
 import { EmailAuthCallback, prepareEmailCallback } from "./EmailAuthCallback";
 import { createTranslator } from "./i18n";
 import { SharedTreeApp } from "./SharedTreeApp";
-import { FamilyProvider } from "./FamilyProvider";
-import { AppProvider } from "./store";
+import { ProProvider } from "./ProProvider";
+import { AppProvider, useAppStore } from "./store";
 import { applyUiLanguage } from "./uiLanguage";
 
 const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
@@ -26,6 +26,10 @@ const emailCallbackToken = emailCallback.token;
 const emailVerification = emailCallbackToken ? verifyEmailLogin(emailCallbackToken) : undefined;
 const isStaging = __DEPLOYMENT_ENV__ === "staging";
 const callbackLanguage = applyUiLanguage(document.documentElement);
+
+function ConnectedProProvider({ children }: { children: ReactNode }) {
+  return <ProProvider appStore={useAppStore()}>{children}</ProProvider>;
+}
 
 function Application() {
   const [callbackDestination, setCallbackDestination] = useState<"app" | "settings">();
@@ -38,9 +42,9 @@ function Application() {
   return (
     <AppProvider>
       {isSharedRoute ? <SharedTreeApp /> : (
-        <FamilyProvider>
+        <ConnectedProProvider>
           <App initialPanel={callbackDestination === "settings" ? "settings" : undefined} />
-        </FamilyProvider>
+        </ConnectedProProvider>
       )}
     </AppProvider>
   );

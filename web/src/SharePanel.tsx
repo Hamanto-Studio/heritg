@@ -19,8 +19,8 @@ import {
   type ShareDataSelection,
   type SharePhase
 } from "./encryptedSharing";
-import { useFamily } from "./FamilyProvider";
 import type { Translator } from "./i18n";
+import { usePro } from "./ProProvider";
 import type { AppData, FamilyTree } from "./types";
 import { ButtonLoader, SidePanel } from "./ui";
 
@@ -57,7 +57,7 @@ export function SharePanel({
   exportPng,
   exportSvg
 }: SharePanelProps) {
-  const family = useFamily();
+  const pro = usePro();
   const [retention, setRetention] = useState<ShareRetention>("30");
   const [sharePassword, setSharePassword] = useState("");
   const [sharePasswordConfirmation, setSharePasswordConfirmation] = useState("");
@@ -75,7 +75,7 @@ export function SharePanel({
   const [shareMethod, setShareMethod] = useState<ShareMethod>("link");
   const operationRef = useRef<AbortController | undefined>(undefined);
   const sharingRef = useRef(false);
-  const familyActive = family.subscription.status === "active";
+  const familyActive = pro.subscription.status === "active";
   const freeShareLimitReached = !familyActive && managedShares.length > 0;
 
   useEffect(() => {
@@ -299,8 +299,8 @@ export function SharePanel({
                 <PasswordField autoComplete="new-password" disabled={Boolean(phase) || !peopleCount} hideLabel={t("hidePassword")} id="share-password" label={t("sharePassword")} onChange={setSharePassword} showLabel={t("showPassword")} value={sharePassword} />
                 <PasswordRequirementList highlightUnmet={sharePassword.length > 0} items={[["minimumLength", t("archivePasswordMinimumLength")], ["lowercase", t("archivePasswordLowercase")], ["uppercase", t("archivePasswordUppercase")], ["number", t("archivePasswordNumber")], ["special", t("archivePasswordSpecial")]]} label={t("archivePasswordChecklist")} requirements={shareRequirements} />
                 <PasswordField autoComplete="new-password" disabled={Boolean(phase) || !peopleCount} error={passwordMismatchError} hideLabel={t("hidePassword")} id="share-password-confirmation" label={t("confirmSharePassword")} onChange={setSharePasswordConfirmation} showLabel={t("showPassword")} value={sharePasswordConfirmation} />
-                <label className="field share-expiry">{t("shareExpiry")}<select disabled={Boolean(phase) || !peopleCount} onChange={(event) => setRetention(event.target.value as ShareRetention)} value={retention}><optgroup label={t("freePlan")}><option value="7">{t("shareSevenDays")}</option><option value="30">{t("shareThirtyDays")}</option><option value="90">{t("shareNinetyDays")}</option></optgroup><optgroup disabled={!familyActive} label="Heritg Family"><option value="365_days">{t("shareOneYear")}</option><option value="1095_days">{t("shareThreeYears")}</option><option value="while_family_active">{t("shareWhileFamilyActive")}</option></optgroup></select></label>
-                {!familyActive ? <button className="button tertiary full" onClick={family.openPaywall} type="button">{t("unlockLongerFamilyLinks")}</button> : null}
+                <label className="field share-expiry">{t("shareExpiry")}<select disabled={Boolean(phase) || !peopleCount} onChange={(event) => setRetention(event.target.value as ShareRetention)} value={retention}><optgroup label={t("freePlan")}><option value="7">{t("shareSevenDays")}</option><option value="30">{t("shareThirtyDays")}</option><option value="90">{t("shareNinetyDays")}</option></optgroup><optgroup disabled={!familyActive} label={t("heritgFamily")}><option value="365_days">{t("shareOneYear")}</option><option value="1095_days">{t("shareThreeYears")}</option><option value="while_family_active">{t("shareWhileFamilyActive")}</option></optgroup></select></label>
+                {!familyActive ? <button className="button tertiary full" onClick={pro.openPaywall} type="button">{t("unlockLongerFamilyLinks")}</button> : null}
                 {freeShareLimitReached ? <p className="share-unavailable" role="status">{t("freeShareLimitReached")}</p> : null}
                 {!peopleCount ? <p className="share-unavailable">{t("shareNeedsPerson")}</p> : null}
                 <button aria-busy={Boolean(phase) || undefined} className="button primary full" disabled={Boolean(phase) || !sharesLoaded || !peopleCount || !passwordReady || freeShareLimitReached} onClick={createShare} type="button">{phase ? <ButtonLoader size={17} /> : <Link2 aria-hidden="true" size={17} />} {progress ?? t("createShareLink")}</button>
