@@ -160,7 +160,7 @@ private fun PeopleList(
     uiState: AppUiState, onClose: () -> Unit, onSelect: (String) -> Unit,
 ) {
     var query by uiState.state("people:query") { "" }
-    val locale = LocalConfiguration.current.primaryLocale
+    val locale = LocalConfiguration.current.locales[0]
     val formatter = remember(locale) { semanticFormatter(locale) }
     val kinship = remember(people, relationships, locale) {
         KinshipResolver.indexed(people.snapshots(locale), relationships.snapshots(), formatter)
@@ -313,7 +313,7 @@ private fun LinkFlow(
                 Avatar(person)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text(person.displayName, fontWeight = FontWeight.Bold)
-                    LifeSummary.summary(person, semanticFormatter(LocalConfiguration.current.primaryLocale))?.let {
+                    LifeSummary.summary(person, semanticFormatter(LocalConfiguration.current.locales[0]))?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

@@ -181,7 +181,7 @@ private fun SettingsRow(title: String, subtitle: String, tag: String, onClick: (
 @Composable
 private fun LanguageScreen(onLanguage: (String) -> Unit) {
     val selected = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore(',').ifEmpty {
-        LocalConfiguration.current.primaryLocale.language
+        LocalConfiguration.current.locales[0].language
     }
     Column(Modifier.padding(20.dp)) {
         Text(stringResource(R.string.language_copy), color = MaterialTheme.colorScheme.primary)
@@ -206,7 +206,7 @@ private fun ExportScreen(
     prefix: String,
 ) {
     val context = LocalContext.current
-    val locale = LocalConfiguration.current.primaryLocale
+    val locale = LocalConfiguration.current.locales[0]
     val density = LocalDensity.current.density
     val textMeasurer = remember(density) { AndroidTreeTextMeasurer(density) }
     val errorFocus = remember { FocusRequester() }
@@ -399,6 +399,6 @@ private fun PasswordRequirementRow(label: Int, isMet: Boolean) {
 @Composable
 private fun selectedLanguageName(): String {
     val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
-    val language = tag.ifEmpty { LocalConfiguration.current.primaryLocale.language }
+    val language = tag.ifEmpty { LocalConfiguration.current.locales[0].language }
     return if (language.startsWith("id")) "Bahasa Indonesia" else "English"
 }
