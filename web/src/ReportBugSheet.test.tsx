@@ -66,6 +66,7 @@ describe("ReportBugSheet", () => {
     expect(telegramMessage).toBe(whatsappMessage);
     expect(whatsappMessage).toContain("Device Model: Apple iPhone (390x844 CSS px)");
     expect(whatsappMessage).toContain(`App Version: ${__APP_VERSION__}`);
+    expect(whatsappMessage).toContain(`Build Version: ${__BUILD_VERSION__}`);
     expect(whatsappMessage).toContain("Locale: id-ID (App: Bahasa Indonesia)");
     expect(whatsappMessage).toContain("Active Tree Records: 44 people, 73 relationships");
     expect(container.querySelector("pre")?.textContent).toBe(whatsappMessage);

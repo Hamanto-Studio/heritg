@@ -27,6 +27,7 @@ export function ReportBugSheet({
   const message = createBugReportMessage({
     appLanguage: language,
     appVersion: __APP_VERSION__,
+    buildVersion: __BUILD_VERSION__,
     peopleCount,
     relationshipCount
   }, environment);
