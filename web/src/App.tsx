@@ -318,7 +318,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               {controlsVisible ? <div className="workspace-tools">
-                {pro.subscription.status === "active" && pro.sync.enabled ? <button
+                {(pro.subscription.status === "active" || pro.subscription.status === "expired") && pro.sync.enabled ? <button
                   aria-label={`${t("automaticSync")}: ${t(pro.sync.phase === "upToDate" ? "syncUpToDate" : pro.sync.phase === "offline" ? "syncOffline" : pro.sync.phase === "error" || pro.sync.phase === "conflict" ? "syncAttention" : "syncing")}`}
                   className={`icon-button sync-workspace-button sync-${pro.sync.phase}`}
                    onClick={() => { setGenerationOpen(false); setRightPanel("settings"); }} type="button"
@@ -562,6 +562,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
           actions={actions}
           data={data}
           onClose={() => setRightPanel(undefined)}
+          pro={pro}
           t={t}
         />
       ) : null}

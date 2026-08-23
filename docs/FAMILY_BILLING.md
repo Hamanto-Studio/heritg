@@ -1,8 +1,8 @@
-# Heritg Web Family Plan Integration
+# Heritg Web Family+ Integration
 
 Status: UI and client boundaries implemented; production service disabled by default.
 
-The Heritg Family Plan adds account-based encrypted synchronization. Local editing, import,
+Heritg Family+ adds account-based encrypted synchronization and collaboration for up to five people. Local editing, import,
 export, backup, sharing, deletion, and local family-tree access remain free. The
 browser is never an entitlement authority.
 
@@ -42,19 +42,19 @@ mutations.
 - `POST /auth/logout`: revokes the session without deleting local data.
 - `DELETE /account`: permanently deletes the hosted account without deleting
   the browser's local archive.
-- `GET /entitlements/current`: returns the authoritative Family Plan state.
+- `GET /entitlements/current`: returns the authoritative Family+ state.
 - `POST /entitlements/refresh`: refreshes backend entitlement state after
   checkout and requires the session CSRF token.
-- `GET /billing/offers`: returns localized monthly and yearly IDR prices.
-- `POST /billing/checkout`: accepts `monthly` or `yearly`, creates a Xendit
-  `SUBSCRIPTION` payment session for the authenticated account, and returns its
+- `GET /billing/offers`: returns localized one-time prices for `two_year` and
+  `five_year` access.
+- `POST /billing/checkout`: accepts `two_year` or `five_year`, creates a one-time
+  Xendit payment session for the authenticated account, and returns its
   hosted checkout URL.
 - `POST /billing/xendit/webhook`: verifies Xendit's callback token, processes
-  payment-session, payment-token, subscription-plan, and subscription-cycle
-  events idempotently, and updates the account entitlement projection.
+  payment events idempotently, and updates the account entitlement projection.
 - `/trees/*` and `/device-links/*`: provide revision-protected encrypted
-  snapshot and same-owner device-key transfer primitives. The current Web UI
-  does not yet activate automatic synchronization.
+  snapshot and same-owner device-key transfer primitives used by the automatic
+  synchronization coordinator.
 
 Every sync endpoint independently validates session, active server-side
 entitlement, archive ownership, quota, and expected revision. Client claims such
@@ -63,13 +63,13 @@ as `isPro`, account IDs, and timestamps are untrusted.
 ## Xendit Contract
 
 - Internal entitlement: `family`.
-- Monthly price: IDR 19,900; yearly price: IDR 199,000.
-- Checkout uses Xendit Payment Sessions with type `SUBSCRIPTION`.
-- Initial recurring methods target GoPay, DANA, OVO, ShopeePay, BRI Direct
+- Access periods: two years and five years. Launch prices remain configuration,
+  not client constants.
+- Checkout uses a one-time Xendit Payment Session. It never creates an automatic renewal.
+- Initial payment methods target GoPay, DANA, OVO, ShopeePay, BRI Direct
   Debit, and cards, subject to merchant-channel activation and customer
   eligibility.
-- QRIS and virtual accounts may be offered later for manual renewal, but must
-  not be represented as automatic-renewal methods.
+- QRIS and virtual accounts may be offered later.
 - Webhooks are authenticated, idempotent, replay-safe, and tolerant of delayed
   or out-of-order delivery. The backend authorizes sync.
 
@@ -79,15 +79,15 @@ as `isPro`, account IDs, and timestamps are untrusted.
    rotation, and deletion design.
 2. Use revisions or ETags; never silently use last-write-wins.
 3. Add quotas, payload/rate limits, and revision-history limits.
-4. Keep account and subscription metadata out of `AppData`, exports, and shares.
+4. Keep account and entitlement metadata out of `AppData`, exports, and shares.
 5. Update `PRIVACY.md`, `docs/DATA_PROCESSING.md`, product copy, and subprocessors
    before enabling hosted processing.
-6. Test modified clients claiming fake Family Plan access; official APIs must reject them.
+6. Test modified clients claiming fake Family+ access; official APIs must reject them.
 7. Test passwordless email delivery and callback handling in installed PWAs and
    Mobile Safari; keep Google as a working fallback.
 8. Keep all `/api/v1/` service-worker traffic `NetworkOnly`.
-9. Complete Xendit business verification and activate every recurring payment
+9. Complete Xendit business verification and activate every displayed payment
    channel before displaying it as available in production.
 
-Cancellation or expiration pauses hosted synchronization and never disables or
+Expiration pauses hosted synchronization and never disables or
 deletes the authoritative local archive.

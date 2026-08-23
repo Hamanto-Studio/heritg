@@ -61,8 +61,7 @@ const subscriptionFromEntitlement = (
   if (entitlement.access === "active") {
     return {
       status: "active",
-      renewsAt: entitlement.expiresAt ?? undefined,
-      willRenew: true,
+      expiresAt: entitlement.expiresAt ?? undefined,
       manageUrl: entitlement.managementUrl ?? undefined
     };
   }

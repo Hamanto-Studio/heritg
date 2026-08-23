@@ -4,7 +4,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTranslator } from "./i18n";
+import { ProProvider } from "./ProProvider";
+import { unavailableProContext } from "./proTypes";
 import { SharePanel } from "./SharePanel";
+import { loadManagedShares } from "./db";
 import type { AppData, FamilyTree } from "./types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -35,6 +38,7 @@ describe("SharePanel methods", () => {
   let root: Root;
 
   beforeEach(async () => {
+    vi.mocked(loadManagedShares).mockResolvedValue([]);
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -91,5 +95,75 @@ describe("SharePanel methods", () => {
     expect(details()).toContain("Download HD PNG");
     expect(details()).toContain("Download SVG");
     expect(details()).not.toContain("GEDCOM export (.ged)");
+  });
+
+  it("limits the Free plan to one active link across every canvas on this device", async () => {
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    vi.mocked(loadManagedShares).mockResolvedValue([{
+      shareId: "S".repeat(22),
+      deletionToken: "D".repeat(43),
+      treeId: "another-tree",
+      treeTitle: "Another Family",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      expiresAt: "2026-09-01T00:00:00.000Z"
+    }]);
+
+    await act(async () => {
+      root.render(
+        <SharePanel
+          data={data}
+          exportPng={vi.fn().mockResolvedValue(undefined)}
+          exportSvg={vi.fn().mockResolvedValue(undefined)}
+          onClose={vi.fn()}
+          onCopied={vi.fn()}
+          onError={vi.fn()}
+          onExported={vi.fn()}
+          peopleCount={1}
+          t={createTranslator("en")}
+          tree={tree}
+        />
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Another Family");
+    expect(container.textContent).toContain("one active link per device");
+    const createButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Create encrypted link"));
+    expect(createButton?.disabled).toBe(true);
+  });
+
+  it("enables authenticated long-lived links for active Family+ access", async () => {
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root.render(
+        <ProProvider value={{
+          ...unavailableProContext,
+          configured: true,
+          subscription: { status: "active", expiresAt: "2028-08-23T00:00:00Z" }
+        }}>
+          <SharePanel
+            data={data}
+            exportPng={vi.fn().mockResolvedValue(undefined)}
+            exportSvg={vi.fn().mockResolvedValue(undefined)}
+            onClose={vi.fn()}
+            onCopied={vi.fn()}
+            onError={vi.fn()}
+            onExported={vi.fn()}
+            peopleCount={1}
+            t={createTranslator("en")}
+            tree={tree}
+          />
+        </ProProvider>
+      );
+      await Promise.resolve();
+    });
+
+    const familyOptions = container.querySelector<HTMLOptGroupElement>('optgroup[label="Heritg Family+"]');
+    expect(familyOptions?.disabled).toBe(false);
+    expect(familyOptions?.textContent).toContain("1 year · Family+");
+    expect(container.textContent).not.toContain("Unlock longer links with Family+");
   });
 });
