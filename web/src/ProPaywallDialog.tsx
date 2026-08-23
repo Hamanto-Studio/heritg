@@ -29,6 +29,7 @@ export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
     <p className="payment-provider-note">{t("secureCheckoutDetail")}</p>
     <ErrorNotice message={pro.error} />
     <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing} onClick={() => void pro.purchase()} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? t("openingCheckout") : !pro.configured ? t("subscriptionsComingSoon") : t("subscribeToPro")}</button>
+    <p className="pro-legal-links">{t("purchaseAgreementPrefix")} <a href="/terms/" rel="noopener noreferrer" target="_blank">{t("termsOfUse")}</a> {t("purchaseAgreementAnd")} <a href="https://family.heritg.us/privacy/" rel="noopener noreferrer" target="_blank">{t("privacyPolicy")}</a>.</p>
     <p className="pro-legal">{t("subscriptionLegal")}</p>
   </Modal>;
 }

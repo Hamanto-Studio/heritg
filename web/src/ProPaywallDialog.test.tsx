@@ -31,6 +31,10 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("Encrypted and still yours");
     expect(markup).toContain("Heritg Family+");
     expect(markup).toContain("Continue to secure payment");
+    expect(markup).toContain("Terms of Use (EULA)");
+    expect(markup).toContain('href="/terms/"');
+    expect(markup).toContain("Privacy Policy");
+    expect(markup).toContain("https://family.heritg.us/privacy/");
     expect(markup).not.toContain("5 years");
     expect(markup).not.toContain("2 years");
     expect(markup).not.toContain("Xendit");

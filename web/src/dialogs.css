@@ -1391,6 +1391,8 @@
 .pro-availability { background: var(--elevated); border: 1px solid var(--line); border-radius: 11px; display: grid; margin-top: 14px; padding: 11px 12px; }
 .pro-availability strong { font-size: 0.8rem; }
 .pro-purchase-button { margin-top: 14px; min-height: 46px; width: 100%; }
+.pro-legal-links { color: var(--subtle); font-size: 0.72rem; line-height: 1.45; margin: 9px 0 0; text-align: center; }
+.pro-legal-links a { color: var(--family-plus-deep); font-weight: 700; text-underline-offset: 2px; }
 .pro-legal { color: var(--subtle); font-size: 0.7rem; line-height: 1.45; margin: 10px 0 0; text-align: center; }
 .indonesian-payment-methods {
   display: flex;
