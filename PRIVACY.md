@@ -4,7 +4,7 @@ Effective date: August 23, 2026
 
 HERITG is developed by Hamanto Studio. It is designed to let people create and
 preserve family trees without creating an account. Web users may optionally
-sign in with Google for account features. Family information remains local
+use an emailed sign-in link or Google for account features. Family information remains local
 unless the user deliberately exports it or creates an encrypted share.
 
 This policy describes the official HERITG application represented by this
@@ -14,7 +14,8 @@ responsibility of its distributor.
 ## Summary
 
 - No HERITG account, email address, or sign-up is required.
-- Optional Google sign-in creates a pseudonymous HERITG account session but does not upload or unlock a family tree.
+- Optional email sign-in uses the same private flow for signup and signin; a new account is created only after the emailed link is proved.
+- Google remains a separate migration fallback. Email and Google identities are not automatically linked.
 - Family-tree data is stored locally on the user's device.
 - Web users may create expiring read-only links; encryption happens in the browser and the sharing service receives ciphertext without its viewing key.
 - Core functionality does not require an internet connection.
@@ -108,7 +109,31 @@ is introduced, it must:
 3. Request separate consent where required by the public analytics policy.
 4. Never send family-tree content to analytics or diagnostics providers.
 
-## Optional Google Sign-In
+## Optional Email and Google Sign-In
+
+Web users may submit an email address to receive a single-use sign-in link. The
+request and response are deliberately generic and do not reveal whether an
+account already exists. Following a valid link signs in an existing account or
+creates a new account only after control of the address has been proved. The
+link credential is carried in the URL fragment, removed from browser history
+before verification, and is not placed in a query, path, browser storage, or
+application log.
+
+HERITG's account service processes the submitted address and short-lived,
+single-use verification records. It sends the message through Resend, which
+processes the recipient address, message content, delivery status, and standard
+email/network metadata under Resend's terms. Unproved verification records are
+kept only until their configured expiry; consumed records cannot be reused.
+HERITG persists only a keyed hash of the normalized email for account lookup,
+not the raw address. Account metadata and that keyed hash are deleted through
+the account-deletion process, subject to security, abuse-prevention, backup, and
+provider retention obligations.
+
+The browser does not persist the submitted address. It may keep the raw address
+only in component memory while Account Settings remains open so the user can
+resend the message. It renders only a masked form after acceptance and clears
+the raw value when Settings closes, the component unmounts, or a session is
+established.
 
 Web users may explicitly sign in with Google. The browser obtains a one-time
 Google identity proof and sends it to the HERITG account service over the
@@ -123,7 +148,9 @@ The browser stores the session in a secure host-only HttpOnly cookie and uses a
 separate session-bound CSRF value for account changes. Signing out revokes the
 current HERITG session. Users can permanently delete their HERITG account from
 Settings without deleting family-tree data stored locally in the browser.
-Google sign-in is optional and does not recover
+Google is retained as a migration fallback. A Google identity and an email
+identity are separate account methods and are not automatically linked.
+Either sign-in method is optional and does not recover
 encryption keys, upload local trees, authorize anonymous shares, or make local
 editing depend on network access.
 

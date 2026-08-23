@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AccountSettings } from "./AccountSettings";
+import { AccountSettings, createEmailCooldownState } from "./AccountSettings";
 import { GOOGLE_IDENTITY_SCRIPT, type GoogleIdentity } from "./accountAuth";
 import { createTranslator } from "./i18n";
 
@@ -16,6 +16,7 @@ let root: Root | undefined;
 
 afterEach(async () => {
   if (root) await act(async () => root?.unmount());
+  vi.useRealTimers();
   container?.remove();
   document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)?.remove();
   delete window.google;
@@ -28,7 +29,8 @@ afterEach(async () => {
 
 describe("account settings", () => {
   it("loads Google Identity only after the user prepares sign-in", async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      void _init;
       if (String(input).endsWith("/session")) {
         return new Response(JSON.stringify({
           error: { code: "unauthenticated", message: "Authentication required" }
@@ -64,7 +66,7 @@ describe("account settings", () => {
 
     expect(document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)).toBeNull();
     const prepare = [...container.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Set up Google sign-in"));
+      .find((button) => button.textContent?.includes("Continue with Google"));
     expect(prepare).toBeDefined();
 
     await act(async () => {
@@ -101,6 +103,7 @@ describe("account settings", () => {
         />
       );
     });
+    expect(container.textContent).toContain("Lanjutkan dengan email");
     expect(renderButton).toHaveBeenLastCalledWith(expect.any(HTMLElement), expect.objectContaining({ locale: "id" }));
 
     const callback = initialize.mock.calls[0]?.[0]?.callback as ((value: { credential: string }) => void) | undefined;
@@ -138,7 +141,7 @@ describe("account settings", () => {
       );
     });
     const prepare = [...container.querySelectorAll("button")]
-      .find((button) => button.textContent?.includes("Set up Google sign-in"));
+      .find((button) => button.textContent?.includes("Continue with Google"));
     await act(async () => {
       prepare?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
@@ -197,6 +200,127 @@ describe("account settings", () => {
       method: "DELETE",
       headers: expect.objectContaining({ "x-csrf-token": token })
     }));
-    expect(container.textContent).toContain("Set up Google sign-in");
+    expect(container.textContent).toContain("Continue with email");
+  });
+
+  it("uses one generic email flow, rejects invalid input, and enforces resend cooldown", async () => {
+    vi.useFakeTimers();
+    const cooldownState = createEmailCooldownState();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      void _init;
+      if (String(input).endsWith("/email/request")) {
+        return new Response(JSON.stringify({ status: "accepted" }), {
+          status: 202,
+          headers: { "content-type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({
+        error: { code: "unauthenticated", message: "Authentication required" }
+      }), { status: 401 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+    });
+
+    const input = container.querySelector<HTMLInputElement>('input[type="email"]');
+    const form = container.querySelector("form");
+    if (!input || !form) throw new Error("Expected email form");
+    expect(input.labels?.[0]?.textContent).toContain("Email address");
+    expect(container.querySelector('[role="status"][aria-live="polite"]')).not.toBeNull();
+    const setInputValue = (value: string) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+
+    await act(async () => {
+      setInputValue("invalid");
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
+    expect(container.textContent).toContain("Enter a valid email address");
+    expect(fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/email/request"))).toHaveLength(0);
+
+    await act(async () => {
+      setInputValue("new-or-existing@example.com");
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+    const emailRequests = fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/email/request"));
+    expect(emailRequests).toHaveLength(1);
+    expect(JSON.parse(String(emailRequests[0]?.[1]?.body))).toEqual({ email: "new-or-existing@example.com" });
+    expect(container.textContent).toContain("n***@example.com");
+    expect(container.textContent).not.toContain("new-or-existing@example.com");
+
+    const resend = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent?.includes("Resend in"));
+    expect(resend?.disabled).toBe(true);
+    await act(async () => vi.advanceTimersByTimeAsync(60_000));
+    expect(resend?.disabled).toBe(false);
+    await act(async () => {
+      resend?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/email/request"))).toHaveLength(2);
+
+    await act(async () => root?.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+    });
+    const remountedContinue = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Try again in"));
+    expect(remountedContinue?.disabled).toBe(true);
+    expect(container.textContent).not.toContain("new-or-existing@example.com");
+
+    vi.setSystemTime(Date.now() + 120_000);
+    await act(async () => document.dispatchEvent(new Event("visibilitychange")));
+    expect(remountedContinue?.disabled).toBe(false);
+  });
+
+  it("uses Retry-After on rate limiting without persisting the email", async () => {
+    vi.useFakeTimers();
+    const cooldownState = createEmailCooldownState();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/email/request")) {
+        return new Response(JSON.stringify({ error: { code: "rate_limited", message: "Wait" } }), {
+          status: 429,
+          headers: { "content-type": "application/json", "retry-after": "90" }
+        });
+      }
+      return new Response(JSON.stringify({ error: { code: "unauthenticated", message: "Required" } }), {
+        status: 401
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+    });
+    const input = container.querySelector<HTMLInputElement>('input[type="email"]');
+    const form = container.querySelector("form");
+    if (!input || !form) throw new Error("Expected email form");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, "limited@example.com");
+    await act(async () => {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+    });
+    const retry = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Try again in 90s"));
+    expect(retry?.disabled).toBe(true);
+
+    await act(async () => root?.unmount());
+    expect(container.textContent).not.toContain("limited@example.com");
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings cooldownState={cooldownState} language="en" t={createTranslator("en")} />);
+    });
+    expect(container.textContent).toContain("Try again in 90s");
   });
 });

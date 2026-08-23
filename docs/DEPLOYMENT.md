@@ -52,9 +52,25 @@ verification.
 not an ephemeral Vercel preview URL. It must always display the staging title,
 purple visual treatment, and test-data warning.
 
-The same-origin `/api/v1/*` proxy covers anonymous sharing and account-sync
+The same-origin `/api/v1/*` proxy covers anonymous sharing and account
 routes while preserving secure host-only cookies. Direct Cloud Run URLs are
 deployment inputs only and must not be compiled into browser code.
+
+Passwordless email uses `/api/v1/auth/email/request` and
+`/api/v1/auth/email/verify`; the callback is `/auth/email#token=...`. Vercel's
+SPA fallback must serve that direct route, while API requests remain
+network-only and uncached. Resend is called only by the backend, so do not add a
+Resend browser CSP source or secret. Keep the existing Google CSP and
+environment-specific client configuration while Google remains the separate
+migration fallback. Email and Google identities must not be described as
+automatically linked.
+
+The current worker activates and claims clients immediately and excludes both
+`/auth/email` and `/auth/email/` from its navigation fallback. A browser still
+controlled by an older installed worker cannot receive those rules retroactively:
+it must load the updated app once and reload before email links are enabled.
+Treat that one-update/reload requirement as a staging migration check; do not
+weaken the existing network-only `/api/v1/*` policy to work around an old worker.
 
 The staging backend must exist before deploying staging:
 
@@ -63,11 +79,18 @@ The staging backend must exist before deploying staging:
 - A staging Firestore database and private Cloud Storage bucket
 - Storage CORS allowing exactly `https://staging.heritg.us`, including the signed
   upload/download methods and headers, and exposing `x-goog-generation`
+- A staging-only Resend credential, verified sender, callback origin
+  `https://staging.heritg.us/auth/email`, and short-lived verification retention
+  policy; use only synthetic recipient accounts approved for staging tests
 
 The checked-in staging policies are `web/deploy/staging-storage-cors.json` and
 `web/deploy/share-lifecycle.json`.
 
 Never point staging at the production Cloud Run service or production bucket.
+Do not claim staging email delivery is ready until a real message has been
+delivered, opened, scrubbed at the callback, verified once, and followed by
+session restore, sign-out, and account deletion checks. These account checks do
+not upload or alter the browser's local family tree.
 
 Create a preview candidate from the repository root:
 

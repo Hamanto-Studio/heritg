@@ -6,10 +6,15 @@ import {
   deleteAccount,
   getAccountSession,
   getLoginMaterial,
+  isConservativeEmail,
   loadGoogleIdentity,
   loginWithGoogle,
   logoutAccount,
+  maskEmail,
+  parseRetryAfterSeconds,
   readCsrfCookie,
+  requestEmailLogin,
+  verifyEmailLogin,
   type GoogleIdentity
 } from "./accountAuth";
 
@@ -56,6 +61,71 @@ describe("account authentication API", () => {
     expect(init).not.toHaveProperty("origin");
     expect(JSON.parse(String(init.body))).toEqual({ idToken: "google-proof", nonce: token, state });
     expect(init.credentials).toBe("include");
+  });
+
+  it("requests an email link with the exact accepted response contract", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse({ status: "accepted" }, 202));
+
+    await expect(requestEmailLogin("person@example.com", undefined, fetchMock)).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/email/request", expect.objectContaining({
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      referrerPolicy: "no-referrer",
+      body: JSON.stringify({ email: "person@example.com" })
+    }));
+
+    const expanded = vi.fn(async () => jsonResponse({ status: "accepted", accountExists: true }, 202));
+    await expect(requestEmailLogin("person@example.com", undefined, expanded)).rejects.toMatchObject({
+      status: 502,
+      code: "invalid_response"
+    });
+  });
+
+  it("verifies only an exact fragment token and strictly parses login results", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      void _input; void _init;
+      return jsonResponse({ accountId, csrfToken: token, expiresAt });
+    });
+
+    await expect(verifyEmailLogin(state, undefined, fetchMock)).resolves.toEqual({ accountId, csrfToken: token, expiresAt });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({ token: state });
+    expect(init).toEqual(expect.objectContaining({ credentials: "include", cache: "no-store", referrerPolicy: "no-referrer" }));
+
+    await expect(verifyEmailLogin("short", undefined, fetchMock)).rejects.toMatchObject({ status: 400 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("requires exact email statuses and JSON media types", async () => {
+    const acceptedAtWrongStatus = vi.fn(async () => jsonResponse({ status: "accepted" }, 200));
+    await expect(requestEmailLogin("person@example.com", undefined, acceptedAtWrongStatus))
+      .rejects.toMatchObject({ status: 502, code: "invalid_response" });
+
+    const requestWrongMediaType = vi.fn(async () => new Response(JSON.stringify({ status: "accepted" }), {
+      status: 202,
+      headers: { "content-type": "text/plain" }
+    }));
+    await expect(requestEmailLogin("person@example.com", undefined, requestWrongMediaType))
+      .rejects.toMatchObject({ status: 502, code: "invalid_response" });
+
+    const login = { accountId, csrfToken: token, expiresAt };
+    const verifiedAtWrongStatus = vi.fn(async () => jsonResponse(login, 202));
+    await expect(verifyEmailLogin(state, undefined, verifiedAtWrongStatus))
+      .rejects.toMatchObject({ status: 502, code: "invalid_response" });
+
+    const verifyWrongMediaType = vi.fn(async () => new Response(JSON.stringify(login), {
+      status: 200,
+      headers: { "content-type": "text/html" }
+    }));
+    await expect(verifyEmailLogin(state, undefined, verifyWrongMediaType))
+      .rejects.toMatchObject({ status: 502, code: "invalid_response" });
+  });
+
+  it("parses Retry-After delta seconds and HTTP dates", () => {
+    expect(parseRetryAfterSeconds("45", 0)).toBe(45);
+    expect(parseRetryAfterSeconds("Thu, 01 Jan 1970 00:01:00 GMT", 30_000)).toBe(30);
+    expect(parseRetryAfterSeconds("invalid", 0)).toBeUndefined();
   });
 
   it("restores sessions with included credentials", async () => {
@@ -135,6 +205,15 @@ describe("account authentication API", () => {
 });
 
 describe("account browser boundaries", () => {
+  it("validates and masks email conservatively", () => {
+    expect(isConservativeEmail("person@example.com")).toBe(true);
+    expect(isConservativeEmail(" person@example.com ")).toBe(false);
+    expect(isConservativeEmail("person@example")).toBe(false);
+    expect(isConservativeEmail("person..name@example.com")).toBe(false);
+    expect(maskEmail("person@example.com")).toBe("p***@example.com");
+    expect(maskEmail("invalid")).toBeUndefined();
+  });
+
   it("reads only exact valid CSRF cookie names", () => {
     expect(readCsrfCookie(`other=x; __Host-heritg_csrf=${token}`)).toBe(token);
     expect(readCsrfCookie(`heritg_csrf=${token}`)).toBe(token);

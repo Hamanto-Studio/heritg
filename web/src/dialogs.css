@@ -1040,6 +1040,49 @@
   justify-self: start;
 }
 
+.account-sign-in,
+.account-sign-in form,
+.account-alternative {
+  display: grid;
+  gap: 10px;
+}
+
+.account-sign-in form .button,
+.account-sign-in > .button,
+.account-alternative > .button {
+  justify-self: start;
+}
+
+.account-sign-in .field {
+  max-width: 360px;
+}
+
+.account-email-status:empty {
+  display: none;
+}
+
+.account-email-status p,
+.account-alternative > span,
+.account-alternative > p {
+  color: var(--subtle);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.account-alternative {
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
+.account-alternative > span {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .account-status,
 .account-session p,
 .account-error p {
@@ -1080,6 +1123,63 @@
   display: grid;
   gap: 10px;
   padding: 12px;
+}
+
+.email-callback-screen {
+  align-items: center;
+  background: var(--tree-canvas);
+  display: grid;
+  height: 100%;
+  justify-items: center;
+  overflow: auto;
+  padding: max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+}
+
+.email-callback-card {
+  background: var(--base);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 22px;
+  max-width: 480px;
+  padding: clamp(24px, 6vw, 40px);
+  width: 100%;
+}
+
+.email-callback-card .welcome-brand {
+  justify-content: center;
+}
+
+.email-callback-message {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-align: center;
+}
+
+.email-callback-message h1 {
+  font-size: clamp(1.35rem, 4vw, 1.7rem);
+  margin: 0;
+}
+
+.email-callback-message p {
+  color: var(--subtle);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.email-callback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.callback-success {
+  color: var(--add);
 }
 
 .share-panel-intro {
