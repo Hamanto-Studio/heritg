@@ -1,5 +1,4 @@
 import {
-  CHILD_RAIL_CLEARANCE,
   ROUTE_EPSILON,
   pointOnSegment,
   pointsEqual,
@@ -183,16 +182,21 @@ const pathNumber = (value: number) => {
   return Object.is(rounded, -0) ? "0" : String(rounded);
 };
 
+/** Draws a smooth vertical hop so unrelated family lines read as crossing, not joined. */
+export const crossingBridgePath = (
+  point: RoutePoint,
+  offsetX = 0,
+  offsetY = 0,
+  radius = CONNECTOR_STYLE.crossingRadius + 3
+) => {
+  const x = point.x + offsetX;
+  const y = point.y + offsetY;
+  const bulge = radius + 2;
+  return `M ${pathNumber(x)} ${pathNumber(y - radius)} C ${pathNumber(x + bulge)} ${pathNumber(y - radius)} ${pathNumber(x + bulge)} ${pathNumber(y + radius)} ${pathNumber(x)} ${pathNumber(y + radius)}`;
+};
+
 const distance = (left: RoutePoint, right: RoutePoint) =>
   Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
-
-const isShortTerminalCorner = (
-  points: readonly RoutePoint[],
-  index: number
-) => (index === 1 &&
-    distance(points[0], points[1]) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON) ||
-  (index === points.length - 2 &&
-    distance(points.at(-2)!, points.at(-1)!) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON);
 
 const pointToward = (from: RoutePoint, to: RoutePoint, amount: number): RoutePoint => ({
   x: from.x + Math.sign(to.x - from.x) * Math.min(amount, Math.abs(to.x - from.x)),
@@ -229,7 +233,7 @@ export const roundedConnectorPoints = (
     const current = points[index];
     const next = points[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner || isShortTerminalCorner(points, index)) {
+    if (!isCorner) {
       result.push(current);
       continue;
     }
@@ -261,7 +265,7 @@ export const roundedConnectorPath = (
     const current = translated[index];
     const next = translated[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner || isShortTerminalCorner(translated, index)) {
+    if (!isCorner) {
       commands.push(`L ${pathNumber(current.x)} ${pathNumber(current.y)}`);
       continue;
     }

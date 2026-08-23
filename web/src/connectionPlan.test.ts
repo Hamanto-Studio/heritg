@@ -105,6 +105,56 @@ describe("family connection planning", () => {
     expect(createConnectionPlan(treeLayout, "en", undefined, false).failures).toEqual([]);
   });
 
+  it("reflows descendant rows after ancestor alignment shifts family blocks", () => {
+    const people = ["a1", "b0", "c1", "p", "q", "s1", "s2", "s3", "u", "x0"]
+      .map((id) => person(id, 0, 0));
+    const relationships = [
+      parent("b0", "u"),
+      parent("b0", "s1"),
+      parent("b0", "s2"),
+      parent("b0", "s3"),
+      parent("a1", "p"),
+      parent("c1", "q"),
+      parent("q", "x0"),
+      parent("p", "x0")
+    ];
+    const treeLayout = createTreeLayout(people, relationships);
+    const row = treeLayout.people
+      .filter(({ generation }) => generation === 1)
+      .sort((left, right) => left.x - right.x);
+
+    expect(row.map(({ id }) => id)).toEqual(["p", "q", "s1", "s2", "s3", "u"]);
+    const gaps = row.slice(1).map((current, index) => current.x - row[index].x);
+    expect(gaps[0]).toBe(LAYOUT_METRICS.horizontalSpacing);
+    expect(gaps[1]).toBeGreaterThanOrEqual(
+      LAYOUT_METRICS.horizontalSpacing + LAYOUT_METRICS.familyGap
+    );
+    expect(gaps.slice(2)).toEqual(Array(3).fill(LAYOUT_METRICS.horizontalSpacing));
+    expect(treeLayout.width).toBeLessThanOrEqual(3_000);
+
+    const plan = createConnectionPlan(treeLayout, "en", undefined, false);
+    const family = plan.families.find(({ parentIds }) =>
+      parentIds.length === 2 && parentIds.includes("p") && parentIds.includes("q")
+    )!;
+    expect(family.childIds).toEqual(["x0"]);
+    expect(obstacleCollisions(
+      family.segments,
+      plan.obstacles,
+      new Set([...family.parentIds, ...family.childIds])
+    )).toEqual([]);
+    expect(plan.failures).toEqual([]);
+    expect(plan.isValid).toBe(true);
+
+    const photoLayout = createTreeLayout(people.map((value) => ({
+      ...value,
+      photoDataUrl: "data:image/jpeg;base64,/9j/2Q=="
+    })), relationships);
+    expect(photoLayout.people.map(({ id, x, y }) => ({ id, x, y }))).toEqual(
+      treeLayout.people.map(({ id, x, y }) => ({ id, x, y }))
+    );
+    expect(createConnectionPlan(photoLayout, "en", undefined, false)).toEqual(plan);
+  });
+
   it.skipIf(!hamantoGed)("keeps the complete example tree readable without routing failures", () => {
     let nextId = 0;
     const data = importGedcom(hamantoGed!, {
@@ -496,7 +546,7 @@ describe("family connection planning", () => {
       .flatMap((match) => match[1].split(","));
     expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
     expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
-    expect(chart.svg).toContain('d="M 151 172 L 151 180 L 281 180"');
+    expect(chart.svg).toContain('d="M 151 172 L 151 176 Q 151 180 155 180 L 281 180"');
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });
