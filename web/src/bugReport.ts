@@ -20,6 +20,7 @@ export interface BugReportEnvironment {
 export interface BugReportContext {
   appLanguage: AppData["language"];
   appVersion: string;
+  buildVersion: string;
   peopleCount: number;
   relationshipCount: number;
   generatedAt?: string;
@@ -144,6 +145,7 @@ export function createBugReportMessage(
     `Operating System: ${detectOperatingSystem(environment)}`,
     `Browser: ${detectBrowser(environment.userAgent)}`,
     `App Version: ${context.appVersion}`,
+    `Build Version: ${context.buildVersion}`,
     `Subscription Level: Free (local-only Web)`,
     `Locale: ${environment.browserLocale} (App: ${appLanguage})`,
     `Time Zone: ${environment.timeZone}`,

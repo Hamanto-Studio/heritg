@@ -1,5 +1,6 @@
 import { Cloud, Download, ExternalLink, KeyRound, ShieldCheck, WifiOff, type LucideIcon } from "lucide-react";
 
+import { AppVersion } from "./AppVersion";
 import type { Translator } from "./i18n";
 import { SidePanel } from "./ui";
 
@@ -53,7 +54,7 @@ export function PrivacyPanel({
         </span>
         <ExternalLink aria-hidden="true" size={20} strokeWidth={2.2} />
       </a>
-      <p className="app-version">Heritg Web {__APP_VERSION__}</p>
+      <AppVersion />
     </SidePanel>
   );
 }

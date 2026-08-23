@@ -9,7 +9,7 @@ prefix.
 ### Web
 
 - Added Heritg Family+ encrypted device synchronization, collaboration for up
-  to five people, and longer encrypted sharing links.
+  to 5 people, and longer encrypted sharing links.
 - Changed Family+ checkout to direct, one-time two-year and five-year access
   options with supported Indonesian payment methods.
 - Improved Family+ discovery with prominent, consistent benefits and a direct

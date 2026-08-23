@@ -71,11 +71,17 @@
 }
 
 .app-version {
+  align-items: center;
   color: var(--subtle);
+  display: flex;
+  flex-wrap: wrap;
   font-size: 0.78rem;
+  gap: 6px;
   letter-spacing: 0.02em;
   margin: 18px 0 0;
 }
+
+.app-version span::before { content: "· "; }
 
 .panel-intro {
   color: var(--subtle);

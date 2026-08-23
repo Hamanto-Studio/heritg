@@ -1,6 +1,7 @@
 import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AccountSettings } from "./AccountSettings";
+import { AppVersion } from "./AppVersion";
 import type { MessageKey, Translator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { passwordRequirements } from "./passwordPolicy";
@@ -143,7 +144,7 @@ export function SettingsDialog({
         <ShieldCheck aria-hidden="true" size={17} />
         <span><strong>{t("offlineReady")}</strong><br />{t("savedAutomatically")}</span>
       </div>
-      <p className="app-version">Heritg Web {__APP_VERSION__}</p>
+      <AppVersion />
     </SidePanel>
   );
 }
