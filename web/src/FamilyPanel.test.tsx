@@ -2,12 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { FamilyPanel } from "./FamilyPanel";
 import { createTranslator } from "./i18n";
-import { unavailableProContext } from "./proTypes";
+import { unavailableFamilyContext } from "./familyTypes";
 
 describe("FamilyPanel", () => {
   it("shows a simple device-focused benefit list and one unlock action", () => {
     const markup = renderToStaticMarkup(
-      <FamilyPanel onClose={() => undefined} pro={unavailableProContext} t={createTranslator("en")} />
+      <FamilyPanel family={unavailableFamilyContext} onClose={() => undefined} t={createTranslator("en")} />
     );
     expect(markup).toContain("Your family history, safe and ready anywhere");
     expect(markup).toContain("Pick up where you left off");

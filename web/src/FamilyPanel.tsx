@@ -1,16 +1,16 @@
 import { Check, Cloud, Crown, ShieldCheck } from "lucide-react";
 
 import type { Translator } from "./i18n";
-import type { ProContextValue } from "./proTypes";
+import type { FamilyContextValue } from "./familyTypes";
 import { SidePanel } from "./ui";
 
 export function FamilyPanel({
   onClose,
-  pro,
+  family,
   t
 }: {
   onClose: () => void;
-  pro: ProContextValue;
+  family: FamilyContextValue;
   t: Translator;
 }) {
   return (
@@ -28,7 +28,7 @@ export function FamilyPanel({
             <p className="settings-detail">{t("proPlanDetail")}</p>
           </div>
         </div>
-        <ul className="pro-benefits family-plan-benefits">
+        <ul className="family-benefits family-plan-benefits">
           <li><Cloud aria-hidden="true" size={18} /><span><strong>{t("proBenefitSync")}</strong>{t("proBenefitSyncDetail")}</span></li>
           <li><ShieldCheck aria-hidden="true" size={18} /><span><strong>{t("proBenefitBackup")}</strong>{t("proBenefitBackupDetail")}</span></li>
           <li><Check aria-hidden="true" size={18} /><span><strong>{t("proBenefitLocal")}</strong>{t("proBenefitLocalDetail")}</span></li>
@@ -37,7 +37,7 @@ export function FamilyPanel({
           className="button primary family-plan-cta"
           onClick={() => {
             onClose();
-            pro.openPaywall();
+            family.openPaywall();
           }}
           type="button"
         >

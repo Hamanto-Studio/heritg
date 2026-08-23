@@ -28,7 +28,7 @@ export interface ManagedShare {
   treeId: string;
   treeTitle: string;
   createdAt: string;
-  expiresAt: string;
+  expiresAt: string | null;
 }
 
 interface HeritgDatabase extends DBSchema {
@@ -100,7 +100,7 @@ const validManagedShare = (value: unknown): value is ManagedShare => {
     typeof item.treeId === "string" && Boolean(item.treeId) &&
     typeof item.treeTitle === "string" && Boolean(item.treeTitle) &&
     typeof item.createdAt === "string" && Number.isFinite(Date.parse(item.createdAt)) &&
-    typeof item.expiresAt === "string" && Number.isFinite(Date.parse(item.expiresAt));
+    (item.expiresAt === null || (typeof item.expiresAt === "string" && Number.isFinite(Date.parse(item.expiresAt))));
 };
 
 export async function loadManagedShares(now = new Date()): Promise<ManagedShare[]> {
@@ -109,7 +109,9 @@ export async function loadManagedShares(now = new Date()): Promise<ManagedShare[
   if (!stored || !isEncryptedAppData(stored)) return [];
   const decoded = await decryptLocalValue<unknown>(stored, await encryptionKey(), SHARE_CONTEXT);
   if (!Array.isArray(decoded)) return [];
-  const active = decoded.filter(validManagedShare).filter((item) => Date.parse(item.expiresAt) > now.getTime());
+  const active = decoded.filter(validManagedShare).filter((item) =>
+    item.expiresAt === null || Date.parse(item.expiresAt) > now.getTime()
+  );
   if (active.length !== decoded.length) await saveManagedShares(active);
   return active.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }

@@ -10,6 +10,8 @@ import {
 import { createInitialAppData } from "./domain";
 import { createTranslator } from "./i18n";
 import type { AppActions } from "./store";
+import type { FamilyContextValue } from "./familyTypes";
+import { unavailableFamilyContext } from "./familyTypes";
 
 describe("encrypted backup password validation", () => {
   it("allows both password fields to be empty", () => {
@@ -76,5 +78,69 @@ describe("relationship terminology settings", () => {
     expect(english).toContain("Batak Angkola");
     expect(english).toContain("Batak Simalungun");
     expect(english).toContain("Pakpak/Dairi");
+  });
+});
+
+describe("Family settings", () => {
+  it("presents accounts, the free plan, and locked synchronization without claiming access", () => {
+    const markup = renderToStaticMarkup(
+      <SettingsDialog
+        actions={{} as AppActions}
+        data={createInitialAppData("en")}
+        onClose={() => undefined}
+        t={createTranslator("en")}
+      />
+    );
+
+    expect(markup).toContain("Heritg account");
+    expect(markup).toContain("Heritg Family");
+    expect(markup).toContain("Free");
+    expect(markup).toContain("Automatic synchronization");
+    expect(markup).toContain("Coming soon");
+    expect(markup).toContain("Preview Family");
+  });
+
+  it("shows authoritative active subscription and synchronization state", () => {
+    const family: FamilyContextValue = {
+      ...unavailableFamilyContext,
+      configured: true,
+      account: { status: "signedIn", session: { accountId: "A".repeat(22), expiresAt: "2027-08-23T00:00:00Z" } },
+      subscription: {
+        status: "active",
+        access: "active",
+        offers: [],
+        expiresAt: "2027-08-23T00:00:00Z",
+        managementUrl: "https://billing.example.com/customer"
+      },
+      sync: { enabled: true, phase: "upToDate", pendingChanges: 0 }
+    };
+    const markup = renderToStaticMarkup(
+      <SettingsDialog
+        actions={{} as AppActions}
+        data={createInitialAppData("en")}
+        onClose={() => undefined}
+        family={family}
+        t={createTranslator("en")}
+      />
+    );
+
+    expect(markup).toContain("Manage subscription");
+    expect(markup).toContain("Up to date");
+    expect(markup).toContain("Disable synchronization");
+    expect(markup).toContain("synchronizes an encrypted hosted copy");
+  });
+
+  it("renders the subscription shell in Indonesian", () => {
+    const markup = renderToStaticMarkup(
+      <SettingsDialog
+        actions={{} as AppActions}
+        data={createInitialAppData("id")}
+        onClose={() => undefined}
+        t={createTranslator("id")}
+      />
+    );
+    expect(markup).toContain("Akun Heritg");
+    expect(markup).toContain("Sinkronisasi otomatis");
+    expect(markup).toContain("Pratinjau Family");
   });
 });
