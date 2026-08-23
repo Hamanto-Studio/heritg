@@ -1187,32 +1187,6 @@
   padding: 12px;
 }
 
-.settings-card-actions .button,
-.account-sign-out {
-  min-height: 40px;
-}
-
-.family-settings-card.active {
-  background: color-mix(in srgb, var(--brand) 7%, var(--base));
-  border-color: color-mix(in srgb, var(--brand) 46%, var(--line));
-}
-
-.family-badge,
-.sync-status {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--subtle);
-  font-size: 0.68rem;
-  font-weight: 750;
-  line-height: 1;
-  padding: 4px 7px;
-}
-.family-badge.active,
-.sync-upToDate {
-  background: color-mix(in srgb, var(--add) 13%, var(--base));
-  border-color: color-mix(in srgb, var(--add) 48%, var(--line));
-  color: color-mix(in srgb, var(--add) 78%, var(--text));
-}
 .email-callback-screen {
   align-items: center;
   background: var(--tree-canvas);
