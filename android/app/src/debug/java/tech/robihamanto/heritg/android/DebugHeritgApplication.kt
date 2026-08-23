@@ -1,7 +1,5 @@
 package tech.robihamanto.heritg.android
 
-import java.time.Instant
-import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -13,6 +11,8 @@ import tech.robihamanto.heritg.android.core.model.Person
 import tech.robihamanto.heritg.android.core.model.PersonGender
 import tech.robihamanto.heritg.android.core.model.RelationshipKind
 import tech.robihamanto.heritg.android.core.model.RelationshipSubtype
+import java.time.Instant
+import java.time.LocalDate
 
 class DebugHeritgApplication : HeritgApplication() {
     override fun onCreate() {
@@ -32,34 +32,13 @@ class DebugHeritgApplication : HeritgApplication() {
 
     private fun debugFixture(): ArchivePayload {
         val people = listOf(
-            person(
-                "soekemi",
-                "Raden Soekemi Sosrodihardjo",
-                PersonGender.MALE,
-                0,
-                "1873-06-15",
-                "1945-05-18"
-            ),
-            person(
-                "ida-ayu",
-                "Ida Ayu Nyoman Rai",
-                PersonGender.FEMALE,
-                1,
-                "1881-01-01",
-                "1958-09-12"
-            ),
+            person("soekemi", "Raden Soekemi Sosrodihardjo", PersonGender.MALE, 0, "1873-06-15", "1945-05-18"),
+            person("ida-ayu", "Ida Ayu Nyoman Rai", PersonGender.FEMALE, 1, "1881-01-01", "1958-09-12"),
             person("sukarno", "Sukarno", PersonGender.MALE, 2, "1901-06-06", "1970-06-21"),
             person("fatmawati", "Fatmawati", PersonGender.FEMALE, 3, "1923-02-05", "1980-05-14"),
             person("guntur", "Guntur Soekarnoputra", PersonGender.MALE, 4, "1944-11-03"),
             person("megawati", "Megawati Soekarnoputri", PersonGender.FEMALE, 5, "1947-01-23"),
-            person(
-                "rachmawati",
-                "Rachmawati Soekarnoputri",
-                PersonGender.FEMALE,
-                6,
-                "1950-09-27",
-                "2021-07-03"
-            ),
+            person("rachmawati", "Rachmawati Soekarnoputri", PersonGender.FEMALE, 6, "1950-09-27", "2021-07-03"),
             person("sukmawati", "Sukmawati Soekarnoputri", PersonGender.FEMALE, 7, "1951-10-26"),
             person("guruh", "Guruh Soekarnoputra", PersonGender.MALE, 8, "1953-01-13"),
             person("taufiq", "Taufiq Kiemas", PersonGender.MALE, 9, "1942-12-31", "2013-06-08"),
@@ -124,12 +103,7 @@ class DebugHeritgApplication : HeritgApplication() {
         deathDate = deathDate?.let(::date),
     )
 
-    private fun spouse(
-        first: String,
-        second: String,
-        order: Long,
-        marriageDate: String? = null
-    ): FamilyRelationship {
+    private fun spouse(first: String, second: String, order: Long, marriageDate: String? = null): FamilyRelationship {
         val (from, to) = listOf(first, second).sorted()
         return FamilyRelationship(
             id = "partner-$first-$second",

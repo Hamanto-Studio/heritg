@@ -12,7 +12,7 @@
     <plurals name="relationships_count"><item quantity="other">%d hubungan</item></plurals>
     <string name="create">Buat</string><string name="rename">Ganti nama</string><string name="delete">Hapus</string>
     <string name="save">Simpan</string><string name="cancel">Batal</string><string name="close">Tutup</string>
-    <string name="back">Kembali</string><string name="ok">OK</string><string name="share">Bagikan</string><string name="download">Unduh</string><string name="could_not_complete">Tindakan Tidak Dapat Diselesaikan</string>
+    <string name="back">Kembali</string><string name="ok">OK</string><string name="share">Bagikan</string><string name="could_not_complete">Tindakan Tidak Dapat Diselesaikan</string>
     <string name="name">Nama</string><string name="add_first_person">Tambah orang pertama</string><string name="start_family_tree">Mulai silsilah keluarga Anda</string>
     <string name="add_person">Tambah orang</string><string name="add_to">Tambahkan ke %1$s</string><string name="new_relative">%1$s baru</string>
     <string name="link_existing">Hubungkan anggota keluarga yang sudah ada</string><string name="link_to">Hubungkan ke %1$s</string>

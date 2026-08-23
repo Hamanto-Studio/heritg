@@ -82,10 +82,6 @@ object LocalFiles {
         }, context.getString(R.string.share)))
     }
 
-    suspend fun download(context: Context, uri: Uri, bytes: ByteArray) = withContext(Dispatchers.IO) {
-        context.contentResolver.openOutputStream(uri)?.use { it.write(bytes) } ?: throw LocalFileException.OpenFailed
-    }
-
     private fun safeName(value: String): String {
         val sanitized = value.replace(Regex("[^A-Za-z0-9._-]"), "-").take(120)
         return sanitized.takeIf { it.isNotBlank() && it != "." && it != ".." } ?: "heritg-export"
