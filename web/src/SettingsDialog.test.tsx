@@ -113,7 +113,7 @@ describe("Family+ settings", () => {
     const markup = renderSettings({
       ...unavailableProContext,
       configured: true,
-      subscription: { status: "expired", expiredAt: "2028-11-21T00:00:00Z", offers: [] },
+      subscription: { status: "expired", expiredAt: "2028-11-21T00:00:00Z" },
       sync: { enabled: false, phase: "disabled", pendingChanges: 0 }
     });
 

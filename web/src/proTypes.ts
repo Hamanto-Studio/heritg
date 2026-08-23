@@ -1,11 +1,9 @@
-export type SubscriptionPlan = "two_year" | "five_year";
-
 export interface ProUser { id: string; name: string | null; email: string | null; expiresAt: string }
 export interface ProOffer {
-  plan: SubscriptionPlan;
-  price: string;
-  priceMicros: number;
-  currency: string;
+  productId: string;
+  name: string;
+  price: { amount: number; currency: string };
+  accessMonths: number;
 }
 
 export type AccountState =
@@ -15,11 +13,11 @@ export type AccountState =
 
 export type SubscriptionState =
   | { status: "unavailable" | "loading" }
-  | { status: "free"; offers: ProOffer[] }
-  | { status: "purchasing"; plan: SubscriptionPlan; offers: ProOffer[] }
-  | { status: "active"; plan?: SubscriptionPlan; expiresAt?: string; manageUrl?: string }
-  | { status: "expired"; expiredAt?: string; offers: ProOffer[] }
-  | { status: "error"; message: string; offers: ProOffer[] };
+  | { status: "free"; offer?: ProOffer }
+  | { status: "purchasing"; offer: ProOffer }
+  | { status: "active"; offer?: ProOffer; expiresAt?: string; manageUrl?: string }
+  | { status: "expired"; expiredAt?: string; offer?: ProOffer }
+  | { status: "error"; message: string; offer?: ProOffer };
 
 export type SyncPhase = "unavailable" | "disabled" | "comparing" | "upToDate" | "pending" |
   "syncing" | "offline" | "conflict" | "authenticationRequired" | "subscriptionRequired" |
@@ -45,7 +43,7 @@ export interface ProContextValue {
   error?: string;
   openPaywall: () => void;
   closePaywall: () => void;
-  purchase: (plan: SubscriptionPlan) => Promise<void>;
+  purchase: () => Promise<void>;
   refreshSubscription: () => Promise<void>;
   manageSubscription: () => void;
   setSyncEnabled: (enabled: boolean) => Promise<void>;
