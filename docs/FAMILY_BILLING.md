@@ -13,8 +13,7 @@ Enable the client with this public build variable:
 - `HERITG_FAMILY_BILLING_ENABLED=true`
 
 Google sign-in is configured independently with `HERITG_GOOGLE_CLIENT_ID`.
-Passwordless email uses the environment's existing account service and email
-delivery configuration; it has no separate Web build flag.
+Passwordless email is disabled in the current production release.
 
 Xendit secret keys and webhook verification tokens, session-signing keys,
 database credentials, and storage credentials must remain in backend secret
@@ -35,10 +34,6 @@ mutations.
   from an email address or family data.
 - `POST /auth/google`: exchanges the environment-bound Google identity proof
   allocated through `GET /auth/login-nonce`.
-- `POST /auth/email/request`: requests a single-use, short-lived email link
-  without revealing whether an account exists.
-- `POST /auth/email/verify`: consumes the link token and creates the same secure
-  session used by Google sign-in.
 - `POST /auth/logout`: revokes the session without deleting local data.
 - `DELETE /account`: permanently deletes the hosted account without deleting
   the browser's local archive.
@@ -83,8 +78,8 @@ as `isPro`, account IDs, and timestamps are untrusted.
 5. Update `PRIVACY.md`, `docs/DATA_PROCESSING.md`, product copy, and subprocessors
    before enabling hosted processing.
 6. Test modified clients claiming fake Family+ access; official APIs must reject them.
-7. Test passwordless email delivery and callback handling in installed PWAs and
-   Mobile Safari; keep Google as a working fallback.
+7. Test Google sign-in, profile restoration, retry, logout, and deletion in
+   installed PWAs and Mobile Safari.
 8. Keep all `/api/v1/` service-worker traffic `NetworkOnly`.
 9. Complete Xendit business verification and activate every displayed payment
    channel before displaying it as available in production.

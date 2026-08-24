@@ -23,6 +23,8 @@ export interface LoginMaterial {
 
 export interface AccountSession {
   accountId: string;
+  name: string | null;
+  email: string | null;
   expiresAt: string;
 }
 
@@ -64,6 +66,7 @@ export interface GoogleIdentity {
         text: "continue_with";
         locale: "en" | "id";
       }): void;
+      cancel?(): void;
       disableAutoSelect(): void;
     };
   };
@@ -87,6 +90,10 @@ const objectWithExactKeys = (value: unknown, keys: readonly string[]): value is 
 const validDate = (value: unknown): value is string =>
   typeof value === "string" && Number.isFinite(Date.parse(value));
 
+const validNullableIdentity = (value: unknown, maximum: number): value is string | null =>
+  value === null || (typeof value === "string" && value.length > 0 && value.length <= maximum &&
+    value === value.trim() && !/[\u0000-\u001f\u007f]/u.test(value));
+
 const parseLoginMaterial = (value: unknown): LoginMaterial => {
   if (!objectWithExactKeys(value, ["nonce", "state", "expiresAt"]) ||
     typeof value.nonce !== "string" || !TOKEN_PATTERN.test(value.nonce) ||
@@ -98,22 +105,26 @@ const parseLoginMaterial = (value: unknown): LoginMaterial => {
 };
 
 const parseSession = (value: unknown): AccountSession => {
-  if (!objectWithExactKeys(value, ["accountId", "expiresAt"]) ||
+  if (!objectWithExactKeys(value, ["accountId", "name", "email", "expiresAt"]) ||
     typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
+    !validNullableIdentity(value.name, 200) ||
+    !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))) ||
     !validDate(value.expiresAt)) {
     throw new AccountAuthError(502, "invalid_response");
   }
-  return { accountId: value.accountId, expiresAt: value.expiresAt };
+  return { accountId: value.accountId, name: value.name, email: value.email, expiresAt: value.expiresAt };
 };
 
 const parseLogin = (value: unknown): LoginResult => {
-  if (!objectWithExactKeys(value, ["accountId", "csrfToken", "expiresAt"]) ||
+  if (!objectWithExactKeys(value, ["accountId", "name", "email", "csrfToken", "expiresAt"]) ||
     typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
+    !validNullableIdentity(value.name, 200) ||
+    !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))) ||
     typeof value.csrfToken !== "string" || !TOKEN_PATTERN.test(value.csrfToken) ||
     !validDate(value.expiresAt)) {
     throw new AccountAuthError(502, "invalid_response");
   }
-  return { accountId: value.accountId, csrfToken: value.csrfToken, expiresAt: value.expiresAt };
+  return { accountId: value.accountId, name: value.name, email: value.email, csrfToken: value.csrfToken, expiresAt: value.expiresAt };
 };
 
 const parseEmailRequest = (value: unknown): void => {
@@ -338,7 +349,7 @@ export const loadGoogleIdentity = (): Promise<GoogleIdentity> => {
     };
     script.addEventListener("load", loaded, { once: true });
     script.addEventListener("error", failed, { once: true });
-    const timeout = window.setTimeout(failed, 10_000);
+    const timeout = window.setTimeout(failed, 20_000);
     if (!existing) {
       script.src = GOOGLE_IDENTITY_SCRIPT;
       script.async = true;

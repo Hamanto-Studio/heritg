@@ -38,6 +38,18 @@ prefix.
 - Refreshed the internal testing build for the current offline family-tree,
   encrypted archive, GEDCOM, and chart-export compatibility checks.
 
+## [web-0.7.0] - 2026-08-24
+
+### Added
+
+- Added Google account sign-in with the signed-in name and email visible after
+  login and session restoration.
+
+### Fixed
+
+- Added bounded Google sign-in preparation and retry handling that starts each
+  retry with fresh nonce and state material.
+
 ## [web-0.6.2] - 2026-08-18
 
 ### Fixed
