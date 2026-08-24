@@ -144,6 +144,11 @@ after promotion. Complete real Google provider acceptance in staging; after
 production deployment, investigate only if automated readiness fails. Never
 record tokens, email links, cookies, or proof values.
 
+When Vercel SSO protects the immutable deployment URL, the command verifies the
+exact inspected build, routing, and security configuration before promotion and
+runs the complete HTTP compatibility gate immediately afterward on the public
+canonical hostname. A failure still restores the prior deployment automatically.
+
 Routine deployment does not require a version bump, changelog, release branch,
 pull request, tag, GitHub Release, separate candidate handoff, or repeated manual
 device checklist. Those remain optional for named product milestones. To restore
