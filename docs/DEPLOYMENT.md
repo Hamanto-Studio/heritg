@@ -136,6 +136,50 @@ attribution before retrying rather than promoting or aliasing a blocked build.
 Production release preparation, candidate verification, promotion approval,
 tagging, and publication remain unchanged and must never use this staging path.
 
+## Production Account Authentication
+
+Production candidates are built with account authentication enabled and with
+public, production-specific Google and Turnstile values. Configure the Google
+Web OAuth client to authorize exactly `https://heritg.us` as a JavaScript origin.
+Configure the production Turnstile widget for `heritg.us`. Keep downloaded OAuth
+JSON under the ignored root `secrets/` directory; the deploy command neither
+reads nor uploads that directory. OAuth secrets, the Turnstile secret, email
+provider credentials, session keys, and callback signing material belong only in
+the production backend's secret manager, never in Vercel or browser build values.
+
+From a clean release worktree, create a production-targeted candidate without
+assigning the production domain:
+
+```sh
+HERITG_API_ORIGIN=https://heritg-share-api-ulvjjfvqpq-et.a.run.app \
+HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
+HERITG_TURNSTILE_SITE_KEY=PRODUCTION_PUBLIC_WIDGET_KEY \
+npm --prefix web run deploy:stage
+```
+
+The guarded command accepts only the approved production API origin, rejects
+the staging Google client, requires a production-shaped Google Web client ID and
+a nonempty production Turnstile site key, renders `web/vercel.json`, and refuses
+dirty worktrees. It uses Vercel CLI 58.4.4 with `--prod --skip-domain`, injects
+the production environment and build identity, and deploys from the repository
+root. Root `.vercelignore` explicitly excludes `secrets/` from that upload.
+
+Before promotion, run the production verifier against the immutable candidate
+URL. Because Google authorizes only the canonical production origin, complete
+the real provider checks immediately after protected promotion without recording
+tokens, email links, cookies, or proof values:
+
+- Confirm Google sign-in opens for the production OAuth client and creates a
+  session only after the nonce-bound exchange.
+- Confirm Turnstile is required for the initial email request and every resend,
+  and that no request retries without its proof.
+- Request a link for an approved production test address, confirm the response
+  does not disclose account existence, and open the delivered link once.
+- Confirm `/auth/email` loads directly, the URL fragment is scrubbed, session
+  restore and sign-out work, and reusing the same link fails.
+- Confirm anonymous session access remains `401`, invalid email-auth input
+  remains `400 invalid_request`, and no auth response is cached.
+
 Attach `staging.heritg.us` only to Vercel project `heritg-staging`. In Cloudflare,
 create a DNS-only CNAME using the exact target Vercel assigns. Inspect and
 preserve any existing `staging` record before replacing it; never guess the target

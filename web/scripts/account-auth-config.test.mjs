@@ -7,6 +7,10 @@ import {
   STAGING_GOOGLE_CLIENT_ID,
   validateStagingAuthConfig
 } from "./staging-auth-config.mjs";
+import {
+  PRODUCTION_API_ORIGIN,
+  validateProductionAuthConfig
+} from "./production-auth-config.mjs";
 
 const readJson = (name) => JSON.parse(readFileSync(resolve(process.cwd(), name), "utf8"));
 
@@ -56,6 +60,23 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain('["node_modules", "dist", ".vercel"]');
   });
 
+  it("guards production candidate auth configuration and deployment inputs", () => {
+    const deploy = readFileSync(resolve(process.cwd(), "scripts/deploy-production.mjs"), "utf8");
+    const vercelIgnore = readFileSync(resolve(process.cwd(), "../.vercelignore"), "utf8");
+    expect(deploy).toContain("validateProductionAuthConfig(origin, googleClientId, turnstileSiteKey)");
+    expect(deploy).toContain('git("status", "--porcelain")');
+    expect(deploy).toContain('"vercel@58.4.4"');
+    expect(deploy).toContain('"--prod"');
+    expect(deploy).toContain('"--skip-domain"');
+    expect(deploy).toContain('"web/vercel.json"');
+    expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=production");
+    expect(deploy).not.toContain("HERITG_FAMILY_BILLING_ENABLED=true");
+    expect(deploy).toContain("HERITG_BUILD_VERSION");
+    expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
+    expect(deploy).toContain("`HERITG_TURNSTILE_SITE_KEY=${turnstileSiteKey}`");
+    expect(vercelIgnore.trim().split(/\r?\n/u)).toContain("secrets/");
+  });
+
   it("keeps every account API request network-only in the service worker", () => {
     const viteConfig = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
     expect(viteConfig).toContain("urlPattern: /\\/api\\/v1\\//");
@@ -93,5 +114,15 @@ describe("account authentication deployment policy", () => {
     expect(validateStagingAuthConfig(STAGING_API_ORIGIN, "production.apps.googleusercontent.com", "site-key")).toContain("staging-only");
     expect(validateStagingAuthConfig(STAGING_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, undefined)).toContain("TURNSTILE");
     expect(validateStagingAuthConfig(STAGING_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, "site-key")).toBeUndefined();
+  });
+
+  it("accepts only production-shaped auth configuration for the approved backend", () => {
+    const productionClientId = `123456789012-${"a".repeat(32)}.apps.googleusercontent.com`;
+    expect(validateProductionAuthConfig(undefined, undefined, undefined)).toContain("HERITG_API_ORIGIN");
+    expect(validateProductionAuthConfig(`${PRODUCTION_API_ORIGIN}/`, productionClientId, "site-key")).toContain("approved production");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, "site-key")).toContain("staging");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, "production.apps.googleusercontent.com", "site-key")).toContain("production Google Web client ID");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, productionClientId, "  ")).toContain("TURNSTILE");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, productionClientId, "site-key")).toBeUndefined();
   });
 });
