@@ -51,7 +51,7 @@ const inspect = (target) => JSON.parse(execFileSync("npx", [
 const verify = (target, expectedVersion = packageJson.version) => {
   const args = [verifier, target];
   if (expectedVersion) args.push("--expect-version", expectedVersion);
-  args.push("--cors-origin", new URL(production).origin);
+  args.push("--cors-origin", new URL(production).origin, "--skip-landing");
   execFileSync(process.execPath, args, { cwd: repositoryRoot, stdio: "inherit" });
 };
 

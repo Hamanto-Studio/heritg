@@ -148,6 +148,8 @@ When Vercel SSO protects the immutable deployment URL, the command verifies the
 exact inspected build, routing, and security configuration before promotion and
 runs the complete HTTP compatibility gate immediately afterward on the public
 canonical hostname. A failure still restores the prior deployment automatically.
+The independent GitHub Pages landing origin is monitored separately and does not
+block or roll back an otherwise healthy application artifact.
 
 Routine deployment does not require a version bump, changelog, release branch,
 pull request, tag, GitHub Release, separate candidate handoff, or repeated manual
