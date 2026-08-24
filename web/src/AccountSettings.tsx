@@ -389,10 +389,10 @@ export function AccountSettings({
                   ) : null}
                   {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
                 </div>
-                <div className="account-method-divider"><span>{t("accountOr")}</span></div>
-                <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
-                  <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
-                </button>
+                {turnstileSiteKey ? <><div className="account-method-divider"><span>{t("accountOr")}</span></div>
+                  <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
+                    <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
+                  </button></> : null}
               </div>
             ) : (
               <div className="account-method-panel">

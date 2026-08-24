@@ -14,7 +14,7 @@ const repositoryRoot = resolve(scriptDirectory, "../..");
 const origin = process.env.HERITG_STAGING_API_ORIGIN;
 const googleClientId = process.env.HERITG_GOOGLE_CLIENT_ID;
 const turnstileSiteKey = process.env.HERITG_TURNSTILE_SITE_KEY;
-const refusal = validateStagingAuthConfig(origin, googleClientId, turnstileSiteKey);
+const refusal = validateStagingAuthConfig(origin, googleClientId);
 const shortCommit = execFileSync("git", ["rev-parse", "--short=7", "HEAD"], {
   cwd: repositoryRoot,
   encoding: "utf8"
@@ -65,7 +65,7 @@ try {
     "--build-env",
     `HERITG_GOOGLE_CLIENT_ID=${googleClientId}`,
     "--build-env",
-    `HERITG_TURNSTILE_SITE_KEY=${turnstileSiteKey}`
+    `HERITG_TURNSTILE_SITE_KEY=${turnstileSiteKey ?? ""}`
   ], { cwd: deploymentRoot, stdio: "inherit" });
 } finally {
   rmSync(deploymentRoot, { force: true, recursive: true });
