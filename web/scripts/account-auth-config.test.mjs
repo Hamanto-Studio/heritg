@@ -72,6 +72,7 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain('resolve(scriptDirectory, "promote-production.mjs")');
     expect(deploy).toContain("Vercel did not return an immutable deployment URL");
     expect(read("scripts/promote-production.mjs")).toContain('"rollback"');
+    expect(read("scripts/promote-production.mjs")).toContain('protectionUrl.pathname === "/sso-api"');
     expect(read("scripts/rollback-production.mjs")).toContain('"rollback"');
     expect(accountSettings).not.toContain("requestEmailLogin");
     expect(main).not.toContain("EmailAuthCallback");
