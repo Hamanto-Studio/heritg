@@ -19,7 +19,7 @@ export type SubscriptionState =
   | { status: "expired"; expiredAt?: string; offer?: ProOffer }
   | { status: "error"; message: string; offer?: ProOffer };
 
-export type SyncPhase = "unavailable" | "disabled" | "comparing" | "upToDate" | "pending" |
+export type SyncPhase = "unavailable" | "comparing" | "upToDate" | "pending" |
   "syncing" | "offline" | "conflict" | "authenticationRequired" | "subscriptionRequired" |
   "encryptionKeyRequired" | "error";
 export interface SyncArchiveSummary { people: number; trees: number; updatedAt?: string }
@@ -44,9 +44,7 @@ export interface ProContextValue {
   openPaywall: () => void;
   closePaywall: () => void;
   purchase: () => Promise<void>;
-  refreshSubscription: () => Promise<void>;
   manageSubscription: () => void;
-  setSyncEnabled: (enabled: boolean) => Promise<void>;
   resolveSync: (resolution: SyncResolution) => Promise<void>;
   clearError: () => void;
 }
@@ -61,9 +59,7 @@ export const unavailableProContext: ProContextValue = {
   openPaywall: () => undefined,
   closePaywall: () => undefined,
   purchase: unavailable,
-  refreshSubscription: unavailable,
   manageSubscription: () => undefined,
-  setSyncEnabled: unavailable,
   resolveSync: unavailable,
   clearError: () => undefined
 };

@@ -26,9 +26,9 @@ describe("account sync archive helpers", () => {
     const allocation: SnapshotAllocation = {
       uploadId,
       targetRevision: 1,
-      uploadMethod: "POST",
+      uploadMethod: "PUT",
       uploadUrl: "https://storage.googleapis.com/upload",
-      formFields: {},
+      requiredHeaders: {},
       uploadExpiresAt: updatedAt
     };
     const metadata = (): SnapshotMetadata => ({

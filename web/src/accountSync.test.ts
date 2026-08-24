@@ -12,16 +12,14 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
   status,
   headers: { "content-type": "application/json", ...headers }
 });
-const fields = {
-  "Content-Type": SYNC_CONTENT_TYPE,
+const headers = {
+  "content-type": SYNC_CONTENT_TYPE,
   "x-goog-if-generation-match": "0",
   "x-goog-meta-heritg-envelope": "HTGSYN01",
   "x-goog-meta-heritg-state": "immutable",
   "x-goog-meta-heritg-tree-id": treeId,
   "x-goog-meta-heritg-upload-id": uploadId,
-  "x-goog-meta-heritg-revision": "1",
-  success_action_status: "201",
-  policy: "signed-policy"
+  "x-goog-meta-heritg-revision": "1"
 };
 
 describe("account sync transport", () => {
@@ -45,9 +43,9 @@ describe("account sync transport", () => {
       return String(input).endsWith("/key") ? json({ syncKey }) : json({
         uploadId,
         targetRevision: 1,
-        uploadMethod: "POST",
+        uploadMethod: "PUT",
         uploadUrl: "https://storage.googleapis.com/signed",
-        formFields: fields,
+        requiredHeaders: headers,
         uploadExpiresAt: instant
       }, 201);
     });
@@ -69,8 +67,8 @@ describe("account sync transport", () => {
   it("uploads and downloads signed objects without credentials or cache", async () => {
     const envelope = new Uint8Array(36);
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
-      String(input) === "https://storage.googleapis.com/signed-upload" && init?.method === "POST"
-        ? new Response("", { status: 201 })
+      String(input) === "https://storage.googleapis.com/signed-upload" && init?.method === "PUT"
+        ? new Response("", { status: 200 })
         : String(input).includes("/complete")
           ? json({ revision: 1 })
           : new Response(envelope, { status: 200 }));
@@ -78,9 +76,9 @@ describe("account sync transport", () => {
     const allocation = {
       uploadId,
       targetRevision: 1,
-      uploadMethod: "POST" as const,
+      uploadMethod: "PUT" as const,
       uploadUrl: "https://storage.googleapis.com/signed-upload",
-      formFields: fields,
+      requiredHeaders: headers,
       uploadExpiresAt: instant
     };
 
@@ -97,6 +95,8 @@ describe("account sync transport", () => {
     for (const [, init] of [fetchMock.mock.calls[0]!, fetchMock.mock.calls[2]!]) {
       expect(init).toEqual(expect.objectContaining({ credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" }));
     }
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ method: "PUT", headers }));
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBeInstanceOf(Uint8Array);
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({});
   });
 
@@ -123,9 +123,9 @@ describe("account sync transport", () => {
     const client = createAccountSyncClient(accountId, vi.fn(async () => json({
       uploadId,
       targetRevision: 1,
-      uploadMethod: "POST",
+      uploadMethod: "PUT",
       uploadUrl: "https://storage.googleapis.com/signed",
-      formFields: { ...fields, "x-goog-meta-heritg-tree-id": "x".repeat(22) },
+      requiredHeaders: { ...headers, "x-goog-meta-heritg-tree-id": "x".repeat(22) },
       uploadExpiresAt: instant
     }, 201)));
 

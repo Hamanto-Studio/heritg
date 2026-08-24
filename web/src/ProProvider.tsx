@@ -282,18 +282,6 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
 
   if (value) return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 
-  const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
-  const refreshEntitlement = async () => {
-    if (account.status !== "signedIn") return;
-    const csrfToken = readCsrfCookie();
-    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
-    await jsonRequest("/api/v1/entitlements/refresh", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-      body: "{}"
-    });
-    await applySession({ accountId: account.user.id, name: account.user.name, email: account.user.email, expiresAt: account.user.expiresAt });
-  };
   const purchase = async () => {
     if (account.status !== "signedIn") return;
     const csrfToken = readCsrfCookie();
@@ -316,13 +304,6 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       setSubscription({ status: "error", message, offer });
     }
   };
-  const refreshSubscription = async () => {
-    if (account.status !== "signedIn") return;
-    setError(undefined);
-    try {
-      await refreshEntitlement();
-    } catch (cause) { fail(cause); }
-  };
   const context: ProContextValue = {
     configured,
     account,
@@ -333,22 +314,10 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
     openPaywall: () => setPaywallOpen(true),
     closePaywall: () => setPaywallOpen(false),
     purchase,
-    refreshSubscription,
     manageSubscription: () => {
       if (subscription.status !== "active" || !subscription.manageUrl) return;
       const destination = new URL(subscription.manageUrl);
       if (destination.protocol === "https:") window.location.assign(destination.href);
-    },
-    setSyncEnabled: async (enabled) => {
-      if (!syncAccess.canRead) return;
-      if (!enabled) {
-        syncAbortRef.current?.abort();
-        syncQueuedRef.current = false;
-        setSync({ enabled: false, phase: "disabled", pendingChanges: 0 });
-        return;
-      }
-      setSync({ enabled: true, phase: "comparing", pendingChanges: 0 });
-      window.setTimeout(() => void runSyncRef.current(), 0);
     },
     resolveSync: async (resolution) => runSync(resolution),
     clearError: () => setError(undefined)
