@@ -99,6 +99,7 @@ export default defineConfig({
     __DEBUG_CONTEXT_ENABLED__: JSON.stringify(debugContextEnabled),
     __DEPLOYMENT_ENV__: JSON.stringify(deploymentEnvironment),
     __GOOGLE_CLIENT_ID__: JSON.stringify(buildEnvironment?.HERITG_GOOGLE_CLIENT_ID ?? ""),
+    __TURNSTILE_SITE_KEY__: JSON.stringify(buildEnvironment?.HERITG_TURNSTILE_SITE_KEY ?? ""),
     __FAMILY_BILLING_ENABLED__: JSON.stringify(familyBillingEnabled)
   },
   plugins: [

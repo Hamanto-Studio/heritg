@@ -219,6 +219,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   return (
     <div className="app-shell">
       <TreeSidebar
+        account={pro.account.status === "signedIn" ? pro.account.user : undefined}
         actions={actions}
         data={data}
         onClose={() => {
@@ -467,8 +468,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               <div className="canvas-controls-hint onboarding-hint" role="note">
                 <span>{t("canvasToolsHint")}</span>
                 <svg aria-hidden="true" viewBox="0 0 76 58">
-                  <path d="M5 7c30 2 52 14 62 38" />
-                  <path d="m58 39 9 6 3-10" />
+                  <path d="M5 5c23 4 43 25 57 45" />
+                  <path d="m51 46 11 4 4-11" />
                 </svg>
               </div>
             ) : null}
@@ -562,7 +563,6 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
           actions={actions}
           data={data}
           onClose={() => setRightPanel(undefined)}
-          pro={pro}
           t={t}
         />
       ) : null}

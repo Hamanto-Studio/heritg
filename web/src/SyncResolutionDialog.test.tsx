@@ -14,5 +14,6 @@ describe("SyncResolutionDialog", () => {
     expect(markup).toContain("Use this device");
     expect(markup).toContain("Use cloud copy");
     expect(markup).toContain("Preserve both");
+    expect(markup).not.toContain("Close");
   });
 });

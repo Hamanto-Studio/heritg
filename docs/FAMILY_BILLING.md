@@ -16,13 +16,13 @@ Google sign-in is configured independently with `HERITG_GOOGLE_CLIENT_ID`.
 Passwordless email uses the environment's existing account service and email
 delivery configuration; it has no separate Web build flag.
 
-Xendit secret keys and webhook verification tokens, session-signing keys,
+Payment-provider credentials and webhook verification tokens, session-signing keys,
 database credentials, and storage credentials must remain in backend secret
-management. Staging uses Xendit test mode; production uses independently scoped
-live credentials.
+management. Staging uses its isolated provider configuration; production uses
+independently scoped live credentials.
 
-Checkout is created by the backend and opened on Xendit's hosted HTTPS page. No
-Xendit secret or SDK is included in the browser bundle.
+Checkout is created by the backend and opened on the returned hosted HTTPS page.
+No payment-provider secret or SDK is included in the browser bundle.
 
 ## Required API
 
@@ -31,8 +31,8 @@ cookies, return `Cache-Control: private, no-store`, and reject cross-site
 mutations.
 
 - `GET /auth/session`: returns the opaque account ID and session expiry. The
-  opaque account ID is used as the Xendit customer reference; never derive it
-  from an email address or family data.
+  opaque account ID is used only by Heritg services; never derive a provider
+  reference from an email address or family data.
 - `POST /auth/google`: exchanges the environment-bound Google identity proof
   allocated through `GET /auth/login-nonce`.
 - `POST /auth/email/request`: requests a single-use, short-lived email link
@@ -42,16 +42,15 @@ mutations.
 - `POST /auth/logout`: revokes the session without deleting local data.
 - `DELETE /account`: permanently deletes the hosted account without deleting
   the browser's local archive.
-- `GET /entitlements/current`: returns the authoritative Family+ state.
+- `GET /entitlements/current`: returns the authoritative Family+ state and the
+  server-owned offer amount, currency, and access duration used by the paywall.
 - `POST /entitlements/refresh`: refreshes backend entitlement state after
   checkout and requires the session CSRF token.
-- `GET /billing/offers`: returns localized one-time prices for `two_year` and
-  `five_year` access.
-- `POST /billing/checkout`: accepts `two_year` or `five_year`, creates a one-time
-  Xendit payment session for the authenticated account, and returns its
-  hosted checkout URL.
-- `POST /billing/xendit/webhook`: verifies Xendit's callback token, processes
-  payment events idempotently, and updates the account entitlement projection.
+- `POST /billing/checkouts`: accepts an empty body with CSRF, account, and
+  idempotency headers, creates the one-time payment for the authenticated
+  account, and returns `paymentLinkUrl`.
+- Payment callbacks are verified and reconciled by the backend before they
+  update the account entitlement projection.
 - `/trees/*` and `/device-links/*`: provide revision-protected encrypted
   snapshot and same-owner device-key transfer primitives used by the automatic
   synchronization coordinator.
@@ -60,16 +59,14 @@ Every sync endpoint independently validates session, active server-side
 entitlement, archive ownership, quota, and expected revision. Client claims such
 as `isPro`, account IDs, and timestamps are untrusted.
 
-## Xendit Contract
+## Payment Contract
 
 - Internal entitlement: `family`.
-- Access periods: two years and five years. Launch prices remain configuration,
-  not client constants.
-- Checkout uses a one-time Xendit Payment Session. It never creates an automatic renewal.
-- Initial payment methods target GoPay, DANA, OVO, ShopeePay, BRI Direct
-  Debit, and cards, subject to merchant-channel activation and customer
-  eligibility.
-- QRIS and virtual accounts may be offered later.
+- Access duration and price come from the entitlement response and are never
+  client constants. The current offer is one payment for 24 months.
+- Checkout uses a provider-hosted one-time payment. It never creates an automatic renewal.
+- Available methods are determined by the hosted payment provider and customer
+  eligibility; the Web client does not claim methods the backend cannot offer.
 - Webhooks are authenticated, idempotent, replay-safe, and tolerant of delayed
   or out-of-order delivery. The backend authorizes sync.
 
@@ -86,8 +83,8 @@ as `isPro`, account IDs, and timestamps are untrusted.
 7. Test passwordless email delivery and callback handling in installed PWAs and
    Mobile Safari; keep Google as a working fallback.
 8. Keep all `/api/v1/` service-worker traffic `NetworkOnly`.
-9. Complete Xendit business verification and activate every displayed payment
-   channel before displaying it as available in production.
+9. Complete payment-provider business verification before enabling production
+   checkout.
 
 Expiration pauses hosted synchronization and never disables or
 deletes the authoritative local archive.

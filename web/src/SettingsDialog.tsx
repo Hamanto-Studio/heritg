@@ -5,9 +5,6 @@ import { AppVersion } from "./AppVersion";
 import type { MessageKey, Translator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { passwordRequirements } from "./passwordPolicy";
-import type { ProContextValue } from "./proTypes";
-import { unavailableProContext } from "./proTypes";
-import { ProSettings } from "./ProSettings";
 import type { AppActions } from "./store";
 import type { AppData, RelationshipLanguage } from "./types";
 import { ButtonLoader, SidePanel } from "./ui";
@@ -17,7 +14,6 @@ interface SettingsDialogProps {
   actions: AppActions;
   t: Translator;
   onClose: () => void;
-  pro?: ProContextValue;
 }
 
 const relationshipLanguageOptions: ReadonlyArray<readonly [RelationshipLanguage, MessageKey]> = [
@@ -47,8 +43,7 @@ export function SettingsDialog({
   data,
   actions,
   t,
-  onClose,
-  pro = unavailableProContext
+  onClose
 }: SettingsDialogProps) {
   const [pendingLanguage, setPendingLanguage] = useState<AppData["language"]>();
   const [isPending, startTransition] = useTransition();
@@ -68,13 +63,6 @@ export function SettingsDialog({
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
-      <div className="settings-intro">
-        <h3>{t("privateSimple")}</h3>
-        <p>{t(pro.sync.enabled ? "privateSyncDescription" : "privateDescription")}</p>
-      </div>
-
-      <ProSettings onOpenPaywall={pro.openPaywall} pro={pro} t={t} />
-
       <AccountSettings language={data.language} t={t} />
 
       <div className="settings-group">

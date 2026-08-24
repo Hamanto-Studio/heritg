@@ -488,12 +488,13 @@ export const projectConnectionPlanToElements = (
   }
   plan.crossings.forEach((point, index) => {
     const key = `${point.x}:${point.y}:${index}`;
+    const radius = CONNECTOR_STYLE.crossingRadius + 3;
     skeletons.push({
       type: "ellipse",
-      x: point.x - CONNECTOR_STYLE.crossingRadius,
-      y: point.y - CONNECTOR_STYLE.crossingRadius,
-      width: CONNECTOR_STYLE.crossingRadius * 2,
-      height: CONNECTOR_STYLE.crossingRadius * 2,
+      x: point.x - radius,
+      y: point.y - radius,
+      width: radius * 2,
+      height: radius * 2,
       strokeColor: HERITG_SCENE_COLORS.canvas,
       backgroundColor: HERITG_SCENE_COLORS.canvas,
       fillStyle: "solid",
@@ -503,7 +504,20 @@ export const projectConnectionPlanToElements = (
       ...elementIdentity(`heritg:crossing:${encodedId(key)}:mask`, "", { heritgType: "crossing" })
     } as ExcalidrawElementSkeleton);
     skeletons.push(connectorSkeleton(
-      [{ x: point.x, y: point.y - 6 }, { x: point.x, y: point.y + 6 }],
+      [{ x: point.x - radius - 2, y: point.y }, { x: point.x + radius + 2, y: point.y }],
+      `heritg:crossing:${encodedId(key)}:rail`,
+      relationshipColor(point.horizontalKind),
+      CONNECTOR_STYLE.width,
+      point.horizontalKind === "sibling" ? "dashed" : "solid",
+      "",
+      { heritgType: "crossing" }
+    ));
+    skeletons.push(connectorSkeleton(
+      [
+        { x: point.x, y: point.y - radius },
+        { x: point.x + radius + 2, y: point.y },
+        { x: point.x, y: point.y + radius }
+      ],
       `heritg:crossing:${encodedId(key)}:bridge`,
       relationshipColor(point.kind),
       CONNECTOR_STYLE.width,

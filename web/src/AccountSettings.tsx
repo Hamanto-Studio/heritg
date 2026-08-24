@@ -21,6 +21,7 @@ import {
 import type { Translator } from "./i18n";
 import type { AppData } from "./types";
 import { ButtonLoader } from "./ui";
+import { TurnstileWidget } from "./TurnstileWidget";
 
 type Status = "checking" | "anonymous" | "authenticated" | "loggingOut" | "deleting" | "error";
 type EmailStatus = "idle" | "sending" | "sent" | "error";
@@ -48,6 +49,7 @@ interface AccountSettingsProps {
   language: AppData["language"];
   t: Translator;
   googleClientId?: string;
+  turnstileSiteKey?: string;
   cooldownState?: EmailCooldownState;
 }
 
@@ -66,6 +68,7 @@ export function AccountSettings({
   language,
   t,
   googleClientId = __GOOGLE_CLIENT_ID__,
+  turnstileSiteKey = __TURNSTILE_SITE_KEY__,
   cooldownState = sharedEmailCooldown
 }: AccountSettingsProps) {
   const [initialCsrfToken] = useState(readCsrfCookie);
@@ -77,6 +80,8 @@ export function AccountSettings({
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [emailInvalid, setEmailInvalid] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string>();
+  const [turnstileAttempt, setTurnstileAttempt] = useState(0);
   const [maskedEmail, setMaskedEmail] = useState<string>();
   const [cooldown, setCooldown] = useState(() => cooldownState.remaining());
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
@@ -101,6 +106,7 @@ export function AccountSettings({
     setEmail("");
     setMaskedEmail(undefined);
     setEmailInvalid(false);
+    setTurnstileToken(undefined);
     setEmailStatus("idle");
   };
 
@@ -191,12 +197,12 @@ export function AccountSettings({
     };
   }, [cooldown, cooldownState]);
 
-  const sendEmail = async (address: string) => {
+  const sendEmail = async (address: string, botToken: string) => {
     setEmailStatus("sending");
     setEmailInvalid(false);
     const controller = nextRequest();
     try {
-      await requestEmailLogin(address, controller.signal);
+      await requestEmailLogin(address, botToken, controller.signal);
       if (!mounted.current || controller.signal.aborted) return;
       requestedEmail.current = address;
       setMaskedEmail(maskEmail(address));
@@ -209,6 +215,11 @@ export function AccountSettings({
         startCooldown(error.retryAfterSeconds);
       }
       setEmailStatus("error");
+    } finally {
+      if (mounted.current && !controller.signal.aborted) {
+        setTurnstileToken(undefined);
+        setTurnstileAttempt((current) => current + 1);
+      }
     }
   };
 
@@ -223,65 +234,76 @@ export function AccountSettings({
       setEmailStatus("idle");
       return;
     }
-    void sendEmail(address);
+    if (!turnstileToken) return;
+    void sendEmail(address, turnstileToken);
   };
 
   const resendEmail = () => {
     const address = requestedEmail.current;
-    if (!address || cooldownState.remaining() > 0 || emailStatus === "sending") return;
-    void sendEmail(address);
+    if (!address || !turnstileToken || cooldownState.remaining() > 0 || emailStatus === "sending") return;
+    void sendEmail(address, turnstileToken);
   };
 
-  const prepareGoogle = async () => {
-    if (!googleClientId) {
-      setGoogleStatus("error");
-      return;
-    }
-    setGoogleStatus("preparing");
-    const controller = nextRequest();
-    try {
-      const [material, google] = await Promise.all([
-        getLoginMaterial(controller.signal),
-        loadGoogleIdentity()
-      ]);
-      if (!mounted.current || controller.signal.aborted) return;
-      loginMaterial.current = material;
-      googleIdentity.current = google;
-      google.accounts.id.initialize({
-        client_id: googleClientId,
-        nonce: material.nonce,
-        auto_select: false,
-        ux_mode: "popup",
-        use_fedcm_for_button: true,
-        callback: ({ credential }) => {
-          if (credential) void completeGoogleLogin(credential);
-        }
-      });
-      setGoogleStatus("ready");
-    } catch {
-      if (mounted.current && !controller.signal.aborted) setGoogleStatus("error");
-    }
-  };
-
-  const completeGoogleLogin = async (credential: string) => {
-    if (!mounted.current) return;
-    const material = loginMaterial.current;
-    loginMaterial.current = undefined;
-    if (!material) return;
-    setGoogleStatus("signingIn");
-    const controller = nextRequest();
-    try {
-      const result = await loginWithGoogle(credential, material, controller.signal);
-      if (!mounted.current || controller.signal.aborted) return;
-      csrfToken.current = result.csrfToken;
-      clearEmailMemory();
-      setSession({ accountId: result.accountId, expiresAt: result.expiresAt });
-      setStatus("authenticated");
-      notifyAccountSessionChanged();
-    } catch {
-      if (mounted.current && !controller.signal.aborted) setGoogleStatus("error");
-    }
-  };
+  useEffect(() => {
+    if (status !== "anonymous" || signInMethod !== "google" || googleStatus !== "idle") return;
+    const prepare = async () => {
+      if (!googleClientId) {
+        setGoogleStatus("error");
+        return;
+      }
+      setGoogleStatus("preparing");
+      activeRequest.current?.abort();
+      const controller = new AbortController();
+      activeRequest.current = controller;
+      try {
+        const [material, google] = await Promise.all([
+          getLoginMaterial(controller.signal),
+          loadGoogleIdentity()
+        ]);
+        if (!mounted.current || controller.signal.aborted) return;
+        loginMaterial.current = material;
+        googleIdentity.current = google;
+        google.accounts.id.initialize({
+          client_id: googleClientId,
+          nonce: material.nonce,
+          auto_select: false,
+          ux_mode: "popup",
+          use_fedcm_for_button: true,
+          callback: ({ credential }) => {
+            if (!credential || !mounted.current) return;
+            const currentMaterial = loginMaterial.current;
+            loginMaterial.current = undefined;
+            if (!currentMaterial) return;
+            setGoogleStatus("signingIn");
+            activeRequest.current?.abort();
+            const loginController = new AbortController();
+            activeRequest.current = loginController;
+            void loginWithGoogle(credential, currentMaterial, loginController.signal)
+              .then((result) => {
+                if (!mounted.current || loginController.signal.aborted) return;
+                csrfToken.current = result.csrfToken;
+                requestedEmail.current = undefined;
+                setEmail("");
+                setMaskedEmail(undefined);
+                setEmailInvalid(false);
+                setEmailStatus("idle");
+                setSession(result);
+                setStatus("authenticated");
+                notifyAccountSessionChanged();
+              })
+              .catch(() => {
+                if (mounted.current && !loginController.signal.aborted) setGoogleStatus("error");
+              });
+          }
+        });
+        setGoogleStatus("ready");
+      } catch {
+        if (mounted.current && !controller.signal.aborted) setGoogleStatus("error");
+      }
+    };
+    const timer = window.setTimeout(() => void prepare(), 0);
+    return () => window.clearTimeout(timer);
+  }, [googleClientId, googleStatus, signInMethod, status]);
 
   const logout = async () => {
     const token = csrfToken.current ?? readCsrfCookie();
@@ -358,24 +380,19 @@ export function AccountSettings({
             {signInMethod === "google" ? (
               <div className="account-method-panel">
                 <div className="account-google-primary">
-                  {googleStatus === "idle" ? (
-                    <button className="button account-google-button" onClick={() => void prepareGoogle()} type="button">
-                      <GoogleMark /> {t("accountPrepare")}
-                    </button>
-                  ) : null}
-                  {googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
+                  {googleStatus === "idle" || googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
                     <div className="google-sign-in">
                       <div aria-label={t("accountGoogleButton")} ref={googleButton} />
-                      {googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
+                      {googleStatus === "idle" || googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
                       {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
                     </div>
                   ) : null}
                   {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
                 </div>
-                <div className="account-method-divider"><span>{t("accountOr")}</span></div>
-                <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
-                  <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
-                </button>
+                {turnstileSiteKey ? <><div className="account-method-divider"><span>{t("accountOr")}</span></div>
+                  <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
+                    <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
+                  </button></> : null}
               </div>
             ) : (
               <div className="account-method-panel">
@@ -404,7 +421,9 @@ export function AccountSettings({
                     />
                   </label>
                   {emailInvalid ? <p className="danger-text" id="account-email-error" role="alert">{t("accountEmailInvalid")}</p> : null}
-                  <button className="button primary account-email-submit" disabled={emailStatus === "sending" || cooldown > 0} type="submit">
+                  <TurnstileWidget key={turnstileAttempt} language={language} onToken={setTurnstileToken} siteKey={turnstileSiteKey} t={t} />
+                  {!turnstileToken ? <p className="account-bot-detail">{t("accountBotRequired")}</p> : null}
+                  <button className="button primary account-email-submit" disabled={emailStatus === "sending" || cooldown > 0 || !turnstileToken} type="submit">
                     {emailStatus === "sending" ? <ButtonLoader /> : <Mail aria-hidden="true" size={16} />}
                     {cooldown > 0 && emailStatus !== "sent"
                       ? t("accountEmailRetryWait", { seconds: cooldown })
@@ -419,7 +438,7 @@ export function AccountSettings({
                   {emailStatus === "error" ? <p className="danger-text">{t("accountEmailError")}</p> : null}
                 </div>
                 {emailStatus === "sent" ? (
-                  <button className="button secondary" disabled={cooldown > 0} onClick={resendEmail} type="button">
+                  <button className="button secondary" disabled={cooldown > 0 || !turnstileToken} onClick={resendEmail} type="button">
                     {cooldown > 0 ? t("accountEmailResendWait", { seconds: cooldown }) : t("accountEmailResend")}
                   </button>
                 ) : null}
@@ -436,6 +455,12 @@ export function AccountSettings({
         ) : null}
         {status === "authenticated" && session ? (
           <div className="account-session">
+            {session.name || session.email ? (
+              <div className="account-identity">
+                {session.name ? <strong>{session.name}</strong> : null}
+                {session.email ? <span>{session.email}</span> : null}
+              </div>
+            ) : null}
             <p><strong>{t("accountSignedIn")}</strong><br />{t("accountSessionExpiry", {
               date: new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en", { dateStyle: "medium" })
                 .format(new Date(session.expiresAt))

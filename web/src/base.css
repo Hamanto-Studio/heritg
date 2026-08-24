@@ -99,6 +99,11 @@ html[data-deployment-environment="staging"] {
   position: relative;
 }
 
+.staging-content .tree-sidebar,
+.staging-content .side-panel {
+  position: absolute;
+}
+
 @media (max-width: 620px) {
   .staging-banner {
     align-items: flex-start;

@@ -983,19 +983,6 @@
   margin-top: 3px;
 }
 
-.settings-intro {
-  margin-bottom: 20px;
-}
-
-.settings-intro h3 {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  margin-bottom: 7px;
-}
-
-.settings-intro p,
 .settings-detail {
   color: var(--subtle);
   font-size: 0.86rem;
@@ -1132,6 +1119,9 @@
 .account-email-status:empty {
   display: none;
 }
+.account-turnstile { min-height: 65px; }
+.account-turnstile > div { max-width: 100%; }
+.account-bot-detail { color: var(--subtle); font-size: 0.74rem; margin: 0; }
 
 .account-email-status p,
 .account-alternative > span,
@@ -1177,6 +1167,13 @@
   gap: 10px;
 }
 
+.account-identity {
+  display: flex;
+  flex-direction: column;
+}
+.account-identity strong { font-size: 0.9rem; }
+.account-identity span { color: var(--subtle); font-size: 0.78rem; }
+
 .account-session .button,
 .account-error .button {
   justify-self: start;
@@ -1211,6 +1208,23 @@
   background: color-mix(in srgb, var(--brand) 7%, var(--base));
   border-color: color-mix(in srgb, var(--brand) 46%, var(--line));
 }
+.settings-group .pro-settings-card {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--family-plus-soft) 44%, var(--base)), var(--base) 48%);
+  border-color: var(--family-plus-line);
+}
+.settings-group .pro-settings-card.active {
+  background: color-mix(in srgb, var(--family-plus) 8%, var(--base));
+  border-color: color-mix(in srgb, var(--family-plus) 48%, var(--family-plus-line));
+}
+.pro-settings-sync {
+  align-items: flex-start;
+  border-top: 1px solid var(--family-plus-line);
+  display: flex;
+  gap: 11px;
+  padding-top: 12px;
+}
+.pro-settings-sync > svg { color: var(--family-plus-deep); flex: 0 0 auto; margin-top: 1px; }
+.pro-settings-sync > div { min-width: 0; }
 .pro-badge,
 .sync-status {
   border: 1px solid var(--line);
@@ -1337,24 +1351,23 @@
   background: linear-gradient(145deg, var(--family-plus), var(--family-plus-deep));
   box-shadow: 0 7px 20px rgba(77, 52, 91, 0.2), inset 0 1px rgba(255, 255, 255, 0.14);
 }
+.pro-settings-card .button.primary { width: 100%; }
 
 .pro-purchase-button.button.primary:hover,
 .pro-settings-card .button.primary:hover { background: linear-gradient(145deg, var(--family-plus-deep), var(--family-plus-hover)); }
-.pro-plan-picker { border: 0; display: grid; gap: 9px; margin: 0; padding: 0; }
-.pro-plan-picker legend { font-size: 0.78rem; font-weight: 750; margin-bottom: 8px; }
-.pro-plan-picker > label {
+.pro-plan-picker { display: grid; gap: 9px; margin: 0; }
+.pro-plan-picker > h3 { font-size: 0.78rem; margin: 0 0 8px; }
+.pro-plan-option {
   align-items: center;
   background: var(--base);
   border: 1px solid var(--line);
   border-radius: 12px;
-  cursor: pointer;
   display: flex;
   gap: 11px;
   min-height: 62px;
   padding: 10px 13px;
 }
-.pro-plan-picker > label.selected { background: color-mix(in srgb, var(--family-plus) 8%, var(--base)); border-color: var(--family-plus); box-shadow: 0 0 0 1px var(--family-plus); }
-.pro-plan-picker input { accent-color: var(--family-plus-deep); height: 18px; margin: 0; width: 18px; }
+.pro-plan-option.selected { background: color-mix(in srgb, var(--family-plus) 8%, var(--base)); border-color: var(--family-plus); box-shadow: 0 0 0 1px var(--family-plus); }
 .pro-plan-copy,
 .pro-plan-copy > span { display: flex; flex: 1; }
 .pro-plan-copy { align-items: flex-end; justify-content: space-between; }
@@ -1365,6 +1378,8 @@
 .pro-availability { background: var(--elevated); border: 1px solid var(--line); border-radius: 11px; display: grid; margin-top: 14px; padding: 11px 12px; }
 .pro-availability strong { font-size: 0.8rem; }
 .pro-purchase-button { margin-top: 14px; min-height: 46px; width: 100%; }
+.pro-legal-links { color: var(--subtle); font-size: 0.72rem; line-height: 1.45; margin: 9px 0 0; text-align: center; }
+.pro-legal-links a { color: var(--family-plus-deep); font-weight: 700; text-underline-offset: 2px; }
 .pro-legal { color: var(--subtle); font-size: 0.7rem; line-height: 1.45; margin: 10px 0 0; text-align: center; }
 .indonesian-payment-methods {
   display: flex;

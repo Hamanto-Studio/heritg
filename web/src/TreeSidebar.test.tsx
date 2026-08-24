@@ -82,6 +82,29 @@ afterEach(() => {
 });
 
 describe("TreeSidebar file import", () => {
+  it("shows signed-in identity between the brand and family trees", () => {
+    act(() => root.render(
+      <TreeSidebar
+        account={{ id: "account-1", name: "Test User", email: "person@example.com", expiresAt: "2026-09-23T10:10:00.000Z" }}
+        actions={actions}
+        data={data}
+        onClose={vi.fn()}
+        onError={vi.fn()}
+        onImported={vi.fn()}
+        onShowHelp={vi.fn()}
+        onShowFamily={vi.fn()}
+        onShowPrivacy={vi.fn()}
+        onReportBug={vi.fn()}
+        open
+        t={t}
+      />
+    ));
+
+    const identity = container.querySelector(".sidebar-brand + .sidebar-account");
+    expect(identity?.textContent).toContain("Test User");
+    expect(identity?.textContent).toContain("person@example.com");
+  });
+
   it("uses an unrestricted native file input for iOS and iPadOS", () => {
     act(() => root.render(
       <TreeSidebar
