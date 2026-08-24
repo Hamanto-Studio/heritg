@@ -6,7 +6,6 @@ const API_BASE = "/api/v1/trees";
 const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const CSRF_PATTERN = KEY_PATTERN;
-const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/u;
 const ERROR_CODES = new Set([
   "invalid_request",
   "unauthenticated",
@@ -216,8 +215,8 @@ export interface AccountSyncClient {
   createTree(csrfToken: string, signal?: AbortSignal): Promise<CreatedAccountSyncTree>;
   getTreeKey(treeId: string, signal?: AbortSignal): Promise<string>;
   allocateSnapshot(treeId: string, baseRevision: number, ciphertextBytes: number, csrfToken: string, signal?: AbortSignal): Promise<SnapshotAllocation>;
-  uploadSnapshot(allocation: SnapshotAllocation, envelope: Uint8Array, signal?: AbortSignal): Promise<string>;
-  completeSnapshot(treeId: string, uploadId: string, objectGeneration: string, csrfToken: string, signal?: AbortSignal): Promise<number>;
+  uploadSnapshot(allocation: SnapshotAllocation, envelope: Uint8Array, signal?: AbortSignal): Promise<void>;
+  completeSnapshot(treeId: string, uploadId: string, csrfToken: string, signal?: AbortSignal): Promise<number>;
   getSnapshot(treeId: string, signal?: AbortSignal): Promise<SnapshotMetadata>;
   downloadSnapshot(metadata: SnapshotMetadata, signal?: AbortSignal): Promise<Uint8Array>;
   deleteTree(treeId: string, csrfToken: string, signal?: AbortSignal): Promise<void>;
@@ -273,19 +272,13 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
       referrerPolicy: "no-referrer",
       signal
     });
-    const generation = response.headers.get("x-goog-generation");
-    if (response.status !== 201 || !generation || !GENERATION_PATTERN.test(generation)) {
-      throw new AccountSyncError(response.ok ? 502 : response.status, response.ok ? "invalid_response" : "service_unavailable");
-    }
-    return generation;
+    if (response.status !== 201) throw new AccountSyncError(response.status, "service_unavailable");
   },
 
-  async completeSnapshot(treeId, uploadId, objectGeneration, csrfToken, signal) {
-    if (!ID_PATTERN.test(uploadId) || !GENERATION_PATTERN.test(objectGeneration)) {
-      throw new AccountSyncError(400, "invalid_request");
-    }
+  async completeSnapshot(treeId, uploadId, csrfToken, signal) {
+    if (!ID_PATTERN.test(uploadId)) throw new AccountSyncError(400, "invalid_request");
     const value = await accountRequest(`${treePath(treeId)}/snapshot-uploads/${uploadId}/complete`,
-      mutation(csrfToken, { objectGeneration }, signal), 200, expectedAccountId, fetchImpl);
+      mutation(csrfToken, {}, signal), 200, expectedAccountId, fetchImpl);
     if (!exactObject(value, ["revision"]) || !validRevision(value.revision, false)) return invalidResponse();
     return value.revision;
   },

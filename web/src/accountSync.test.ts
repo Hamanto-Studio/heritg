@@ -68,9 +68,12 @@ describe("account sync transport", () => {
 
   it("uploads and downloads signed objects without credentials or cache", async () => {
     const envelope = new Uint8Array(36);
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => init?.method === "POST"
-      ? new Response("", { status: 201, headers: { "x-goog-generation": "123" } })
-      : new Response(envelope, { status: 200 }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input) === "https://storage.googleapis.com/signed-upload" && init?.method === "POST"
+        ? new Response("", { status: 201 })
+        : String(input).includes("/complete")
+          ? json({ revision: 1 })
+          : new Response(envelope, { status: 200 }));
     const client = createAccountSyncClient(accountId, fetchMock);
     const allocation = {
       uploadId,
@@ -81,7 +84,8 @@ describe("account sync transport", () => {
       uploadExpiresAt: instant
     };
 
-    await expect(client.uploadSnapshot(allocation, envelope)).resolves.toBe("123");
+    await expect(client.uploadSnapshot(allocation, envelope)).resolves.toBeUndefined();
+    await expect(client.completeSnapshot(treeId, uploadId, csrf)).resolves.toBe(1);
     await expect(client.downloadSnapshot({
       revision: 1,
       envelopeVersion: "HTGSYN01",
@@ -90,9 +94,10 @@ describe("account sync transport", () => {
       downloadExpiresAt: instant
     })).resolves.toEqual(envelope);
 
-    for (const [, init] of fetchMock.mock.calls) {
+    for (const [, init] of [fetchMock.mock.calls[0]!, fetchMock.mock.calls[2]!]) {
       expect(init).toEqual(expect.objectContaining({ credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" }));
     }
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({});
   });
 
   it("strictly rejects expanded responses and safely preserves conflict revision", async () => {
