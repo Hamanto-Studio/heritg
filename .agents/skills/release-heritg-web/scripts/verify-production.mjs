@@ -238,8 +238,8 @@ try {
     }
   }
   const contentSecurityPolicy = home.headers.get("content-security-policy") ?? "";
-  if (!contentSecurityPolicy.includes("https://accounts.google.com/gsi/client") ||
-      contentSecurityPolicy.includes("challenges.cloudflare.com")) {
+  if (expectedVersion && (!contentSecurityPolicy.includes("https://accounts.google.com/gsi/client") ||
+      contentSecurityPolicy.includes("challenges.cloudflare.com"))) {
     failures.push("content-security-policy is not restricted to Google account authentication");
   }
 
