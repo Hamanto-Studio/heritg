@@ -17,6 +17,8 @@ const SHARE_PASSWORD_ITERATIONS = 600_000;
 const SHARE_ID_PATTERN = /^[A-Za-z0-9_-]{22}$/;
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/;
+const exactKeys = (value, keys) => value !== null && typeof value === "object" && !Array.isArray(value) &&
+  Object.keys(value).sort().join("\0") === [...keys].sort().join("\0");
 
 let appBase;
 try {
@@ -252,6 +254,9 @@ try {
   const deepRoute = await request("release-verification/deep-link");
   const deepHtml = await deepRoute.text();
   if (!deepHtml.includes('<div id="root"></div>')) failures.push("SPA deep-link fallback did not return the app shell");
+  const emailRoute = await request("auth/email");
+  const emailHtml = await emailRoute.text();
+  if (!emailHtml.includes('<div id="root"></div>')) failures.push("email callback route did not return the app shell");
 
   const health = await request("health");
   try {
@@ -266,6 +271,57 @@ try {
     if (readyBody.status !== "ready") failures.push("ready endpoint did not report ready");
   } catch {
     failures.push("ready endpoint did not return JSON");
+  }
+
+  const sessionUrl = new URL("/api/v1/auth/session", appBase.origin);
+  const anonymousSession = await fetchWithContext(sessionUrl, {
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  checked.push(`${anonymousSession.status} ${sessionUrl.pathname} (expected anonymous denial)`);
+  let anonymousSessionBody;
+  try { anonymousSessionBody = await anonymousSession.json(); } catch { anonymousSessionBody = undefined; }
+  if (anonymousSession.status !== 401 || anonymousSessionBody?.error?.code !== "unauthenticated") {
+    failures.push("anonymous account session did not return 401 unauthenticated");
+  }
+
+  const nonceUrl = new URL("/api/v1/auth/login-nonce", appBase.origin);
+  const nonceResponse = await fetchWithContext(nonceUrl, {
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  checked.push(`${nonceResponse.status} ${nonceUrl.pathname}`);
+  let nonceBody;
+  try { nonceBody = await nonceResponse.json(); } catch { nonceBody = undefined; }
+  if (nonceResponse.status !== 200 || !exactKeys(nonceBody, ["nonce", "state", "expiresAt"]) ||
+      !TOKEN_PATTERN.test(nonceBody?.nonce) || !TOKEN_PATTERN.test(nonceBody?.state) ||
+      typeof nonceBody?.expiresAt !== "string" || !Number.isFinite(Date.parse(nonceBody.expiresAt))) {
+    failures.push("account login nonce did not return the strict public response contract");
+  }
+
+  const emailRequestUrl = new URL("/api/v1/auth/email/request", appBase.origin);
+  const invalidEmailRequest = await fetchWithContext(emailRequestUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: expectedCorsOrigin,
+      "sec-fetch-site": "same-origin"
+    },
+    body: "{}",
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  checked.push(`${invalidEmailRequest.status} ${emailRequestUrl.pathname} (expected strict validation)`);
+  let invalidEmailBody;
+  try { invalidEmailBody = await invalidEmailRequest.json(); } catch { invalidEmailBody = undefined; }
+  if (invalidEmailRequest.status !== 400 || invalidEmailBody?.error?.code !== "invalid_request") {
+    failures.push("email authentication endpoint did not return 400 invalid_request for an invalid strict request");
   }
 
   const apiProbeUrl = new URL("/api/v1/share-uploads", appBase.origin);
