@@ -4,3 +4,7 @@ useDefault = true
 [[allowlists]]
 description = "Published synthetic HTGSHR01 interoperability fixture"
 paths = ['''^web/src/fixtures/htgshr01\.json$''']
+
+[[allowlists]]
+description = "Historical commit containing only a synthetic idempotency key finding"
+commits = ["97a730c7cda86b90fd2820ff9fa327a53b997df3"]
