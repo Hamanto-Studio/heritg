@@ -49,7 +49,7 @@ describe("account authentication deployment policy", () => {
     const deploy = readFileSync(resolve(process.cwd(), "scripts/deploy-staging.mjs"), "utf8");
     expect(deploy).toContain("HERITG_GOOGLE_CLIENT_ID");
     expect(deploy).toContain("HERITG_TURNSTILE_SITE_KEY");
-    expect(deploy).toContain("validateStagingAuthConfig(origin, googleClientId, turnstileSiteKey)");
+    expect(deploy).toContain("validateStagingAuthConfig(origin, googleClientId)");
     expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
     expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=staging");
     expect(deploy).toContain("HERITG_FAMILY_BILLING_ENABLED=true");
@@ -112,7 +112,7 @@ describe("account authentication deployment policy", () => {
     expect(validateStagingAuthConfig("not-a-url", STAGING_GOOGLE_CLIENT_ID, "site-key")).toContain("valid URL");
     expect(validateStagingAuthConfig("https://production.example", STAGING_GOOGLE_CLIENT_ID, "site-key")).toContain("heritg-be-stg");
     expect(validateStagingAuthConfig(STAGING_API_ORIGIN, "production.apps.googleusercontent.com", "site-key")).toContain("staging-only");
-    expect(validateStagingAuthConfig(STAGING_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, undefined)).toContain("TURNSTILE");
+    expect(validateStagingAuthConfig(STAGING_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, undefined)).toBeUndefined();
     expect(validateStagingAuthConfig(STAGING_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, "site-key")).toBeUndefined();
   });
 
