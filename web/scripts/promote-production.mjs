@@ -19,7 +19,7 @@ const production = "https://heritg.us/";
 const vercelCli = ["--yes", "vercel@58.4.4"];
 
 if (!candidate) {
-  process.stderr.write("Usage: npm --prefix web run deploy:promote -- <tested-vercel-deployment-url>\n");
+  process.stderr.write("Usage: node web/scripts/promote-production.mjs <tested-vercel-deployment-url>\n");
   process.exit(1);
 }
 
@@ -57,7 +57,7 @@ const verify = (target, expectedVersion = packageJson.version) => {
 
 const candidateDeployment = inspect(candidateUrl.href);
 if (candidateDeployment.target !== "production") {
-  process.stderr.write("Production promotion refused: candidate must be staged with deploy:stage, not deployed as a Preview.\n");
+  process.stderr.write("Production promotion refused: deployment must target Production, not Preview.\n");
   process.exit(1);
 }
 if (candidateDeployment.readyState !== "READY") {

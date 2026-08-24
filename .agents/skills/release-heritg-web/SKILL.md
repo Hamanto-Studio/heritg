@@ -1,111 +1,61 @@
 ---
 name: release-heritg-web
-description: Prepare, stage, promote, verify, and publish independently versioned Heritg Web releases on Vercel. Use when Codex needs to update the Web version and shared changelog, create a versioned Web release branch, deploy heritg.us, verify production, create a platform release tag, publish GitHub release notes, roll back a Web deployment, or audit Web release readiness.
+description: Deploy, verify, or roll back Heritg Web on Vercel. Use for staging and production deployments, production smoke checks, DNS, and rollback.
 ---
 
-# Release Heritg Web
+# Deploy Heritg Web
 
-Release Heritg Web reproducibly without exposing family data or credentials.
-Keep iOS and Android entries in the shared changelog untouched.
+Deploy frequently while preserving exact-artifact verification and rollback.
+Version bumps, changelog entries, release branches, pull requests, tags, and
+GitHub Releases are optional milestones, not deployment prerequisites.
 
-## Start safely
+## Routine production deployment
 
-1. Read [references/release-policy.md](references/release-policy.md) completely.
-2. Work from the repository root and inspect `git status`, remotes, branches,
-   tags, and the current Web version.
-3. Fetch `main` and tags. Never discard or overwrite existing user changes.
-4. Determine whether the request is preparation, dry-run, deployment,
-   verification, publication, or rollback.
-5. Never use a version, release branch, or tag with a `v` prefix.
-
-## Prepare a release
-
-1. Move only Web bullets from `CHANGELOG.md`'s `Unreleased` section into
-   `## [web-<version>] - YYYY-MM-DD`. Require a meaningful user-facing bullet.
-2. Synchronize `web/package.json` and `web/package-lock.json`. The Settings UI
-   reads the version from the build, so do not hardcode it separately.
-3. Run:
+1. Confirm staging is stable with synthetic data.
+2. Work from the intended clean commit.
+3. Confirm `npx --yes vercel@58.4.4 whoami` succeeds.
+4. Run lint, tests, and build when they have not already passed for that commit.
+5. Run:
 
    ```sh
-   node .agents/skills/release-heritg-web/scripts/release-preflight.mjs <version> --allow-dirty --dry-run
-   cd web && npm ci && npm run lint && npm test && npm run build
+   HERITG_API_ORIGIN=https://heritg-share-api-ulvjjfvqpq-et.a.run.app \
+   HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
+   npm --prefix web run deploy:production
    ```
 
-4. Put preparation changes through a PR to `main`. Require Web CI, Secret Scan,
-   and Commit Title checks to pass.
-5. Create permanent `release/web/<version>` from the verified commit. Run the
-   preflight again from a clean checkout without `--allow-dirty`.
+The command refuses a dirty worktree or unexpected production configuration,
+builds a Production-targeted deployment without assigning domains, verifies the
+exact deployment, promotes it without rebuilding, and verifies `heritg.us`. If
+post-promotion verification fails, it automatically restores the prior Vercel
+deployment.
 
-Use `--ci` only in CI. It skips branch, clean-tree, and existing-tag checks but
-still validates metadata, changelog structure, workflows, and Vercel policy.
+Routine production deployment requires no separate candidate handoff,
+promotion confirmation, version bump, changelog, release branch, PR, tag,
+GitHub Release, or repeated manual device checklist. Interactive and responsive
+acceptance belongs in staging.
 
-## Stage and verify
+## Rollback
 
-1. Confirm `npx --yes vercel@58.4.4 whoami` succeeds. If not, pause and ask the
-   user to run `npx --yes vercel@58.4.4 login` locally. Never request a token in
-   chat or commit `.vercel/`.
-2. From the repository root, link the existing `heritg` project or create it
-   only after confirming it does not exist. Use Node.js 22, `web/dist`, no
-   runtime variables, and no Git integration. Use `web/vercel.json` as the
-   local configuration while installing and building only the Web package.
-3. Create a staged production deployment without assigning domains using
-   `npm --prefix web run deploy:stage`. This keeps `web/vercel.json` attached
-   while allowing the exact tested deployment to be promoted without a rebuild.
-   Capture the resulting URL without placing credentials in logs or files.
-4. Verify the staged deployment manually at desktop, iPhone, and iPad sizes. Test fresh
-   sample data only: onboarding, canvas, deep route, `.heritg` import/export,
-   IndexedDB persistence, installation, and offline restart.
-5. Run the production verifier against any publicly reachable candidate URL.
-   It performs a complete synthetic `HTGSHR02` allocation, encrypted upload,
-   activation, download, decryption, and revocation while checking production
-   Storage CORS. This is a mandatory compatibility gate, not an optional smoke
-   test. Use `--cors-origin https://heritg.us` when the candidate has a Vercel
-   hostname. Protected deployment URLs may require Vercel-authenticated browser
-   verification.
+Restore an exact known-good Production deployment:
 
-## Promote and publish
+```sh
+npm --prefix web run rollback:production -- <deployment-id-or-url>
+```
 
-Pause for explicit user confirmation immediately before promotion. State the
-candidate URL, version, commit, and canonical hostname.
+The command verifies the target, rolls back, confirms the canonical deployment
+ID, and runs the production smoke check. Never infer rollback from a branch or
+mutable alias.
 
-A production deployment is not complete until its immutable tag and GitHub
-Release have been published. Never finish a production-release task after only
-promoting or verifying Vercel.
+## Staging
 
-After approval:
+Use `npm --prefix web run deploy:staging` from any branch or dirty worktree.
+Staging is isolated and may use disposable synthetic data only.
 
-1. Promote the exact tested, production-targeted deployment with
-   `npm --prefix web run deploy:promote -- <candidate-url>`. The guarded command
-   must verify that `web/vercel.json` is attached and refuse any Preview target,
-   because promoting a Preview creates an unverified rebuild. Never promote a
-   candidate whose complete encrypted-sharing smoke test failed.
-2. Verify the GitHub Pages landing site and `https://heritg.us/` with:
+## Invariants
 
-   ```sh
-   node .agents/skills/release-heritg-web/scripts/verify-production.mjs \
-     https://heritg.us/ --expect-version <version>
-   ```
-
-3. Show the exact tag and changelog notes, then obtain explicit confirmation
-   before publishing the release record.
-4. Create an annotated immutable tag on the promoted commit and push the
-   permanent release branch and tag.
-5. Immediately create the GitHub Release from the exact `CHANGELOG.md` section.
-   Title it `Heritg Web <version>` and target `web-<version>`. Do not generate
-   release notes from raw commits.
-6. Verify the release exists with `gh release view web-<version>`, confirm its
-   tag targets the promoted commit, and give the user both the production URL
-   and GitHub Release URL. If publication fails, report the deployment as
-   incomplete and resume from this step; never create a second deployment just
-   to retry release publication.
-
-## Handle DNS and rollback
-
-- Keep Cloudflare authoritative. The `heritgapp` record must be a DNS-only CNAME
-  to the target Vercel assigns. Inspect and preserve any old value before a
-  change; obtain confirmation if replacing an existing record.
-- If Cloudflare access is unavailable, pause with the record type, name, target,
-  and proxy mode the user must set. Never guess a target before Vercel assigns it.
-- If production verification fails, stop publication. Roll back or promote the
-  last known good Vercel deployment, verify the canonical URL, fix on `main`,
-  and release a new patch version. Never move an existing tag.
+- Vercel project: `heritg`; CLI: exactly `58.4.4`.
+- Deployment root: repository root; package: `web`; output: `web/dist`.
+- Keep `web/vercel.json` attached and production Google-only configuration pinned.
+- Do not add runtime secrets, server functions, analytics, or Git integration.
+- Keep Cloudflare authoritative and DNS-only.
+- Never use real family data in deployment verification.

@@ -277,7 +277,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       headers: { "x-csrf-token": csrfToken },
       body: "{}"
     });
-    await applySession({ accountId: account.user.id, expiresAt: account.user.expiresAt });
+    await applySession({ accountId: account.user.id, name: null, email: null, expiresAt: account.user.expiresAt });
   };
   const purchase = async (plan: SubscriptionPlan) => {
     if (account.status !== "signedIn") return;
