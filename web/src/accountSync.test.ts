@@ -134,5 +134,6 @@ describe("account sync transport", () => {
     }, 201)));
 
     await expect(client.allocateSnapshot(treeId, 0, 36, csrf)).rejects.toMatchObject({ code: "invalid_response" });
+    await expect(client.allocateSnapshot(treeId, 0, 36, csrf)).rejects.toMatchObject({ stage: "allocate" });
   });
 });

@@ -21,6 +21,15 @@ export interface EntitlementResponse {
   offer: ProOffer;
 }
 
+export const syncFailureMessage = (cause: unknown, staging = __DEPLOYMENT_ENV__ === "staging") => {
+  if (!(cause instanceof AccountSyncError)) {
+    return cause instanceof Error ? cause.message : "Family synchronization could not be completed.";
+  }
+  return staging
+    ? `Family synchronization failed. Sync diagnostic: stage=${cause.stage}, code=${cause.code}, http=${cause.status}.`
+    : "Family synchronization could not be completed.";
+};
+
 interface BillingCheckoutResponse {
   paymentLinkUrl: string;
 }
@@ -294,9 +303,7 @@ export function ProProvider({
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
       const message = offline
         ? "Family synchronization will retry when this device is online."
-        : cause instanceof AccountSyncError
-          ? "Family synchronization could not be completed."
-          : cause instanceof Error ? cause.message : "Family synchronization could not be completed.";
+        : syncFailureMessage(cause);
       setSync((current) => ({
         ...current,
         phase: authenticationRequired ? "authenticationRequired" : subscriptionRequired ? "subscriptionRequired" : offline ? "offline" : "error",

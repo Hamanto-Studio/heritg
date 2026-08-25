@@ -2,7 +2,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ProProvider, requestBillingCheckout, subscriptionFromEntitlement, usePro, type EntitlementResponse } from "./ProProvider";
+import { AccountSyncError } from "./accountSync";
+import { ProProvider, requestBillingCheckout, subscriptionFromEntitlement, syncFailureMessage, usePro, type EntitlementResponse } from "./ProProvider";
 import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 
@@ -50,6 +51,13 @@ const entitlement = (overrides: Partial<EntitlementResponse> = {}): EntitlementR
 });
 
 describe("ProProvider", () => {
+  it("shows safe transport diagnostics only in staging", () => {
+    const error = new AccountSyncError(502, "invalid_response");
+    expect(syncFailureMessage(error, true)).toBe("Family synchronization failed. Sync diagnostic: stage=response, code=invalid_response, http=502.");
+    expect(syncFailureMessage(error, false)).toBe("Family synchronization could not be completed.");
+    expect(syncFailureMessage(new Error("Failed to fetch"), true)).toBe("Failed to fetch");
+  });
+
   it("fails closed without deployment configuration", () => {
     expect(renderToStaticMarkup(<ProProvider><Probe /></ProProvider>)).toContain("false:signedOut:unavailable:unavailable");
   });

@@ -51,12 +51,16 @@ export interface SnapshotMetadata {
   downloadExpiresAt: string;
 }
 
+export type AccountSyncStage = "input" | "list" | "create" | "key" | "allocate" | "upload" |
+  "complete" | "snapshot" | "download" | "response";
+
 export class AccountSyncError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     readonly currentRevision?: number,
-    readonly retryAfterSeconds?: number
+    readonly retryAfterSeconds?: number,
+    readonly stage: AccountSyncStage = "response"
   ) {
     super("Account sync request failed");
     this.name = "AccountSyncError";
@@ -90,8 +94,8 @@ const validSignedUrl = (value: unknown): value is string => {
   }
 };
 
-const invalidResponse = (): never => {
-  throw new AccountSyncError(502, "invalid_response");
+const invalidResponse = (stage: AccountSyncStage = "response"): never => {
+  throw new AccountSyncError(502, "invalid_response", undefined, undefined, stage);
 };
 
 const parseTree = (value: unknown): AccountSyncTree => {
@@ -125,13 +129,13 @@ const parseRetryAfter = (value: string | null): number | undefined => {
   return Number.isFinite(deadline) ? Math.max(0, Math.ceil((deadline - Date.now()) / 1_000)) : undefined;
 };
 
-const parseError = (response: Response, value: unknown): AccountSyncError => {
+const parseError = (response: Response, value: unknown, stage: AccountSyncStage): AccountSyncError => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return new AccountSyncError(response.status, "service_unavailable");
+    return new AccountSyncError(response.status, "service_unavailable", undefined, undefined, stage);
   }
   const wrapper = value as JsonObject;
   if (!exactObject(wrapper, ["error"]) || typeof wrapper.error !== "object" || wrapper.error === null || Array.isArray(wrapper.error)) {
-    return new AccountSyncError(response.status, "service_unavailable");
+    return new AccountSyncError(response.status, "service_unavailable", undefined, undefined, stage);
   }
   const detail = wrapper.error as JsonObject;
   const conflict = detail.code === "revision_conflict";
@@ -139,13 +143,14 @@ const parseError = (response: Response, value: unknown): AccountSyncError => {
   if (!exactObject(detail, keys) || typeof detail.code !== "string" || !ERROR_CODES.has(detail.code) ||
     typeof detail.message !== "string" || detail.message.length < 1 || detail.message.length > 200 ||
     (conflict && !validRevision(detail.currentRevision))) {
-    return new AccountSyncError(response.status, "service_unavailable");
+    return new AccountSyncError(response.status, "service_unavailable", undefined, undefined, stage);
   }
   return new AccountSyncError(
     response.status,
     detail.code,
     conflict ? detail.currentRevision as number : undefined,
-    response.status === 429 ? parseRetryAfter(response.headers.get("retry-after")) : undefined
+    response.status === 429 ? parseRetryAfter(response.headers.get("retry-after")) : undefined,
+    stage
   );
 };
 
@@ -154,9 +159,10 @@ const accountRequest = async (
   init: RequestInit,
   expectedStatus: number,
   expectedAccountId: string,
-  fetchImpl: typeof fetch
+  fetchImpl: typeof fetch,
+  stage: AccountSyncStage
 ): Promise<unknown> => {
-  if (!ID_PATTERN.test(expectedAccountId)) throw new AccountSyncError(400, "invalid_request");
+  if (!ID_PATTERN.test(expectedAccountId)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
   const response = await fetchImpl(`${API_BASE}${path}`, {
     ...init,
     headers: { ...init.headers, "x-heritg-account-id": expectedAccountId },
@@ -166,16 +172,16 @@ const accountRequest = async (
     referrerPolicy: "no-referrer"
   });
   const payload: unknown = await response.json().catch(() => undefined);
-  if (!response.ok) throw parseError(response, payload);
+  if (!response.ok) throw parseError(response, payload, stage);
   if (response.status !== expectedStatus ||
     response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
-    return invalidResponse();
+    return invalidResponse(stage);
   }
   return payload;
 };
 
 const mutation = (csrfToken: string, body: unknown, signal?: AbortSignal): RequestInit => {
-  if (!CSRF_PATTERN.test(csrfToken)) throw new AccountSyncError(400, "invalid_request");
+  if (!CSRF_PATTERN.test(csrfToken)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
   return {
     method: "POST",
     headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
@@ -185,7 +191,7 @@ const mutation = (csrfToken: string, body: unknown, signal?: AbortSignal): Reque
 };
 
 const treePath = (treeId: string): string => {
-  if (!ID_PATTERN.test(treeId)) throw new AccountSyncError(400, "invalid_request");
+  if (!ID_PATTERN.test(treeId)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
   return `/${treeId}`;
 };
 
@@ -224,17 +230,17 @@ export interface AccountSyncClient {
 
 export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: typeof fetch = fetch): AccountSyncClient => ({
   async listTrees(signal) {
-    const value = await accountRequest("", { method: "GET", signal }, 200, expectedAccountId, fetchImpl);
+    const value = await accountRequest("", { method: "GET", signal }, 200, expectedAccountId, fetchImpl, "list");
     if (!exactObject(value, ["trees"]) || !Array.isArray(value.trees)) return invalidResponse();
     return value.trees.map(parseTree);
   },
 
   async createTree(csrfToken, signal) {
-    return parseCreatedTree(await accountRequest("", mutation(csrfToken, {}, signal), 201, expectedAccountId, fetchImpl));
+    return parseCreatedTree(await accountRequest("", mutation(csrfToken, {}, signal), 201, expectedAccountId, fetchImpl, "create"));
   },
 
   async getTreeKey(treeId, signal) {
-    const value = await accountRequest(`${treePath(treeId)}/key`, { method: "GET", signal }, 200, expectedAccountId, fetchImpl);
+    const value = await accountRequest(`${treePath(treeId)}/key`, { method: "GET", signal }, 200, expectedAccountId, fetchImpl, "key");
     if (!exactObject(value, ["syncKey"]) || typeof value.syncKey !== "string" || !KEY_PATTERN.test(value.syncKey)) {
       return invalidResponse();
     }
@@ -244,19 +250,24 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
   async allocateSnapshot(treeId, baseRevision, ciphertextBytes, csrfToken, signal) {
     if (!validRevision(baseRevision) || baseRevision >= Number.MAX_SAFE_INTEGER || !Number.isSafeInteger(ciphertextBytes) ||
       ciphertextBytes < 36 || ciphertextBytes > MAX_SYNC_ENVELOPE_BYTES) {
-      throw new AccountSyncError(400, "invalid_request");
+      throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
     }
     const value = await accountRequest(`${treePath(treeId)}/snapshot-uploads`, mutation(csrfToken, {
       envelopeVersion: SYNC_ENVELOPE_VERSION,
       ciphertextBytes,
       baseRevision
-    }, signal), 201, expectedAccountId, fetchImpl);
-    return parseAllocation(value, treeId, baseRevision);
+    }, signal), 201, expectedAccountId, fetchImpl, "allocate");
+    try {
+      return parseAllocation(value, treeId, baseRevision);
+    } catch (cause) {
+      if (cause instanceof AccountSyncError) throw new AccountSyncError(cause.status, cause.code, cause.currentRevision, cause.retryAfterSeconds, "allocate");
+      throw cause;
+    }
   },
 
   async uploadSnapshot(allocation, envelope, signal) {
     if (!(envelope instanceof Uint8Array) || envelope.byteLength < 36 || envelope.byteLength > MAX_SYNC_ENVELOPE_BYTES) {
-      throw new AccountSyncError(400, "invalid_request");
+      throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
     }
     const form = new FormData();
     for (const [key, value] of Object.entries(allocation.formFields)) form.append(key, value);
@@ -272,19 +283,19 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
       referrerPolicy: "no-referrer",
       signal
     });
-    if (response.status !== 201) throw new AccountSyncError(response.status, "service_unavailable");
+    if (response.status !== 201) throw new AccountSyncError(response.status, "service_unavailable", undefined, undefined, "upload");
   },
 
   async completeSnapshot(treeId, uploadId, csrfToken, signal) {
-    if (!ID_PATTERN.test(uploadId)) throw new AccountSyncError(400, "invalid_request");
+    if (!ID_PATTERN.test(uploadId)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
     const value = await accountRequest(`${treePath(treeId)}/snapshot-uploads/${uploadId}/complete`,
-      mutation(csrfToken, {}, signal), 200, expectedAccountId, fetchImpl);
+      mutation(csrfToken, {}, signal), 200, expectedAccountId, fetchImpl, "complete");
     if (!exactObject(value, ["revision"]) || !validRevision(value.revision, false)) return invalidResponse();
     return value.revision;
   },
 
   async getSnapshot(treeId, signal) {
-    const value = await accountRequest(`${treePath(treeId)}/snapshot`, { method: "GET", signal }, 200, expectedAccountId, fetchImpl);
+    const value = await accountRequest(`${treePath(treeId)}/snapshot`, { method: "GET", signal }, 200, expectedAccountId, fetchImpl, "snapshot");
     if (!exactObject(value, ["revision", "envelopeVersion", "ciphertextBytes", "downloadUrl", "downloadExpiresAt"]) ||
       !validRevision(value.revision, false) || value.envelopeVersion !== SYNC_ENVELOPE_VERSION ||
       !Number.isSafeInteger(value.ciphertextBytes) || (value.ciphertextBytes as number) < 36 ||
@@ -302,7 +313,7 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
       referrerPolicy: "no-referrer",
       signal
     });
-    if (response.status !== 200) throw new AccountSyncError(response.status, "service_unavailable");
+    if (response.status !== 200) throw new AccountSyncError(response.status, "service_unavailable", undefined, undefined, "download");
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.byteLength !== metadata.ciphertextBytes || bytes.byteLength > MAX_SYNC_ENVELOPE_BYTES) return invalidResponse();
     return bytes;
@@ -311,7 +322,7 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
   async deleteTree(treeId, csrfToken, signal) {
     const init = mutation(csrfToken, {}, signal);
     init.method = "DELETE";
-    const value = await accountRequest(treePath(treeId), init, 200, expectedAccountId, fetchImpl);
+    const value = await accountRequest(treePath(treeId), init, 200, expectedAccountId, fetchImpl, "response");
     if (!exactObject(value, ["status"]) || value.status !== "deleted") return invalidResponse();
   }
 });
