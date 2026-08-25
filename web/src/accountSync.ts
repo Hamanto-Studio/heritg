@@ -6,6 +6,7 @@ const API_BASE = "/api/v1/trees";
 const ID_PATTERN = /^[A-Za-z0-9_-]{22}$/u;
 const KEY_PATTERN = /^[A-Za-z0-9_-]{43}$/u;
 const CSRF_PATTERN = KEY_PATTERN;
+const GENERATION_PATTERN = /^[1-9][0-9]{0,30}$/u;
 const ERROR_CODES = new Set([
   "invalid_request",
   "unauthenticated",
@@ -37,9 +38,10 @@ export interface CreatedAccountSyncTree extends AccountSyncTree {
 export interface SnapshotAllocation {
   uploadId: string;
   targetRevision: number;
-  uploadMethod: "POST";
+  uploadMethod: "PUT";
   uploadUrl: string;
-  formFields: Record<string, string>;
+  requiredHeaders: Record<string, string>;
+  ciphertextBytes: number;
   uploadExpiresAt: string;
 }
 
@@ -195,25 +197,24 @@ const treePath = (treeId: string): string => {
   return `/${treeId}`;
 };
 
-const parseAllocation = (value: unknown, treeId: string, baseRevision: number): SnapshotAllocation => {
-  if (!exactObject(value, ["uploadId", "targetRevision", "uploadMethod", "uploadUrl", "formFields", "uploadExpiresAt"])) {
+const parseAllocation = (value: unknown, treeId: string, baseRevision: number, ciphertextBytes: number): SnapshotAllocation => {
+  if (!exactObject(value, ["uploadId", "targetRevision", "uploadMethod", "uploadUrl", "requiredHeaders", "uploadExpiresAt"])) {
     return invalidResponse();
   }
-  const fields = value.formFields;
+  const headers = value.requiredHeaders;
   if (typeof value.uploadId !== "string" || !ID_PATTERN.test(value.uploadId) ||
-    value.targetRevision !== baseRevision + 1 || value.uploadMethod !== "POST" || !validSignedUrl(value.uploadUrl) ||
-    !validInstant(value.uploadExpiresAt) || typeof fields !== "object" || fields === null || Array.isArray(fields) ||
-    !Object.keys(fields).length || Object.entries(fields).some(([key, field]) => !key || typeof field !== "string")) {
+    value.targetRevision !== baseRevision + 1 || value.uploadMethod !== "PUT" || !validSignedUrl(value.uploadUrl) ||
+    !validInstant(value.uploadExpiresAt) || typeof headers !== "object" || headers === null || Array.isArray(headers) ||
+    !Object.keys(headers).length || Object.entries(headers).some(([key, header]) => !key || typeof header !== "string")) {
     return invalidResponse();
   }
-  const formFields = fields as Record<string, string>;
-  if (formFields["Content-Type"] !== SYNC_CONTENT_TYPE || formFields["x-goog-if-generation-match"] !== "0" ||
-    formFields["x-goog-meta-heritg-envelope"] !== SYNC_ENVELOPE_VERSION ||
-    formFields["x-goog-meta-heritg-state"] !== "immutable" || formFields["x-goog-meta-heritg-tree-id"] !== treeId ||
-    formFields["x-goog-meta-heritg-upload-id"] !== value.uploadId ||
-    formFields["x-goog-meta-heritg-revision"] !== String(value.targetRevision) ||
-    formFields.success_action_status !== "201") return invalidResponse();
-  return value as unknown as SnapshotAllocation;
+  const requiredHeaders = headers as Record<string, string>;
+  if (requiredHeaders["content-type"] !== SYNC_CONTENT_TYPE || requiredHeaders["x-goog-if-generation-match"] !== "0" ||
+    requiredHeaders["x-goog-meta-heritg-envelope"] !== SYNC_ENVELOPE_VERSION ||
+    requiredHeaders["x-goog-meta-heritg-state"] !== "immutable" || requiredHeaders["x-goog-meta-heritg-tree-id"] !== treeId ||
+    requiredHeaders["x-goog-meta-heritg-upload-id"] !== value.uploadId ||
+    requiredHeaders["x-goog-meta-heritg-revision"] !== String(value.targetRevision)) return invalidResponse();
+  return { ...(value as Omit<SnapshotAllocation, "ciphertextBytes">), ciphertextBytes };
 };
 
 export interface AccountSyncClient {
@@ -221,8 +222,8 @@ export interface AccountSyncClient {
   createTree(csrfToken: string, signal?: AbortSignal): Promise<CreatedAccountSyncTree>;
   getTreeKey(treeId: string, signal?: AbortSignal): Promise<string>;
   allocateSnapshot(treeId: string, baseRevision: number, ciphertextBytes: number, csrfToken: string, signal?: AbortSignal): Promise<SnapshotAllocation>;
-  uploadSnapshot(allocation: SnapshotAllocation, envelope: Uint8Array, signal?: AbortSignal): Promise<void>;
-  completeSnapshot(treeId: string, uploadId: string, csrfToken: string, signal?: AbortSignal): Promise<number>;
+  uploadSnapshot(allocation: SnapshotAllocation, envelope: Uint8Array, signal?: AbortSignal): Promise<string>;
+  completeSnapshot(treeId: string, uploadId: string, objectGeneration: string, csrfToken: string, signal?: AbortSignal): Promise<number>;
   getSnapshot(treeId: string, signal?: AbortSignal): Promise<SnapshotMetadata>;
   downloadSnapshot(metadata: SnapshotMetadata, signal?: AbortSignal): Promise<Uint8Array>;
   deleteTree(treeId: string, csrfToken: string, signal?: AbortSignal): Promise<void>;
@@ -258,7 +259,7 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
       baseRevision
     }, signal), 201, expectedAccountId, fetchImpl, "allocate");
     try {
-      return parseAllocation(value, treeId, baseRevision);
+      return parseAllocation(value, treeId, baseRevision, ciphertextBytes);
     } catch (cause) {
       if (cause instanceof AccountSyncError) throw new AccountSyncError(cause.status, cause.code, cause.currentRevision, cause.retryAfterSeconds, "allocate");
       throw cause;
@@ -266,30 +267,31 @@ export const createAccountSyncClient = (expectedAccountId: string, fetchImpl: ty
   },
 
   async uploadSnapshot(allocation, envelope, signal) {
-    if (!(envelope instanceof Uint8Array) || envelope.byteLength < 36 || envelope.byteLength > MAX_SYNC_ENVELOPE_BYTES) {
+    if (!(envelope instanceof Uint8Array) || envelope.byteLength !== allocation.ciphertextBytes || envelope.byteLength < 36 || envelope.byteLength > MAX_SYNC_ENVELOPE_BYTES) {
       throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
     }
-    const form = new FormData();
-    for (const [key, value] of Object.entries(allocation.formFields)) form.append(key, value);
     const uploadBytes = new Uint8Array(new ArrayBuffer(envelope.byteLength));
     uploadBytes.set(envelope);
-    form.append("file", new Blob([uploadBytes], { type: SYNC_CONTENT_TYPE }));
     const response = await fetchImpl(allocation.uploadUrl, {
-      method: "POST",
-      body: form,
+      method: "PUT",
+      body: uploadBytes,
+      headers: allocation.requiredHeaders,
       credentials: "omit",
       cache: "no-store",
       redirect: "error",
       referrerPolicy: "no-referrer",
       signal
     });
-    if (response.status !== 201) throw new AccountSyncError(response.status, "service_unavailable", undefined, undefined, "upload");
+    if (!response.ok) throw new AccountSyncError(response.status, "service_unavailable", undefined, undefined, "upload");
+    const generation = response.headers.get("x-goog-generation");
+    if (!generation || !GENERATION_PATTERN.test(generation)) throw new AccountSyncError(502, "invalid_response", undefined, undefined, "upload");
+    return generation;
   },
 
-  async completeSnapshot(treeId, uploadId, csrfToken, signal) {
-    if (!ID_PATTERN.test(uploadId)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
+  async completeSnapshot(treeId, uploadId, objectGeneration, csrfToken, signal) {
+    if (!ID_PATTERN.test(uploadId) || !GENERATION_PATTERN.test(objectGeneration)) throw new AccountSyncError(400, "invalid_request", undefined, undefined, "input");
     const value = await accountRequest(`${treePath(treeId)}/snapshot-uploads/${uploadId}/complete`,
-      mutation(csrfToken, {}, signal), 200, expectedAccountId, fetchImpl, "complete");
+      mutation(csrfToken, { objectGeneration }, signal), 200, expectedAccountId, fetchImpl, "complete");
     if (!exactObject(value, ["revision"]) || !validRevision(value.revision, false)) return invalidResponse();
     return value.revision;
   },

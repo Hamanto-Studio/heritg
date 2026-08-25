@@ -26,9 +26,10 @@ describe("account sync archive helpers", () => {
     const allocation: SnapshotAllocation = {
       uploadId,
       targetRevision: 1,
-      uploadMethod: "POST",
+      uploadMethod: "PUT",
       uploadUrl: "https://storage.googleapis.com/upload",
-      formFields: {},
+      requiredHeaders: {},
+      ciphertextBytes: 0,
       uploadExpiresAt: updatedAt
     };
     const metadata = (): SnapshotMetadata => ({
@@ -43,7 +44,7 @@ describe("account sync archive helpers", () => {
       createTree: vi.fn(),
       getTreeKey: vi.fn(),
       allocateSnapshot: vi.fn(async () => allocation),
-      uploadSnapshot: vi.fn(async (_allocation, envelope) => { uploaded = envelope; }),
+      uploadSnapshot: vi.fn(async (_allocation, envelope) => { uploaded = envelope; return "1"; }),
       completeSnapshot: vi.fn(async () => 1),
       getSnapshot: vi.fn(async () => metadata()),
       downloadSnapshot: vi.fn(async () => uploaded ?? new Uint8Array()),

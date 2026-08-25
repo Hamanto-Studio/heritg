@@ -29,8 +29,8 @@ export async function uploadLocalTreeSnapshot(
   if (plaintext.byteLength > MAX_SYNC_PLAINTEXT_BYTES) throw new Error("Sync snapshot plaintext is too large.");
   const allocation = await client.allocateSnapshot(remoteTreeId, baseRevision, plaintext.byteLength + 36, csrfToken, signal);
   const envelope = await encryptSyncSnapshot(plaintext, syncKey, remoteTreeId, allocation.targetRevision);
-  await client.uploadSnapshot(allocation, envelope, signal);
-  const revision = await client.completeSnapshot(remoteTreeId, allocation.uploadId, csrfToken, signal);
+  const objectGeneration = await client.uploadSnapshot(allocation, envelope, signal);
+  const revision = await client.completeSnapshot(remoteTreeId, allocation.uploadId, objectGeneration, csrfToken, signal);
   if (revision !== allocation.targetRevision) throw new Error("Sync completion revision did not match its allocation.");
   return { revision, lastSyncedUpdatedAt: tree.updatedAt };
 }
