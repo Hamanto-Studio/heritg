@@ -13,5 +13,7 @@ export function validateStagingAuthConfig(origin, googleClientId, turnstileSiteK
   if (googleClientId !== STAGING_GOOGLE_CLIENT_ID) {
     return "use the approved staging-only Google Web client ID";
   }
-  if (!turnstileSiteKey) return "set HERITG_TURNSTILE_SITE_KEY to the staging Turnstile widget key";
+  if (typeof turnstileSiteKey !== "string" || !turnstileSiteKey.trim()) {
+    return "set HERITG_TURNSTILE_SITE_KEY to the staging Turnstile widget key";
+  }
 }

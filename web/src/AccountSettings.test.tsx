@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountSettings, createEmailCooldownState } from "./AccountSettings";
@@ -39,6 +40,12 @@ afterEach(async () => {
 });
 
 describe("account settings", () => {
+  it("hides email login when staging has no Turnstile configuration", () => {
+    const markup = renderToStaticMarkup(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} />);
+    expect(markup).toContain("Continue with Google");
+    expect(markup).not.toContain("Continue with email");
+  });
+
   it("preloads Google Identity so the first Google button click starts sign-in", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       void _init;
@@ -73,6 +80,7 @@ describe("account settings", () => {
           googleClientId="staging.apps.googleusercontent.com"
           language="en"
           t={createTranslator("en")}
+          turnstileSiteKey="test-site-key"
         />
       );
     });
@@ -108,6 +116,7 @@ describe("account settings", () => {
           googleClientId="staging.apps.googleusercontent.com"
           language="id"
           t={createTranslator("id")}
+          turnstileSiteKey="test-site-key"
         />
       );
     });
@@ -294,7 +303,7 @@ describe("account settings", () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} />);
+      root?.render(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} turnstileSiteKey="test-site-key" />);
     });
 
     expect(container.querySelector('[aria-label="Continue with Google"]')).not.toBeNull();

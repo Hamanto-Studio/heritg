@@ -97,6 +97,10 @@ describe("account sync transport", () => {
     for (const [, init] of [fetchMock.mock.calls[0]!, fetchMock.mock.calls[2]!]) {
       expect(init).toEqual(expect.objectContaining({ credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer" }));
     }
+    expect(fetchMock.mock.calls[0]?.[1]).toEqual(expect.objectContaining({ method: "POST" }));
+    const uploadBody = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(uploadBody).toBeInstanceOf(FormData);
+    expect(Object.fromEntries((uploadBody as FormData).entries())).toEqual(expect.objectContaining(fields));
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({});
   });
 

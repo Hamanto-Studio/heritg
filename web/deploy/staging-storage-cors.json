@@ -9,7 +9,10 @@
       "x-goog-hash",
       "x-goog-if-generation-match",
       "x-goog-meta-heritg-envelope",
-      "x-goog-meta-heritg-state"
+      "x-goog-meta-heritg-state",
+      "x-goog-meta-heritg-tree-id",
+      "x-goog-meta-heritg-upload-id",
+      "x-goog-meta-heritg-revision"
     ],
     "maxAgeSeconds": 900
   }

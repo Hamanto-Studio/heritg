@@ -19,23 +19,32 @@ if (refusal) {
   process.exit(1);
 }
 
-const shortCommit = execFileSync("git", ["rev-parse", "--short=7", "HEAD"], {
+const git = (...args) => execFileSync("git", args, {
   cwd: repositoryRoot,
-  encoding: "utf8"
+  encoding: "utf8",
+  stdio: ["ignore", "pipe", "inherit"]
 }).trim();
-const dirty = Boolean(execFileSync("git", ["status", "--porcelain"], {
-  cwd: repositoryRoot,
-  encoding: "utf8"
-}).trim());
-const timestamp = new Date().toISOString().replace(/\D/gu, "").slice(0, 12);
-const buildVersion = `${shortCommit}${dirty ? "-dirty" : ""}-${timestamp}`;
+
+if (git("status", "--porcelain")) {
+  process.stderr.write("Production deployment refused: repository has uncommitted changes.\n");
+  process.exit(1);
+}
+
+const shortCommit = git("rev-parse", "--short=7", "HEAD");
+const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 12);
+const buildVersion = `${shortCommit}-${timestamp}`;
 
 execFileSync(process.execPath, [
   resolve(scriptDirectory, "render-vercel-config.mjs"),
   origin
 ], { cwd: repositoryRoot, stdio: "inherit" });
 
-process.stdout.write(`Staging production-targeted build ${buildVersion} without assigning domains.\n`);
+if (git("status", "--porcelain")) {
+  process.stderr.write("Production deployment refused: rendered web/vercel.json differs from the committed configuration.\n");
+  process.exit(1);
+}
+
+process.stdout.write(`Deploying clean production candidate ${buildVersion} without assigning domains.\n`);
 execFileSync("npx", [
   "--yes",
   "vercel@58.4.4",
@@ -46,6 +55,8 @@ execFileSync("npx", [
   repositoryRoot,
   "--local-config",
   "web/vercel.json",
+  "--project",
+  "heritg",
   "--build-env",
   "HERITG_DEPLOYMENT_ENV=production",
   "--build-env",

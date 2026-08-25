@@ -107,8 +107,10 @@ const requiredFiles = [
   ".github/workflows/web-ci.yml",
   ".github/workflows/secret-scan.yml",
   ".github/workflows/commit-policy.yml",
+  ".vercelignore",
   "web/vercel.json",
   "web/scripts/deploy-production.mjs",
+  "web/scripts/production-auth-config.mjs",
   "web/scripts/promote-production.mjs"
 ];
 for (const file of requiredFiles) {
@@ -120,7 +122,7 @@ if (webPackage.scripts?.["deploy:promote"] !== "node scripts/promote-production.
   fail("Web production promotion must use the guarded promotion script");
 }
 if (webPackage.scripts?.["deploy:stage"] !== "node scripts/deploy-production.mjs") {
-  fail("Web staging must create a production-targeted deployment without assigning domains");
+  fail("Web staging must use the guarded production candidate deployment script");
 }
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
     vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {

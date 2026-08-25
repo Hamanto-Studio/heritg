@@ -411,10 +411,10 @@ export function AccountSettings({
                     {googleClientId ? <button className="button secondary" onClick={retryGoogle} type="button">{t("accountRetry")}</button> : null}
                   </div> : null}
                 </div>
-                <div className="account-method-divider"><span>{t("accountOr")}</span></div>
-                <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
-                  <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
-                </button>
+                {turnstileSiteKey ? <><div className="account-method-divider"><span>{t("accountOr")}</span></div>
+                  <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">
+                    <Mail aria-hidden="true" size={15} /> {t("accountEmailContinue")}
+                  </button></> : null}
               </div>
             ) : (
               <div className="account-method-panel">

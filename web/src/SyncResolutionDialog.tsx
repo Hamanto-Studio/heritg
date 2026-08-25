@@ -7,7 +7,7 @@ import { ErrorNotice, Modal } from "./ui";
 const Summary = ({ icon, summary, title, t }: { icon: ReactNode; summary?: SyncArchiveSummary; title: string; t: Translator }) => <div className="sync-copy-summary">{icon}<div><strong>{title}</strong><span>{summary ? t("syncArchiveCounts", { trees: summary.trees, people: summary.people }) : t("syncArchiveEmpty")}</span></div></div>;
 export function SyncResolutionDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
   const choose = (resolution: SyncResolution) => void pro.resolveSync(resolution);
-  return <Modal closeLabel={t("close")} onClose={() => void pro.setSyncEnabled(false)} size="medium" title={t("firstSyncTitle")}>
+  return <Modal dismissible={false} onClose={() => undefined} size="medium" title={t("firstSyncTitle")}>
     <p className="dialog-copy">{t("firstSyncDetail")}</p><div className="sync-copy-grid">
       <Summary icon={<HardDrive aria-hidden="true" size={21} />} summary={pro.sync.local} t={t} title={t("thisDeviceCopy")} />
       <Summary icon={<Cloud aria-hidden="true" size={21} />} summary={pro.sync.cloud} t={t} title={t("cloudCopy")} />
