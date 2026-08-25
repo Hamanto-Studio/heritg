@@ -55,6 +55,14 @@ const application = <Application />;
 if (isStaging) {
   document.title = "Heritg Staging | Test Data Only";
   document.documentElement.dataset.deploymentEnvironment = "staging";
+  if ("serviceWorker" in navigator) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+  }
 }
 
 createRoot(document.getElementById("root")!).render(

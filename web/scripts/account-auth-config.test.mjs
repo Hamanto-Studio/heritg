@@ -94,10 +94,13 @@ describe("account authentication deployment policy", () => {
 
   it("activates the updated worker immediately and excludes email callbacks from navigation fallback", () => {
     const viteConfig = readFileSync(resolve(process.cwd(), "vite.config.ts"), "utf8");
+    const main = readFileSync(resolve(process.cwd(), "src/main.tsx"), "utf8");
     expect(viteConfig).toContain('registerType: "autoUpdate"');
     expect(viteConfig).toContain("skipWaiting: true");
     expect(viteConfig).toContain("clientsClaim: true");
     expect(viteConfig).toContain("/^\\/auth\\/email\\/?$/");
+    expect(main).toContain('navigator.serviceWorker.addEventListener("controllerchange"');
+    expect(main).toContain("window.location.reload()");
   });
 
   it("rejects missing, malformed, and non-staging deployment identity config", () => {
