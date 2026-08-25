@@ -18,6 +18,7 @@ export function Modal({
   size = "medium",
   label,
   closeLabel = "Close",
+  dismissible = true,
   inactive = false,
   presentation = "dialog"
 }: {
@@ -28,6 +29,7 @@ export function Modal({
   size?: "small" | "medium" | "large";
   label?: string;
   closeLabel?: string;
+  dismissible?: boolean;
   inactive?: boolean;
   presentation?: "dialog" | "sheet";
 }) {
@@ -51,7 +53,7 @@ export function Modal({
         '[role="dialog"][aria-modal="true"]'
       );
       if (openDialogs[openDialogs.length - 1] !== dialog) return;
-      if (event.key === "Escape") {
+      if (dismissible && event.key === "Escape") {
         event.preventDefault();
         closeRef.current();
         return;
@@ -81,11 +83,11 @@ export function Modal({
         previousFocus.focus();
       }
     };
-  }, [inactive]);
+  }, [dismissible, inactive]);
 
   return (
     <div aria-hidden={inactive || undefined} className={`modal-backdrop ${presentation === "sheet" ? "bottom-sheet-backdrop" : ""}`} inert={inactive} onMouseDown={(event) => {
-      if (!inactive && event.target === event.currentTarget) onClose();
+      if (!inactive && dismissible && event.target === event.currentTarget) onClose();
     }}>
       <section
         aria-label={label ?? title}
@@ -97,10 +99,10 @@ export function Modal({
       >
         <header className="modal-header">
           <h2>{title}</h2>
-          <button className="icon-button quiet" onClick={onClose} type="button">
+          {dismissible ? <button className="icon-button quiet" onClick={onClose} type="button">
             <X aria-hidden="true" size={20} />
             <span className="sr-only">{closeLabel}</span>
-          </button>
+          </button> : null}
         </header>
         <div className="modal-body">{children}</div>
         {footer ? <footer className="modal-footer">{footer}</footer> : null}

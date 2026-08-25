@@ -183,6 +183,19 @@ const pathNumber = (value: number) => {
   return Object.is(rounded, -0) ? "0" : String(rounded);
 };
 
+/** Draws a smooth vertical hop so unrelated family lines read as crossing, not joined. */
+export const crossingBridgePath = (
+  point: RoutePoint,
+  offsetX = 0,
+  offsetY = 0,
+  radius = CONNECTOR_STYLE.crossingRadius + 3
+) => {
+  const x = point.x + offsetX;
+  const y = point.y + offsetY;
+  const bulge = radius + 2;
+  return `M ${pathNumber(x)} ${pathNumber(y - radius)} C ${pathNumber(x + bulge)} ${pathNumber(y - radius)} ${pathNumber(x + bulge)} ${pathNumber(y + radius)} ${pathNumber(x)} ${pathNumber(y + radius)}`;
+};
+
 const distance = (left: RoutePoint, right: RoutePoint) =>
   Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
 

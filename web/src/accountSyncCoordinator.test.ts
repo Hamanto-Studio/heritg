@@ -93,7 +93,23 @@ describe("account sync coordinator", () => {
       syncClient, expect.anything(), "local-tree", secondRemoteTreeId, 0, syncKey, csrf, undefined
     );
     expect(result.mappings).toEqual([expect.objectContaining({ localTreeId: "local-tree", remoteTreeId: secondRemoteTreeId, revision: 1, syncKey })]);
-    expect(result.phase).toBe("pending");
+    expect(result.phase).toBe("upToDate");
+  });
+
+  it("replaces an abandoned empty cloud tree with the local archive without prompting", async () => {
+    const syncClient = client([remote(0)]);
+    const result = await reconcileAccountSync({
+      client: syncClient,
+      data: data(),
+      mappings: [],
+      canWrite: true,
+      csrfToken: csrf
+    });
+
+    expect(syncClient.deleteTree).toHaveBeenCalledWith(remoteTreeId, csrf, undefined);
+    expect(snapshotMocks.uploadLocalTreeSnapshot).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ phase: "upToDate", pendingChanges: 0 });
+    expect(result.mappings).toEqual([expect.objectContaining({ localTreeId: "local-tree", revision: 1 })]);
   });
 
   it("restores cloud data over a pristine default tree without prompting", async () => {
@@ -109,6 +125,62 @@ describe("account sync coordinator", () => {
 
     expect(result.data.trees.map((tree) => tree.id)).toEqual(["cloud-local-id"]);
     expect(result.mappings[0]).toMatchObject({ localTreeId: "cloud-local-id", remoteTreeId, revision: 1 });
+    expect(result.phase).toBe("upToDate");
+  });
+
+  it("restores cloud data when the local archive has no trees", async () => {
+    const cloud = data("cloud-local-id", newer, "Cloud Family");
+    const empty = { ...data(), trees: [], people: [], relationships: [], selectedTreeId: undefined, viewports: {} };
+    snapshotMocks.downloadRemoteTreeSnapshot.mockResolvedValue({ revision: 1, data: cloud });
+    const result = await reconcileAccountSync({
+      client: client([remote(1)]),
+      data: empty,
+      mappings: [],
+      canWrite: true,
+      csrfToken: csrf
+    });
+
+    expect(result.data.trees.map((tree) => tree.id)).toEqual(["cloud-local-id"]);
+    expect(result.mappings).toEqual([expect.objectContaining({ localTreeId: "cloud-local-id", remoteTreeId })]);
+    expect(result.phase).toBe("upToDate");
+    expect(snapshotMocks.uploadLocalTreeSnapshot).not.toHaveBeenCalled();
+  });
+
+  it("automatically preserves populated device and cloud archives on first synchronization", async () => {
+    const cloud = data("local-tree", newer, "Cloud Family");
+    snapshotMocks.downloadRemoteTreeSnapshot.mockResolvedValue({ revision: 1, data: cloud });
+    const result = await reconcileAccountSync({
+      client: client([remote(1)]),
+      data: data("local-tree", instant, "Device Family"),
+      mappings: [],
+      canWrite: true,
+      csrfToken: csrf
+    });
+
+    expect(result.phase).toBe("upToDate");
+    expect(result.data.trees).toHaveLength(2);
+    expect(result.data.trees.some((tree) => tree.id === "local-tree" && tree.title === "Cloud Family")).toBe(true);
+    const preservedDevice = result.data.trees.find((tree) => tree.title === "Device Family");
+    expect(preservedDevice?.id).toBeTruthy();
+    expect(preservedDevice?.id).not.toBe("local-tree");
+    expect(result.mappings).toEqual([
+      expect.objectContaining({ localTreeId: "local-tree", remoteTreeId }),
+      expect.objectContaining({ localTreeId: preservedDevice?.id, remoteTreeId: secondRemoteTreeId })
+    ]);
+  });
+
+  it("waits without prompting when both initial archives need read-only preservation", async () => {
+    const result = await reconcileAccountSync({
+      client: client([remote(1)]),
+      data: data("local-tree", instant, "Device Family"),
+      mappings: [],
+      canWrite: false
+    });
+
+    expect(result).toMatchObject({ phase: "pending", pendingChanges: 1, mappings: [] });
+    expect(result.data.trees[0]?.title).toBe("Device Family");
+    expect(snapshotMocks.downloadRemoteTreeSnapshot).not.toHaveBeenCalled();
+    expect(snapshotMocks.uploadLocalTreeSnapshot).not.toHaveBeenCalled();
   });
 
   it("reports a conflict when both mapped copies changed", async () => {

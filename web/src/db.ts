@@ -13,7 +13,7 @@ import {
 import type { AppData } from "./types";
 
 const DATABASE_NAME = "heritg";
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 const STORE_NAME = "appData";
 const STATE_KEY = "state";
 const KEY_STORE_NAME = "encryptionKeys";
@@ -21,6 +21,9 @@ const LOCAL_KEY = "localDataKey";
 const SHARE_STORE_NAME = "shareManagement";
 const SHARE_STATE_KEY = "records";
 const SHARE_CONTEXT = "heritg:share-management:v1";
+const SHARE_LIMIT_STORE_NAME = "shareLimit";
+const SHARE_SLOT_KEY = "active";
+const SHARE_RESERVATION_MS = 15 * 60 * 1000;
 const SYNC_STORE_NAME = "syncMetadata";
 const SYNC_STATE_KEY_PREFIX = "mappings:";
 const SYNC_OWNER_KEY = "owner";
@@ -44,6 +47,10 @@ export interface SyncMapping {
   lastSyncedUpdatedAt: string;
 }
 
+type ShareSlot =
+  | { state: "reserved"; token: string; reservedUntil: string }
+  | { state: "active"; expiresAt: string | null };
+
 interface HeritgDatabase extends DBSchema {
   appData: {
     key: typeof STATE_KEY;
@@ -56,6 +63,10 @@ interface HeritgDatabase extends DBSchema {
   shareManagement: {
     key: typeof SHARE_STATE_KEY;
     value: EncryptedLocalValue;
+  };
+  shareLimit: {
+    key: typeof SHARE_SLOT_KEY;
+    value: ShareSlot;
   };
   syncMetadata: {
     key: string;
@@ -77,6 +88,9 @@ const database = () => {
       }
       if (!db.objectStoreNames.contains(SHARE_STORE_NAME)) {
         db.createObjectStore(SHARE_STORE_NAME);
+      }
+      if (!db.objectStoreNames.contains(SHARE_LIMIT_STORE_NAME)) {
+        db.createObjectStore(SHARE_LIMIT_STORE_NAME);
       }
       if (!db.objectStoreNames.contains(SYNC_STORE_NAME)) {
         db.createObjectStore(SYNC_STORE_NAME);
@@ -123,6 +137,28 @@ const validManagedShare = (value: unknown): value is ManagedShare => {
     (item.expiresAt === null || (typeof item.expiresAt === "string" && Number.isFinite(Date.parse(item.expiresAt))));
 };
 
+const activeExpiry = (records: readonly ManagedShare[]) => {
+  if (!records.length) return undefined;
+  if (records.some((record) => record.expiresAt === null)) return null;
+  return records.reduce((latest, record) => record.expiresAt! > latest ? record.expiresAt! : latest, "");
+};
+
+const syncManagedShareSlot = async (records: readonly ManagedShare[], now = new Date()) => {
+  const db = await database();
+  const transaction = db.transaction(SHARE_LIMIT_STORE_NAME, "readwrite");
+  const store = transaction.objectStore(SHARE_LIMIT_STORE_NAME);
+  const expiry = activeExpiry(records);
+  if (expiry !== undefined) {
+    await store.put({ state: "active", expiresAt: expiry }, SHARE_SLOT_KEY);
+  } else {
+    const current = await store.get(SHARE_SLOT_KEY);
+    if (!current || current.state === "active" || Date.parse(current.reservedUntil) <= now.getTime()) {
+      await store.delete(SHARE_SLOT_KEY);
+    }
+  }
+  await transaction.done;
+};
+
 export async function loadManagedShares(now = new Date()): Promise<ManagedShare[]> {
   const db = await database();
   const stored = await db.get(SHARE_STORE_NAME, SHARE_STATE_KEY);
@@ -133,13 +169,54 @@ export async function loadManagedShares(now = new Date()): Promise<ManagedShare[
     item.expiresAt === null || Date.parse(item.expiresAt) > now.getTime()
   );
   if (active.length !== decoded.length) await saveManagedShares(active);
+  else await syncManagedShareSlot(active, now);
   return active.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 }
 
 export async function saveManagedShares(records: readonly ManagedShare[]): Promise<void> {
   if (!records.every(validManagedShare)) throw new Error("Share management data is invalid.");
   const encrypted = await encryptLocalValue(records, await encryptionKey(), SHARE_CONTEXT);
-  await (await database()).put(SHARE_STORE_NAME, encrypted, SHARE_STATE_KEY);
+  const db = await database();
+  const transaction = db.transaction([SHARE_STORE_NAME, SHARE_LIMIT_STORE_NAME], "readwrite");
+  await transaction.objectStore(SHARE_STORE_NAME).put(encrypted, SHARE_STATE_KEY);
+  const limitStore = transaction.objectStore(SHARE_LIMIT_STORE_NAME);
+  const expiry = activeExpiry(records);
+  if (expiry === undefined) await limitStore.delete(SHARE_SLOT_KEY);
+  else await limitStore.put({ state: "active", expiresAt: expiry }, SHARE_SLOT_KEY);
+  await transaction.done;
+}
+
+export async function reserveManagedShareSlot(now = new Date()): Promise<string | undefined> {
+  const db = await database();
+  const transaction = db.transaction(SHARE_LIMIT_STORE_NAME, "readwrite");
+  const store = transaction.objectStore(SHARE_LIMIT_STORE_NAME);
+  const current = await store.get(SHARE_SLOT_KEY);
+  const blocked = current?.state === "active"
+    ? current.expiresAt === null || Date.parse(current.expiresAt) > now.getTime()
+    : current?.state === "reserved" && Date.parse(current.reservedUntil) > now.getTime();
+  if (blocked) {
+    await transaction.done;
+    return undefined;
+  }
+  const token = crypto.randomUUID();
+  await store.put({
+    state: "reserved",
+    token,
+    reservedUntil: new Date(now.getTime() + SHARE_RESERVATION_MS).toISOString()
+  }, SHARE_SLOT_KEY);
+  await transaction.done;
+  return token;
+}
+
+export async function releaseManagedShareSlot(token: string): Promise<void> {
+  const db = await database();
+  const transaction = db.transaction(SHARE_LIMIT_STORE_NAME, "readwrite");
+  const store = transaction.objectStore(SHARE_LIMIT_STORE_NAME);
+  const current = await store.get(SHARE_SLOT_KEY);
+  if (current?.state === "reserved" && current.token === token) {
+    await store.delete(SHARE_SLOT_KEY);
+  }
+  await transaction.done;
 }
 
 const localTreeIdPattern = /^[^\u0000-\u001f\u007f]{1,4096}$/u;

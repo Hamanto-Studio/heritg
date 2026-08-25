@@ -219,6 +219,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   return (
     <div className="app-shell">
       <TreeSidebar
+        account={pro.account.status === "signedIn" ? pro.account.user : undefined}
         actions={actions}
         data={data}
         onClose={() => {
@@ -318,7 +319,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                 <p>{t("peopleCount", { count: people.length })} · {t("relationshipsCount", { count: relationships.length })}</p>
               </div>
               {controlsVisible ? <div className="workspace-tools">
-                {(pro.subscription.status === "active" || pro.subscription.status === "expired") && pro.sync.enabled ? <button
+                {(pro.subscription.status === "active" || pro.subscription.status === "readOnly") && pro.sync.enabled ? <button
                   aria-label={`${t("automaticSync")}: ${t(pro.sync.phase === "upToDate" ? "syncUpToDate" : pro.sync.phase === "offline" ? "syncOffline" : pro.sync.phase === "error" || pro.sync.phase === "conflict" ? "syncAttention" : "syncing")}`}
                   className={`icon-button sync-workspace-button sync-${pro.sync.phase}`}
                    onClick={() => { setGenerationOpen(false); setRightPanel("settings"); }} type="button"
@@ -467,8 +468,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               <div className="canvas-controls-hint onboarding-hint" role="note">
                 <span>{t("canvasToolsHint")}</span>
                 <svg aria-hidden="true" viewBox="0 0 76 58">
-                  <path d="M5 7c30 2 52 14 62 38" />
-                  <path d="m58 39 9 6 3-10" />
+                  <path d="M5 5c23 4 43 25 57 45" />
+                  <path d="m51 46 11 4 4-11" />
                 </svg>
               </div>
             ) : null}

@@ -12,13 +12,12 @@ import {
   STAGING_GOOGLE_CLIENT_ID,
   validateStagingAuthConfig
 } from "./staging-auth-config.mjs";
-
 const read = (name) => readFileSync(resolve(process.cwd(), name), "utf8");
 const readJson = (name) => JSON.parse(read(name));
 
 describe("account authentication deployment policy", () => {
   for (const name of ["vercel.template.json", "vercel.json"]) {
-    it(`allows only the required Google Identity resources in ${name}`, () => {
+    it(`allows only the required identity and verification resources in ${name}`, () => {
       const config = readJson(name);
       const headers = config.headers.find(({ source }) => source === "/(.*)").headers;
       const csp = headers.find(({ key }) => key === "Content-Security-Policy").value;
@@ -51,6 +50,20 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain("validateStagingAuthConfig(origin, googleClientId)");
     expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
     expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=staging");
+    expect(deploy).toContain("HERITG_FAMILY_BILLING_ENABLED=true");
+    expect(deploy).toContain("HERITG_BUILD_VERSION");
+    expect(deploy).toContain('"--prod"');
+    expect(deploy).toContain('git", ["rev-parse", "--short=7", "HEAD"]');
+    expect(deploy).toContain('mkdtempSync(join(tmpdir(), "heritg-staging-deploy-")');
+    expect(deploy).toContain('["node_modules", "dist", ".vercel"]');
+  });
+
+  it("allows the signed multipart synchronization upload from staging", () => {
+    const cors = readJson("deploy/staging-storage-cors.json");
+    expect(cors).toEqual([expect.objectContaining({
+      origin: ["https://staging.heritg.us"],
+      method: expect.arrayContaining(["GET", "HEAD", "POST"])
+    })]);
   });
 
   it("guards a clean Google-only production candidate", () => {
@@ -67,8 +80,7 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=production");
     expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
     expect(deploy).not.toContain("TURNSTILE");
-    expect(deploy).toContain('"HERITG_FAMILY_BILLING_ENABLED=false"');
-    expect(deploy).not.toContain("HERITG_FAMILY_BILLING_ENABLED=true");
+    expect(deploy).toContain('"HERITG_FAMILY_BILLING_ENABLED=true"');
     expect(deploy).toContain('resolve(scriptDirectory, "promote-production.mjs")');
     expect(deploy).toContain("Vercel did not return an immutable deployment URL");
     expect(read("scripts/promote-production.mjs")).toContain('"rollback"');
@@ -83,9 +95,12 @@ describe("account authentication deployment policy", () => {
 
   it("keeps every account API request network-only in the service worker", () => {
     const viteConfig = read("vite.config.ts");
+    const main = read("src/main.tsx");
     expect(viteConfig).toContain("urlPattern: /\\/api\\/v1\\//");
     expect(viteConfig).toContain('handler: "NetworkOnly"');
     expect(viteConfig).toContain("/^\\/auth\\/email\\/?$/");
+    expect(main).toContain('navigator.serviceWorker.addEventListener("controllerchange"');
+    expect(main).toContain("window.location.reload()");
   });
 
   it("rejects missing, malformed, and non-staging deployment identity config", () => {

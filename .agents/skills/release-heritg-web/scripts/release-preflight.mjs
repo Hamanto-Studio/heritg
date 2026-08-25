@@ -140,9 +140,9 @@ if (!viteConfig.includes('base: "/"') || !viteConfig.includes('outDir: "dist"'))
 const productionDeploy = readFileSync(resolve(webDirectory, "scripts/deploy-production.mjs"), "utf8");
 const accountSettings = readFileSync(resolve(webDirectory, "src/AccountSettings.tsx"), "utf8");
 const mainEntry = readFileSync(resolve(webDirectory, "src/main.tsx"), "utf8");
-if (productionDeploy.includes("TURNSTILE") || productionDeploy.includes("HERITG_FAMILY_BILLING_ENABLED=true") ||
-    !productionDeploy.includes('"HERITG_FAMILY_BILLING_ENABLED=false"')) {
-  fail("this production release must inject only Google account configuration");
+if (productionDeploy.includes("TURNSTILE") ||
+    !productionDeploy.includes('"HERITG_FAMILY_BILLING_ENABLED=true"')) {
+  fail("this production release must inject Google account and Family synchronization configuration");
 }
 if (accountSettings.includes("requestEmailLogin") || mainEntry.includes("EmailAuthCallback") || mainEntry.includes("verifyEmailLogin")) {
   fail("this production release must expose only Google sign-in");

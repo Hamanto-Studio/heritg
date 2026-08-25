@@ -1,7 +1,7 @@
 {
   "name": "heritg",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -20,7 +20,6 @@
     "deploy:production": "node scripts/deploy-production.mjs",
     "rollback:production": "node scripts/rollback-production.mjs",
     "deploy:staging": "node scripts/deploy-staging.mjs",
-    "deploy:staging:promote": "node scripts/promote-staging.mjs",
     "dns:staging": "node scripts/configure-staging-dns.mjs",
     "dns:staging:remove-beta": "node scripts/configure-staging-dns.mjs --remove-beta"
   },
