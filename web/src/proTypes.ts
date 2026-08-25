@@ -16,7 +16,8 @@ export type SubscriptionState =
   | { status: "free"; offer?: ProOffer }
   | { status: "purchasing"; offer: ProOffer }
   | { status: "active"; offer?: ProOffer; expiresAt?: string; manageUrl?: string }
-  | { status: "expired"; expiredAt?: string; offer?: ProOffer }
+  | { status: "readOnly"; expiresAt?: string; graceEndsAt?: string; offer?: ProOffer; manageUrl?: string }
+  | { status: "expired"; expiresAt: string; offer?: ProOffer }
   | { status: "error"; message: string; offer?: ProOffer };
 
 export type SyncPhase = "unavailable" | "disabled" | "comparing" | "upToDate" | "pending" |

@@ -7,7 +7,7 @@ export function FamilyPlusBenefits({ t }: { t: Translator }) {
     <div className="family-plus-benefits">
       <div className="family-plus-benefits-title"><Sparkles aria-hidden="true" size={17} /><strong>{t("familyPlusIncludes")}</strong></div>
       <ul className="pro-benefits">
-        <li><RefreshCw aria-hidden="true" size={18} /><span><strong>{t("automaticSync")}</strong>{t("automaticSyncDetail")}</span></li>
+        <li><RefreshCw aria-hidden="true" size={18} /><span><strong>{t("proBenefitSync")}</strong>{t("proBenefitSyncDetail")}</span></li>
         <li><UsersRound aria-hidden="true" size={18} /><span><strong>{t("proBenefitCollaborate")}</strong>{t("proBenefitCollaborateDetail")}</span></li>
         <li><LockKeyhole aria-hidden="true" size={18} /><span><strong>{t("proBenefitLocal")}</strong>{t("proBenefitLocalDetail")}</span></li>
       </ul>

@@ -231,13 +231,28 @@ export async function reconcileAccountSync(input: AccountSyncInput): Promise<Acc
   }
   if (input.resolution) return resolveCopies(input, remotes);
 
+  if (input.mappings.length === 0) {
+    const hasCloudData = remotes.some((tree) => tree.revision > 0);
+    const hasLocalData = input.data.trees.length > 0 && !isPristineDefault(input.data);
+    if (!hasCloudData) {
+      if (input.canWrite) return resolveCopies({ ...input, resolution: "device" }, remotes);
+      const pendingChanges = input.data.trees.length + remotes.length;
+      return { data: input.data, mappings: [], phase: pendingChanges ? "pending" : "upToDate", pendingChanges };
+    }
+    if (!hasLocalData) return resolveCopies({ ...input, resolution: "cloud" }, remotes);
+    if (input.canWrite) return resolveCopies({ ...input, resolution: "both" }, remotes);
+    return {
+      data: input.data,
+      mappings: [],
+      phase: "pending",
+      pendingChanges: input.data.trees.length
+    };
+  }
+
   const remoteById = new Map(remotes.map((tree) => [tree.treeId, tree]));
   const mappingByLocal = new Map(input.mappings.map((mapping) => [mapping.localTreeId, mapping]));
   const mappingByRemote = new Map(input.mappings.map((mapping) => [mapping.remoteTreeId, mapping]));
   let data = input.data;
-  if (input.mappings.length === 0 && remotes.some((tree) => tree.revision > 0) && isPristineDefault(data)) {
-    data = withoutTree(data, data.trees[0]!.id);
-  }
 
   const localById = new Map(data.trees.map((tree) => [tree.id, tree]));
   const unmappedLocal = data.trees.filter((tree) => !mappingByLocal.has(tree.id));

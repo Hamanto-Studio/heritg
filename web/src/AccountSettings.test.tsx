@@ -127,6 +127,71 @@ describe("account settings", () => {
     expect(container.textContent).toContain("person@example.com");
   });
 
+  it("retries a failed Google exchange with fresh login material and button state", async () => {
+    let googleRequests = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith("/google")) {
+        googleRequests += 1;
+        return googleRequests === 1
+          ? new Response(JSON.stringify({ error: { code: "service_unavailable", message: "Retry" } }), { status: 503 })
+          : new Response(JSON.stringify({
+            accountId: "c".repeat(22),
+            name: "Test User",
+            email: "person@example.com",
+            csrfToken: token,
+            expiresAt: "2026-09-23T10:10:00.000Z"
+          }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ nonce: token, state, expiresAt: "2026-08-23T10:10:00.000Z" }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const initialize = vi.fn();
+    const renderButton = vi.fn();
+    const cancel = vi.fn();
+    const disableAutoSelect = vi.fn();
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<AccountSettings googleClientId="staging.apps.googleusercontent.com" language="en" t={createTranslator("en")} />);
+    });
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+    window.google = { accounts: { id: { initialize, renderButton, cancel, disableAutoSelect } } } as GoogleIdentity;
+    const script = document.querySelector<HTMLScriptElement>(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`);
+    await act(async () => {
+      script?.dispatchEvent(new Event("load"));
+      await Promise.resolve();
+    });
+
+    const firstCallback = initialize.mock.calls[0]?.[0]?.callback as ((value: { credential: string }) => void) | undefined;
+    await act(async () => {
+      firstCallback?.({ credential: "first-proof" });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Google sign-in could not be prepared");
+
+    const retry = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Try again"));
+    await act(async () => retry?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+    await act(async () => Promise.resolve());
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(disableAutoSelect).toHaveBeenCalledOnce();
+    expect(initialize).toHaveBeenCalledTimes(2);
+    expect(renderButton).toHaveBeenCalledTimes(2);
+
+    const secondCallback = initialize.mock.calls[1]?.[0]?.callback as ((value: { credential: string }) => void) | undefined;
+    await act(async () => {
+      secondCallback?.({ credential: "second-proof" });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Signed in");
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/login-nonce"))).toHaveLength(2);
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/google"))).toHaveLength(2);
+  });
+
   it("ignores a GIS credential delivered after unmount", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       void input;

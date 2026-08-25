@@ -164,6 +164,27 @@ npm --prefix web run dns:staging:remove-beta
 That command refuses deletion if the beta record differs from the known legacy
 staging target.
 
+## Production authentication build
+
+Production candidates must explicitly inject the public production-only Google
+Web client ID and Turnstile site key. The guarded command rejects the staging
+Google client, an unexpected backend origin, and missing values, then creates a
+production-targeted Vercel deployment without assigning `heritg.us`:
+
+```sh
+HERITG_API_ORIGIN=https://PRODUCTION-SERVICE.run.app \
+HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
+HERITG_TURNSTILE_SITE_KEY=PRODUCTION_PUBLIC_WIDGET_KEY \
+npm --prefix web run deploy:stage
+```
+
+The Google client must authorize exactly `https://heritg.us`. The Turnstile
+widget must authorize `heritg.us` and issue action `email_login`; its secret
+stays only in production GCP Secret Manager. Verify the immutable Vercel URL,
+including `/auth/email`, account-route proxying, Google popup behavior, and a
+controlled magic-link lifecycle before running `deploy:promote`. Never use the
+staging deployment command or staging identity values for production.
+
 ## Local review
 
 Use different ports so an existing app service worker cannot mask either page:

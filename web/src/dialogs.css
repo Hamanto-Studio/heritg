@@ -983,6 +983,19 @@
   margin-top: 3px;
 }
 
+.settings-intro {
+  margin-bottom: 20px;
+}
+
+.settings-intro h3 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  margin-bottom: 7px;
+}
+
+.settings-intro p,
 .settings-detail {
   color: var(--subtle);
   font-size: 0.86rem;
@@ -1039,6 +1052,7 @@
   display: grid;
   gap: 10px;
 }
+.account-google-error { display: grid; gap: 8px; justify-items: center; }
 
 .account-google-button {
   background: #fff;
@@ -1216,6 +1230,29 @@
   background: color-mix(in srgb, var(--family-plus) 8%, var(--base));
   border-color: color-mix(in srgb, var(--family-plus) 48%, var(--family-plus-line));
 }
+.pro-settings-card .settings-title-line { flex-wrap: nowrap; }
+.pro-settings-card .settings-title-line > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pro-settings-card .settings-title-line > strong { min-width: 0; }
+.pro-settings-card .settings-detail {
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  overflow: hidden;
+}
+.pro-settings-card .pro-expiry {
+  color: var(--subtle);
+  display: grid;
+  font-size: 0.8rem;
+  gap: 2px;
+  margin-top: 7px;
+}
+.pro-settings-card .pro-expiry strong { color: var(--ink); }
+.pro-settings-card .pro-badge,
+.pro-settings-card .sync-status { flex: 0 0 auto; }
 .pro-settings-sync {
   align-items: flex-start;
   border-top: 1px solid var(--family-plus-line);
@@ -1225,6 +1262,14 @@
 }
 .pro-settings-sync > svg { color: var(--family-plus-deep); flex: 0 0 auto; margin-top: 1px; }
 .pro-settings-sync > div { min-width: 0; }
+.sync-error-message {
+  color: var(--danger);
+  font-size: 0.76rem;
+  line-height: 1.4;
+  margin: 6px 0 0;
+  max-width: 46ch;
+  overflow-wrap: anywhere;
+}
 .pro-badge,
 .sync-status {
   border: 1px solid var(--line);

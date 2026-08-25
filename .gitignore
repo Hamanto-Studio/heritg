@@ -46,6 +46,7 @@ captures/
 .cxx/
 .vercel/
 .vercel-cli-cache/
+secrets/
 *.ged
 web/.heritg-debug-context.json
 web/.heritg-debug-context.tmp

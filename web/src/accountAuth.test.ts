@@ -33,6 +33,7 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  window.localStorage.clear();
 });
 
 describe("account session notifications", () => {
@@ -156,6 +157,61 @@ describe("account authentication API", () => {
     }));
   });
 
+  it("accepts the deployed account contract during the profile rollout", async () => {
+    const sessionFetch = vi.fn(async () => jsonResponse({ accountId, expiresAt }));
+    await expect(getAccountSession(undefined, sessionFetch)).resolves.toEqual({
+      accountId,
+      name: null,
+      email: null,
+      expiresAt
+    });
+
+    const loginFetch = vi.fn(async () => jsonResponse({ accountId, csrfToken: token, expiresAt }));
+    await expect(loginWithGoogle("google-proof", { nonce: token, state }, undefined, loginFetch)).resolves.toEqual({
+      accountId,
+      name: null,
+      email: null,
+      csrfToken: token,
+      expiresAt
+    });
+  });
+
+  it("keeps a backend-accepted Google profile visible across deployed sessions", async () => {
+    const payload = btoa(JSON.stringify({ name: "Test User", email: "person@example.com", email_verified: true }))
+      .replace(/=/gu, "").replace(/\+/gu, "-").replace(/\//gu, "_");
+    const credential = `header.${payload}.signature`;
+    const loginFetch = vi.fn(async () => jsonResponse({ accountId, csrfToken: token, expiresAt }));
+    await expect(loginWithGoogle(credential, { nonce: token, state }, undefined, loginFetch)).resolves.toMatchObject({
+      name: "Test User",
+      email: "person@example.com"
+    });
+
+    const sessionFetch = vi.fn(async () => jsonResponse({ accountId, expiresAt }));
+    await expect(getAccountSession(undefined, sessionFetch)).resolves.toEqual({
+      accountId,
+      name: "Test User",
+      email: "person@example.com",
+      expiresAt
+    });
+  });
+
+  it("does not retry email requests without Turnstile proof after schema rejection", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      void _input; void _init;
+      return jsonResponse({ error: { code: "invalid_request", message: "Request validation failed" } }, 400);
+    });
+
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, fetchMock)).rejects.toMatchObject({
+      status: 400,
+      code: "invalid_request"
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: "person@example.com",
+      turnstileToken: "turnstile-proof"
+    });
+  });
+
   it("logs out with the CSRF header and an empty JSON object", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;
@@ -242,7 +298,7 @@ describe("account browser boundaries", () => {
     vi.useFakeTimers();
     const stalled = loadGoogleIdentity();
     const stalledRejection = expect(stalled).rejects.toMatchObject({ code: "identity_unavailable" });
-    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(20_000);
     await stalledRejection;
     vi.useRealTimers();
     expect(document.querySelector(`script[src="${GOOGLE_IDENTITY_SCRIPT}"]`)).toBeNull();

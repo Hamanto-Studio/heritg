@@ -253,6 +253,51 @@ try {
   const deepHtml = await deepRoute.text();
   if (!deepHtml.includes('<div id="root"></div>')) failures.push("SPA deep-link fallback did not return the app shell");
 
+  const emailCallback = await request("auth/email");
+  const emailCallbackHtml = await emailCallback.text();
+  if (!emailCallbackHtml.includes('<div id="root"></div>')) failures.push("email callback did not return the app shell");
+
+  const session = await fetchWithContext(new URL("/api/v1/auth/session", appBase.origin), {
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error"
+  });
+  checked.push(`${session.status} /api/v1/auth/session`);
+  if (session.status !== 401) failures.push("anonymous account session request did not return 401");
+
+  const nonceResponse = await fetchWithContext(new URL("/api/v1/auth/login-nonce", appBase.origin), {
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error"
+  });
+  checked.push(`${nonceResponse.status} /api/v1/auth/login-nonce`);
+  const nonce = await nonceResponse.json().catch(() => undefined);
+  const nonceKeys = nonce && typeof nonce === "object" && !Array.isArray(nonce) ? Object.keys(nonce).sort() : [];
+  if (nonceResponse.status !== 200 || nonceKeys.join(",") !== "expiresAt,nonce,state" ||
+      !TOKEN_PATTERN.test(nonce?.nonce) || !TOKEN_PATTERN.test(nonce?.state) ||
+      !Number.isFinite(Date.parse(nonce?.expiresAt))) {
+    failures.push("Google login nonce route did not return the strict authentication contract");
+  }
+
+  const emailReadiness = await fetchWithContext(new URL("/api/v1/auth/email/request", appBase.origin), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      origin: appBase.origin,
+      "sec-fetch-site": "same-origin"
+    },
+    body: "{}",
+    cache: "no-store",
+    credentials: "omit",
+    redirect: "error",
+    referrerPolicy: "no-referrer"
+  });
+  checked.push(`${emailReadiness.status} /api/v1/auth/email/request`);
+  const emailError = await emailReadiness.json().catch(() => undefined);
+  if (emailReadiness.status !== 400 || emailError?.error?.code !== "invalid_request") {
+    failures.push("production email authentication is not enabled with the strict request contract");
+  }
+
   const health = await request("health");
   try {
     const healthBody = await health.json();

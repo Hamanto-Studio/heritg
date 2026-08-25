@@ -29,6 +29,7 @@ type GoogleStatus = "idle" | "preparing" | "ready" | "signingIn" | "error";
 type SignInMethod = "google" | "email";
 type ActionError = "logout" | "delete";
 const EMAIL_RESEND_SECONDS = 60;
+const GOOGLE_REQUEST_TIMEOUT_MS = 20_000;
 class EmailCooldownState {
   private deadline = 0;
 
@@ -85,6 +86,7 @@ export function AccountSettings({
   const [maskedEmail, setMaskedEmail] = useState<string>();
   const [cooldown, setCooldown] = useState(() => cooldownState.remaining());
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>("idle");
+  const [googleAttempt, setGoogleAttempt] = useState(0);
   const [signInMethod, setSignInMethod] = useState<SignInMethod>("google");
   const requestedEmail = useRef<string | undefined>(undefined);
   const loginMaterial = useRef<LoginMaterial | undefined>(undefined);
@@ -244,6 +246,18 @@ export function AccountSettings({
     void sendEmail(address, turnstileToken);
   };
 
+  const retryGoogle = () => {
+    activeRequest.current?.abort();
+    activeRequest.current = undefined;
+    loginMaterial.current = undefined;
+    googleIdentity.current?.accounts.id.cancel?.();
+    googleIdentity.current?.accounts.id.disableAutoSelect();
+    googleIdentity.current = undefined;
+    googleButton.current?.replaceChildren();
+    setGoogleAttempt((current) => current + 1);
+    setGoogleStatus("idle");
+  };
+
   useEffect(() => {
     if (status !== "anonymous" || signInMethod !== "google" || googleStatus !== "idle") return;
     const prepare = async () => {
@@ -255,6 +269,7 @@ export function AccountSettings({
       activeRequest.current?.abort();
       const controller = new AbortController();
       activeRequest.current = controller;
+      const timeout = window.setTimeout(() => controller.abort(), GOOGLE_REQUEST_TIMEOUT_MS);
       try {
         const [material, google] = await Promise.all([
           getLoginMaterial(controller.signal),
@@ -278,6 +293,7 @@ export function AccountSettings({
             activeRequest.current?.abort();
             const loginController = new AbortController();
             activeRequest.current = loginController;
+            const loginTimeout = window.setTimeout(() => loginController.abort(), GOOGLE_REQUEST_TIMEOUT_MS);
             void loginWithGoogle(credential, currentMaterial, loginController.signal)
               .then((result) => {
                 if (!mounted.current || loginController.signal.aborted) return;
@@ -292,13 +308,16 @@ export function AccountSettings({
                 notifyAccountSessionChanged();
               })
               .catch(() => {
-                if (mounted.current && !loginController.signal.aborted) setGoogleStatus("error");
-              });
+                if (mounted.current && activeRequest.current === loginController) setGoogleStatus("error");
+              })
+              .finally(() => window.clearTimeout(loginTimeout));
           }
         });
         setGoogleStatus("ready");
       } catch {
-        if (mounted.current && !controller.signal.aborted) setGoogleStatus("error");
+        if (mounted.current && activeRequest.current === controller) setGoogleStatus("error");
+      } finally {
+        window.clearTimeout(timeout);
       }
     };
     const timer = window.setTimeout(() => void prepare(), 0);
@@ -382,12 +401,15 @@ export function AccountSettings({
                 <div className="account-google-primary">
                   {googleStatus === "idle" || googleStatus === "preparing" || googleStatus === "ready" || googleStatus === "signingIn" ? (
                     <div className="google-sign-in">
-                      <div aria-label={t("accountGoogleButton")} ref={googleButton} />
+                      <div aria-label={t("accountGoogleButton")} key={googleAttempt} ref={googleButton} />
                       {googleStatus === "idle" || googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
                       {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
                     </div>
                   ) : null}
-                  {googleStatus === "error" ? <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p> : null}
+                  {googleStatus === "error" ? <div className="account-google-error">
+                    <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p>
+                    {googleClientId ? <button className="button secondary" onClick={retryGoogle} type="button">{t("accountRetry")}</button> : null}
+                  </div> : null}
                 </div>
                 <div className="account-method-divider"><span>{t("accountOr")}</span></div>
                 <button className="button ghost account-method-switch" onClick={() => setSignInMethod("email")} type="button">

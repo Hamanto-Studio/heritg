@@ -7,7 +7,7 @@ import type { AccountState, ProContextValue, ProOffer, SubscriptionState, SyncSt
 import { unavailableProContext } from "./proTypes";
 import { syncDataFingerprint, syncTreeVersion, type AppStoreValue } from "./store";
 
-interface EntitlementResponse {
+export interface EntitlementResponse {
   appUserId: string;
   entitlementId: "family";
   plan: "free" | "family";
@@ -73,7 +73,7 @@ export const requestBillingCheckout = async (
   return destination.href;
 };
 
-const subscriptionFromEntitlement = (
+export const subscriptionFromEntitlement = (
   entitlement: EntitlementResponse
 ): SubscriptionState => {
   if (entitlement.access === "active") {
@@ -85,13 +85,25 @@ const subscriptionFromEntitlement = (
     };
   }
   if (entitlement.access === "read_only") {
-    return { status: "expired", expiredAt: entitlement.graceEndsAt ?? undefined, offer: entitlement.offer };
+    return {
+      status: "readOnly",
+      expiresAt: entitlement.expiresAt ?? undefined,
+      graceEndsAt: entitlement.graceEndsAt ?? undefined,
+      offer: entitlement.offer,
+      manageUrl: entitlement.managementUrl ?? undefined
+    };
   }
+  if (entitlement.expiresAt) return { status: "expired", expiresAt: entitlement.expiresAt, offer: entitlement.offer };
   return { status: "free", offer: entitlement.offer };
 };
 
-export function ProProvider({ children, value, appStore }: { children: ReactNode; value?: ProContextValue; appStore?: AppStoreValue }) {
-  const configured = __FAMILY_BILLING_ENABLED__;
+export function ProProvider({
+  children,
+  value,
+  appStore,
+  billingEnabled = __FAMILY_BILLING_ENABLED__
+}: { children: ReactNode; value?: ProContextValue; appStore?: AppStoreValue; billingEnabled?: boolean }) {
+  const configured = billingEnabled;
   const [account, setAccount] = useState<AccountState>(readCsrfCookie() ? { status: "loading" } : { status: "signedOut" });
   const [subscription, setSubscription] = useState<SubscriptionState>(configured ? { status: "loading" } : { status: "unavailable" });
   const [sync, setSync] = useState<SyncState>({ enabled: false, phase: "unavailable", pendingChanges: 0 });
@@ -105,6 +117,20 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
   const sessionGenerationRef = useRef(0);
   const currentAccountIdRef = useRef<string | undefined>(undefined);
 
+  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
+    const nextSubscription = subscriptionFromEntitlement(entitlement);
+    setSubscription(nextSubscription);
+    setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
+    setSync((current) => preserveDisabledSync && entitlement.canRead && current.phase === "disabled"
+      ? { ...current, error: undefined }
+      : {
+          enabled: entitlement.canRead,
+          phase: entitlement.canRead ? "comparing" : "subscriptionRequired",
+          pendingChanges: 0
+        });
+    return nextSubscription;
+  }, []);
+
   const applySession = useCallback(async (session: AccountSession, generation = sessionGenerationRef.current) => {
     if (generation !== sessionGenerationRef.current) return;
     currentAccountIdRef.current = session.accountId;
@@ -115,16 +141,17 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       setSync({ enabled: false, phase: "unavailable", pendingChanges: 0 });
       return;
     }
+    const csrfToken = readCsrfCookie();
+    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
+    await jsonRequest("/api/v1/entitlements/refresh", {
+      method: "POST",
+      headers: { "x-csrf-token": csrfToken },
+      body: "{}"
+    });
     const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== session.accountId) return;
-    setSubscription(subscriptionFromEntitlement(entitlement));
-    setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
-    setSync({
-      enabled: entitlement.canRead,
-      phase: entitlement.canRead ? "comparing" : "subscriptionRequired",
-      pendingChanges: 0
-    });
-  }, [configured]);
+    applyEntitlement(entitlement);
+  }, [applyEntitlement, configured]);
 
   const loadSession = useCallback(async () => {
     const generation = ++sessionGenerationRef.current;
@@ -172,6 +199,31 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       unsubscribe();
     };
   }, [loadSession, value]);
+
+  const refreshEntitlement = useCallback(async () => {
+    if (account.status !== "signedIn") return undefined;
+    const csrfToken = readCsrfCookie();
+    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
+    const accountId = account.user.id;
+    const generation = sessionGenerationRef.current;
+    await jsonRequest("/api/v1/entitlements/refresh", {
+      method: "POST",
+      headers: { "x-csrf-token": csrfToken },
+      body: "{}"
+    });
+    const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
+    if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== accountId) return undefined;
+    return applyEntitlement(entitlement, true);
+  }, [account, applyEntitlement]);
+
+  useEffect(() => {
+    if (value || account.status !== "signedIn") return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshEntitlement().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [account.status, refreshEntitlement, value]);
 
   const runSync = useCallback(async (resolution?: "device" | "cloud" | "both") => {
     if (value || !appStore?.ready || !appStore.data || account.status !== "signedIn" || !syncAccess.canRead || (!sync.enabled && !resolution)) return;
@@ -283,17 +335,6 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
   if (value) return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
-  const refreshEntitlement = async () => {
-    if (account.status !== "signedIn") return;
-    const csrfToken = readCsrfCookie();
-    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
-    await jsonRequest("/api/v1/entitlements/refresh", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-      body: "{}"
-    });
-    await applySession({ accountId: account.user.id, name: account.user.name, email: account.user.email, expiresAt: account.user.expiresAt });
-  };
   const purchase = async () => {
     if (account.status !== "signedIn") return;
     const csrfToken = readCsrfCookie();
@@ -309,7 +350,13 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
     setError(undefined);
     setSubscription({ status: "purchasing", offer });
     try {
-      window.location.assign(await requestBillingCheckout(account.user.id, csrfToken));
+      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken);
+      const refreshed = await refreshEntitlement().catch(() => undefined);
+      if (refreshed?.status === "active") {
+        setPaywallOpen(false);
+        return;
+      }
+      window.location.assign(paymentLink);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setError(message);

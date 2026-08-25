@@ -7,6 +7,10 @@ import {
   STAGING_GOOGLE_CLIENT_ID,
   validateStagingAuthConfig
 } from "./staging-auth-config.mjs";
+import {
+  PRODUCTION_API_ORIGIN,
+  validateProductionAuthConfig
+} from "./production-auth-config.mjs";
 
 const readJson = (name) => JSON.parse(readFileSync(resolve(process.cwd(), name), "utf8"));
 
@@ -54,6 +58,31 @@ describe("account authentication deployment policy", () => {
     expect(deploy).toContain('git", ["rev-parse", "--short=7", "HEAD"]');
     expect(deploy).toContain('mkdtempSync(join(tmpdir(), "heritg-staging-deploy-")');
     expect(deploy).toContain('["node_modules", "dist", ".vercel"]');
+  });
+
+  it("allows the signed multipart synchronization upload from staging", () => {
+    const cors = readJson("deploy/staging-storage-cors.json");
+    expect(cors).toEqual([expect.objectContaining({
+      origin: ["https://staging.heritg.us"],
+      method: expect.arrayContaining(["GET", "HEAD", "POST"])
+    })]);
+  });
+
+  it("requires production-only identity configuration for production builds", () => {
+    const deploy = readFileSync(resolve(process.cwd(), "scripts/deploy-production.mjs"), "utf8");
+    expect(deploy).toContain("validateProductionAuthConfig(origin, googleClientId, turnstileSiteKey)");
+    expect(deploy).toContain("`HERITG_GOOGLE_CLIENT_ID=${googleClientId}`");
+    expect(deploy).toContain("`HERITG_TURNSTILE_SITE_KEY=${turnstileSiteKey}`");
+    expect(deploy).toContain("HERITG_DEPLOYMENT_ENV=production");
+    expect(deploy).toContain('"--skip-domain"');
+
+    const productionClient = "123456-production.apps.googleusercontent.com";
+    expect(validateProductionAuthConfig(undefined, undefined, undefined)).toContain("HERITG_API_ORIGIN");
+    expect(validateProductionAuthConfig("not-a-url", productionClient, "site-key")).toContain("valid URL");
+    expect(validateProductionAuthConfig(STAGING_API_ORIGIN, productionClient, "site-key")).toContain("production service");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, STAGING_GOOGLE_CLIENT_ID, "site-key")).toContain("production-only");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, productionClient, undefined)).toContain("TURNSTILE");
+    expect(validateProductionAuthConfig(PRODUCTION_API_ORIGIN, productionClient, "site-key")).toBeUndefined();
   });
 
   it("keeps every account API request network-only in the service worker", () => {

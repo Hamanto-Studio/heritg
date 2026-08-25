@@ -1,7 +1,7 @@
 [
   {
     "origin": ["https://staging.heritg.us"],
-    "method": ["GET", "HEAD", "PUT"],
+    "method": ["GET", "HEAD", "POST", "PUT"],
     "responseHeader": [
       "Content-Type",
       "ETag",
