@@ -53,6 +53,7 @@ export interface PlannedNonParentRoute {
 
 export interface PlannedCrossing extends RoutePoint {
   kind: FamilyRelationship["kind"];
+  horizontalKind: FamilyRelationship["kind"];
 }
 
 export interface ConnectionPlan {
@@ -552,8 +553,9 @@ export function createConnectionPlan(
       const sharedTerminal = sharedIds.length > 0 &&
         [first.segments[0]?.start, first.segments.at(-1)?.end].some((terminal) => terminal && pointsEqual(terminal, point)) &&
         [second.segments[0]?.start, second.segments.at(-1)?.end].some((terminal) => terminal && pointsEqual(terminal, point));
+      const horizontalKind = segmentOrientation(left) === "horizontal" ? first.kind : second.kind;
       const verticalKind = segmentOrientation(left) === "vertical" ? first.kind : second.kind;
-      if (!sharedTerminal) crossings.push({ ...point, kind: verticalKind });
+      if (!sharedTerminal) crossings.push({ ...point, kind: verticalKind, horizontalKind });
     }));
   }));
   crossings.sort((left, right) => left.y - right.y || left.x - right.x);

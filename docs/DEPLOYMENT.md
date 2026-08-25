@@ -79,38 +79,42 @@ Verify Google sign-in, session restoration, sign-out, and account deletion with
 a synthetic staging identity. These account checks do not upload or alter the
 browser's local family tree.
 
-Create a preview candidate from the repository root:
+Deploy the current worktree directly to staging from any branch:
 
 ```sh
 HERITG_STAGING_API_ORIGIN=https://STAGING-SERVICE.run.app \
 HERITG_GOOGLE_CLIENT_ID=1079742937646-76202p8a4fjf7hbef5cijvc003oauu3e.apps.googleusercontent.com \
+HERITG_TURNSTILE_SITE_KEY=STAGING_PUBLIC_WIDGET_KEY \
 npm --prefix web run deploy:staging
 ```
 
 The command renders a gitignored `web/vercel.staging.json`, sets
-`HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID
-for the Vite build, and creates a preview only in Vercel project
-`heritg-staging`. The Google client must authorize exactly
-`https://staging.heritg.us`; do not reuse a production client. The candidate
-cannot replace the current staging deployment before verification. After
-responsive, synthetic-data, and encrypted-sharing compatibility checks, promote
-the exact candidate:
+`HERITG_DEPLOYMENT_ENV=staging` and the public staging-only Google Web client ID,
+enables the account/Family+ integration for staging verification, and deploys
+directly to the isolated `heritg-staging` Vercel project. The Google
+client must authorize exactly `https://staging.heritg.us`; do not reuse a
+production client.
+
+The backend still fails closed unless the `heritg-be` repository variable
+`STAGING_FAMILY_SYNC_ENABLED` is exactly `true`. Set it and deploy the staging
+backend before testing cross-device synchronization; the Web build flag alone
+does not grant read or write access.
+
+Staging may be deployed from any branch and a dirty worktree. It does not
+require approval, a commit, `main`, a release branch, tests, manual verification,
+or a candidate promotion. The visible build identifier is generated as
+`<short-sha>[-dirty]-<UTC timestamp>` so every staging screen can be matched to
+the deployed code state. The script deploys a temporary copy of the current Web
+worktree without `.git` metadata, so Vercel commit-author attribution does not
+restrict staging deployment to a particular branch or author.
 
 Vercel attributes CLI deployments to the current Git commit author. That
 author email must belong to a member of the Vercel project; otherwise Vercel
 marks the deployment `BLOCKED` before running the build. Resolve account
 attribution before retrying rather than promoting or aliasing a blocked build.
 
-```sh
-npm --prefix web run deploy:staging:promote -- https://CANDIDATE.vercel.app
-```
-
-Promotion runs the complete encrypted upload, activation, download, decryption,
-and revocation verifier before and after assigning `staging.heritg.us`. Staging
-verification skips the separate GitHub Pages landing check; production
-verification continues to require it. The staging command promotes by assigning
-the canonical alias to the exact tested preview; it never rebuilds that preview
-under a different Vercel environment.
+Production release preparation, candidate verification, promotion approval,
+tagging, and publication remain unchanged and must never use this staging path.
 
 ## Production Account Authentication
 

@@ -175,6 +175,20 @@
   }
 }
 
+@media (orientation: landscape) and (max-height: 820px) {
+  .tree-sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .tree-list {
+    flex: 0 0 auto;
+    min-height: 72px;
+    overflow: visible;
+    padding-bottom: 8px;
+  }
+}
+
 @media (orientation: landscape) and (max-height: 520px) {
   .empty-canvas {
     align-items: center;
@@ -219,20 +233,8 @@
     white-space: nowrap;
   }
 
-  .tree-sidebar {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
   .sidebar-brand {
     padding-bottom: 14px;
-  }
-
-  .tree-list {
-    flex: 0 0 auto;
-    min-height: 72px;
-    overflow: visible;
-    padding-bottom: 8px;
   }
 
   .welcome-canvas {

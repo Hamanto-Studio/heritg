@@ -68,12 +68,8 @@ export function SettingsDialog({
 
   return (
     <SidePanel closeLabel={t("close")} onClose={onClose} title={t("settings")}>
-      <div className="settings-intro">
-        <h3>{t("privateSimple")}</h3>
-        <p>{t(pro.sync.enabled ? "privateSyncDescription" : "privateDescription")}</p>
-      </div>
 
-      <ProSettings onOpenPaywall={pro.openPaywall} pro={pro} t={t} />
+      <ProSettings language={data.language} onOpenPaywall={pro.openPaywall} pro={pro} t={t} />
 
       <AccountSettings language={data.language} t={t} />
 

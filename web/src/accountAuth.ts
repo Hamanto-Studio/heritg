@@ -187,12 +187,14 @@ export const loginWithGoogle = async (
   material: Pick<LoginMaterial, "nonce" | "state">,
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
-): Promise<LoginResult> => parseLogin(await request("/google", {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
-  signal
-}, fetchImpl));
+): Promise<LoginResult> => {
+  return parseLogin(await request("/google", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
+    signal
+  }, fetchImpl));
+};
 
 export const isConservativeEmail = (value: string): boolean => {
   if (value.length > 254 || value !== value.trim() || /[\s\u0000-\u001f\u007f]/u.test(value)) return false;
@@ -216,14 +218,15 @@ export const maskEmail = (value: string): string | undefined => {
 
 export const requestEmailLogin = async (
   email: string,
+  turnstileToken: string,
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
 ): Promise<void> => parseEmailRequest(await request("/email/request", {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ email }),
-  signal
-}, fetchImpl, 202));
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email, turnstileToken }),
+    signal
+  }, fetchImpl, 202));
 
 export const verifyEmailLogin = async (
   token: string,
@@ -243,9 +246,9 @@ export const getAccountSession = async (
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
 ): Promise<AccountSession> => parseSession(await request("/session", {
-  method: "GET",
-  signal
-}, fetchImpl));
+    method: "GET",
+    signal
+  }, fetchImpl));
 
 export const logoutAccount = async (
   csrfToken: string,

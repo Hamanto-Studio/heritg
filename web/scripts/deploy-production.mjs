@@ -63,7 +63,7 @@ const deploymentOutput = execFileSync("npx", [
   "--build-env",
   `HERITG_GOOGLE_CLIENT_ID=${googleClientId}`,
   "--build-env",
-  "HERITG_FAMILY_BILLING_ENABLED=false"
+  "HERITG_FAMILY_BILLING_ENABLED=true"
 ], { cwd: repositoryRoot, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
 process.stdout.write(deploymentOutput);
 

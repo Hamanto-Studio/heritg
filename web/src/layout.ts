@@ -587,9 +587,33 @@ export function createTreeLayout(
   }
 
   // Let wide descendant branches pull their parents apart instead of crossing nearby family rails.
+  const blockChildCenter = (
+    block: ReturnType<typeof orderRow>[number],
+    generation: number
+  ) => {
+    const memberIds = new Set(block.members.map((person) => person.id));
+    const children = orderedRelationships
+      .filter((relationship) => relationship.kind === "parent" && memberIds.has(relationship.fromPersonId))
+      .map((relationship) => positioned.get(relationship.toPersonId))
+      .filter((person): person is PositionedPerson =>
+        person !== undefined && person.generation > generation
+      );
+    if (children.length === 0) {
+      const members = block.members.map((person) => positioned.get(person.id)!);
+      return (members[0].x + members.at(-1)!.x) / 2;
+    }
+    const nearestGeneration = Math.min(...children.map((person) => person.generation));
+    const xs = children.filter((person) => person.generation === nearestGeneration)
+      .map((person) => person.x);
+    return (Math.min(...xs) + Math.max(...xs)) / 2;
+  };
   for (let rowIndex = rowGenerations.length - 2; rowIndex >= 0; rowIndex -= 1) {
     const generation = rowGenerations[rowIndex];
-    const blocks = blocksByGeneration.get(generation) ?? [];
+    const blocks = [...(blocksByGeneration.get(generation) ?? [])].sort((left, right) =>
+      blockChildCenter(left, generation) - blockChildCenter(right, generation) ||
+      compareText(left.key, right.key)
+    );
+    blocksByGeneration.set(generation, blocks);
     let nextX: number | undefined;
     blocks.forEach((block, blockIndex) => {
       const memberIds = new Set(block.members.map((person) => person.id));
@@ -672,6 +696,48 @@ export function createTreeLayout(
         person.x += shift;
       });
     }
+  }
+
+  // Ancestor alignment can move branches after their rows were laid out. Sweep downward
+  // once more from the updated parent positions to regroup siblings and remove crossings.
+  for (const generation of rowGenerations) {
+    const parentStart = (block: ReturnType<typeof orderRow>[number]) => {
+      const memberIndex = new Map(block.members.map((person, index) => [person.id, index]));
+      const starts = orderedRelationships
+        .filter((relationship) => relationship.kind === "parent" && memberIndex.has(relationship.toPersonId))
+        .map((relationship) => {
+          const parentX = positioned.get(relationship.fromPersonId)?.x;
+          const index = memberIndex.get(relationship.toPersonId)!;
+          return parentX === undefined
+            ? undefined : parentX - index * LAYOUT_METRICS.horizontalSpacing;
+        })
+        .filter((value): value is number => value !== undefined);
+      return starts.length > 0
+        ? starts.reduce((sum, value) => sum + value, 0) / starts.length
+        : positioned.get(block.members[0].id)!.x;
+    };
+    const hasDescendants = (block: ReturnType<typeof orderRow>[number]) => {
+      const ids = new Set(block.members.map((person) => person.id));
+      return orderedRelationships.some((relationship) =>
+        relationship.kind === "parent" && ids.has(relationship.fromPersonId)
+      );
+    };
+    const blocks = [...(blocksByGeneration.get(generation) ?? [])].sort((left, right) =>
+      parentStart(left) - parentStart(right) ||
+      Number(hasDescendants(left)) - Number(hasDescendants(right)) ||
+      compareText(left.key, right.key)
+    );
+    let nextX: number | undefined;
+    blocks.forEach((block, blockIndex) => {
+      const members = block.members.map((person) => positioned.get(person.id)!);
+      const gap = blockIndex > 0 && needsFamilyGap(blocks[blockIndex - 1], block)
+        ? LAYOUT_METRICS.familyGap : 0;
+      const desiredStart = generation === minimumGeneration ? members[0].x : parentStart(block);
+      const startX = nextX === undefined ? desiredStart : Math.max(desiredStart, nextX + gap);
+      const shift = startX - members[0].x;
+      if (shift !== 0) members.forEach((person) => { person.x += shift; });
+      nextX = members[0].x + members.length * LAYOUT_METRICS.horizontalSpacing;
+    });
   }
 
   const visibleRelationships = orderedRelationships.filter((relationship) => {

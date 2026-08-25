@@ -4,8 +4,9 @@ Effective date: August 24, 2026
 
 HERITG is developed by Hamanto Studio. It is designed to let people create and
 preserve family trees without creating an account. Web users may optionally
-use Google for account features. Family information remains local
-unless the user deliberately exports it or creates an encrypted share.
+use Google for account features. Family information remains local unless the
+user deliberately exports it, creates an encrypted share, or enables encrypted
+Family+ synchronization.
 
 This policy describes the official HERITG application represented by this
 repository. A modified or redistributed build may behave differently and is the
@@ -17,6 +18,8 @@ responsibility of its distributor.
 - Optional Google sign-in creates or restores a Heritg account after Google
   proves the identity to the environment-specific account service.
 - Family-tree data is stored locally on the user's device.
+- Family+ users may enable client-encrypted synchronization to private storage
+  in Jakarta. The service stores an encrypted recovery copy of each tree key.
 - Web users may create expiring read-only links; encryption happens in the browser and the sharing service receives ciphertext without its viewing key.
 - Core functionality does not require an internet connection.
 - HERITG does not currently include product analytics or crash-reporting SDKs.
@@ -34,10 +37,10 @@ relationships, dates, photographs, notes, and imported genealogy records. This
 information is stored in the app's local container using Apple platform storage
 technologies on iOS and IndexedDB in the user's browser on the web.
 
-Hamanto Studio operates an optional Web account system but does
-not currently operate hosted editable family-tree sync. The optional Web
-sharing service receives encrypted snapshots and lifecycle metadata, not
-plaintext, the share password, or its derived viewing key. Deleting a person, tree, or the application
+Hamanto Studio operates an optional Web account system and entitlement-gated
+encrypted synchronization. The synchronization and sharing services receive
+encrypted snapshots and lifecycle metadata, not family plaintext or viewing
+keys. Deleting a person, tree, or the application
 removes data according to the app, browser, and operating system behavior. Web
 users can also remove local data by clearing the site's browser storage. Device
 backups managed by Apple or browser-profile backup and synchronization features
@@ -84,14 +87,27 @@ Cloudflare provides authoritative DNS for `hamanto.com`; the HERITG hostname is
 configured as DNS-only, so Cloudflare resolves the hostname but does not proxy
 family-tree content or application traffic. A service worker may cache public
 assets in browser Cache Storage for offline use. HERITG does not send
-family-tree content from IndexedDB to Vercel or Cloudflare. It sends an encrypted
-snapshot to the sharing service only after the user creates a share link.
+family-tree content from IndexedDB to Vercel or Cloudflare. It sends encrypted
+snapshots to private storage only after the user creates a share link or enables
+Family+ synchronization.
 
 The encrypted-sharing service uses Cloud Run, Firestore, and private Cloud
 Storage in Jakarta. These services process ciphertext size, share state,
 creation and expiration times, short-lived signed transfer capabilities, and
 HMAC-pseudonymized rate-limit windows. Operational logs exclude request bodies,
 share capabilities, viewing keys, and family plaintext.
+
+### Encrypted Family+ Synchronization
+
+After Google sign-in and explicit Family+ activation, the user can enable
+synchronization. The browser encrypts each snapshot with an owner-held tree key
+before upload. Cloud Run, Firestore, and private Cloud Storage in Jakarta process
+only ciphertext, opaque account/tree identifiers, revisions, sizes, timestamps,
+and an encrypted recovery copy of the tree key. The backend can unwrap that key
+for an authenticated owner, so this is not end-to-end encryption against the
+service operator. Disabling synchronization is
+stored on the device and stops automatic transfers after in-flight work ends.
+Account or tree deletion removes the corresponding hosted synchronization data.
 
 Browser storage and its encryption key are isolated by origin. The public
 landing page is served at `family.heritg.us`, and the application is served
@@ -131,9 +147,9 @@ Deletion removes profile name/email, sessions, and hosted account content. A
 deletion tombstone, opaque account identifier, and hash-derived Google subject
 mapping remain to prevent reactivation of the deleted identity and enforce
 security and abuse controls.
-Google sign-in is optional and does not recover
-encryption keys, upload local trees, authorize anonymous shares, or make local
-editing depend on network access.
+Google sign-in alone does not upload local trees, authorize anonymous shares, or
+make local editing depend on network access. Family+ activation and the separate
+synchronization control are required before encrypted snapshots are transferred.
 
 ## Analytics
 

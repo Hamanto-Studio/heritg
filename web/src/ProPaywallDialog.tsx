@@ -1,32 +1,37 @@
-import { useState } from "react";
 import { FamilyPlusBenefits } from "./FamilyPlusBenefits";
 import type { Translator } from "./i18n";
-import { PaymentMethodLogos } from "./PaymentMethodLogos";
-import type { ProContextValue, SubscriptionPlan } from "./proTypes";
+import type { ProContextValue, ProOffer } from "./proTypes";
 import { ButtonLoader, ErrorNotice, Modal } from "./ui";
 
-const offersFor = (pro: ProContextValue) => "offers" in pro.subscription ? pro.subscription.offers : [];
+const offerFor = (pro: ProContextValue) => "offer" in pro.subscription ? pro.subscription.offer : undefined;
+const formattedPrice = (amount: number, currency: string) => new Intl.NumberFormat(
+  currency === "IDR" ? "id-ID" : "en-US",
+  { style: "currency", currency, maximumFractionDigits: currency === "IDR" ? 0 : 2 }
+).format(amount);
+
+const offerPrices = (offer: ProOffer | undefined) => offer ? {
+  monthly: formattedPrice(offer.price.amount / offer.accessMonths, offer.price.currency),
+  total: formattedPrice(offer.price.amount, offer.price.currency)
+} : undefined;
+
 export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
-  const [plan, setPlan] = useState<SubscriptionPlan>("five_year");
-  const offers = offersFor(pro);
-  const twoYear = offers.find((offer) => offer.plan === "two_year");
-  const fiveYear = offers.find((offer) => offer.plan === "five_year");
-  const effectivePlan = !fiveYear && twoYear ? "two_year" : plan;
-  const selectedOffer = effectivePlan === "five_year" ? fiveYear : twoYear;
+  const offer = offerFor(pro);
+  const prices = offerPrices(offer);
+  const freeAccess = offer?.price.amount === 0 || (!offer && pro.configured && __DEPLOYMENT_ENV__ === "production");
   const purchasing = pro.subscription.status === "purchasing";
+  const alreadyActive = pro.subscription.status === "active" || pro.subscription.status === "readOnly";
   const signedIn = pro.account.status === "signedIn";
   return <Modal closeLabel={t("close")} onClose={pro.closePaywall} size="medium" title={t("proPaywallTitle")}>
     <FamilyPlusBenefits t={t} />
-    <fieldset className="pro-plan-picker" disabled={purchasing || !pro.configured}><legend>{t("choosePlan")}</legend>
-      <label className={effectivePlan === "five_year" ? "selected" : ""}><input checked={effectivePlan === "five_year"} name="pro-plan" onChange={() => setPlan("five_year")} type="radio" /><span className="pro-plan-copy"><span><strong>{t("fiveYearPlan")}</strong><em>{t("bestValue")}</em></span><small>{fiveYear?.price ?? t("priceAtLaunch")}<span>{t("oneTimePayment")}</span></small></span></label>
-      <label className={effectivePlan === "two_year" ? "selected" : ""}><input checked={effectivePlan === "two_year"} name="pro-plan" onChange={() => setPlan("two_year")} type="radio" /><span className="pro-plan-copy"><span><strong>{t("twoYearPlan")}</strong></span><small>{twoYear?.price ?? t("priceAtLaunch")}<span>{t("oneTimePayment")}</span></small></span></label>
-    </fieldset>
+    <section className="pro-plan-picker" aria-labelledby="family-offer-title"><h3 id="family-offer-title">{t("choosePlan")}</h3>
+      <div className={`pro-plan-option ${offer ? "selected" : ""}`}><span className="pro-plan-copy"><span><strong>{freeAccess ? t("oneMonthFreeAccess") : offer ? t("familyAccessMonths", { count: offer.accessMonths }) : t("familyAccessOffer")}</strong><em>{freeAccess ? t("noPaymentRequired") : t("oneTimePayment")}</em></span><small>{freeAccess ? t("freeAccessPrice") : prices?.total ?? t("priceAtLaunch")}<span>{freeAccess ? t("freeAccessRenewal") : prices ? t("monthlyEquivalent", { price: prices.monthly }) : t("signInForPrice")}</span></small></span></div>
+    </section>
     {!pro.configured ? <div className="pro-availability" role="status"><strong>{t("proComingSoon")}</strong><span>{t("proComingSoonDetail")}</span></div> : null}
     {pro.configured && !signedIn ? <div className="pro-availability" role="status"><strong>{t("signInRequired")}</strong><span>{t("signInBeforePurchase")}</span></div> : null}
-    <div aria-label={t("indonesianPaymentMethods")}><PaymentMethodLogos cardLabel={t("bankCard")} /></div>
-    <p className="payment-provider-note">{t("secureCheckoutDetail")}</p>
+    <p className="payment-provider-note">{freeAccess ? t("freeAccessDetail") : t("secureCheckoutDetail")}</p>
     <ErrorNotice message={pro.error} />
-    <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !selectedOffer || purchasing} onClick={() => void pro.purchase(effectivePlan)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? t("openingCheckout") : !pro.configured ? t("subscriptionsComingSoon") : t("subscribeToPro")}</button>
-    <p className="pro-legal">{t("subscriptionLegal")}</p>
+    <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing || alreadyActive} onClick={() => void pro.purchase()} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? freeAccess ? t("activatingFreeAccess") : t("openingCheckout") : alreadyActive ? t("familyPlusActive") : !pro.configured ? t("subscriptionsComingSoon") : freeAccess ? t("claimFreeAccess") : t("subscribeToPro")}</button>
+    <p className="pro-legal-links">{t("purchaseAgreementPrefix")} <a href="/terms/" rel="noopener noreferrer" target="_blank">{t("termsOfUse")}</a> {t("purchaseAgreementAnd")} <a href="https://family.heritg.us/privacy/" rel="noopener noreferrer" target="_blank">{t("privacyPolicy")}</a>.</p>
+    <p className="pro-legal">{freeAccess ? t("freeAccessLegal") : t("subscriptionLegal")}</p>
   </Modal>;
 }

@@ -3,11 +3,11 @@ import { AccountAuthError, getAccountSession, readCsrfCookie, subscribeToAccount
 import { AccountSyncError, createAccountSyncClient } from "./accountSync";
 import { reconcileAccountSync } from "./accountSyncCoordinator";
 import { ACCOUNT_SYNC_LOCK_NAME, claimSyncOwnerAccountId, loadSyncMappings, loadSyncOwnerAccountId, saveSyncMetadata } from "./db";
-import type { AccountState, ProContextValue, ProOffer, SubscriptionPlan, SubscriptionState, SyncState } from "./proTypes";
+import type { AccountState, ProContextValue, ProOffer, SubscriptionState, SyncState } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 import { syncDataFingerprint, syncTreeVersion, type AppStoreValue } from "./store";
 
-interface EntitlementResponse {
+export interface EntitlementResponse {
   appUserId: string;
   entitlementId: "family";
   plan: "free" | "family";
@@ -18,17 +18,35 @@ interface EntitlementResponse {
   graceEndsAt: string | null;
   checkedAt: string | null;
   managementUrl: string | null;
+  offer: ProOffer;
 }
 
-interface BillingOffersResponse {
-  offers: ProOffer[];
-}
+export const syncFailureMessage = (cause: unknown, staging = __DEPLOYMENT_ENV__ === "staging") => {
+  if (!(cause instanceof AccountSyncError)) {
+    return cause instanceof Error ? cause.message : "Family synchronization could not be completed.";
+  }
+  return staging
+    ? `Family synchronization failed. Sync diagnostic: stage=${cause.stage}, code=${cause.code}, http=${cause.status}.`
+    : "Family synchronization could not be completed.";
+};
 
 interface BillingCheckoutResponse {
-  checkoutUrl: string;
+  paymentLinkUrl: string;
 }
 
 const ProContext = createContext<ProContextValue>(unavailableProContext);
+const SYNC_ENABLED_STORAGE_KEY = "heritg:family-sync-enabled";
+
+const readSyncEnabled = (): boolean | undefined => {
+  try {
+    const value = localStorage.getItem(SYNC_ENABLED_STORAGE_KEY);
+    return value === null ? undefined : value === "true";
+  } catch { return undefined; }
+};
+
+const saveSyncEnabled = (enabled: boolean): void => {
+  try { localStorage.setItem(SYNC_ENABLED_STORAGE_KEY, String(enabled)); } catch { /* Browser storage can be unavailable. */ }
+};
 
 const jsonRequest = async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
   const response = await fetch(path, {
@@ -54,25 +72,71 @@ const jsonRequest = async <T,>(path: string, init: RequestInit = {}): Promise<T>
   return body as T;
 };
 
-const subscriptionFromEntitlement = (
-  entitlement: EntitlementResponse,
-  offers: ProOffer[]
+export const requestBillingCheckout = async (
+  accountId: string,
+  csrfToken: string,
+  idempotencyKey: string = crypto.randomUUID()
+): Promise<string> => {
+  const result = await jsonRequest<BillingCheckoutResponse>("/api/v1/billing/checkouts", {
+    method: "POST",
+    headers: {
+      "idempotency-key": idempotencyKey,
+      "x-csrf-token": csrfToken,
+      "x-heritg-account-id": accountId
+    },
+    body: "{}"
+  });
+  if (!result || typeof result.paymentLinkUrl !== "string") {
+    throw new Error("The payment service returned an invalid response.");
+  }
+  const destination = new URL(result.paymentLinkUrl);
+  if (destination.protocol !== "https:") throw new Error("The checkout URL is invalid.");
+  return destination.href;
+};
+
+export const requestFreeAccess = async (
+  accountId: string,
+  csrfToken: string
+): Promise<EntitlementResponse> => jsonRequest<EntitlementResponse>("/api/v1/entitlements/free-access", {
+  method: "POST",
+  headers: {
+    "x-csrf-token": csrfToken,
+    "x-heritg-account-id": accountId
+  },
+  body: "{}"
+});
+
+export const subscriptionFromEntitlement = (
+  entitlement: EntitlementResponse
 ): SubscriptionState => {
   if (entitlement.access === "active") {
     return {
       status: "active",
+      offer: entitlement.offer,
       expiresAt: entitlement.expiresAt ?? undefined,
       manageUrl: entitlement.managementUrl ?? undefined
     };
   }
   if (entitlement.access === "read_only") {
-    return { status: "expired", expiredAt: entitlement.graceEndsAt ?? undefined, offers };
+    return {
+      status: "readOnly",
+      expiresAt: entitlement.expiresAt ?? undefined,
+      graceEndsAt: entitlement.graceEndsAt ?? undefined,
+      offer: entitlement.offer,
+      manageUrl: entitlement.managementUrl ?? undefined
+    };
   }
-  return { status: "free", offers };
+  if (entitlement.expiresAt) return { status: "expired", expiresAt: entitlement.expiresAt, offer: entitlement.offer };
+  return { status: "free", offer: entitlement.offer };
 };
 
-export function ProProvider({ children, value, appStore }: { children: ReactNode; value?: ProContextValue; appStore?: AppStoreValue }) {
-  const configured = __FAMILY_BILLING_ENABLED__;
+export function ProProvider({
+  children,
+  value,
+  appStore,
+  billingEnabled = __FAMILY_BILLING_ENABLED__
+}: { children: ReactNode; value?: ProContextValue; appStore?: AppStoreValue; billingEnabled?: boolean }) {
+  const configured = billingEnabled;
   const [account, setAccount] = useState<AccountState>(readCsrfCookie() ? { status: "loading" } : { status: "signedOut" });
   const [subscription, setSubscription] = useState<SubscriptionState>(configured ? { status: "loading" } : { status: "unavailable" });
   const [sync, setSync] = useState<SyncState>({ enabled: false, phase: "unavailable", pendingChanges: 0 });
@@ -86,30 +150,35 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
   const sessionGenerationRef = useRef(0);
   const currentAccountIdRef = useRef<string | undefined>(undefined);
 
+  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
+    const nextSubscription = subscriptionFromEntitlement(entitlement);
+    const enabled = entitlement.canRead && readSyncEnabled() === true;
+    setSubscription(nextSubscription);
+    setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
+    setSync((current) => preserveDisabledSync && entitlement.canRead && current.phase === "disabled"
+      ? { ...current, error: undefined }
+      : {
+          enabled,
+          phase: entitlement.canRead ? enabled ? "comparing" : "disabled" : "subscriptionRequired",
+          pendingChanges: 0
+        });
+    return nextSubscription;
+  }, []);
+
   const applySession = useCallback(async (session: AccountSession, generation = sessionGenerationRef.current) => {
     if (generation !== sessionGenerationRef.current) return;
-    const sameAccount = currentAccountIdRef.current === session.accountId;
     currentAccountIdRef.current = session.accountId;
-    setAccount({ status: "signedIn", user: { id: session.accountId, expiresAt: session.expiresAt } });
+    setAccount({ status: "signedIn", user: { id: session.accountId, name: session.name, email: session.email, expiresAt: session.expiresAt } });
     if (!configured) {
       setSyncAccess({ canRead: false, canWrite: false });
       setSubscription({ status: "unavailable" });
       setSync({ enabled: false, phase: "unavailable", pendingChanges: 0 });
       return;
     }
-    const [entitlement, billing] = await Promise.all([
-      jsonRequest<EntitlementResponse>("/api/v1/entitlements/current"),
-      jsonRequest<BillingOffersResponse>("/api/v1/billing/offers").catch(() => ({ offers: [] }))
-    ]);
+    const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== session.accountId) return;
-    setSubscription(subscriptionFromEntitlement(entitlement, billing.offers));
-    setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
-    setSync((current) => ({
-      enabled: sameAccount && current.enabled && entitlement.canRead,
-      phase: sameAccount && current.enabled && entitlement.canRead ? "comparing" : entitlement.canWrite ? "disabled" : entitlement.canRead ? "disabled" : "subscriptionRequired",
-      pendingChanges: 0
-    }));
-  }, [configured]);
+    applyEntitlement(entitlement);
+  }, [applyEntitlement, configured]);
 
   const loadSession = useCallback(async () => {
     const generation = ++sessionGenerationRef.current;
@@ -119,7 +188,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       currentAccountIdRef.current = undefined;
       setSyncAccess({ canRead: false, canWrite: false });
       setAccount({ status: "signedOut" });
-      setSubscription(configured ? { status: "free", offers: [] } : { status: "unavailable" });
+      setSubscription(configured ? { status: "free" } : { status: "unavailable" });
       setSync({ enabled: false, phase: configured ? "authenticationRequired" : "unavailable", pendingChanges: 0 });
       return;
     }
@@ -133,14 +202,14 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
         currentAccountIdRef.current = undefined;
         setSyncAccess({ canRead: false, canWrite: false });
         setAccount({ status: "signedOut" });
-        setSubscription(configured ? { status: "free", offers: [] } : { status: "unavailable" });
+        setSubscription(configured ? { status: "free" } : { status: "unavailable" });
         setSync({ enabled: false, phase: configured ? "authenticationRequired" : "unavailable", pendingChanges: 0 });
         return;
       }
       const message = cause instanceof Error ? cause.message : String(cause);
       setSyncAccess({ canRead: false, canWrite: false });
       setAccount({ status: "error", message });
-      setSubscription({ status: "error", message, offers: [] });
+      setSubscription({ status: "error", message });
       setSync({ enabled: false, phase: "error", pendingChanges: 0, error: message });
     }
   }, [applySession, configured]);
@@ -157,6 +226,24 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       unsubscribe();
     };
   }, [loadSession, value]);
+
+  const refreshEntitlement = useCallback(async () => {
+    if (account.status !== "signedIn") return undefined;
+    const accountId = account.user.id;
+    const generation = sessionGenerationRef.current;
+    const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
+    if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== accountId) return undefined;
+    return applyEntitlement(entitlement, true);
+  }, [account, applyEntitlement]);
+
+  useEffect(() => {
+    if (value || account.status !== "signedIn") return;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refreshEntitlement().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
+  }, [account.status, refreshEntitlement, value]);
 
   const runSync = useCallback(async (resolution?: "device" | "cloud" | "both") => {
     if (value || !appStore?.ready || !appStore.data || account.status !== "signedIn" || !syncAccess.canRead || (!sync.enabled && !resolution)) return;
@@ -227,9 +314,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
       const offline = typeof navigator !== "undefined" && !navigator.onLine;
       const message = offline
         ? "Family synchronization will retry when this device is online."
-        : cause instanceof AccountSyncError
-          ? "Family synchronization could not be completed."
-          : cause instanceof Error ? cause.message : "Family synchronization could not be completed.";
+        : syncFailureMessage(cause);
       setSync((current) => ({
         ...current,
         phase: authenticationRequired ? "authenticationRequired" : subscriptionRequired ? "subscriptionRequired" : offline ? "offline" : "error",
@@ -268,40 +353,41 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
   if (value) return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
-  const refreshEntitlement = async () => {
-    if (account.status !== "signedIn") return;
-    const csrfToken = readCsrfCookie();
-    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
-    await jsonRequest("/api/v1/entitlements/refresh", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-      body: "{}"
-    });
-    await applySession({ accountId: account.user.id, name: null, email: null, expiresAt: account.user.expiresAt });
-  };
-  const purchase = async (plan: SubscriptionPlan) => {
+  const purchase = async () => {
     if (account.status !== "signedIn") return;
     const csrfToken = readCsrfCookie();
     if (!csrfToken) {
-      setError("Sign in again before starting checkout.");
+      setError("Sign in again before activating Family+.");
       return;
     }
-    const offers = "offers" in subscription ? subscription.offers : [];
+    const offer = "offer" in subscription ? subscription.offer : undefined;
+    if (!offer) {
+      setError("The Family+ offer is unavailable. Refresh and try again.");
+      return;
+    }
     setError(undefined);
-    setSubscription({ status: "purchasing", plan, offers });
+    setSubscription({ status: "purchasing", offer });
     try {
-      const result = await jsonRequest<BillingCheckoutResponse>("/api/v1/billing/checkout", {
-        method: "POST",
-        headers: { "x-csrf-token": csrfToken },
-        body: JSON.stringify({ plan })
-      });
-      const destination = new URL(result.checkoutUrl);
-      if (destination.protocol !== "https:") throw new Error("The checkout URL is invalid.");
-      window.location.assign(destination.href);
+      if (offer.price.amount === 0) {
+        const claimed = await requestFreeAccess(account.user.id, csrfToken);
+        if (claimed.appUserId !== account.user.id) throw new Error("The Family+ response did not match this account.");
+        if (readSyncEnabled() === undefined) saveSyncEnabled(true);
+        const next = applyEntitlement(claimed);
+        if (next.status !== "active") throw new Error("Free Family+ access could not be activated.");
+        setPaywallOpen(false);
+        return;
+      }
+      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken);
+      const refreshed = await refreshEntitlement().catch(() => undefined);
+      if (refreshed?.status === "active") {
+        setPaywallOpen(false);
+        return;
+      }
+      window.location.assign(paymentLink);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       setError(message);
-      setSubscription({ status: "error", message, offers });
+      setSubscription({ status: "error", message, offer });
     }
   };
   const refreshSubscription = async () => {
@@ -329,6 +415,7 @@ export function ProProvider({ children, value, appStore }: { children: ReactNode
     },
     setSyncEnabled: async (enabled) => {
       if (!syncAccess.canRead) return;
+      saveSyncEnabled(enabled);
       if (!enabled) {
         syncAbortRef.current?.abort();
         syncQueuedRef.current = false;

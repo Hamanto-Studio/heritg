@@ -22,6 +22,7 @@ consistent.
 | Encrypted share management | Optional on web | Revoke active links from the creating browser | Encrypted share ID, deletion capability, and expiration | Encrypted IndexedDB on the sender's device | Sender revokes the link or clears site data |
 | Google Identity Services | Optional on web | Prepare and establish a Google-authenticated HERITG account session | Google script request when signed-out Account Settings opens; one-time identity proof and nonce after activation; verified name and email; Google account and network metadata processed by Google | Google and the HERITG same-origin account API | User chooses whether to open Account Settings and whether to activate Google sign-in |
 | HERITG account session | Optional on web | Create or restore a Google-authenticated account and maintain its session | Hash-derived Google subject, verified name and email, opaque account ID, hashed session and CSRF values, creation and expiration times; no family content | Cloud Run and Firestore in Jakarta; secure host-only browser cookies | User signs out; session expires; deletion removes profile/session/content while retaining an identity tombstone for security and abuse controls |
+| Encrypted Family+ synchronization | Optional on web | Continue a tree across connected devices | AES-256-GCM ciphertext, opaque account/tree identifiers, revisions, sizes, timestamps, and server-managed encrypted tree-key recovery data; the backend can unwrap a key for an authenticated owner | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User claims Family+ access and explicitly enables or disables synchronization; tree/account deletion removes hosted data |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
 | App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
@@ -38,7 +39,6 @@ consistent.
 | Advertising and attribution SDKs | Not integrated | Cross-app tracking and advertising profiles are prohibited |
 | Session replay and heatmaps | Not integrated | Prohibited by the analytics policy |
 | Passwordless email and Resend | Disabled | Requires separate provider, secret, UI, privacy, and release approval before activation |
-| Hosted editable family database and tree sync | Not available | Google sign-in does not upload, unlock, back up, or synchronize local family trees |
 
 ## Provider Approval Requirements
 

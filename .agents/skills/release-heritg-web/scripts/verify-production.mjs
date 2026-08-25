@@ -288,6 +288,24 @@ try {
     failures.push("anonymous account session did not return 401 unauthenticated");
   }
 
+  for (const [path, expectedStatus, label] of [
+    ["/api/v1/entitlements/free-access", 401, "free Family access"],
+    ["/api/v1/billing/checkouts", 503, "disabled payment checkout"]
+  ]) {
+    const endpoint = new URL(path, appBase.origin);
+    const response = await fetchWithContext(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: expectedCorsOrigin },
+      body: "{}",
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "no-referrer"
+    });
+    checked.push(`${response.status} ${endpoint.pathname} (expected ${label})`);
+    if (response.status !== expectedStatus) failures.push(`${label} returned ${response.status}; expected ${expectedStatus}`);
+  }
+
   const nonceUrl = new URL("/api/v1/auth/login-nonce", appBase.origin);
   const nonceResponse = await fetchWithContext(nonceUrl, {
     cache: "no-store",

@@ -96,28 +96,57 @@ describe("Family+ settings", () => {
     const markup = renderSettings({
       ...unavailableProContext,
       configured: true,
-      account: { status: "signedIn", user: { id: "A".repeat(22), expiresAt: "2027-08-23T00:00:00Z" } },
+      account: { status: "signedIn", user: { id: "A".repeat(22), name: null, email: null, expiresAt: "2027-08-23T00:00:00Z" } },
       subscription: { status: "active", expiresAt: "2028-08-23T00:00:00Z" },
       sync: { enabled: true, phase: "upToDate", pendingChanges: 0 }
     });
 
     expect(markup).toContain("Heritg Family+");
+    expect(markup).toContain("Active");
     expect(markup).toContain("Refresh access");
     expect(markup).toContain("Up to date");
     expect(markup).toContain("Disable synchronization");
-    expect(markup).toContain("synchronizes an encrypted hosted copy");
+    expect(markup).toContain("Access ends in");
+    expect(markup).toContain("Ends Aug 23, 2028");
   });
 
   it("keeps cloud downloads available during read-only grace", () => {
     const markup = renderSettings({
       ...unavailableProContext,
       configured: true,
-      subscription: { status: "expired", expiredAt: "2028-11-21T00:00:00Z", offers: [] },
+      subscription: {
+        status: "readOnly",
+        expiresAt: "2028-08-23T00:00:00Z",
+        graceEndsAt: "2028-11-21T00:00:00Z"
+      },
       sync: { enabled: false, phase: "disabled", pendingChanges: 0 }
     });
 
     expect(markup).toContain("Cloud changes remain downloadable");
     expect(markup).toContain("Read-only grace");
+    expect(markup).toContain("Read-only access ends in");
+    expect(markup).toContain("Nov 21, 2028");
     expect(markup).toContain("Enable synchronization");
+  });
+
+  it("shows the authoritative full-access expiry after grace has ended", () => {
+    const markup = renderSettings({
+      ...unavailableProContext,
+      configured: true,
+      subscription: { status: "expired", expiresAt: "2028-08-23T00:00:00Z" }
+    });
+
+    expect(markup).toContain("Expired Aug 23, 2028");
+    expect(markup).not.toContain("Read-only grace");
+  });
+
+  it("uses one Family+ card and describes inactive access explicitly", () => {
+    const markup = renderSettings(unavailableProContext);
+
+    expect(markup).toContain("Not activated");
+    expect(markup).toContain(">Enable<");
+    expect(markup).not.toContain(">Family+ required<");
+    expect(markup).not.toContain("Coming soon");
+    expect(markup).not.toContain(">Free<");
   });
 });

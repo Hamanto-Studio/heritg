@@ -10,6 +10,7 @@ import {
   Trash2,
   TreePine,
   Upload,
+  UserRound,
   X
 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
@@ -23,6 +24,7 @@ import { FocusedTreeCopyDialog } from "./FocusedTreeCopyDialog";
 import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import { PasswordField } from "./PasswordField";
 import { importGedcom, importHeritgBackup, MAX_PORTABILITY_BYTES, validateAppData } from "./portability";
+import type { ProUser } from "./proTypes";
 import type { AppActions } from "./store";
 import type { AppData, FamilyTree } from "./types";
 import type { Translator } from "./i18n";
@@ -39,6 +41,7 @@ interface TreeSidebarProps {
   actions: AppActions;
   open: boolean;
   t: Translator;
+  account?: ProUser;
   onClose: () => void;
   onError: (message: string) => void;
   onImported: () => void;
@@ -59,6 +62,7 @@ export function TreeSidebar({
   actions,
   open,
   t,
+  account,
   onClose,
   onError,
   onImported,
@@ -187,6 +191,16 @@ export function TreeSidebar({
             <X aria-hidden="true" size={18} />
           </button>
         </div>
+
+        {account && (account.name || account.email) ? (
+          <div aria-label={t("account")} className="sidebar-account">
+            <UserRound aria-hidden="true" size={18} />
+            <span>
+              {account.name ? <strong>{account.name}</strong> : null}
+              {account.email ? <small>{account.email}</small> : null}
+            </span>
+          </div>
+        ) : null}
 
         <div className="sidebar-heading">
           <h2>{t("familyTrees")}</h2>

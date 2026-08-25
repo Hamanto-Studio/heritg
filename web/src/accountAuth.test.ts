@@ -33,6 +33,7 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  window.localStorage.clear();
 });
 
 describe("account session notifications", () => {
@@ -81,17 +82,17 @@ describe("account authentication API", () => {
   it("requests an email link with the exact accepted response contract", async () => {
     const fetchMock = vi.fn(async () => jsonResponse({ status: "accepted" }, 202));
 
-    await expect(requestEmailLogin("person@example.com", undefined, fetchMock)).resolves.toBeUndefined();
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, fetchMock)).resolves.toBeUndefined();
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/email/request", expect.objectContaining({
       method: "POST",
       credentials: "include",
       cache: "no-store",
       referrerPolicy: "no-referrer",
-      body: JSON.stringify({ email: "person@example.com" })
+      body: JSON.stringify({ email: "person@example.com", turnstileToken: "turnstile-proof" })
     }));
 
     const expanded = vi.fn(async () => jsonResponse({ status: "accepted", accountExists: true }, 202));
-    await expect(requestEmailLogin("person@example.com", undefined, expanded)).rejects.toMatchObject({
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, expanded)).rejects.toMatchObject({
       status: 502,
       code: "invalid_response"
     });
@@ -114,14 +115,14 @@ describe("account authentication API", () => {
 
   it("requires exact email statuses and JSON media types", async () => {
     const acceptedAtWrongStatus = vi.fn(async () => jsonResponse({ status: "accepted" }, 200));
-    await expect(requestEmailLogin("person@example.com", undefined, acceptedAtWrongStatus))
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, acceptedAtWrongStatus))
       .rejects.toMatchObject({ status: 502, code: "invalid_response" });
 
     const requestWrongMediaType = vi.fn(async () => new Response(JSON.stringify({ status: "accepted" }), {
       status: 202,
       headers: { "content-type": "text/plain" }
     }));
-    await expect(requestEmailLogin("person@example.com", undefined, requestWrongMediaType))
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, requestWrongMediaType))
       .rejects.toMatchObject({ status: 502, code: "invalid_response" });
 
     const login = { accountId, ...identity, csrfToken: token, expiresAt };
@@ -154,6 +155,23 @@ describe("account authentication API", () => {
       method: "GET",
       credentials: "include"
     }));
+  });
+
+  it("does not retry email requests without Turnstile proof after schema rejection", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
+      void _input; void _init;
+      return jsonResponse({ error: { code: "invalid_request", message: "Request validation failed" } }, 400);
+    });
+
+    await expect(requestEmailLogin("person@example.com", "turnstile-proof", undefined, fetchMock)).rejects.toMatchObject({
+      status: 400,
+      code: "invalid_request"
+    });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      email: "person@example.com",
+      turnstileToken: "turnstile-proof"
+    });
   });
 
   it("logs out with the CSRF header and an empty JSON object", async () => {

@@ -7,13 +7,15 @@ import { createTranslator } from "./i18n";
 import { ProProvider } from "./ProProvider";
 import { unavailableProContext } from "./proTypes";
 import { SharePanel } from "./SharePanel";
-import { loadManagedShares } from "./db";
+import { loadManagedShares, reserveManagedShareSlot } from "./db";
 import type { AppData, FamilyTree } from "./types";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("./db", () => ({
   loadManagedShares: vi.fn().mockResolvedValue([]),
+  releaseManagedShareSlot: vi.fn().mockResolvedValue(undefined),
+  reserveManagedShareSlot: vi.fn().mockResolvedValue("reservation"),
   saveManagedShares: vi.fn().mockResolvedValue(undefined)
 }));
 
@@ -39,6 +41,7 @@ describe("SharePanel methods", () => {
 
   beforeEach(async () => {
     vi.mocked(loadManagedShares).mockResolvedValue([]);
+    vi.mocked(reserveManagedShareSlot).mockResolvedValue("reservation");
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -165,5 +168,51 @@ describe("SharePanel methods", () => {
     expect(familyOptions?.disabled).toBe(false);
     expect(familyOptions?.textContent).toContain("1 year · Family+");
     expect(container.textContent).not.toContain("Unlock longer links with Family+");
+  });
+
+  it("rejects creation when another canvas reserves the device share slot", async () => {
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    const onError = vi.fn();
+    vi.mocked(reserveManagedShareSlot).mockResolvedValue(undefined);
+
+    await act(async () => {
+      root.render(
+        <SharePanel
+          data={data}
+          exportPng={vi.fn().mockResolvedValue(undefined)}
+          exportSvg={vi.fn().mockResolvedValue(undefined)}
+          onClose={vi.fn()}
+          onCopied={vi.fn()}
+          onError={onError}
+          onExported={vi.fn()}
+          peopleCount={1}
+          t={createTranslator("en")}
+          tree={tree}
+        />
+      );
+      await Promise.resolve();
+    });
+
+    const setInput = async (input: HTMLInputElement, value: string) => {
+      await act(async () => {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    };
+    await setInput(container.querySelector<HTMLInputElement>("#share-password")!, "StrongPassword1!");
+    await setInput(container.querySelector<HTMLInputElement>("#share-password-confirmation")!, "StrongPassword1!");
+    const createButton = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("Create encrypted link"));
+
+    await act(async () => {
+      createButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(reserveManagedShareSlot).toHaveBeenCalledOnce();
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining("one active link per device"));
+    expect(createButton?.disabled).toBe(true);
   });
 });
