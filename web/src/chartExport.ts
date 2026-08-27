@@ -3,7 +3,7 @@ import {
   CONNECTOR_STYLE,
   branchJunctions,
   connectorPaths,
-  crossingBridgePath,
+  horizontalCrossingBridgePath,
   roundedConnectorPath
 } from "./connectorStyle";
 import { personCityTop, personLifeTop } from "./connectionGeometry";
@@ -156,7 +156,7 @@ export function buildChartSvg(
     `<circle cx="${point.x + offsetX}" cy="${point.y + offsetY}" r="${CONNECTOR_STYLE.junctionRadius}" fill="${CONNECTOR_STYLE.familyColor}" data-family-junction="${escapeXml(family.id)}:${index}"/>`
   )).join("");
   const crossings = plan.crossings.map((point, index) =>
-    `<g data-crossing-index="${index}"><line x1="${point.x + offsetX}" y1="${point.y + offsetY - CONNECTOR_STYLE.crossingRadius - 5}" x2="${point.x + offsetX}" y2="${point.y + offsetY + CONNECTOR_STYLE.crossingRadius + 5}" stroke="#fffdf8" stroke-width="${CONNECTOR_STYLE.width + 4}" stroke-linecap="butt"/><line x1="${point.x + offsetX - CONNECTOR_STYLE.crossingRadius - 5}" y1="${point.y + offsetY}" x2="${point.x + offsetX + CONNECTOR_STYLE.crossingRadius + 7}" y2="${point.y + offsetY}" stroke="${connectorColor(point.horizontalKind)}" stroke-width="${CONNECTOR_STYLE.width}" ${point.horizontalKind === "sibling" ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round"/><path d="${crossingBridgePath(point, offsetX, offsetY)}" fill="none" stroke="#fffdf8" stroke-width="${CONNECTOR_STYLE.width + 4}" stroke-linecap="round" stroke-linejoin="round"/><path d="${crossingBridgePath(point, offsetX, offsetY)}" fill="none" stroke="${connectorColor(point.kind)}" stroke-width="${CONNECTOR_STYLE.width}" ${point.kind === "sibling" ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round" stroke-linejoin="round"/></g>`
+    `<g data-crossing-index="${index}"><line x1="${point.x + offsetX - CONNECTOR_STYLE.crossingRadius - 5}" y1="${point.y + offsetY}" x2="${point.x + offsetX + CONNECTOR_STYLE.crossingRadius + 5}" y2="${point.y + offsetY}" stroke="#fffdf8" stroke-width="${CONNECTOR_STYLE.width + 4}" stroke-linecap="butt"/><line x1="${point.x + offsetX}" y1="${point.y + offsetY - CONNECTOR_STYLE.crossingRadius - 5}" x2="${point.x + offsetX}" y2="${point.y + offsetY + CONNECTOR_STYLE.crossingRadius + 7}" stroke="${connectorColor(point.kind)}" stroke-width="${CONNECTOR_STYLE.width}" ${point.kind === "sibling" ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round"/><path d="${horizontalCrossingBridgePath(point, offsetX, offsetY)}" fill="none" stroke="#fffdf8" stroke-width="${CONNECTOR_STYLE.width + 4}" stroke-linecap="round" stroke-linejoin="round"/><path d="${horizontalCrossingBridgePath(point, offsetX, offsetY)}" fill="none" stroke="${connectorColor(point.horizontalKind)}" stroke-width="${CONNECTOR_STYLE.width}" ${point.horizontalKind === "sibling" ? `stroke-dasharray="${CONNECTOR_STYLE.siblingDash}"` : ""} stroke-linecap="round" stroke-linejoin="round"/></g>`
   ).join("");
   const relationshipLabels = plan.nonParentRoutes.flatMap((route) => route.label ? [
     `<g data-relationship-label="${escapeXml(route.id)}"><rect x="${route.label.rect.x + offsetX}" y="${route.label.rect.y + offsetY}" width="${route.label.rect.width}" height="${route.label.rect.height}" rx="12" fill="#fffdf8"/><text x="${route.label.center.x + offsetX}" y="${route.label.center.y + offsetY + 4}" text-anchor="middle" font-size="12" font-weight="500" fill="#796f63">${escapeXml(route.label.text)}</text></g>`

@@ -212,11 +212,11 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const viewportTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pendingPersistedViewport = useRef<ViewportState | undefined>(undefined);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const resizeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const wheelFrame = useRef<number | undefined>(undefined);
   const pendingWheel = useRef<PendingWheel | undefined>(undefined);
   const animationFrame = useRef<number | undefined>(undefined);
   const initialized = useRef(false);
+  const observedHostSize = useRef<{ width: number; height: number } | undefined>(undefined);
   const wasMobile = useRef(window.innerWidth <= 840);
   const spacePanActive = useRef(false);
   const pointers = useRef(new Map<number, PointerRecord>());
@@ -360,12 +360,12 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     else applyViewport(target, false, false);
   };
 
-  const focusPerson = (personId: string) => {
+  const personViewport = (personId: string) => {
     const person = layout.people.find((candidate) => candidate.id === personId);
-    if (!person) return;
+    if (!person) return undefined;
     const nameExtraHeight = formatPersonName(person.displayName).extraHeight;
     const cityExtraHeight = person.city.trim() ? LAYOUT_METRICS.lifeHeight : 0;
-    const target = fitSceneRect({
+    return fitSceneRect({
       x: person.x - LAYOUT_METRICS.labelWidth / 2,
       y: person.y - LAYOUT_METRICS.avatarRadius,
       width: LAYOUT_METRICS.labelWidth,
@@ -376,7 +376,22 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
       minZoom: 0.25,
       maxZoom: 1.35
     });
+  };
+
+  const focusPerson = (personId: string) => {
+    const target = personViewport(personId);
+    if (!target) return;
     animateViewport(target, 280);
+  };
+
+  const viewportShowsTree = (next: ViewportState) => {
+    const scene = sceneRectFromPlan(connectionPlan.bounds);
+    const size = hostSize();
+    const left = (scene.x + next.scrollX) * next.zoom;
+    const top = (scene.y + next.scrollY) * next.zoom;
+    const right = (scene.x + scene.width + next.scrollX) * next.zoom;
+    const bottom = (scene.y + scene.height + next.scrollY) * next.zoom;
+    return right >= 0 && left <= size.width && bottom >= 0 && top <= size.height;
   };
 
   const zoomBy = (change: number) => {
@@ -431,29 +446,47 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     if (!host) return;
     const initializeOrResize = () => {
       const mobile = window.innerWidth <= 840;
+      const size = hostSize();
       if (!initialized.current) {
         if (isPreparing) {
           updateTransforms(viewport.current);
           return;
         }
         initialized.current = true;
-        if (!mobile && initialViewport && layout.people.length) {
+        const focusId = layout.people.some(({ id }) => id === selectedPersonId)
+          ? selectedPersonId! : layout.people[0]?.id;
+        if (!mobile && initialViewport && viewportShowsTree(initialViewport)) {
           applyViewport(initialViewport, false, false);
+        } else if (!mobile && layout.people.length) {
+          const target = personViewport(focusId!);
+          if (target) applyViewport(target, false, false);
         } else if (layout.people.length) {
           fitAll(false);
         } else {
           updateTransforms(viewport.current);
         }
+        observedHostSize.current = size;
         wasMobile.current = mobile;
         return;
       }
-      if (mobile !== wasMobile.current) {
+      const previousSize = observedHostSize.current;
+      observedHostSize.current = size;
+      const sizeChanged = Boolean(previousSize &&
+        (previousSize.width !== size.width || previousSize.height !== size.height));
+      const breakpointChanged = mobile !== wasMobile.current;
+      if (breakpointChanged || sizeChanged) {
         wasMobile.current = mobile;
-        if (resizeTimer.current) clearTimeout(resizeTimer.current);
-        resizeTimer.current = setTimeout(() => {
-          resizeTimer.current = undefined;
-          fitAll();
-        }, 80);
+        if (breakpointChanged) {
+          fitAll(false);
+        } else if (previousSize) {
+          applyViewport({
+            scrollX: viewport.current.scrollX +
+              (size.width - previousSize.width) / (2 * viewport.current.zoom),
+            scrollY: viewport.current.scrollY +
+              (size.height - previousSize.height) / (2 * viewport.current.zoom),
+            zoom: viewport.current.zoom
+          }, false);
+        }
       } else {
         updateTransforms(viewport.current);
       }
@@ -553,7 +586,6 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   useEffect(() => () => {
     if (viewportTimer.current) clearTimeout(viewportTimer.current);
     if (navigationTimer.current) clearTimeout(navigationTimer.current);
-    if (resizeTimer.current) clearTimeout(resizeTimer.current);
     if (wheelFrame.current !== undefined) cancelAnimationFrame(wheelFrame.current);
     if (animationFrame.current !== undefined) cancelAnimationFrame(animationFrame.current);
     const finalViewport = pendingPersistedViewport.current;

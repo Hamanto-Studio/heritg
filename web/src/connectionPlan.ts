@@ -6,6 +6,7 @@ import {
   collinearlyOverlaps,
   compareText,
   controlRect,
+  hasCollinearOverlap,
   nodeLabelRect,
   parentPortY,
   pointsEqual,
@@ -31,6 +32,7 @@ import { LAYOUT_METRICS } from "./layout";
 import type { AppData, FamilyRelationship, PositionedPerson, TreeLayout } from "./types";
 
 export const FAMILY_RAIL_SPACING = 32;
+export const FAMILY_CHILD_TRACK_SPACING = 28;
 
 export interface PlannedFamilyRoute {
   id: string;
@@ -73,6 +75,8 @@ interface FamilyDraft extends PlannedFamilyRoute {
   interval: [number, number];
   band: string;
   baseSegments: RouteSegment[];
+  childLanes: Map<number, number>;
+  parentJoinY: number;
 }
 
 const stableFamilyId = (ids: readonly string[]) =>
@@ -153,7 +157,7 @@ const familySegments = (
   parentPorts: readonly RoutePoint[],
   children: readonly RoutePoint[],
   parentJoinY: number,
-  childRailOffset: number,
+  childRailOffset: (childY: number) => number,
   parentTrunkX: number,
   continuationTrunkX: number
 ) => {
@@ -162,7 +166,7 @@ const familySegments = (
     .sort((left, right) => left - right)
     .map((childY) => ({
       children: children.filter(({ y }) => y === childY),
-      railY: childY - LAYOUT_METRICS.avatarRadius - childRailOffset
+      railY: childY - LAYOUT_METRICS.avatarRadius - childRailOffset(childY)
     }));
   return [
     ...parentPorts.map((port, index) => ({
@@ -247,7 +251,9 @@ const buildFamilies = (
       baseSegments: [],
       junctions: [],
       laneIndex: 0,
-      laneCount: 1
+      laneCount: 1,
+      childLanes: new Map<number, number>(),
+      parentJoinY: 0
     };
   });
   for (const band of [...new Set(families.map(({ band }) => band))].sort(compareText)) {
@@ -260,6 +266,24 @@ const buildFamilies = (
     values.forEach((family, index) => {
       family.laneIndex = lanes[index];
       family.laneCount = laneCount;
+    });
+  }
+  const childBands = new Map<number, FamilyDraft[]>();
+  for (const family of families) {
+    for (const childY of new Set(family.children.map(({ y }) => y))) {
+      const values = childBands.get(childY) ?? [];
+      values.push(family);
+      childBands.set(childY, values);
+    }
+  }
+  for (const [childY, values] of childBands) {
+    values.sort((left, right) =>
+      left.interval[0] - right.interval[0] || left.interval[1] - right.interval[1] ||
+      compareText(left.id, right.id)
+    );
+    const lanes = laneIndices(values.map(({ interval }) => interval));
+    values.forEach((family, index) => {
+      family.childLanes.set(childY, lanes[index]);
     });
   }
   const familiesByParent = new Map<string, FamilyDraft[]>();
@@ -295,8 +319,22 @@ const buildFamilies = (
         availableHeight / ((family.laneCount - 1) * 2)
       ))
       : 0;
-    const parentJoinY = parentStartY + 8 + family.laneIndex * spacing;
-    const childRailOffset = CHILD_RAIL_CLEARANCE;
+    family.parentJoinY = parentStartY + 8 + family.laneIndex * spacing;
+  }
+  const childTrackSpacings = new Map<number, number>();
+  for (const [childY, values] of childBands) {
+    const laneCount = Math.max(...values.map((family) => family.childLanes.get(childY) ?? 0)) + 1;
+    const defaultRailY = childY - LAYOUT_METRICS.avatarRadius - CHILD_RAIL_CLEARANCE;
+    const safeTopY = Math.max(...values.map(({ parentJoinY }) => parentJoinY)) + ROUTE_CLEARANCE;
+    const availableHeight = Math.max(defaultRailY - safeTopY, 0);
+    childTrackSpacings.set(childY, laneCount > 1
+      ? Math.min(FAMILY_CHILD_TRACK_SPACING, availableHeight / (laneCount - 1))
+      : 0);
+  }
+  for (const family of families) {
+    const parentJoinY = family.parentJoinY;
+    const childRailOffset = (childY: number) => CHILD_RAIL_CLEARANCE +
+      (family.childLanes.get(childY) ?? 0) * (childTrackSpacings.get(childY) ?? 0);
     const baseTrunkX = average(family.parentPorts.map(({ x }) => x));
     const nearestChildX = [...family.children].sort((left, right) =>
       Math.abs(left.x - baseTrunkX) - Math.abs(right.x - baseTrunkX) || left.x - right.x
@@ -324,7 +362,7 @@ const buildFamilies = (
       ];
       if (clearChannels.length > 0) {
         const deepestRailY = Math.max(...family.children.map(({ y }) =>
-          y - LAYOUT_METRICS.avatarRadius - childRailOffset
+          y - LAYOUT_METRICS.avatarRadius - childRailOffset(y)
         ));
         const obstacleSafeChannels = clearChannels.filter((x) =>
           nodeObstacles.every((obstacle) => !segmentIntersectsRect({
@@ -347,7 +385,7 @@ const buildFamilies = (
     family.junctions = [
       { x: trunkX, y: parentJoinY },
       ...[...new Set(family.children.map(({ y }) =>
-        y - LAYOUT_METRICS.avatarRadius - childRailOffset
+        y - LAYOUT_METRICS.avatarRadius - childRailOffset(y)
       ))].sort((left, right) => left - right).flatMap((y, index) => index === 0
         ? [{ x: trunkX, y }, ...(continuationTrunkX !== trunkX ? [{ x: continuationTrunkX, y }] : [])]
         : [{ x: continuationTrunkX, y }])
@@ -409,6 +447,14 @@ const routeFamilies = (
   const occupied: RouteSegment[] = [];
   for (const family of families) {
     const endpointIds = new Set([...family.parentIds, ...family.childIds]);
+    const directSegments = splitAtAttachmentPoints(family.baseSegments);
+    if (routeIsClear(directSegments, obstacles, endpointIds) &&
+        !hasCollinearOverlap(directSegments, occupied) &&
+        segmentsFormConnectedNetwork(directSegments)) {
+      family.segments = directSegments;
+      occupied.push(...family.segments);
+      continue;
+    }
     const routed: RouteSegment[] = [];
     let didFail = false;
     for (const segment of splitAtAttachmentPoints(family.baseSegments)) {
@@ -430,21 +476,16 @@ const routeFamilies = (
     } else {
       const relaxed: RouteSegment[] = [];
       for (const segment of splitAtAttachmentPoints(family.baseSegments)) {
-        const route = preferredRoute(
-          segment.start,
-          segment.end,
-          obstacles,
-          endpointIds,
-          relaxed
-        );
+        const route = preferredRoute(segment.start, segment.end, obstacles, endpointIds, relaxed);
         if (!route) {
           relaxed.length = 0;
           break;
         }
         relaxed.push(...route);
       }
-      family.segments = relaxed.length && segmentsFormConnectedNetwork(relaxed)
-        ? relaxed : family.baseSegments;
+      family.segments = routeIsClear(relaxed, obstacles, endpointIds) &&
+          segmentsFormConnectedNetwork(relaxed)
+        ? relaxed : [];
       failures.push(`family:${family.id}`);
     }
     occupied.push(...family.segments);

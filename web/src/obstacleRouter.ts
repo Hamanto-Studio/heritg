@@ -21,6 +21,7 @@ import {
 
 const COORDINATE_PADDING = 2;
 const BEND_PENALTY = 24;
+const ROUTE_TRACK_SPACING = 20;
 
 const uniqueNumbers = (values: readonly number[]) => values.reduce<number[]>((result, value) => {
   if (!result.some((existing) => Math.abs(existing - value) < ROUTE_EPSILON)) result.push(value);
@@ -80,7 +81,10 @@ const fastCandidates = (
     const values = uniqueNumbers([
       ...obstacles.flatMap(({ rect }) => [rect.y - clearance, rect.y + rect.height + clearance]),
       ...occupied.filter((segment) => segmentOrientation(segment) === "horizontal")
-        .flatMap((segment) => [segment.start.y - 6, segment.start.y + 6])
+        .flatMap((segment) => [
+          segment.start.y - ROUTE_TRACK_SPACING,
+          segment.start.y + ROUTE_TRACK_SPACING
+        ])
     ]).sort((left, right) => Math.abs(left - start.y) - Math.abs(right - start.y) || left - right);
     return values.map((y) => segmentsForPoints([
       start, { x: start.x, y }, { x: end.x, y }, end
@@ -90,7 +94,10 @@ const fastCandidates = (
     const values = uniqueNumbers([
       ...obstacles.flatMap(({ rect }) => [rect.x - clearance, rect.x + rect.width + clearance]),
       ...occupied.filter((segment) => segmentOrientation(segment) === "vertical")
-        .flatMap((segment) => [segment.start.x - 6, segment.start.x + 6])
+        .flatMap((segment) => [
+          segment.start.x - ROUTE_TRACK_SPACING,
+          segment.start.x + ROUTE_TRACK_SPACING
+        ])
     ]).sort((left, right) => Math.abs(left - start.x) - Math.abs(right - start.x) || left - right);
     return values.map((x) => segmentsForPoints([
       start, { x, y: start.y }, { x, y: end.y }, end
@@ -119,7 +126,10 @@ const escapeXCoordinates = (
       rect.x + rect.width + ROUTE_CLEARANCE + COORDINATE_PADDING
     ]),
     ...occupied.filter((segment) => segmentOrientation(segment) === "vertical")
-      .flatMap((segment) => [segment.start.x - 6, segment.start.x + 6])
+      .flatMap((segment) => [
+        segment.start.x - ROUTE_TRACK_SPACING,
+        segment.start.x + ROUTE_TRACK_SPACING
+      ])
   ]).sort((left, right) => Math.abs(left - point.x) - Math.abs(right - point.x) || left - right)
     .slice(0, 9);
   const minX = Math.min(...obstacles.map(({ rect }) => rect.x));
@@ -159,7 +169,10 @@ const fallbackRoute = (
       rect.y + rect.height + ROUTE_CLEARANCE + COORDINATE_PADDING
     ]),
     ...occupied.filter((segment) => segmentOrientation(segment) === "horizontal")
-      .flatMap((segment) => [segment.start.y - 6, segment.start.y + 6])
+      .flatMap((segment) => [
+        segment.start.y - ROUTE_TRACK_SPACING,
+        segment.start.y + ROUTE_TRACK_SPACING
+      ])
   ]).sort((left, right) => Math.abs(left - midpointY) - Math.abs(right - midpointY) || left - right);
   for (const y of channelYs) {
     for (const startX of escapeXCoordinates(start, y, obstacles, occupied)) {
@@ -218,9 +231,13 @@ export const routeBetweenPeople = (
     { penalty: 120, start: { x: left.x - radius, y: left.y }, end: { x: right.x + radius, y: right.y } },
     { penalty: 160, start: { x: left.x, y: left.y + radius }, end: { x: right.x, y: right.y + radius } }
   ];
+  const direct = preferredRoute(
+    candidates[0].start, candidates[0].end, obstacles, endpointIds, occupied
+  );
+  if (direct?.length === 1) return direct;
   let best: { segments: RouteSegment[]; cost: number } | undefined;
-  for (const candidate of candidates) {
-    const segments = preferredRoute(
+  for (const [index, candidate] of candidates.entries()) {
+    const segments = index === 0 ? direct : preferredRoute(
       candidate.start, candidate.end, obstacles, endpointIds, occupied
     );
     if (!segments) continue;

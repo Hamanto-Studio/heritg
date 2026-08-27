@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { readFile } from "node:fs/promises";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -73,6 +74,20 @@ const sha256 = async (bytes: Uint8Array) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes.slice().buffer as ArrayBuffer))]
     .map((byte) => byte.toString(16).padStart(2, "0")).join("");
 
+const compatibilityFixture = async () => {
+  const paths = [
+    "manifest.json",
+    "tree.json",
+    "people.jsonl",
+    "relationships.jsonl",
+    "checksums.sha256"
+  ];
+  return new Map(await Promise.all(paths.map(async (path) => [
+    path,
+    new Uint8Array(await readFile(new URL(`../../tests/compatibility/heritg-v1/${path}`, import.meta.url)))
+  ] as const)));
+};
+
 const openEnvelopeForCompatibilityTest = async (archive: Uint8Array, password: string) => {
   const header = archive.slice(0, 44);
   const salt = archive.slice(16, 32);
@@ -128,6 +143,7 @@ describe("cross-platform .heritg archive", () => {
     expect(restored.trees[0]?.id).toBe("tree-synthetic");
     expect(restored.people.map((person) => person.id)).toEqual(["person-alpha", "person-beta"]);
     expect(restored.people[0]?.photoDataUrl).toBe(syntheticData.people[0]?.photoDataUrl);
+    expect(restored.viewports["tree-synthetic"]).toBeUndefined();
   });
 
   it("rejects the wrong password and authenticated-byte tampering", async () => {
@@ -172,45 +188,125 @@ describe("cross-platform .heritg archive", () => {
     expect(restored.relationships[0]?.id).toBe("relationship-alpha-beta");
   });
 
-  it("round-trips additive schema-v1 divorce dates for former unions", async () => {
+  it("reads the shared mobile fixture and defaults absent additive fields", async () => {
+    const restored = await importHeritgArchive(encodeHeritgZip(await compatibilityFixture()));
+
+    expect(restored.people[0].birthOrderOverride).toBe(2);
+    expect(restored.people[0]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "",
+      deathDatePrecision: "exact"
+    });
+    expect(restored.people[1]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "",
+      deathDatePrecision: "exact"
+    });
+    expect(restored.people[1]).not.toHaveProperty("birthOrderOverride", expect.any(Number));
+    expect(restored.relationships[0].marriageDatePrecision).toBe("exact");
+  });
+
+  it("round-trips additive schema-v1 divorce dates for both former union subtypes", async () => {
+    for (const subtype of ["formerPartner", "formerSpouse"] as const) {
+      const source = structuredClone(syntheticData);
+      source.relationships[0].subtype = subtype;
+      source.relationships[0].divorceDate = "2021-07-08";
+
+      const archive = await exportHeritgArchive(source, "tree-synthetic", "archive-pass");
+      const zip = await openEnvelopeForCompatibilityTest(archive, "archive-pass");
+      const files = decodeHeritgZip(zip);
+      const relationshipRecord = JSON.parse(
+        new TextDecoder().decode(files.get("relationships.jsonl"))
+      );
+      expect(relationshipRecord).toMatchObject({
+        schemaVersion: 1,
+        subtype,
+        marriageDate: "2010-06-20",
+        divorceDate: "2021-07-08"
+      });
+
+      const restored = await importHeritgArchive(archive, "archive-pass");
+      expect(restored.relationships[0]).toMatchObject({ subtype, divorceDate: "2021-07-08" });
+    }
+
+    const invalid = structuredClone(syntheticData);
+    invalid.relationships[0].subtype = "formerSpouse";
+    invalid.relationships[0].divorceDate = "2009-01-01";
+    await expect(exportHeritgArchive(invalid, "tree-synthetic", "archive-pass"))
+      .rejects.toThrow(/earlier than marriageDate/i);
+  });
+
+  it("rejects a checksummed divorce date on a non-former relationship", async () => {
+    const files = await compatibilityFixture();
+    const relationshipRecord = JSON.parse(
+      new TextDecoder().decode(files.get("relationships.jsonl"))
+    );
+    relationshipRecord.divorceDate = "2020-04-05";
+    const relationshipBytes = new TextEncoder().encode(`${JSON.stringify(relationshipRecord)}\n`);
+    files.set("relationships.jsonl", relationshipBytes);
+
+    const checksums = new TextDecoder().decode(files.get("checksums.sha256"));
+    files.set("checksums.sha256", new TextEncoder().encode(checksums.replace(
+      /^[0-9a-f]{64}( {2}relationships\.jsonl)$/m,
+      `${await sha256(relationshipBytes)}$1`
+    )));
+
+    await expect(importHeritgArchive(encodeHeritgZip(files)))
+      .rejects.toThrow(/only valid for former unions/i);
+  });
+
+  it("round-trips additive mobile fields and omits their empty defaults", async () => {
     const source = structuredClone(syntheticData);
-    source.relationships[0].subtype = "formerSpouse";
-    source.relationships[0].divorceDate = "2021-07-08";
+    source.people[0].birthOrderOverride = 2;
+    source.people[0].birthPlace = "Bandung, Indonesia";
+    source.people[0].deathPlace = "Jakarta, Indonesia";
+    source.people[0].deathDatePrecision = "year";
+    source.relationships[0].marriageDatePrecision = "month";
 
     const archive = await exportHeritgArchive(source, "tree-synthetic", "archive-pass");
     const zip = await openEnvelopeForCompatibilityTest(archive, "archive-pass");
     const files = decodeHeritgZip(zip);
-    const relationshipRecord = JSON.parse(
-      new TextDecoder().decode(files.get("relationships.jsonl"))
-    );
-    expect(relationshipRecord).toMatchObject({
-      schemaVersion: 1,
-      subtype: "formerSpouse",
-      marriageDate: "2010-06-20",
-      divorceDate: "2021-07-08"
+    const records = new TextDecoder().decode(
+      files.get("people.jsonl")
+    ).trimEnd().split("\n").map((line) => JSON.parse(line));
+    const relationshipRecord = JSON.parse(new TextDecoder().decode(
+      files.get("relationships.jsonl")
+    ));
+    expect(records[0]).toMatchObject({
+      birthOrderOverride: 2,
+      birthPlace: "Bandung, Indonesia",
+      deathPlace: "Jakarta, Indonesia",
+      deathDatePrecision: "year"
     });
+    expect(records[1]).not.toHaveProperty("birthOrderOverride");
+    expect(records[1]).not.toHaveProperty("birthPlace");
+    expect(records[1]).not.toHaveProperty("deathPlace");
+    expect(records[1]).not.toHaveProperty("deathDatePrecision");
+    expect(relationshipRecord.marriageDatePrecision).toBe("month");
+
+    const defaultArchive = await exportCanonicalHeritgArchive(
+      syntheticData,
+      "tree-synthetic",
+      "2026-01-01T00:00:00.000Z"
+    );
+    const defaultRelationship = JSON.parse(new TextDecoder().decode(
+      decodeHeritgZip(defaultArchive).get("relationships.jsonl")
+    ));
+    expect(defaultRelationship).not.toHaveProperty("marriageDatePrecision");
 
     const restored = await importHeritgArchive(archive, "archive-pass");
-    expect(restored.relationships[0].divorceDate).toBe("2021-07-08");
-
-    source.relationships[0].divorceDate = "2009-01-01";
-    await expect(exportHeritgArchive(source, "tree-synthetic", "archive-pass"))
-      .rejects.toThrow(/earlier than marriageDate/i);
-  });
-
-  it("round-trips an additive manual child order", async () => {
-    const source = structuredClone(syntheticData);
-    source.people[0].birthOrderOverride = 2;
-
-    const archive = await exportHeritgArchive(source, "tree-synthetic", "archive-pass");
-    const zip = await openEnvelopeForCompatibilityTest(archive, "archive-pass");
-    const record = JSON.parse(new TextDecoder().decode(
-      decodeHeritgZip(zip).get("people.jsonl")
-    ).split("\n")[0]);
-    expect(record.birthOrderOverride).toBe(2);
-
-    const restored = await importHeritgArchive(archive, "archive-pass");
-    expect(restored.people[0].birthOrderOverride).toBe(2);
+    expect(restored.people[0]).toMatchObject({
+      birthOrderOverride: 2,
+      birthPlace: "Bandung, Indonesia",
+      deathPlace: "Jakarta, Indonesia",
+      deathDatePrecision: "year"
+    });
+    expect(restored.people[1]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "",
+      deathDatePrecision: "exact"
+    });
+    expect(restored.relationships[0].marriageDatePrecision).toBe("month");
   });
 
   it("round-trips encrypted-share display policy without adding archive entries", async () => {

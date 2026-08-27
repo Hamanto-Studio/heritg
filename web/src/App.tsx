@@ -65,6 +65,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const [relativeTarget, setRelativeTarget] = useState<Person>();
   const [toast, setToast] = useState<string>();
   const [operationError, setOperationError] = useState<string>();
+  const [selectedPersonId, setSelectedPersonId] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
   const t = createTranslator(data?.language ?? "en");
   const uiLanguage = data?.language;
@@ -85,7 +86,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       : [],
     [activeTreeId, allRelationships]
   );
-  const selectedPerson = people.find((person) => person.id === activeTree?.lastSelectedPersonId);
+  const selectedPerson = people.find((person) => person.id === selectedPersonId);
   const generationLimits = activeTree
     ? generationLimitsByTree[activeTree.id] ?? unlimited
     : unlimited;
@@ -100,6 +101,10 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     document.documentElement.lang = uiLanguage === "id" ? "id" : "en";
     if (uiLanguage) saveUiLanguage(uiLanguage);
   }, [uiLanguage]);
+
+  useEffect(() => {
+    setSelectedPersonId(undefined);
+  }, [activeTreeId]);
 
   useEffect(() => {
     if (!toast) return;
@@ -122,6 +127,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
 
   const selectAndFocus = (personId: string) => {
     setGenerationOpen(false);
+    setSelectedPersonId(personId);
     actions.selectPerson(personId);
     requestAnimationFrame(() => canvasRef.current?.focusPerson(personId));
   };
@@ -277,11 +283,13 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               onCanvasInteract={dismissCanvasPanels}
               onDeselectPerson={() => {
                 setGenerationOpen(false);
+                setSelectedPersonId(undefined);
                 actions.selectPerson(undefined);
               }}
               onEditPerson={editPerson}
               onSelectPerson={(personId) => {
                 setGenerationOpen(false);
+                setSelectedPersonId(personId);
                 actions.selectPerson(personId);
               }}
               onViewportChange={(viewport) => actions.setViewport(activeTree.id, viewport)}

@@ -1,6 +1,7 @@
 import { useId } from "react";
 
 import { isValidAvatarImage } from "./avatar";
+import { deriveBloodFamilyHighlight } from "./bloodFamily";
 import { BIRTH_ORDER_BADGE, birthOrderLabel } from "./birthOrder";
 import type { ConnectionPlan } from "./connectionPlan";
 import { personCityTop, personLifeTop } from "./connectionGeometry";
@@ -8,7 +9,7 @@ import {
   CONNECTOR_STYLE,
   branchJunctions,
   connectorPaths,
-  crossingBridgePath,
+  horizontalCrossingBridgePath,
   roundedConnectorPath
 } from "./connectorStyle";
 import { LAYOUT_METRICS } from "./layout";
@@ -47,12 +48,14 @@ const PersonNode = ({
   language,
   lifeSummaryOptions,
   person,
+  bloodRelative,
   selectedPersonId
 }: {
   clipPrefix: string;
   language: AppData["language"];
   lifeSummaryOptions?: SceneLifeSummaryOptions;
   person: PositionedPerson;
+  bloodRelative: boolean;
   selectedPersonId?: string;
 }) => {
   const selected = person.id === selectedPersonId;
@@ -70,15 +73,21 @@ const PersonNode = ({
   const city = personCitySummary(person);
 
   return (
-    <g className="svg-person" data-gender={person.gender} data-person-id={person.id}>
+    <g
+      className="svg-person"
+      data-blood-relative={bloodRelative || undefined}
+      data-gender={person.gender}
+      data-person-id={person.id}
+      data-selected={selected || undefined}
+    >
       <title>{name.fullName}</title>
       <circle
         cx={person.x}
         cy={person.y}
         fill={appearance.fill}
         r={LAYOUT_METRICS.avatarRadius}
-        stroke={selected ? SCENE_COLORS.brand : appearance.stroke}
-        strokeWidth={selected ? 2 : 1}
+        stroke={selected || bloodRelative ? CONNECTOR_STYLE.highlightColor : appearance.stroke}
+        strokeWidth={selected ? 4 : bloodRelative ? 2.5 : 1}
       />
       <>
         <circle
@@ -200,12 +209,18 @@ export function SvgTreeScene({
   selectedPersonId
 }: SvgTreeSceneProps) {
   const clipPrefix = useId().replaceAll(":", "-");
+  const bloodFamily = deriveBloodFamilyHighlight(
+    selectedPersonId,
+    layout.people,
+    layout.relationships
+  );
   return <>
     <g className="svg-connectors">
       {connectionPlan.families.flatMap((family) =>
         connectorPaths(family.segments).map((path, index) => (
           <path
-            className="svg-connector family"
+            className={`svg-connector family ${family.relationshipIds.some((id) =>
+              bloodFamily.relationshipIds.has(id)) ? "blood-family" : ""}`}
             d={roundedConnectorPath(path.points)}
             data-family-id={family.id}
             key={`${family.id}:path:${index}`}
@@ -215,7 +230,8 @@ export function SvgTreeScene({
       {connectionPlan.nonParentRoutes.flatMap((route) =>
         connectorPaths(route.segments).map((path, index) => (
           <path
-            className={`svg-connector ${route.relationship.kind}`}
+            className={`svg-connector ${route.relationship.kind} ${
+              bloodFamily.relationshipIds.has(route.relationship.id) ? "blood-family" : ""}`}
             d={roundedConnectorPath(path.points)}
             data-relationship-id={route.id}
             key={`${route.id}:path:${index}`}
@@ -227,7 +243,9 @@ export function SvgTreeScene({
           <circle
             cx={point.x}
             cy={point.y}
-            fill={CONNECTOR_STYLE.familyColor}
+            fill={family.relationshipIds.some((id) => bloodFamily.relationshipIds.has(id))
+              ? CONNECTOR_STYLE.highlightColor
+              : CONNECTOR_STYLE.familyColor}
             key={`${family.id}:junction:${index}`}
             r={CONNECTOR_STYLE.junctionRadius}
           />
@@ -239,28 +257,28 @@ export function SvgTreeScene({
             stroke={SCENE_COLORS.canvas}
             strokeLinecap="butt"
             strokeWidth={CONNECTOR_STYLE.width + 4}
-            x1={point.x}
-            x2={point.x}
-            y1={point.y - CONNECTOR_STYLE.crossingRadius - 5}
-            y2={point.y + CONNECTOR_STYLE.crossingRadius + 5}
-          />
-          <line
-            className={`svg-connector ${point.horizontalKind}`}
             x1={point.x - CONNECTOR_STYLE.crossingRadius - 5}
-            x2={point.x + CONNECTOR_STYLE.crossingRadius + 7}
+            x2={point.x + CONNECTOR_STYLE.crossingRadius + 5}
             y1={point.y}
             y2={point.y}
           />
+          <line
+            className={`svg-connector ${point.kind}`}
+            x1={point.x}
+            x2={point.x}
+            y1={point.y - CONNECTOR_STYLE.crossingRadius - 5}
+            y2={point.y + CONNECTOR_STYLE.crossingRadius + 7}
+          />
           <path
-            d={crossingBridgePath(point)}
+            d={horizontalCrossingBridgePath(point)}
             fill="none"
             stroke={SCENE_COLORS.canvas}
             strokeLinecap="round"
             strokeWidth={CONNECTOR_STYLE.width + 4}
           />
           <path
-            className={`svg-connector ${point.kind}`}
-            d={crossingBridgePath(point)}
+            className={`svg-connector ${point.horizontalKind}`}
+            d={horizontalCrossingBridgePath(point)}
             fill="none"
           />
         </g>
@@ -278,6 +296,7 @@ export function SvgTreeScene({
       {layout.people.map((person) => (
         <PersonNode
           clipPrefix={clipPrefix}
+          bloodRelative={bloodFamily.personIds.has(person.id)}
           key={person.id}
           language={language}
           lifeSummaryOptions={lifeSummaryOptions}

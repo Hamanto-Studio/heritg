@@ -105,6 +105,31 @@ describe("family connection planning", () => {
     expect(createConnectionPlan(treeLayout, "en", undefined, false).failures).toEqual([]);
   });
 
+  it("keeps dense child tracks inside the generation corridor", () => {
+    for (const count of [12, 72]) {
+      const people = [
+        ...Array.from({ length: count }, (_, index) =>
+          person(`parent-${index}`, (index - (count - 1) / 2) * 260, 0)
+        ),
+        ...Array.from({ length: count }, (_, index) =>
+          person(`child-${index}`, ((count - 1) / 2 - index) * 260, 360)
+        )
+      ];
+      const relationships = Array.from({ length: count }, (_, index) =>
+        parent(`parent-${index}`, `child-${index}`)
+      );
+      const plan = createConnectionPlan(layout(people, relationships), "en", undefined, false);
+
+      expect(plan.failures).toEqual([]);
+      expect(plan.isValid).toBe(true);
+      expect(plan.families.flatMap((family) => obstacleCollisions(
+        family.segments,
+        plan.obstacles,
+        new Set([...family.parentIds, ...family.childIds])
+      ))).toEqual([]);
+    }
+  });
+
   it("reflows descendant rows after ancestor alignment shifts family blocks", () => {
     const people = ["a1", "b0", "c1", "p", "q", "s1", "s2", "s3", "u", "x0"]
       .map((id) => person(id, 0, 0));
@@ -546,7 +571,7 @@ describe("family connection planning", () => {
       .flatMap((match) => match[1].split(","));
     expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
     expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
-    expect(chart.svg).toContain('d="M 151 172 L 151 180 L 281 180"');
+    expect(chart.svg).toContain('d="M 151 172 L 151 176 Q 151 180 155 180 L 281 180"');
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });

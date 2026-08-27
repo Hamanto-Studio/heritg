@@ -150,13 +150,13 @@ export function ProProvider({
   const sessionGenerationRef = useRef(0);
   const currentAccountIdRef = useRef<string | undefined>(undefined);
 
-  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
+  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveSyncState = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
     const enabled = entitlement.canRead && readSyncEnabled() === true;
     setSubscription(nextSubscription);
     setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
-    setSync((current) => preserveDisabledSync && entitlement.canRead && current.phase === "disabled"
-      ? { ...current, error: undefined }
+    setSync((current) => preserveSyncState && entitlement.canRead && current.enabled === enabled
+      ? current
       : {
           enabled,
           phase: entitlement.canRead ? enabled ? "comparing" : "disabled" : "subscriptionRequired",

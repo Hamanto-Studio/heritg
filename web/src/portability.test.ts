@@ -216,15 +216,16 @@ describe("HERITG JSON backups", () => {
     expect(() => importHeritgBackup(JSON.stringify(backup))).toThrow(/endpoint/i);
   });
 
-  it("keeps valid former-union divorce dates and clears them from other roles", () => {
+  it("keeps valid former-union divorce dates and rejects them on other roles", () => {
     const source = structuredClone(appData);
     source.relationships[0].subtype = "formerSpouse";
     source.relationships[0].divorceDate = "2020-04-05";
     source.relationships[1].divorceDate = "2022-01-01";
 
-    const clean = validateAppData(source);
-    expect(clean.relationships[0].divorceDate).toBe("2020-04-05");
-    expect(clean.relationships[1]).not.toHaveProperty("divorceDate");
+    expect(() => validateAppData(source)).toThrow(/only valid for former unions/i);
+
+    delete source.relationships[1].divorceDate;
+    expect(validateAppData(source).relationships[0].divorceDate).toBe("2020-04-05");
 
     source.relationships[0].divorceDate = "1990-01-01";
     expect(() => validateAppData(source)).toThrow(/earlier than marriageDate/i);
@@ -255,6 +256,7 @@ describe("native HERITG archives", () => {
     expect(restored.relationships[0]).toMatchObject({
       id: "new-relation", treeId: "new-tree", fromPersonId: "new-parent", toPersonId: "new-child"
     });
+    expect(restored.viewports["new-tree"]).toBeUndefined();
   });
 
   it("clearly rejects password-protected and unsupported archives", () => {

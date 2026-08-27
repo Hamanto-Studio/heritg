@@ -281,6 +281,43 @@ describe("immutable state transitions", () => {
       .not.toHaveProperty("birthOrderOverride", expect.any(Number));
   });
 
+  it("creates and updates mobile life-detail fields with canonical defaults", () => {
+    const source = createPerson(
+      initial(),
+      "tree-a",
+      {
+        displayName: "Person",
+        birthPlace: "  Bandung  ",
+        deathPlace: "  Jakarta  ",
+        deathDatePrecision: "year"
+      },
+      { id: "person", now: "2026-01-02T00:00:00.000Z" }
+    );
+    expect(source.people[0]).toMatchObject({
+      birthPlace: "Bandung",
+      deathPlace: "Jakarta",
+      deathDatePrecision: "year"
+    });
+
+    const updated = updatePerson(source, "person", {
+      birthPlace: "",
+      deathPlace: "  Surabaya  ",
+      deathDatePrecision: "month"
+    });
+    expect(updated.people[0]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "Surabaya",
+      deathDatePrecision: "month"
+    });
+
+    const defaults = withPerson(initial(), "tree-a", "default-person", "Default");
+    expect(defaults.people[0]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "",
+      deathDatePrecision: "exact"
+    });
+  });
+
   it("rejects invalid manual child orders", () => {
     expect(() => createPerson(initial(), "tree-a", {
       displayName: "Child",
@@ -362,24 +399,28 @@ describe("relationship validation", () => {
     );
   });
 
-  it("stores divorce dates only for former unions and validates their chronology", () => {
+  it("stores divorce dates for former unions and rejects them for other relationships", () => {
     let data = family();
     data = addRelationship(data, "child", "father", "formerHusband", "2000-01-02", {
       id: "former-spouses"
     }, "2010-03-04");
     data = addRelationship(data, "child", "father", "fosterBrother", "2001-02-03", {
       id: "foster-siblings"
-    }, "2011-04-05");
+    });
 
     expect(data.relationships[0].marriageDate).toBe("2000-01-02");
     expect(data.relationships[0].divorceDate).toBe("2010-03-04");
     expect(data.relationships[1]).not.toHaveProperty("marriageDate");
     expect(data.relationships[1]).not.toHaveProperty("divorceDate");
 
-    const active = addRelationship(family(), "child", "father", "wife", "2000-01-02", {
-      id: "active-spouses"
-    }, "2010-03-04");
-    expect(active.relationships[0]).not.toHaveProperty("divorceDate");
+    expect(() => addRelationship(
+      family(), "child", "father", "wife", "2000-01-02",
+      { id: "active-spouses" }, "2010-03-04"
+    )).toThrow(/only valid for former unions/i);
+    expect(() => addRelationship(
+      family(), "child", "father", "fosterBrother", undefined,
+      { id: "foster-siblings" }, "2011-04-05"
+    )).toThrow(/only valid for former unions/i);
 
     expect(() => addRelationship(
       family(), "child", "father", "formerPartner", "2010-01-02",
@@ -389,6 +430,19 @@ describe("relationship validation", () => {
       family(), "child", "father", "formerPartner", undefined,
       { id: "invalid-format" }, "2010-2-03"
     )).toThrow(/YYYY-MM-DD/i);
+  });
+
+  it("defaults and preserves marriage date precision", () => {
+    const defaults = addRelationship(family(), "child", "father", "wife", "2000-01-02", {
+      id: "default-precision"
+    });
+    const precise = addRelationship(
+      family(), "child", "father", "wife", "2000-01-02",
+      { id: "month-precision" }, undefined, "month"
+    );
+
+    expect(defaults.relationships[0].marriageDatePrecision).toBe("exact");
+    expect(precise.relationships[0].marriageDatePrecision).toBe("month");
   });
 });
 
@@ -417,6 +471,17 @@ describe("import replacement", () => {
     expect(source.trees[0].title).toBe("My Family Tree");
   });
 
+  it("restores a usable tree and person selection when loaded selection is absent", () => {
+    const source = withPerson(initial(), "tree-a", "person-a", "Person A");
+    source.selectedTreeId = undefined;
+    source.trees[0].lastSelectedPersonId = undefined;
+
+    const replacement = replaceAppData(source);
+
+    expect(replacement.selectedTreeId).toBe("tree-a");
+    expect(replacement.trees[0].lastSelectedPersonId).toBe("person-a");
+  });
+
   it("migrates legacy data using its previous effective relationship language", () => {
     const legacy = initial();
     legacy.language = "id";
@@ -430,6 +495,34 @@ describe("import replacement", () => {
 
     expect(replaceAppData(legacy).relationshipLanguage).toBe("en");
     expect(replaceAppData(legacy).relationshipTerminology).toBe("id");
+  });
+
+  it("defaults absent mobile fields and preserves present values", () => {
+    const legacy = familyWithRelationship();
+    const normalized = replaceAppData(legacy);
+    expect(normalized.people[0]).toMatchObject({
+      birthPlace: "",
+      deathPlace: "",
+      deathDatePrecision: "exact"
+    });
+    expect(normalized.relationships[0].marriageDatePrecision).toBe("exact");
+
+    const present = replaceAppData({
+      ...legacy,
+      people: [{
+        ...legacy.people[0],
+        birthPlace: "Bandung",
+        deathPlace: "Jakarta",
+        deathDatePrecision: "year"
+      }, legacy.people[1]],
+      relationships: [{ ...legacy.relationships[0], marriageDatePrecision: "month" }]
+    });
+    expect(present.people[0]).toMatchObject({
+      birthPlace: "Bandung",
+      deathPlace: "Jakarta",
+      deathDatePrecision: "year"
+    });
+    expect(present.relationships[0].marriageDatePrecision).toBe("month");
   });
 
   it("rejects dangling and duplicate relationship data", () => {
@@ -453,6 +546,14 @@ describe("import replacement", () => {
     expect(() => replaceAppData(invalid)).toThrowError(DomainError);
   });
 
+  it("rejects a divorce date on a non-former relationship", () => {
+    const source = familyWithRelationship();
+    expect(() => replaceAppData({
+      ...source,
+      relationships: [{ ...source.relationships[0], divorceDate: "2020-04-05" }]
+    })).toThrow(/only valid for former unions/i);
+  });
+
   it("rejects malformed person enum fields", () => {
     const source = withPerson(initial(), "tree-a", "person-a", "A");
     const invalid = {
@@ -460,6 +561,22 @@ describe("import replacement", () => {
       people: [{ ...source.people[0], gender: "invalid" }]
     };
     expect(() => replaceAppData(invalid)).toThrowError(DomainError);
+  });
+
+  it("rejects malformed mobile place and precision fields", () => {
+    const source = familyWithRelationship();
+    expect(() => replaceAppData({
+      ...source,
+      people: [{ ...source.people[0], deathDatePrecision: "approximate" }, source.people[1]]
+    })).toThrowError(DomainError);
+    expect(() => replaceAppData({
+      ...source,
+      people: [{ ...source.people[0], birthPlace: 42 }, source.people[1]]
+    })).toThrowError(DomainError);
+    expect(() => replaceAppData({
+      ...source,
+      relationships: [{ ...source.relationships[0], marriageDatePrecision: "approximate" }]
+    })).toThrowError(DomainError);
   });
 
   it("rejects malformed manual child order values", () => {

@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -13,6 +13,11 @@ const Probe = () => { const pro = usePro(); return <span>{`${pro.configured}:${p
 const PurchaseProbe = () => {
   const pro = usePro();
   return <button onClick={() => void pro.purchase()} type="button">{pro.subscription.status}</button>;
+};
+const RefreshProbe = ({ onSyncChange }: { onSyncChange: (sync: ProContextValue["sync"]) => void }) => {
+  const pro = usePro();
+  useEffect(() => onSyncChange(pro.sync), [onSyncChange, pro.sync]);
+  return <button onClick={() => void pro.refreshSubscription()} type="button">{pro.sync.phase}</button>;
 };
 
 let root: Root | undefined;
@@ -122,6 +127,43 @@ describe("ProProvider", () => {
     });
     expect(fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/entitlements/current")))
       .toHaveLength(2);
+  });
+
+  it("does not reset synchronization while refreshing active access", async () => {
+    localStorage.setItem("heritg:family-sync-enabled", "true");
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    const syncChanges = vi.fn();
+    let entitlementRequests = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
+        accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-09-24T00:00:00Z"
+      }));
+      if (path.endsWith("/entitlements/current")) {
+        entitlementRequests += 1;
+        return new Response(JSON.stringify(entitlement({
+          access: "active", canRead: true, canWrite: true, expiresAt: "2026-09-24T00:00:00Z"
+        })));
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><RefreshProbe onSyncChange={syncChanges} /></ProProvider>));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 10)));
+    expect(container.textContent).toBe("comparing");
+    const syncChangeCount = syncChanges.mock.calls.length;
+
+    await act(async () => {
+      container?.querySelector("button")?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 10));
+    });
+
+    expect(entitlementRequests).toBe(2);
+    expect(syncChanges).toHaveBeenCalledTimes(syncChangeCount);
+    expect(container.textContent).toBe("comparing");
   });
 
   it("shows immediate mock activation instead of redirecting after checkout", async () => {

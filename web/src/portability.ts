@@ -91,6 +91,10 @@ const enumValue = <T extends string>(value: unknown, allowed: readonly T[], labe
   if (typeof value !== "string" || !allowed.includes(value as T)) invalid(`${label} is unsupported.`);
   return value as T;
 };
+const optionalTextValue = (value: unknown, label: string): string =>
+  value === undefined ? "" : textValue(value, label);
+const optionalPrecision = (value: unknown, label: string): Person["birthDatePrecision"] =>
+  value === undefined ? "exact" : enumValue(value, PRECISIONS, label);
 const idValue = (value: unknown, label: string): string => {
   const id = textValue(value, label);
   if (!id.trim()) invalid(`${label} is malformed.`);
@@ -201,6 +205,12 @@ export function validateAppData(value: unknown): AppData {
       ),
       deathDate: optionalDate(item.deathDate, `person ${index}.deathDate`),
       birthDatePrecision: enumValue(item.birthDatePrecision, PRECISIONS, `person ${index}.birthDatePrecision`),
+      deathDatePrecision: optionalPrecision(
+        item.deathDatePrecision,
+        `person ${index}.deathDatePrecision`
+      ),
+      birthPlace: optionalTextValue(item.birthPlace, `person ${index}.birthPlace`),
+      deathPlace: optionalTextValue(item.deathPlace, `person ${index}.deathPlace`),
       notes: textValue(item.notes, `person ${index}.notes`, MAX_NOTES_LENGTH),
       addressLine: textValue(item.addressLine, `person ${index}.addressLine`),
       city: textValue(item.city, `person ${index}.city`),
@@ -215,9 +225,10 @@ export function validateAppData(value: unknown): AppData {
     const subtype = enumValue(item.subtype, SUBTYPES, `relationship ${index}.subtype`);
     const marriageDate = optionalDate(item.marriageDate, `relationship ${index}.marriageDate`);
     const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
-    const divorceDate = isFormer
-      ? optionalCalendarDate(item.divorceDate, `relationship ${index}.divorceDate`)
-      : undefined;
+    const divorceDate = optionalCalendarDate(item.divorceDate, `relationship ${index}.divorceDate`);
+    if (divorceDate && !isFormer) {
+      invalid(`relationship ${index}.divorceDate is only valid for former unions.`);
+    }
     if (marriageDate && divorceDate && divorceDate < marriageDate.slice(0, 10)) {
       invalid(`relationship ${index}.divorceDate cannot be earlier than marriageDate.`);
     }
@@ -230,6 +241,10 @@ export function validateAppData(value: unknown): AppData {
       subtype,
       createdAt: dateValue(item.createdAt, `relationship ${index}.createdAt`),
       marriageDate,
+      marriageDatePrecision: optionalPrecision(
+        item.marriageDatePrecision,
+        `relationship ${index}.marriageDatePrecision`
+      ),
       ...(divorceDate ? { divorceDate } : {})
     };
   });
@@ -414,6 +429,16 @@ export function importNativeHeritgArchive(
       birthDate: optionalNativeDate(item.birthDate, `archive.person ${index}.birthDate`, true),
       deathDate: optionalNativeDate(item.deathDate, `archive.person ${index}.deathDate`, true),
       birthDatePrecision: enumValue(item.birthDatePrecisionRaw, PRECISIONS, `archive.person ${index}.birthDatePrecisionRaw`),
+      deathDatePrecision: optionalPrecision(
+        item.deathDatePrecisionRaw,
+        `archive.person ${index}.deathDatePrecisionRaw`
+      ),
+      birthPlace: optionalTextValue(item.birthPlace, `archive.person ${index}.birthPlace`),
+      deathPlace: optionalTextValue(item.deathPlace, `archive.person ${index}.deathPlace`),
+      birthOrderOverride: optionalPositiveInteger(
+        item.birthOrderOverride,
+        `archive.person ${index}.birthOrderOverride`
+      ),
       notes: textValue(item.notes, `archive.person ${index}.notes`),
       addressLine: textValue(item.addressLine, `archive.person ${index}.addressLine`),
       city: textValue(item.city, `archive.person ${index}.city`),
@@ -425,20 +450,31 @@ export function importNativeHeritgArchive(
   });
   const relationships = arrayValue(payload.relationships, "archive.relationships").map((entry, index): FamilyRelationship => {
     const item = objectValue(entry, `archive.relationship ${index}`);
+    const kind = enumValue(item.kindRaw, KINDS, `archive.relationship ${index}.kindRaw`);
     const subtype = enumValue(item.subtypeRaw, SUBTYPES, `archive.relationship ${index}.subtypeRaw`);
     const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
+    const divorceDate = optionalNativeDate(
+      item.divorceDate,
+      `archive.relationship ${index}.divorceDate`,
+      true
+    );
+    if (divorceDate && !isFormer) {
+      invalid(`archive.relationship ${index}.divorceDate is only valid for former unions.`);
+    }
     return {
       id: idValue(item.id, `archive.relationship ${index}.id`),
       treeId: idValue(item.treeID, `archive.relationship ${index}.treeID`),
       fromPersonId: idValue(item.fromPersonID, `archive.relationship ${index}.fromPersonID`),
       toPersonId: idValue(item.toPersonID, `archive.relationship ${index}.toPersonID`),
-      kind: enumValue(item.kindRaw, KINDS, `archive.relationship ${index}.kindRaw`),
+      kind,
       subtype,
       createdAt: nativeDateValue(item.createdAt, `archive.relationship ${index}.createdAt`),
       marriageDate: optionalNativeDate(item.marriageDate, `archive.relationship ${index}.marriageDate`, true),
-      divorceDate: isFormer
-        ? optionalNativeDate(item.divorceDate, `archive.relationship ${index}.divorceDate`, true)
-        : undefined
+      marriageDatePrecision: optionalPrecision(
+        item.marriageDatePrecisionRaw,
+        `archive.relationship ${index}.marriageDatePrecisionRaw`
+      ),
+      divorceDate
     };
   });
   const imported = validateAppData({
@@ -454,7 +490,7 @@ export function importNativeHeritgArchive(
     relationships,
     selectedTreeId: treeId,
     language: options.into?.language ?? "en",
-    viewports: { [treeId]: { scrollX: 0, scrollY: 0, zoom: 1 } }
+    viewports: {}
   });
   return mergeImportedData(imported, options);
 }

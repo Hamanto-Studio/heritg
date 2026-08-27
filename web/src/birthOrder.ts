@@ -60,7 +60,19 @@ export function deriveBirthOrders(
   }
 
   const orders = new Map<string, number>();
+  const groupedChildIds = new Set<string>();
   for (const childIds of childrenByFamily.values()) {
+    childIds.forEach((id) => groupedChildIds.add(id));
+    const children = childIds
+      .map((id) => peopleById.get(id))
+      .filter((person): person is Person => Boolean(person));
+    const manualOrders = children.filter((person) => person.birthOrderOverride !== undefined);
+    if (manualOrders.length > 0) {
+      if (manualOrders.length === children.length) {
+        manualOrders.forEach((person) => orders.set(person.id, person.birthOrderOverride!));
+      }
+      continue;
+    }
     if (childIds.length < 2) continue;
     const dated = childIds.map((id) => {
       const person = peopleById.get(id);
@@ -76,7 +88,7 @@ export function deriveBirthOrders(
     ordered.forEach((value, index) => orders.set(value.id, index + 1));
   }
   for (const person of people) {
-    if (person.birthOrderOverride !== undefined) {
+    if (person.birthOrderOverride !== undefined && !groupedChildIds.has(person.id)) {
       orders.set(person.id, person.birthOrderOverride);
     }
   }

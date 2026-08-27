@@ -165,7 +165,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const saveErrorRef = useRef<Error | undefined>(undefined);
   const persistedFingerprintRef = useRef<string | undefined>(undefined);
   const queuedFingerprintRef = useRef<string | undefined>(undefined);
-  const deferredSaveTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const skipNextAutomaticSaveRef = useRef(false);
   const skipAutomaticSaveDataRef = useRef<AppData | undefined>(undefined);
 
@@ -210,7 +209,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then((stored) => {
         if (!active) return;
         const next = stored ? replaceAppData(stored) : createInitialAppData();
-        persistedFingerprintRef.current = stored ? syncDataFingerprint(next) : undefined;
+        persistedFingerprintRef.current = stored ? syncDataFingerprint(stored) : undefined;
         queuedFingerprintRef.current = persistedFingerprintRef.current;
         dataRef.current = next;
         setData(next);
@@ -236,10 +235,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (skipNextAutomaticSaveRef.current) {
       skipNextAutomaticSaveRef.current = false;
       return;
-    }
-    if (deferredSaveTimerRef.current) {
-      clearTimeout(deferredSaveTimerRef.current);
-      deferredSaveTimerRef.current = undefined;
     }
     queueSave(dataRef.current ?? data);
   }, [data, isLoading]);
@@ -393,12 +388,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dataRef.current = next;
     skipNextAutomaticSaveRef.current = true;
     setData(next);
-    if (deferredSaveTimerRef.current) clearTimeout(deferredSaveTimerRef.current);
-    deferredSaveTimerRef.current = setTimeout(() => {
-      deferredSaveTimerRef.current = undefined;
-      const latest = dataRef.current;
-      if (latest) queueSave(latest);
-    }, 800);
+    queueSave(next);
   }
 
   function addRelationship(

@@ -13,10 +13,12 @@ import type {
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { circularAvatarData, type AvatarImageResolver } from "./avatar";
 import { BIRTH_ORDER_BADGE } from "./birthOrder";
+import { deriveBloodFamilyHighlight, type BloodFamilyHighlight } from "./bloodFamily";
 import {
   CONNECTOR_STYLE,
   branchJunctions,
   connectorPaths,
+  horizontalCrossingBridgePoints,
   roundedConnectorPoints
 } from "./connectorStyle";
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
@@ -117,9 +119,10 @@ const connectorSkeleton = (
   strokeStyle: "solid" | "dashed",
   link: string,
   customData: Record<string, unknown>,
-  groupIds: string[] = []
+  groupIds: string[] = [],
+  roundCorners = true
 ): ExcalidrawElementSkeleton => {
-  const renderedPoints = roundedConnectorPoints(points);
+  const renderedPoints = roundCorners ? roundedConnectorPoints(points) : [...points];
   const x = Math.min(...renderedPoints.map((point) => point.x));
   const y = Math.min(...renderedPoints.map((point) => point.y));
   const maxX = Math.max(...renderedPoints.map((point) => point.x));
@@ -221,6 +224,7 @@ const personSkeletons = (
   person: PositionedPerson,
   files: BinaryFiles,
   selectedPersonId: string | undefined,
+  bloodPersonIds: ReadonlySet<string>,
   language: AppData["language"],
   resolveAvatar: AvatarImageResolver,
   lifeSummaryOptions?: SceneLifeSummaryOptions
@@ -230,6 +234,7 @@ const personSkeletons = (
   const link = `#heritg-person=${key}`;
   const data = personData(person);
   const selected = person.id === selectedPersonId;
+  const bloodRelative = bloodPersonIds.has(person.id);
   const appearance = personAvatarAppearance(person.gender);
   const showRole = Boolean(selectedPersonId && person.role);
   const avatarSize = LAYOUT_METRICS.avatarDiameter;
@@ -246,10 +251,10 @@ const personSkeletons = (
       y: avatarY,
       width: avatarSize,
       height: avatarSize,
-      strokeColor: selected ? HERITG_SCENE_COLORS.brand : appearance.stroke,
+      strokeColor: selected || bloodRelative ? CONNECTOR_STYLE.highlightColor : appearance.stroke,
       backgroundColor: appearance.fill,
       fillStyle: "solid",
-      strokeWidth: selected ? 2 : 1,
+      strokeWidth: selected ? 4 : bloodRelative ? 2 : 1,
       strokeStyle: "solid",
       opacity: 100,
       ...elementIdentity(`heritg:person:${key}:avatar`, link, data, groupIds)
@@ -428,10 +433,12 @@ const personSkeletons = (
 };
 
 export const projectConnectionPlanToElements = (
-  plan: ConnectionPlan
+  plan: ConnectionPlan,
+  bloodFamily?: BloodFamilyHighlight
 ): OrderedExcalidrawElement[] => {
   const skeletons: ExcalidrawElementSkeleton[] = [];
   for (const family of plan.families) {
+    const highlighted = family.relationshipIds.some((id) => bloodFamily?.relationshipIds.has(id));
     const familyKey = encodedId(family.id);
     const data = {
       heritgType: "family",
@@ -444,8 +451,8 @@ export const projectConnectionPlanToElements = (
     connectorPaths(family.segments).forEach((path, index) => skeletons.push(connectorSkeleton(
       path.points,
       `heritg:family:${familyKey}:path:${index}`,
-      HERITG_SCENE_COLORS.brand,
-      CONNECTOR_STYLE.width,
+      highlighted ? CONNECTOR_STYLE.highlightColor : HERITG_SCENE_COLORS.brand,
+      highlighted ? CONNECTOR_STYLE.highlightWidth : CONNECTOR_STYLE.width,
       "solid",
       `#heritg-family=${familyKey}`,
       data,
@@ -457,8 +464,8 @@ export const projectConnectionPlanToElements = (
       y: junction.y - CONNECTOR_STYLE.junctionRadius,
       width: CONNECTOR_STYLE.junctionRadius * 2,
       height: CONNECTOR_STYLE.junctionRadius * 2,
-      strokeColor: HERITG_SCENE_COLORS.brand,
-      backgroundColor: HERITG_SCENE_COLORS.brand,
+      strokeColor: highlighted ? CONNECTOR_STYLE.highlightColor : HERITG_SCENE_COLORS.brand,
+      backgroundColor: highlighted ? CONNECTOR_STYLE.highlightColor : HERITG_SCENE_COLORS.brand,
       fillStyle: "solid",
       strokeWidth: 1,
       strokeStyle: "solid",
@@ -473,13 +480,14 @@ export const projectConnectionPlanToElements = (
   }
   for (const route of plan.nonParentRoutes) {
     const relationship = route.relationship;
+    const highlighted = Boolean(bloodFamily?.relationshipIds.has(relationship.id));
     const key = encodedId(relationship.id);
     const color = relationshipColor(relationship.kind);
     connectorPaths(route.segments).forEach((path, index) => skeletons.push(connectorSkeleton(
       path.points,
       `heritg:relationship:${key}:path:${index}`,
-      color,
-      CONNECTOR_STYLE.width,
+       highlighted ? CONNECTOR_STYLE.highlightColor : color,
+       highlighted ? CONNECTOR_STYLE.highlightWidth : CONNECTOR_STYLE.width,
       relationship.kind === "sibling" ? "dashed" : "solid",
       `#heritg-relationship=${key}`,
       relationshipData(relationship),
@@ -504,26 +512,24 @@ export const projectConnectionPlanToElements = (
       ...elementIdentity(`heritg:crossing:${encodedId(key)}:mask`, "", { heritgType: "crossing" })
     } as ExcalidrawElementSkeleton);
     skeletons.push(connectorSkeleton(
-      [{ x: point.x - radius - 2, y: point.y }, { x: point.x + radius + 2, y: point.y }],
+      [{ x: point.x, y: point.y - radius - 2 }, { x: point.x, y: point.y + radius + 2 }],
       `heritg:crossing:${encodedId(key)}:rail`,
-      relationshipColor(point.horizontalKind),
-      CONNECTOR_STYLE.width,
-      point.horizontalKind === "sibling" ? "dashed" : "solid",
-      "",
-      { heritgType: "crossing" }
-    ));
-    skeletons.push(connectorSkeleton(
-      [
-        { x: point.x, y: point.y - radius },
-        { x: point.x + radius + 2, y: point.y },
-        { x: point.x, y: point.y + radius }
-      ],
-      `heritg:crossing:${encodedId(key)}:bridge`,
       relationshipColor(point.kind),
       CONNECTOR_STYLE.width,
       point.kind === "sibling" ? "dashed" : "solid",
       "",
       { heritgType: "crossing" }
+    ));
+    skeletons.push(connectorSkeleton(
+      horizontalCrossingBridgePoints(point, radius),
+      `heritg:crossing:${encodedId(key)}:bridge`,
+      relationshipColor(point.horizontalKind),
+      CONNECTOR_STYLE.width,
+      point.horizontalKind === "sibling" ? "dashed" : "solid",
+      "",
+      { heritgType: "crossing" },
+      [],
+      false
     ));
   });
   for (const route of plan.nonParentRoutes) {
@@ -551,14 +557,20 @@ export function projectLayoutToScene(
       compareText(left.id, right.id)
   );
   const plan = suppliedPlan ?? createConnectionPlan(layout, language);
+  const bloodFamily = deriveBloodFamilyHighlight(
+    selectedPersonId,
+    layout.people,
+    layout.relationships
+  );
   const connectionElements = suppliedConnectionElements ??
-    projectConnectionPlanToElements(plan);
+    projectConnectionPlanToElements(plan, bloodFamily);
 
   const files: BinaryFiles = {};
   const personSkeletonValues: ExcalidrawElementSkeleton[] = [];
   for (const person of people) {
     personSkeletonValues.push(...personSkeletons(
-      person, files, selectedPersonId, language, resolveAvatar, lifeSummaryOptions
+      person, files, selectedPersonId, bloodFamily.personIds, language, resolveAvatar,
+      lifeSummaryOptions
     ));
   }
   const personElements = convertToExcalidrawElements(
