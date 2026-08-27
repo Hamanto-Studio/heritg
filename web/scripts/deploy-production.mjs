@@ -11,8 +11,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "../..");
 const origin = process.env.HERITG_API_ORIGIN;
 const googleClientId = process.env.HERITG_GOOGLE_CLIENT_ID;
-const turnstileSiteKey = process.env.HERITG_TURNSTILE_SITE_KEY;
-const refusal = validateProductionAuthConfig(origin, googleClientId, turnstileSiteKey);
+const refusal = validateProductionAuthConfig(origin, googleClientId);
 
 if (refusal) {
   process.stderr.write(`Production deployment refused: ${refusal}.\n`);
@@ -44,8 +43,8 @@ if (git("status", "--porcelain")) {
   process.exit(1);
 }
 
-process.stdout.write(`Deploying clean production candidate ${buildVersion} without assigning domains.\n`);
-execFileSync("npx", [
+process.stdout.write(`Deploying production build ${buildVersion} without assigning domains.\n`);
+const deploymentOutput = execFileSync("npx", [
   "--yes",
   "vercel@58.4.4",
   "deploy",
@@ -64,5 +63,19 @@ execFileSync("npx", [
   "--build-env",
   `HERITG_GOOGLE_CLIENT_ID=${googleClientId}`,
   "--build-env",
-  `HERITG_TURNSTILE_SITE_KEY=${turnstileSiteKey}`
+  "HERITG_FAMILY_BILLING_ENABLED=true"
+], { cwd: repositoryRoot, encoding: "utf8", stdio: ["ignore", "pipe", "inherit"] });
+process.stdout.write(deploymentOutput);
+
+const deploymentUrls = deploymentOutput.match(/https:\/\/[^\s]+[.]vercel[.]app\/?/gu) ?? [];
+const deploymentUrl = deploymentUrls.at(-1);
+if (!deploymentUrl) {
+  process.stderr.write("Production deployment refused: Vercel did not return an immutable deployment URL.\n");
+  process.exit(1);
+}
+
+process.stdout.write("The production-targeted build is ready. Verifying and promoting it now.\n");
+execFileSync(process.execPath, [
+  resolve(scriptDirectory, "promote-production.mjs"),
+  deploymentUrl
 ], { cwd: repositoryRoot, stdio: "inherit" });

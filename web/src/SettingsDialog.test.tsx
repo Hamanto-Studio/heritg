@@ -103,7 +103,8 @@ describe("Family+ settings", () => {
 
     expect(markup).toContain("Heritg Family+");
     expect(markup).toContain("Active");
-    expect(markup).toContain("Refresh access");
+    expect(markup).toContain("Check access expiry");
+    expect(markup).toContain("Family-tree synchronization runs automatically.");
     expect(markup).toContain("Up to date");
     expect(markup).toContain("Disable synchronization");
     expect(markup).toContain("Access ends in");

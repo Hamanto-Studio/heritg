@@ -119,4 +119,37 @@ describe("Family+ expiry formatting", () => {
     expect(error?.textContent).toBe("Family synchronization could not be completed.");
     expect(container.querySelector(".pro-settings-card > .field-error")).toBeNull();
   });
+
+  it("explains that checking access does not run synchronization and finishes loading", async () => {
+    let finishRefresh: (() => void) | undefined;
+    const refreshSubscription = vi.fn(() => new Promise<void>((resolve) => { finishRefresh = resolve; }));
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(
+      <ProSettings
+        language="en"
+        onOpenPaywall={() => undefined}
+        pro={{
+          ...unavailableProContext,
+          configured: true,
+          subscription: { status: "active", expiresAt: "2026-09-24T00:00:00Z" },
+          sync: { enabled: true, phase: "upToDate", pendingChanges: 0 },
+          refreshSubscription
+        }}
+        t={createTranslator("en")}
+      />
+    ));
+
+    expect(container.textContent).toContain("Check access expiry");
+    expect(container.textContent).toContain("Family-tree synchronization runs automatically.");
+    const refresh = [...container.querySelectorAll("button")]
+      .find((button) => button.textContent === "Check access expiry");
+    await act(async () => refresh?.click());
+    expect(refresh?.disabled).toBe(true);
+    expect(refresh?.textContent).toContain("Checking access...");
+    await act(async () => finishRefresh?.());
+    expect(refresh?.disabled).toBe(false);
+    expect(refresh?.textContent).toContain("Check access expiry");
+  });
 });

@@ -1,6 +1,6 @@
 # Data Processing Register
 
-Last reviewed: August 23, 2026
+Last reviewed: August 24, 2026
 
 This register identifies data flows in the official HERITG application. It is
 intended to keep the privacy policy, implementation, and App Store disclosures
@@ -20,11 +20,9 @@ consistent.
 | Encrypted share creation | Optional on web | Create an expiring immutable read-only family-tree snapshot | AES-256-GCM ciphertext; size and expiration metadata; no viewing key | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User explicitly creates a link and chooses its expiration |
 | Encrypted share viewing | Optional on web | Download and decrypt a shared snapshot in memory | Ciphertext and access timing; password and derived viewing key remain client-side | Cloud Run and private Cloud Storage in Jakarta | Recipient opens the link and enters its separately shared password |
 | Encrypted share management | Optional on web | Revoke active links from the creating browser | Encrypted share ID, deletion capability, and expiration | Encrypted IndexedDB on the sender's device | Sender revokes the link or clears site data |
-| Email magic-link request | Optional on web | Send one generic signup/signin link without disclosing account existence | Submitted email address in request/component memory, keyed email hash, encrypted challenge address, single-use verification metadata, delivery and standard network metadata; no family content | HERITG same-origin account API and Resend | Browser does not persist the address; encrypted unproved records expire; verified address becomes account profile data |
-| Resend email delivery | Optional on web | Deliver the requested transactional sign-in email | Recipient address, message content, delivery status, and standard email/network metadata | Resend | Triggered only by a user request; provider retention and deletion obligations apply |
-| Google Identity Services | Optional on web | Establish an explicit Google-authenticated HERITG account session | One-time Google identity proof and nonce; verified name/email profile fields; Google account and network metadata processed by Google | Google and the HERITG same-origin account API | User explicitly chooses Google; it is not automatically linked to email |
-| HERITG account session | Optional on web | Create an account after email proof or sign in an existing account, then maintain its session | Keyed hash of normalized email or hash-derived Google subject, verified profile fields, opaque account ID, hashed session and CSRF values, creation and expiration times; no family plaintext | Cloud Run and Firestore in Jakarta; secure host-only browser cookies | User signs out; session expires; user deletes the account from Settings |
-| Encrypted Family synchronization | Optional on web; currently enabled only in approved environments | Synchronize owner-held trees and recover them on another device | Opaque encrypted snapshots, tree/revision metadata, and independently wrapped per-tree sync keys; no family plaintext | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User enables synchronization; entitlement and account deletion controls apply |
+| Google Identity Services | Optional on web | Prepare and establish a Google-authenticated HERITG account session | Google script request when signed-out Account Settings opens; one-time identity proof and nonce after activation; verified name and email; Google account and network metadata processed by Google | Google and the HERITG same-origin account API | User chooses whether to open Account Settings and whether to activate Google sign-in |
+| HERITG account session | Optional on web | Create or restore a Google-authenticated account and maintain its session | Hash-derived Google subject, verified name and email, opaque account ID, hashed session and CSRF values, creation and expiration times; no family content | Cloud Run and Firestore in Jakarta; secure host-only browser cookies | User signs out; session expires; deletion removes profile/session/content while retaining an identity tombstone for security and abuse controls |
+| Encrypted Family+ synchronization | Optional on web | Continue a tree across connected devices | AES-256-GCM ciphertext, opaque account/tree identifiers, revisions, sizes, timestamps, and server-managed encrypted tree-key recovery data; the backend can unwrap a key for an authenticated owner | Cloud Run, Firestore, and private Cloud Storage in Jakarta | User claims Family+ access and explicitly enables or disables synchronization; tree/account deletion removes hosted data |
 | External support link | Active | Let users contact support | Link navigation; subsequent communication chosen by user | Telegram | User explicitly opens the link |
 | App Store distribution | Active for distributed builds | Install and update the app | Apple account, transaction, device, and diagnostic data determined by Apple | Apple | Apple account and device settings |
 | App Store Connect reports | Active for distributed builds | Aggregate distribution and product reporting | Aggregate downloads, sales, conversion, and performance information | Hamanto Studio through Apple | Governed by Apple platform settings and policies |
@@ -40,6 +38,7 @@ consistent.
 | Firebase Crashlytics | Not integrated | Optional diagnostics would require separate consent and sanitization |
 | Advertising and attribution SDKs | Not integrated | Cross-app tracking and advertising profiles are prohibited |
 | Session replay and heatmaps | Not integrated | Prohibited by the analytics policy |
+| Passwordless email and Resend | Disabled | Requires separate provider, secret, UI, privacy, and release approval before activation |
 
 ## Provider Approval Requirements
 
@@ -66,7 +65,7 @@ Monitoring, Remote Config, or Cloud Messaging.
 | User-selected files | GEDCOM, HERITG archives, exported images and documents | Prohibited | Prohibited | Allowed when required by the feature |
 | Product events | Approved events in `ANALYTICS.md` | Optional with consent | Not applicable | Temporary queue only if implemented |
 | Technical diagnostics | Error code, stack trace, app version, OS version | Not applicable | Optional with separate consent | Temporary queue only if implemented |
-| Direct and pseudonymous identifiers | Email, phone number, Google subject, account ID, advertising ID | Prohibited | Prohibited | Browser sign-in state is memory-only; HERITG persists verified profile fields, keyed email hashes, account IDs, and hash-derived Google subjects for authentication |
+| Direct and pseudonymous identifiers | Email, phone number, Google subject, account ID, advertising ID | Prohibited | Prohibited | Heritg persists the verified Google name and email, an account ID, and a hash-derived Google subject only for optional account authentication and display |
 | Credentials | API secrets, private keys, service accounts, signing passwords | Prohibited | Prohibited | Never bundled with the app |
 
 ## Review Triggers

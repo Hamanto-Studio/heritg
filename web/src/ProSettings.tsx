@@ -64,6 +64,7 @@ export function ProSettings({
   deploymentEnvironment = __DEPLOYMENT_ENV__
 }: ProSettingsProps) {
   const [now, setNow] = useState(Date.now);
+  const [refreshingAccess, setRefreshingAccess] = useState(false);
   const active = pro.subscription.status === "active" ? pro.subscription : undefined;
   const readOnly = deploymentEnvironment === "production" && pro.subscription.status === "readOnly";
   const expired = pro.subscription.status === "expired" ||
@@ -73,6 +74,16 @@ export function ProSettings({
   const expiredAt = pro.subscription.status === "expired"
     ? pro.subscription.expiresAt
     : pro.subscription.status === "readOnly" ? pro.subscription.expiresAt : undefined;
+
+  const refreshAccess = async () => {
+    if (refreshingAccess) return;
+    setRefreshingAccess(true);
+    try {
+      await refreshSubscription();
+    } finally {
+      setRefreshingAccess(false);
+    }
+  };
 
   useEffect(() => {
     if (deploymentEnvironment !== "staging" || !activeExpiry) return;
@@ -130,9 +141,10 @@ export function ProSettings({
         {(active || readOnly) && pro.sync.phase !== "unavailable" ? <button aria-pressed={pro.sync.enabled} className={`sync-toggle ${pro.sync.enabled ? "selected" : ""}`} onClick={() => void pro.setSyncEnabled(!pro.sync.enabled)} type="button"><span aria-hidden="true" />{pro.sync.enabled ? t("disableSync") : t("enableSync")}</button> : null}
         {pro.sync.pendingChanges > 0 ? <p className="sync-meta" role="status">{t("syncPendingChanges", { count: pro.sync.pendingChanges })}</p> : null}
         <div className="settings-card-actions">
-          {active ? <button className="button secondary" onClick={() => void pro.refreshSubscription()} type="button"><RefreshCw aria-hidden="true" size={16} />{t("refreshSubscription")}</button>
+          {active ? <button aria-busy={refreshingAccess} className="button secondary" disabled={refreshingAccess} onClick={() => void refreshAccess()} type="button">{refreshingAccess ? <ButtonLoader /> : <RefreshCw aria-hidden="true" size={16} />}{t(refreshingAccess ? "refreshingSubscription" : "refreshSubscription")}</button>
             : <button className="button primary" disabled={pro.subscription.status === "loading"} onClick={onOpenPaywall} type="button">{pro.subscription.status === "loading" ? <ButtonLoader /> : null}{t("enableSyncFamilyPlus")}</button>}
         </div>
+        {active ? <p className="settings-detail">{t("refreshSubscriptionDetail")}</p> : null}
       </section>
     </div>
     <ErrorNotice message={pro.error} />

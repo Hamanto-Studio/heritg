@@ -54,6 +54,9 @@ export interface NewPersonInput {
   birthOrderOverride?: number;
   deathDate?: string;
   birthDatePrecision?: Person["birthDatePrecision"];
+  deathDatePrecision?: Person["deathDatePrecision"];
+  birthPlace?: string;
+  deathPlace?: string;
   notes?: string;
   addressLine?: string;
   city?: string;
@@ -114,8 +117,11 @@ const relationshipDates = (
   divorceDate?: string
 ) => {
   const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
-  if (!isFormer || !divorceDate) {
+  if (divorceDate === undefined) {
     return marriageDate ? { marriageDate } : {};
+  }
+  if (!isFormer) {
+    throw new DomainError("invalidData", "Divorce date is only valid for former unions.");
   }
   if (!validCalendarDate(divorceDate)) {
     throw new DomainError("invalidData", "Divorce date must use YYYY-MM-DD.");
@@ -301,6 +307,9 @@ export function createPerson(
     gender: input.gender ?? roleGender ?? "unspecified",
     createdAt: now,
     birthDatePrecision: input.birthDatePrecision ?? "exact",
+    deathDatePrecision: input.deathDatePrecision ?? "exact",
+    birthPlace: input.birthPlace?.trim() ?? "",
+    deathPlace: input.deathPlace?.trim() ?? "",
     notes: input.notes?.trim() ?? "",
     addressLine: input.addressLine?.trim() ?? "",
     city: input.city?.trim() ?? "",
@@ -333,6 +342,13 @@ export function updatePerson(
       : requiredName(changes.displayName),
     gender: changes.gender ?? person.gender,
     birthDatePrecision: changes.birthDatePrecision ?? person.birthDatePrecision,
+    deathDatePrecision: changes.deathDatePrecision ?? person.deathDatePrecision ?? "exact",
+    birthPlace: changes.birthPlace === undefined
+      ? person.birthPlace ?? ""
+      : changes.birthPlace.trim(),
+    deathPlace: changes.deathPlace === undefined
+      ? person.deathPlace ?? ""
+      : changes.deathPlace.trim(),
     notes: changes.notes === undefined ? person.notes : changes.notes.trim(),
     addressLine: changes.addressLine?.trim() ?? person.addressLine,
     city: changes.city === undefined ? person.city : changes.city.trim(),
@@ -426,9 +442,11 @@ export function addRelationship(
   data: AppData, personId: string, relativePersonId: string, role: DirectRole,
   marriageDate?: string,
   meta: DomainMeta = {},
-  divorceDate?: string
+  divorceDate?: string,
+  marriageDatePrecision: FamilyRelationship["marriageDatePrecision"] = "exact"
 ): AppData {
   if (personId === relativePersonId) throw new DomainError("selfRelationship");
+  if (!isPrecision(marriageDatePrecision)) throw new DomainError("invalidData");
   const person = findPerson(data, personId);
   const relative = findPerson(data, relativePersonId);
   if (person.treeId !== relative.treeId) {
@@ -459,9 +477,12 @@ export function addRelationship(
     kind: endpoints.kind,
     subtype: endpoints.subtype,
     createdAt: now,
-    ...(isPartnerRole(role)
-      ? relationshipDates(endpoints.subtype, marriageDate, divorceDate)
-      : {})
+    marriageDatePrecision,
+    ...relationshipDates(
+      endpoints.subtype,
+      isPartnerRole(role) ? marriageDate : undefined,
+      divorceDate
+    )
   };
   return touchTree(
     { ...data, relationships: [...data.relationships, relationship] },
@@ -535,6 +556,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const hasStrings = (value: unknown, fields: string[]) =>
   isRecord(value) && fields.every((field) => typeof value[field] === "string");
+const isPrecision = (value: unknown): value is Person["birthDatePrecision"] =>
+  typeof value === "string" && ["exact", "month", "year"].includes(value);
+const isOptionalString = (value: unknown) => value === undefined || typeof value === "string";
 
 export function assertAppData(value: unknown): asserts value is AppData {
   if (!isRecord(value) || value.version !== 1 || !["en", "id"].includes(String(value.language))) {
@@ -556,19 +580,25 @@ export function assertAppData(value: unknown): asserts value is AppData {
   if (!data.trees.every((tree) =>
         hasStrings(tree, ["id", "title", "createdAt", "updatedAt"])) ||
       !data.people.every((person) =>
-        hasStrings(person, ["id", "treeId", "displayName", "createdAt", "notes",
-          "addressLine", "city", "province", "country", "postalCode"]) &&
-        ["female", "male", "unspecified"].includes(String(person.gender)) &&
-        ["exact", "month", "year"].includes(String(person.birthDatePrecision)) &&
-        (person.birthOrderOverride === undefined ||
-          (Number.isSafeInteger(person.birthOrderOverride) && person.birthOrderOverride > 0))) ||
+         hasStrings(person, ["id", "treeId", "displayName", "createdAt", "notes",
+           "addressLine", "city", "province", "country", "postalCode"]) &&
+         ["female", "male", "unspecified"].includes(String(person.gender)) &&
+         isPrecision(person.birthDatePrecision) &&
+         (person.deathDatePrecision === undefined || isPrecision(person.deathDatePrecision)) &&
+         isOptionalString(person.birthPlace) &&
+         isOptionalString(person.deathPlace) &&
+         (person.birthOrderOverride === undefined ||
+           (Number.isSafeInteger(person.birthOrderOverride) && person.birthOrderOverride > 0))) ||
       !data.relationships.every((item) =>
         hasStrings(item, ["id", "treeId", "fromPersonId", "toPersonId", "createdAt"]) &&
         ["parent", "partner", "sibling"].includes(String(item.kind)) &&
-        ["biologicalParent", "adoptiveParent", "fosterParent", "guardian", "stepParent",
-          "partner", "spouse", "formerPartner", "formerSpouse", "sibling", "halfSibling",
-          "adoptiveSibling", "fosterSibling", "stepSibling"].includes(String(item.subtype)) &&
-        VALID_SUBTYPES[item.kind]?.includes(item.subtype))) {
+         ["biologicalParent", "adoptiveParent", "fosterParent", "guardian", "stepParent",
+           "partner", "spouse", "formerPartner", "formerSpouse", "sibling", "halfSibling",
+           "adoptiveSibling", "fosterSibling", "stepSibling"].includes(String(item.subtype)) &&
+         isOptionalString(item.marriageDate) &&
+         isOptionalString(item.divorceDate) &&
+         (item.marriageDatePrecision === undefined || isPrecision(item.marriageDatePrecision)) &&
+         VALID_SUBTYPES[item.kind]?.includes(item.subtype))) {
     throw new DomainError("invalidData");
   }
   const treeIds = data.trees.map((tree) => tree.id);
@@ -587,6 +617,11 @@ export function assertAppData(value: unknown): asserts value is AppData {
   }
   const signatures = new Set<string>();
   for (const relationship of data.relationships) {
+    relationshipDates(
+      relationship.subtype,
+      relationship.marriageDate,
+      relationship.divorceDate
+    );
     const from = people.get(relationship.fromPersonId);
     const to = people.get(relationship.toPersonId);
     const signature = `${relationship.treeId}|${relationshipSignature(
@@ -619,14 +654,30 @@ export function assertAppData(value: unknown): asserts value is AppData {
 
 export function replaceAppData(value: unknown): AppData {
   assertAppData(value);
+  const firstPersonByTree = new Map<string, string>();
+  value.people.forEach((person) => {
+    if (!firstPersonByTree.has(person.treeId)) firstPersonByTree.set(person.treeId, person.id);
+  });
   return {
     ...value,
+    selectedTreeId: value.selectedTreeId ?? value.trees[0]?.id,
     relationshipLanguage: value.relationshipLanguage ??
       (value.language === "en" ? "en" : value.relationshipTerminology ?? "id"),
     relationshipTerminology: value.relationshipTerminology ?? "id",
-    trees: value.trees.map((tree) => ({ ...tree })),
-    people: value.people.map((person) => ({ ...person })),
-    relationships: value.relationships.map((item) => ({ ...item })),
+    trees: value.trees.map((tree) => ({
+      ...tree,
+      lastSelectedPersonId: tree.lastSelectedPersonId ?? firstPersonByTree.get(tree.id)
+    })),
+    people: value.people.map((person) => ({
+      ...person,
+      deathDatePrecision: person.deathDatePrecision ?? "exact",
+      birthPlace: person.birthPlace ?? "",
+      deathPlace: person.deathPlace ?? ""
+    })),
+    relationships: value.relationships.map((item) => ({
+      ...item,
+      marriageDatePrecision: item.marriageDatePrecision ?? "exact"
+    })),
     viewports: Object.fromEntries(
       Object.entries(value.viewports).map(([id, viewport]) => [id, { ...viewport }])
     )

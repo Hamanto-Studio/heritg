@@ -1,0 +1,6988 @@
+{
+  "version": 1,
+  "input": {
+    "graph": {
+      "selectedPersonId": "selected",
+      "people": [
+        {
+          "id": "grandfather",
+          "treeId": "synthetic",
+          "displayName": "Grandfather",
+          "gender": "male",
+          "birthDate": "1940-01-01",
+          "birthDatePrecision": "year",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "Surabaya",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "grandmother",
+          "treeId": "synthetic",
+          "displayName": "Grandmother With A Long Canonical Name",
+          "gender": "female",
+          "birthDate": "1942-03-01",
+          "birthDatePrecision": "month",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "father",
+          "treeId": "synthetic",
+          "displayName": "Father",
+          "gender": "male",
+          "birthDate": "1965-04-03",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "mother",
+          "treeId": "synthetic",
+          "displayName": "Mother",
+          "gender": "female",
+          "birthDate": "1968-06-05",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "Bandung",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "aunt",
+          "treeId": "synthetic",
+          "displayName": "Aunt",
+          "gender": "female",
+          "birthDate": "1960-02-01",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "older",
+          "treeId": "synthetic",
+          "displayName": "Older Child",
+          "gender": "female",
+          "birthDate": "1988-01-01",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "selected",
+          "treeId": "synthetic",
+          "displayName": "Selected",
+          "gender": "male",
+          "birthDate": "1990-05-04",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "younger",
+          "treeId": "synthetic",
+          "displayName": "Younger Child",
+          "gender": "male",
+          "birthDate": "1992-01-01",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "birthOrderOverride": 4
+        },
+        {
+          "id": "spouse",
+          "treeId": "synthetic",
+          "displayName": "Former Spouse",
+          "gender": "female",
+          "birthDate": "1991-08-07",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "Jakarta",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "cousin",
+          "treeId": "synthetic",
+          "displayName": "Cousin",
+          "gender": "unspecified",
+          "birthDate": "1987-07-01",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "child",
+          "treeId": "synthetic",
+          "displayName": "Child",
+          "gender": "female",
+          "birthDate": "2015-09-02",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        },
+        {
+          "id": "friend",
+          "treeId": "synthetic",
+          "displayName": "Explicit Sibling",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": ""
+        }
+      ],
+      "relationships": [
+        {
+          "id": "partner-grandparents",
+          "treeId": "synthetic",
+          "fromPersonId": "grandfather",
+          "toPersonId": "grandmother",
+          "kind": "partner",
+          "subtype": "spouse",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "marriageDate": "1962-02-03"
+        },
+        {
+          "id": "gp-father",
+          "treeId": "synthetic",
+          "fromPersonId": "grandfather",
+          "toPersonId": "father",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "gm-father",
+          "treeId": "synthetic",
+          "fromPersonId": "grandmother",
+          "toPersonId": "father",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "gp-aunt",
+          "treeId": "synthetic",
+          "fromPersonId": "grandfather",
+          "toPersonId": "aunt",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "gm-aunt",
+          "treeId": "synthetic",
+          "fromPersonId": "grandmother",
+          "toPersonId": "aunt",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "partner-parents",
+          "treeId": "synthetic",
+          "fromPersonId": "father",
+          "toPersonId": "mother",
+          "kind": "partner",
+          "subtype": "spouse",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "marriageDate": "1987-01-02"
+        },
+        {
+          "id": "father-older",
+          "treeId": "synthetic",
+          "fromPersonId": "father",
+          "toPersonId": "older",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "mother-older",
+          "treeId": "synthetic",
+          "fromPersonId": "mother",
+          "toPersonId": "older",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "father-selected",
+          "treeId": "synthetic",
+          "fromPersonId": "father",
+          "toPersonId": "selected",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "mother-selected",
+          "treeId": "synthetic",
+          "fromPersonId": "mother",
+          "toPersonId": "selected",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "father-younger",
+          "treeId": "synthetic",
+          "fromPersonId": "father",
+          "toPersonId": "younger",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "mother-younger",
+          "treeId": "synthetic",
+          "fromPersonId": "mother",
+          "toPersonId": "younger",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "aunt-cousin",
+          "treeId": "synthetic",
+          "fromPersonId": "aunt",
+          "toPersonId": "cousin",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "partner-selected",
+          "treeId": "synthetic",
+          "fromPersonId": "selected",
+          "toPersonId": "spouse",
+          "kind": "partner",
+          "subtype": "formerSpouse",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "marriageDate": "2012-04-05",
+          "divorceDate": "2020-03-04"
+        },
+        {
+          "id": "selected-child",
+          "treeId": "synthetic",
+          "fromPersonId": "selected",
+          "toPersonId": "child",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "spouse-child",
+          "treeId": "synthetic",
+          "fromPersonId": "spouse",
+          "toPersonId": "child",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "explicit-sibling",
+          "treeId": "synthetic",
+          "fromPersonId": "friend",
+          "toPersonId": "cousin",
+          "kind": "sibling",
+          "subtype": "sibling",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        }
+      ]
+    },
+    "routing": {
+      "people": [
+        {
+          "id": "outer-left",
+          "treeId": "synthetic",
+          "displayName": "outer-left",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": -520,
+          "y": 0,
+          "role": "",
+          "generation": 0
+        },
+        {
+          "id": "inner-left",
+          "treeId": "synthetic",
+          "displayName": "inner-left",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": -260,
+          "y": 0,
+          "role": "",
+          "generation": 0
+        },
+        {
+          "id": "inner-right",
+          "treeId": "synthetic",
+          "displayName": "inner-right",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": 260,
+          "y": 0,
+          "role": "",
+          "generation": 0
+        },
+        {
+          "id": "outer-right",
+          "treeId": "synthetic",
+          "displayName": "outer-right",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": 520,
+          "y": 0,
+          "role": "",
+          "generation": 0
+        },
+        {
+          "id": "near-a",
+          "treeId": "synthetic",
+          "displayName": "near-a",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": -260,
+          "y": 260,
+          "role": "",
+          "generation": 1
+        },
+        {
+          "id": "near-b",
+          "treeId": "synthetic",
+          "displayName": "near-b",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": 260,
+          "y": 260,
+          "role": "",
+          "generation": 1
+        },
+        {
+          "id": "deep",
+          "treeId": "synthetic",
+          "displayName": "deep",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": 0,
+          "y": 520,
+          "role": "",
+          "generation": 2
+        },
+        {
+          "id": "side-left",
+          "treeId": "synthetic",
+          "displayName": "side-left",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": -520,
+          "y": 520,
+          "role": "",
+          "generation": 2
+        },
+        {
+          "id": "side-right",
+          "treeId": "synthetic",
+          "displayName": "side-right",
+          "gender": "unspecified",
+          "birthDatePrecision": "exact",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "notes": "",
+          "addressLine": "",
+          "city": "",
+          "province": "",
+          "country": "",
+          "postalCode": "",
+          "x": 520,
+          "y": 520,
+          "role": "",
+          "generation": 2
+        }
+      ],
+      "relationships": [
+        {
+          "id": "ol-near-b",
+          "treeId": "synthetic",
+          "fromPersonId": "outer-left",
+          "toPersonId": "near-b",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "or-near-b",
+          "treeId": "synthetic",
+          "fromPersonId": "outer-right",
+          "toPersonId": "near-b",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "il-near-a",
+          "treeId": "synthetic",
+          "fromPersonId": "inner-left",
+          "toPersonId": "near-a",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "ir-near-a",
+          "treeId": "synthetic",
+          "fromPersonId": "inner-right",
+          "toPersonId": "near-a",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "il-deep",
+          "treeId": "synthetic",
+          "fromPersonId": "inner-left",
+          "toPersonId": "deep",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "ir-deep",
+          "treeId": "synthetic",
+          "fromPersonId": "inner-right",
+          "toPersonId": "deep",
+          "kind": "parent",
+          "subtype": "biologicalParent",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        },
+        {
+          "id": "dated-partners",
+          "treeId": "synthetic",
+          "fromPersonId": "side-left",
+          "toPersonId": "side-right",
+          "kind": "partner",
+          "subtype": "formerSpouse",
+          "createdAt": "2026-08-25T00:00:00.000Z",
+          "marriageDate": "2004-01-02",
+          "divorceDate": "2021-02-03"
+        },
+        {
+          "id": "side-siblings",
+          "treeId": "synthetic",
+          "fromPersonId": "side-left",
+          "toPersonId": "deep",
+          "kind": "sibling",
+          "subtype": "sibling",
+          "createdAt": "2026-08-25T00:00:00.000Z"
+        }
+      ],
+      "width": 0,
+      "height": 0
+    }
+  },
+  "output": {
+    "graph": {
+      "en": {
+        "layout": {
+          "nodes": [
+            {
+              "id": "grandfather",
+              "displayName": "Grandfather",
+              "role": "Grandfather",
+              "x": -610.3379304784179,
+              "y": 0,
+              "generation": 0,
+              "birthOrder": null,
+              "city": "Surabaya",
+              "birthDate": "1940-01-01",
+              "birthDatePrecision": "year"
+            },
+            {
+              "id": "grandmother",
+              "displayName": "Grandmother With A Long Canonical Name",
+              "role": "Grandmother",
+              "x": -350.3379304784179,
+              "y": 0,
+              "generation": 0,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1942-03-01",
+              "birthDatePrecision": "month"
+            },
+            {
+              "id": "aunt",
+              "displayName": "Aunt",
+              "role": "Aunt",
+              "x": -710.3379304784179,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": 1,
+              "city": "",
+              "birthDate": "1960-02-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "father",
+              "displayName": "Father",
+              "role": "Father",
+              "x": -250.3379304784179,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": 2,
+              "city": "",
+              "birthDate": "1965-04-03",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "mother",
+              "displayName": "Mother",
+              "role": "Mother",
+              "x": 9.662069521582112,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": null,
+              "city": "Bandung",
+              "birthDate": "1968-06-05",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "cousin",
+              "displayName": "Cousin",
+              "role": "First cousin",
+              "x": -1050,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1987-07-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "older",
+              "displayName": "Older Child",
+              "role": "Sister",
+              "x": -590,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1988-01-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "selected",
+              "displayName": "Selected",
+              "role": "Selected person",
+              "x": -130,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1990-05-04",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "spouse",
+              "displayName": "Former Spouse",
+              "role": "Former wife",
+              "x": 130,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "Jakarta",
+              "birthDate": "1991-08-07",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "younger",
+              "displayName": "Younger Child",
+              "role": "Brother",
+              "x": 590,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1992-01-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "friend",
+              "displayName": "Explicit Sibling",
+              "role": "Family member",
+              "x": 1050,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": null,
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "child",
+              "displayName": "Child",
+              "role": "Daughter",
+              "x": -11.483104533461415,
+              "y": 1080,
+              "generation": 3,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "2015-09-02",
+              "birthDatePrecision": "exact"
+            }
+          ],
+          "relationships": [
+            "aunt-cousin",
+            "father-older",
+            "father-selected",
+            "father-younger",
+            "gp-aunt",
+            "gp-father",
+            "gm-aunt",
+            "gm-father",
+            "mother-older",
+            "mother-selected",
+            "mother-younger",
+            "selected-child",
+            "spouse-child",
+            "partner-parents",
+            "partner-grandparents",
+            "partner-selected",
+            "explicit-sibling"
+          ],
+          "bounds": [
+            -1145,
+            -32,
+            2290,
+            1212
+          ]
+        },
+        "plan": {
+          "families": [
+            {
+              "id": "11:grandfather|11:grandmother",
+              "parentIds": [
+                "grandfather",
+                "grandmother"
+              ],
+              "childIds": [
+                "aunt",
+                "father"
+              ],
+              "relationshipIds": [
+                "gm-aunt",
+                "gm-father",
+                "gp-aunt",
+                "gp-father"
+              ],
+              "parentPorts": [
+                [
+                  -610.3379304784179,
+                  118
+                ],
+                [
+                  -350.3379304784179,
+                  119
+                ]
+              ],
+              "segments": [
+                [
+                  -610.3379304784179,
+                  118,
+                  -610.3379304784179,
+                  127
+                ],
+                [
+                  -350.3379304784179,
+                  119,
+                  -350.3379304784179,
+                  127
+                ],
+                [
+                  -610.3379304784179,
+                  127,
+                  -480.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  127,
+                  -350.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  127,
+                  -480.3379304784179,
+                  288
+                ],
+                [
+                  -710.3379304784179,
+                  288,
+                  -480.3379304784179,
+                  288
+                ],
+                [
+                  -480.3379304784179,
+                  288,
+                  -250.3379304784179,
+                  288
+                ],
+                [
+                  -710.3379304784179,
+                  288,
+                  -710.3379304784179,
+                  328
+                ],
+                [
+                  -250.3379304784179,
+                  288,
+                  -250.3379304784179,
+                  328
+                ]
+              ],
+              "junctions": [
+                [
+                  -480.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  288
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "4:aunt",
+              "parentIds": [
+                "aunt"
+              ],
+              "childIds": [
+                "cousin"
+              ],
+              "relationshipIds": [
+                "aunt-cousin"
+              ],
+              "parentPorts": [
+                [
+                  -710.3379304784179,
+                  462
+                ]
+              ],
+              "segments": [
+                [
+                  -710.3379304784179,
+                  462,
+                  -710.3379304784179,
+                  470
+                ],
+                [
+                  -1050,
+                  470,
+                  -710.3379304784179,
+                  470
+                ],
+                [
+                  -1050,
+                  470,
+                  -1050,
+                  648
+                ],
+                [
+                  -1050,
+                  648,
+                  -1050,
+                  688
+                ]
+              ],
+              "junctions": [
+                [
+                  -1050,
+                  470
+                ],
+                [
+                  -1050,
+                  648
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "6:father|6:mother",
+              "parentIds": [
+                "father",
+                "mother"
+              ],
+              "childIds": [
+                "older",
+                "selected",
+                "younger"
+              ],
+              "relationshipIds": [
+                "father-older",
+                "father-selected",
+                "father-younger",
+                "mother-older",
+                "mother-selected",
+                "mother-younger"
+              ],
+              "parentPorts": [
+                [
+                  -250.3379304784179,
+                  462
+                ],
+                [
+                  9.662069521582112,
+                  478
+                ]
+              ],
+              "segments": [
+                [
+                  -250.3379304784179,
+                  462,
+                  -250.3379304784179,
+                  486
+                ],
+                [
+                  9.662069521582112,
+                  478,
+                  9.662069521582112,
+                  486
+                ],
+                [
+                  -250.3379304784179,
+                  486,
+                  -130,
+                  486
+                ],
+                [
+                  -130,
+                  486,
+                  9.662069521582112,
+                  486
+                ],
+                [
+                  -130,
+                  486,
+                  -130,
+                  648
+                ],
+                [
+                  -590,
+                  648,
+                  -130,
+                  648
+                ],
+                [
+                  -130,
+                  648,
+                  590,
+                  648
+                ],
+                [
+                  -590,
+                  648,
+                  -590,
+                  688
+                ],
+                [
+                  -130,
+                  648,
+                  -130,
+                  688
+                ],
+                [
+                  590,
+                  648,
+                  590,
+                  688
+                ]
+              ],
+              "junctions": [
+                [
+                  -130,
+                  486
+                ],
+                [
+                  -130,
+                  648
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "8:selected|6:spouse",
+              "parentIds": [
+                "selected",
+                "spouse"
+              ],
+              "childIds": [
+                "child"
+              ],
+              "relationshipIds": [
+                "selected-child",
+                "spouse-child"
+              ],
+              "parentPorts": [
+                [
+                  -130,
+                  822
+                ],
+                [
+                  130,
+                  838
+                ]
+              ],
+              "segments": [
+                [
+                  -130,
+                  822,
+                  -130,
+                  846
+                ],
+                [
+                  130,
+                  838,
+                  130,
+                  846
+                ],
+                [
+                  -130,
+                  846,
+                  -11.483104533461415,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  846,
+                  130,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  846,
+                  -11.483104533461415,
+                  1008
+                ],
+                [
+                  -11.483104533461415,
+                  1008,
+                  -11.483104533461415,
+                  1048
+                ]
+              ],
+              "junctions": [
+                [
+                  -11.483104533461415,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  1008
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "explicit-sibling",
+              "relationship": {
+                "id": "explicit-sibling",
+                "fromPersonId": "friend",
+                "toPersonId": "cousin",
+                "kind": "sibling",
+                "subtype": "sibling",
+                "marriageDate": null,
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -1018,
+                  720,
+                  -1008,
+                  720
+                ],
+                [
+                  -1008,
+                  720,
+                  -1008,
+                  680
+                ],
+                [
+                  -1008,
+                  680,
+                  1008,
+                  680
+                ],
+                [
+                  1008,
+                  680,
+                  1008,
+                  720
+                ],
+                [
+                  1008,
+                  720,
+                  1018,
+                  720
+                ]
+              ],
+              "label": null
+            },
+            {
+              "id": "partner-grandparents",
+              "relationship": {
+                "id": "partner-grandparents",
+                "fromPersonId": "grandfather",
+                "toPersonId": "grandmother",
+                "kind": "partner",
+                "subtype": "spouse",
+                "marriageDate": "1962-02-03",
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -578.3379304784179,
+                  0,
+                  -382.3379304784179,
+                  0
+                ]
+              ],
+              "label": {
+                "text": "Married Feb 3, 1962",
+                "center": [
+                  -480.3379304784179,
+                  -14
+                ],
+                "rect": [
+                  -546.2379304784179,
+                  -24,
+                  131.8,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "partner-parents",
+              "relationship": {
+                "id": "partner-parents",
+                "fromPersonId": "father",
+                "toPersonId": "mother",
+                "kind": "partner",
+                "subtype": "spouse",
+                "marriageDate": "1987-01-02",
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -218.3379304784179,
+                  360,
+                  -22.33793047841789,
+                  360
+                ]
+              ],
+              "label": {
+                "text": "Married Jan 2, 1987",
+                "center": [
+                  -120.33793047841789,
+                  346
+                ],
+                "rect": [
+                  -186.2379304784179,
+                  336,
+                  131.8,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "partner-selected",
+              "relationship": {
+                "id": "partner-selected",
+                "fromPersonId": "selected",
+                "toPersonId": "spouse",
+                "kind": "partner",
+                "subtype": "formerSpouse",
+                "marriageDate": "2012-04-05",
+                "divorceDate": "2020-03-04"
+              },
+              "segments": [
+                [
+                  -98,
+                  720,
+                  98,
+                  720
+                ]
+              ],
+              "label": {
+                "text": "Married Apr 5, 2012 · Divorced Mar 4, 2020",
+                "center": [
+                  0,
+                  662
+                ],
+                "rect": [
+                  -120,
+                  652,
+                  240,
+                  20
+                ]
+              }
+            }
+          ],
+          "obstacles": [
+            {
+              "kind": "avatar",
+              "ownerId": "aunt",
+              "rect": [
+                -742.3379304784179,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "aunt",
+              "rect": [
+                -805.3379304784179,
+                402,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "aunt",
+              "rect": [
+                -798.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "aunt",
+              "rect": [
+                -842.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "child",
+              "rect": [
+                -43.483104533461415,
+                1048,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "child",
+              "rect": [
+                -106.48310453346141,
+                1122,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "child",
+              "rect": [
+                -99.48310453346141,
+                1058,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "child",
+              "rect": [
+                -143.48310453346141,
+                1058,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "cousin",
+              "rect": [
+                -1082,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "cousin",
+              "rect": [
+                -1145,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "cousin",
+              "rect": [
+                -1138,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "cousin",
+              "rect": [
+                -1182,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "father",
+              "rect": [
+                -282.3379304784179,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "father",
+              "rect": [
+                -345.3379304784179,
+                402,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "father",
+              "rect": [
+                -338.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "father",
+              "rect": [
+                -382.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "friend",
+              "rect": [
+                1018,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "friend",
+              "rect": [
+                955,
+                762,
+                190,
+                40
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "friend",
+              "rect": [
+                1094,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "friend",
+              "rect": [
+                1138,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "grandfather",
+              "rect": [
+                -642.3379304784179,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "grandfather",
+              "rect": [
+                -705.3379304784179,
+                42,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "grandfather",
+              "rect": [
+                -698.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "grandfather",
+              "rect": [
+                -742.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "grandmother",
+              "rect": [
+                -382.3379304784179,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "grandmother",
+              "rect": [
+                -445.3379304784179,
+                42,
+                190,
+                75
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "grandmother",
+              "rect": [
+                -306.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "grandmother",
+              "rect": [
+                -262.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "mother",
+              "rect": [
+                -22.33793047841789,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "mother",
+              "rect": [
+                -85.33793047841789,
+                402,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "mother",
+              "rect": [
+                53.66206952158211,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "mother",
+              "rect": [
+                97.66206952158211,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "older",
+              "rect": [
+                -622,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "older",
+              "rect": [
+                -685,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "older",
+              "rect": [
+                -678,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "older",
+              "rect": [
+                -722,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "selected",
+              "rect": [
+                -162,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "selected",
+              "rect": [
+                -225,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "selected",
+              "rect": [
+                -218,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "selected",
+              "rect": [
+                -262,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "spouse",
+              "rect": [
+                98,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "spouse",
+              "rect": [
+                35,
+                762,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "spouse",
+              "rect": [
+                174,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "spouse",
+              "rect": [
+                218,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "younger",
+              "rect": [
+                558,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "younger",
+              "rect": [
+                495,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "younger",
+              "rect": [
+                634,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "younger",
+              "rect": [
+                678,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-grandparents",
+              "rect": [
+                -546.2379304784179,
+                -24,
+                131.8,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-parents",
+              "rect": [
+                -186.2379304784179,
+                336,
+                131.8,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-selected",
+              "rect": [
+                -120,
+                652,
+                240,
+                20
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "personId": "aunt",
+              "side": "left",
+              "addCenter": [
+                -776.3379304784179,
+                360
+              ],
+              "editCenter": [
+                -820.3379304784179,
+                360
+              ]
+            },
+            {
+              "personId": "child",
+              "side": "left",
+              "addCenter": [
+                -77.48310453346141,
+                1080
+              ],
+              "editCenter": [
+                -121.48310453346141,
+                1080
+              ]
+            },
+            {
+              "personId": "cousin",
+              "side": "left",
+              "addCenter": [
+                -1116,
+                720
+              ],
+              "editCenter": [
+                -1160,
+                720
+              ]
+            },
+            {
+              "personId": "father",
+              "side": "left",
+              "addCenter": [
+                -316.3379304784179,
+                360
+              ],
+              "editCenter": [
+                -360.3379304784179,
+                360
+              ]
+            },
+            {
+              "personId": "friend",
+              "side": "right",
+              "addCenter": [
+                1116,
+                720
+              ],
+              "editCenter": [
+                1160,
+                720
+              ]
+            },
+            {
+              "personId": "grandfather",
+              "side": "left",
+              "addCenter": [
+                -676.3379304784179,
+                0
+              ],
+              "editCenter": [
+                -720.3379304784179,
+                0
+              ]
+            },
+            {
+              "personId": "grandmother",
+              "side": "right",
+              "addCenter": [
+                -284.3379304784179,
+                0
+              ],
+              "editCenter": [
+                -240.3379304784179,
+                0
+              ]
+            },
+            {
+              "personId": "mother",
+              "side": "right",
+              "addCenter": [
+                75.66206952158211,
+                360
+              ],
+              "editCenter": [
+                119.66206952158211,
+                360
+              ]
+            },
+            {
+              "personId": "older",
+              "side": "left",
+              "addCenter": [
+                -656,
+                720
+              ],
+              "editCenter": [
+                -700,
+                720
+              ]
+            },
+            {
+              "personId": "selected",
+              "side": "left",
+              "addCenter": [
+                -196,
+                720
+              ],
+              "editCenter": [
+                -240,
+                720
+              ]
+            },
+            {
+              "personId": "spouse",
+              "side": "right",
+              "addCenter": [
+                196,
+                720
+              ],
+              "editCenter": [
+                240,
+                720
+              ]
+            },
+            {
+              "personId": "younger",
+              "side": "right",
+              "addCenter": [
+                656,
+                720
+              ],
+              "editCenter": [
+                700,
+                720
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "x": -590,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            },
+            {
+              "x": -130,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            },
+            {
+              "x": 590,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            }
+          ],
+          "bounds": [
+            -1145,
+            -32,
+            2290,
+            1212
+          ],
+          "failures": [],
+          "isValid": true
+        },
+        "paths": {
+          "families": [
+            {
+              "id": "11:grandfather|11:grandmother",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -610.3379304784179,
+                      118
+                    ],
+                    [
+                      -610.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      127
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -610.34 118 L -610.34 122.5 Q -610.34 127 -605.84 127 L -480.34 127"
+                },
+                {
+                  "points": [
+                    [
+                      -350.3379304784179,
+                      119
+                    ],
+                    [
+                      -350.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      127
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M -350.34 119 L -350.34 123 Q -350.34 127 -354.34 127 L -480.34 127"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      288
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M -480.34 127 L -480.34 288"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      288
+                    ],
+                    [
+                      -710.3379304784179,
+                      288
+                    ],
+                    [
+                      -710.3379304784179,
+                      328
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    5,
+                    7
+                  ],
+                  "roundedPath": "M -480.34 288 L -698.34 288 Q -710.34 288 -710.34 300 L -710.34 328"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      288
+                    ],
+                    [
+                      -250.3379304784179,
+                      288
+                    ],
+                    [
+                      -250.3379304784179,
+                      328
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    8
+                  ],
+                  "roundedPath": "M -480.34 288 L -262.34 288 Q -250.34 288 -250.34 300 L -250.34 328"
+                }
+              ]
+            },
+            {
+              "id": "4:aunt",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -710.3379304784179,
+                      462
+                    ],
+                    [
+                      -710.3379304784179,
+                      470
+                    ],
+                    [
+                      -1050,
+                      470
+                    ],
+                    [
+                      -1050,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3
+                  ],
+                  "roundedPath": "M -710.34 462 L -710.34 466 Q -710.34 470 -714.34 470 L -1038 470 Q -1050 470 -1050 482 L -1050 688"
+                }
+              ]
+            },
+            {
+              "id": "6:father|6:mother",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -250.3379304784179,
+                      462
+                    ],
+                    [
+                      -250.3379304784179,
+                      486
+                    ],
+                    [
+                      -130,
+                      486
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -250.34 462 L -250.34 474 Q -250.34 486 -238.34 486 L -130 486"
+                },
+                {
+                  "points": [
+                    [
+                      9.662069521582112,
+                      478
+                    ],
+                    [
+                      9.662069521582112,
+                      486
+                    ],
+                    [
+                      -130,
+                      486
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 9.66 478 L 9.66 482 Q 9.66 486 5.66 486 L -130 486"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      486
+                    ],
+                    [
+                      -130,
+                      648
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M -130 486 L -130 648"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      -590,
+                      648
+                    ],
+                    [
+                      -590,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    5,
+                    7
+                  ],
+                  "roundedPath": "M -130 648 L -578 648 Q -590 648 -590 660 L -590 688"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      590,
+                      648
+                    ],
+                    [
+                      590,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    9
+                  ],
+                  "roundedPath": "M -130 648 L 578 648 Q 590 648 590 660 L 590 688"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      -130,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    8
+                  ],
+                  "roundedPath": "M -130 648 L -130 688"
+                }
+              ]
+            },
+            {
+              "id": "8:selected|6:spouse",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -130,
+                      822
+                    ],
+                    [
+                      -130,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      846
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -130 822 L -130 834 Q -130 846 -118 846 L -11.48 846"
+                },
+                {
+                  "points": [
+                    [
+                      130,
+                      838
+                    ],
+                    [
+                      130,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      846
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 130 838 L 130 842 Q 130 846 126 846 L -11.48 846"
+                },
+                {
+                  "points": [
+                    [
+                      -11.483104533461415,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      1048
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4,
+                    5
+                  ],
+                  "roundedPath": "M -11.48 846 L -11.48 1048"
+                }
+              ]
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "explicit-sibling",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -1018,
+                      720
+                    ],
+                    [
+                      -1008,
+                      720
+                    ],
+                    [
+                      -1008,
+                      680
+                    ],
+                    [
+                      1008,
+                      680
+                    ],
+                    [
+                      1008,
+                      720
+                    ],
+                    [
+                      1018,
+                      720
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                  ],
+                  "roundedPath": "M -1018 720 L -1013 720 Q -1008 720 -1008 715 L -1008 692 Q -1008 680 -996 680 L 996 680 Q 1008 680 1008 692 L 1008 715 Q 1008 720 1013 720 L 1018 720"
+                }
+              ]
+            },
+            {
+              "id": "partner-grandparents",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -578.3379304784179,
+                      0
+                    ],
+                    [
+                      -382.3379304784179,
+                      0
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -578.34 0 L -382.34 0"
+                }
+              ]
+            },
+            {
+              "id": "partner-parents",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -218.3379304784179,
+                      360
+                    ],
+                    [
+                      -22.33793047841789,
+                      360
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -218.34 360 L -22.34 360"
+                }
+              ]
+            },
+            {
+              "id": "partner-selected",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -98,
+                      720
+                    ],
+                    [
+                      98,
+                      720
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -98 720 L 98 720"
+                }
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "point": [
+                -590,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -590 672 C -580 672 -580 688 -590 688",
+              "horizontalBridgePath": "M -598 680 C -598 670 -582 670 -582 680",
+              "horizontalBridgePoints": [
+                [
+                  -598,
+                  680
+                ],
+                [
+                  -597.3125,
+                  676.71875
+                ],
+                [
+                  -595.5,
+                  674.375
+                ],
+                [
+                  -592.9375,
+                  672.96875
+                ],
+                [
+                  -590,
+                  672.5
+                ],
+                [
+                  -587.0625,
+                  672.96875
+                ],
+                [
+                  -584.5,
+                  674.375
+                ],
+                [
+                  -582.6875,
+                  676.71875
+                ],
+                [
+                  -582,
+                  680
+                ]
+              ]
+            },
+            {
+              "point": [
+                -130,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -130 672 C -120 672 -120 688 -130 688",
+              "horizontalBridgePath": "M -138 680 C -138 670 -122 670 -122 680",
+              "horizontalBridgePoints": [
+                [
+                  -138,
+                  680
+                ],
+                [
+                  -137.3125,
+                  676.71875
+                ],
+                [
+                  -135.5,
+                  674.375
+                ],
+                [
+                  -132.9375,
+                  672.96875
+                ],
+                [
+                  -130,
+                  672.5
+                ],
+                [
+                  -127.0625,
+                  672.96875
+                ],
+                [
+                  -124.5,
+                  674.375
+                ],
+                [
+                  -122.6875,
+                  676.71875
+                ],
+                [
+                  -122,
+                  680
+                ]
+              ]
+            },
+            {
+              "point": [
+                590,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M 590 672 C 600 672 600 688 590 688",
+              "horizontalBridgePath": "M 582 680 C 582 670 598 670 598 680",
+              "horizontalBridgePoints": [
+                [
+                  582,
+                  680
+                ],
+                [
+                  582.6875,
+                  676.71875
+                ],
+                [
+                  584.5,
+                  674.375
+                ],
+                [
+                  587.0625,
+                  672.96875
+                ],
+                [
+                  590,
+                  672.5
+                ],
+                [
+                  592.9375,
+                  672.96875
+                ],
+                [
+                  595.5,
+                  674.375
+                ],
+                [
+                  597.3125,
+                  676.71875
+                ],
+                [
+                  598,
+                  680
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "id": {
+        "layout": {
+          "nodes": [
+            {
+              "id": "grandfather",
+              "displayName": "Grandfather",
+              "role": "Kakek",
+              "x": -610.3379304784179,
+              "y": 0,
+              "generation": 0,
+              "birthOrder": null,
+              "city": "Surabaya",
+              "birthDate": "1940-01-01",
+              "birthDatePrecision": "year"
+            },
+            {
+              "id": "grandmother",
+              "displayName": "Grandmother With A Long Canonical Name",
+              "role": "Nenek",
+              "x": -350.3379304784179,
+              "y": 0,
+              "generation": 0,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1942-03-01",
+              "birthDatePrecision": "month"
+            },
+            {
+              "id": "aunt",
+              "displayName": "Aunt",
+              "role": "Bibi",
+              "x": -710.3379304784179,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": 1,
+              "city": "",
+              "birthDate": "1960-02-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "father",
+              "displayName": "Father",
+              "role": "Ayah",
+              "x": -250.3379304784179,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": 2,
+              "city": "",
+              "birthDate": "1965-04-03",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "mother",
+              "displayName": "Mother",
+              "role": "Ibu",
+              "x": 9.662069521582112,
+              "y": 360,
+              "generation": 1,
+              "birthOrder": null,
+              "city": "Bandung",
+              "birthDate": "1968-06-05",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "cousin",
+              "displayName": "Cousin",
+              "role": "Sepupu",
+              "x": -1050,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1987-07-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "older",
+              "displayName": "Older Child",
+              "role": "Saudara perempuan",
+              "x": -590,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1988-01-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "selected",
+              "displayName": "Selected",
+              "role": "Orang terpilih",
+              "x": -130,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1990-05-04",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "spouse",
+              "displayName": "Former Spouse",
+              "role": "Mantan istri",
+              "x": 130,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "Jakarta",
+              "birthDate": "1991-08-07",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "younger",
+              "displayName": "Younger Child",
+              "role": "Saudara laki-laki",
+              "x": 590,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "1992-01-01",
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "friend",
+              "displayName": "Explicit Sibling",
+              "role": "Anggota keluarga",
+              "x": 1050,
+              "y": 720,
+              "generation": 2,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": null,
+              "birthDatePrecision": "exact"
+            },
+            {
+              "id": "child",
+              "displayName": "Child",
+              "role": "Putri",
+              "x": -11.483104533461415,
+              "y": 1080,
+              "generation": 3,
+              "birthOrder": null,
+              "city": "",
+              "birthDate": "2015-09-02",
+              "birthDatePrecision": "exact"
+            }
+          ],
+          "relationships": [
+            "aunt-cousin",
+            "father-older",
+            "father-selected",
+            "father-younger",
+            "gp-aunt",
+            "gp-father",
+            "gm-aunt",
+            "gm-father",
+            "mother-older",
+            "mother-selected",
+            "mother-younger",
+            "selected-child",
+            "spouse-child",
+            "partner-parents",
+            "partner-grandparents",
+            "partner-selected",
+            "explicit-sibling"
+          ],
+          "bounds": [
+            -1145,
+            -32,
+            2290,
+            1212
+          ]
+        },
+        "plan": {
+          "families": [
+            {
+              "id": "11:grandfather|11:grandmother",
+              "parentIds": [
+                "grandfather",
+                "grandmother"
+              ],
+              "childIds": [
+                "aunt",
+                "father"
+              ],
+              "relationshipIds": [
+                "gm-aunt",
+                "gm-father",
+                "gp-aunt",
+                "gp-father"
+              ],
+              "parentPorts": [
+                [
+                  -610.3379304784179,
+                  118
+                ],
+                [
+                  -350.3379304784179,
+                  119
+                ]
+              ],
+              "segments": [
+                [
+                  -610.3379304784179,
+                  118,
+                  -610.3379304784179,
+                  127
+                ],
+                [
+                  -350.3379304784179,
+                  119,
+                  -350.3379304784179,
+                  127
+                ],
+                [
+                  -610.3379304784179,
+                  127,
+                  -480.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  127,
+                  -350.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  127,
+                  -480.3379304784179,
+                  288
+                ],
+                [
+                  -710.3379304784179,
+                  288,
+                  -480.3379304784179,
+                  288
+                ],
+                [
+                  -480.3379304784179,
+                  288,
+                  -250.3379304784179,
+                  288
+                ],
+                [
+                  -710.3379304784179,
+                  288,
+                  -710.3379304784179,
+                  328
+                ],
+                [
+                  -250.3379304784179,
+                  288,
+                  -250.3379304784179,
+                  328
+                ]
+              ],
+              "junctions": [
+                [
+                  -480.3379304784179,
+                  127
+                ],
+                [
+                  -480.3379304784179,
+                  288
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "4:aunt",
+              "parentIds": [
+                "aunt"
+              ],
+              "childIds": [
+                "cousin"
+              ],
+              "relationshipIds": [
+                "aunt-cousin"
+              ],
+              "parentPorts": [
+                [
+                  -710.3379304784179,
+                  462
+                ]
+              ],
+              "segments": [
+                [
+                  -710.3379304784179,
+                  462,
+                  -710.3379304784179,
+                  470
+                ],
+                [
+                  -1050,
+                  470,
+                  -710.3379304784179,
+                  470
+                ],
+                [
+                  -1050,
+                  470,
+                  -1050,
+                  648
+                ],
+                [
+                  -1050,
+                  648,
+                  -1050,
+                  688
+                ]
+              ],
+              "junctions": [
+                [
+                  -1050,
+                  470
+                ],
+                [
+                  -1050,
+                  648
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "6:father|6:mother",
+              "parentIds": [
+                "father",
+                "mother"
+              ],
+              "childIds": [
+                "older",
+                "selected",
+                "younger"
+              ],
+              "relationshipIds": [
+                "father-older",
+                "father-selected",
+                "father-younger",
+                "mother-older",
+                "mother-selected",
+                "mother-younger"
+              ],
+              "parentPorts": [
+                [
+                  -250.3379304784179,
+                  462
+                ],
+                [
+                  9.662069521582112,
+                  478
+                ]
+              ],
+              "segments": [
+                [
+                  -250.3379304784179,
+                  462,
+                  -250.3379304784179,
+                  486
+                ],
+                [
+                  9.662069521582112,
+                  478,
+                  9.662069521582112,
+                  486
+                ],
+                [
+                  -250.3379304784179,
+                  486,
+                  -130,
+                  486
+                ],
+                [
+                  -130,
+                  486,
+                  9.662069521582112,
+                  486
+                ],
+                [
+                  -130,
+                  486,
+                  -130,
+                  648
+                ],
+                [
+                  -590,
+                  648,
+                  -130,
+                  648
+                ],
+                [
+                  -130,
+                  648,
+                  590,
+                  648
+                ],
+                [
+                  -590,
+                  648,
+                  -590,
+                  688
+                ],
+                [
+                  -130,
+                  648,
+                  -130,
+                  688
+                ],
+                [
+                  590,
+                  648,
+                  590,
+                  688
+                ]
+              ],
+              "junctions": [
+                [
+                  -130,
+                  486
+                ],
+                [
+                  -130,
+                  648
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            },
+            {
+              "id": "8:selected|6:spouse",
+              "parentIds": [
+                "selected",
+                "spouse"
+              ],
+              "childIds": [
+                "child"
+              ],
+              "relationshipIds": [
+                "selected-child",
+                "spouse-child"
+              ],
+              "parentPorts": [
+                [
+                  -130,
+                  822
+                ],
+                [
+                  130,
+                  838
+                ]
+              ],
+              "segments": [
+                [
+                  -130,
+                  822,
+                  -130,
+                  846
+                ],
+                [
+                  130,
+                  838,
+                  130,
+                  846
+                ],
+                [
+                  -130,
+                  846,
+                  -11.483104533461415,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  846,
+                  130,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  846,
+                  -11.483104533461415,
+                  1008
+                ],
+                [
+                  -11.483104533461415,
+                  1008,
+                  -11.483104533461415,
+                  1048
+                ]
+              ],
+              "junctions": [
+                [
+                  -11.483104533461415,
+                  846
+                ],
+                [
+                  -11.483104533461415,
+                  1008
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 1
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "explicit-sibling",
+              "relationship": {
+                "id": "explicit-sibling",
+                "fromPersonId": "friend",
+                "toPersonId": "cousin",
+                "kind": "sibling",
+                "subtype": "sibling",
+                "marriageDate": null,
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -1018,
+                  720,
+                  -1008,
+                  720
+                ],
+                [
+                  -1008,
+                  720,
+                  -1008,
+                  680
+                ],
+                [
+                  -1008,
+                  680,
+                  1008,
+                  680
+                ],
+                [
+                  1008,
+                  680,
+                  1008,
+                  720
+                ],
+                [
+                  1008,
+                  720,
+                  1018,
+                  720
+                ]
+              ],
+              "label": null
+            },
+            {
+              "id": "partner-grandparents",
+              "relationship": {
+                "id": "partner-grandparents",
+                "fromPersonId": "grandfather",
+                "toPersonId": "grandmother",
+                "kind": "partner",
+                "subtype": "spouse",
+                "marriageDate": "1962-02-03",
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -578.3379304784179,
+                  0,
+                  -382.3379304784179,
+                  0
+                ]
+              ],
+              "label": {
+                "text": "Nikah 3 Feb 1962",
+                "center": [
+                  -480.3379304784179,
+                  -14
+                ],
+                "rect": [
+                  -536.9379304784179,
+                  -24,
+                  113.2,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "partner-parents",
+              "relationship": {
+                "id": "partner-parents",
+                "fromPersonId": "father",
+                "toPersonId": "mother",
+                "kind": "partner",
+                "subtype": "spouse",
+                "marriageDate": "1987-01-02",
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -218.3379304784179,
+                  360,
+                  -22.33793047841789,
+                  360
+                ]
+              ],
+              "label": {
+                "text": "Nikah 2 Jan 1987",
+                "center": [
+                  -120.33793047841789,
+                  346
+                ],
+                "rect": [
+                  -176.93793047841788,
+                  336,
+                  113.2,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "partner-selected",
+              "relationship": {
+                "id": "partner-selected",
+                "fromPersonId": "selected",
+                "toPersonId": "spouse",
+                "kind": "partner",
+                "subtype": "formerSpouse",
+                "marriageDate": "2012-04-05",
+                "divorceDate": "2020-03-04"
+              },
+              "segments": [
+                [
+                  -98,
+                  720,
+                  98,
+                  720
+                ]
+              ],
+              "label": {
+                "text": "Nikah 5 Apr 2012 · Cerai 4 Mar 2020",
+                "center": [
+                  0,
+                  662
+                ],
+                "rect": [
+                  -115.5,
+                  652,
+                  231,
+                  20
+                ]
+              }
+            }
+          ],
+          "obstacles": [
+            {
+              "kind": "avatar",
+              "ownerId": "aunt",
+              "rect": [
+                -742.3379304784179,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "aunt",
+              "rect": [
+                -805.3379304784179,
+                402,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "aunt",
+              "rect": [
+                -798.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "aunt",
+              "rect": [
+                -842.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "child",
+              "rect": [
+                -43.483104533461415,
+                1048,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "child",
+              "rect": [
+                -106.48310453346141,
+                1122,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "child",
+              "rect": [
+                -99.48310453346141,
+                1058,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "child",
+              "rect": [
+                -143.48310453346141,
+                1058,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "cousin",
+              "rect": [
+                -1082,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "cousin",
+              "rect": [
+                -1145,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "cousin",
+              "rect": [
+                -1138,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "cousin",
+              "rect": [
+                -1182,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "father",
+              "rect": [
+                -282.3379304784179,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "father",
+              "rect": [
+                -345.3379304784179,
+                402,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "father",
+              "rect": [
+                -338.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "father",
+              "rect": [
+                -382.3379304784179,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "friend",
+              "rect": [
+                1018,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "friend",
+              "rect": [
+                955,
+                762,
+                190,
+                40
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "friend",
+              "rect": [
+                1094,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "friend",
+              "rect": [
+                1138,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "grandfather",
+              "rect": [
+                -642.3379304784179,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "grandfather",
+              "rect": [
+                -705.3379304784179,
+                42,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "grandfather",
+              "rect": [
+                -698.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "grandfather",
+              "rect": [
+                -742.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "grandmother",
+              "rect": [
+                -382.3379304784179,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "grandmother",
+              "rect": [
+                -445.3379304784179,
+                42,
+                190,
+                75
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "grandmother",
+              "rect": [
+                -306.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "grandmother",
+              "rect": [
+                -262.3379304784179,
+                -22,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "mother",
+              "rect": [
+                -22.33793047841789,
+                328,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "mother",
+              "rect": [
+                -85.33793047841789,
+                402,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "mother",
+              "rect": [
+                53.66206952158211,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "mother",
+              "rect": [
+                97.66206952158211,
+                338,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "older",
+              "rect": [
+                -622,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "older",
+              "rect": [
+                -685,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "older",
+              "rect": [
+                -678,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "older",
+              "rect": [
+                -722,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "selected",
+              "rect": [
+                -162,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "selected",
+              "rect": [
+                -225,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "selected",
+              "rect": [
+                -218,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "selected",
+              "rect": [
+                -262,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "spouse",
+              "rect": [
+                98,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "spouse",
+              "rect": [
+                35,
+                762,
+                190,
+                74
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "spouse",
+              "rect": [
+                174,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "spouse",
+              "rect": [
+                218,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "younger",
+              "rect": [
+                558,
+                688,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "younger",
+              "rect": [
+                495,
+                762,
+                190,
+                58
+              ]
+            },
+            {
+              "kind": "addControl",
+              "ownerId": "younger",
+              "rect": [
+                634,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "editControl",
+              "ownerId": "younger",
+              "rect": [
+                678,
+                698,
+                44,
+                44
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-grandparents",
+              "rect": [
+                -536.9379304784179,
+                -24,
+                113.2,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-parents",
+              "rect": [
+                -176.93793047841788,
+                336,
+                113.2,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "partner-selected",
+              "rect": [
+                -115.5,
+                652,
+                231,
+                20
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "personId": "aunt",
+              "side": "left",
+              "addCenter": [
+                -776.3379304784179,
+                360
+              ],
+              "editCenter": [
+                -820.3379304784179,
+                360
+              ]
+            },
+            {
+              "personId": "child",
+              "side": "left",
+              "addCenter": [
+                -77.48310453346141,
+                1080
+              ],
+              "editCenter": [
+                -121.48310453346141,
+                1080
+              ]
+            },
+            {
+              "personId": "cousin",
+              "side": "left",
+              "addCenter": [
+                -1116,
+                720
+              ],
+              "editCenter": [
+                -1160,
+                720
+              ]
+            },
+            {
+              "personId": "father",
+              "side": "left",
+              "addCenter": [
+                -316.3379304784179,
+                360
+              ],
+              "editCenter": [
+                -360.3379304784179,
+                360
+              ]
+            },
+            {
+              "personId": "friend",
+              "side": "right",
+              "addCenter": [
+                1116,
+                720
+              ],
+              "editCenter": [
+                1160,
+                720
+              ]
+            },
+            {
+              "personId": "grandfather",
+              "side": "left",
+              "addCenter": [
+                -676.3379304784179,
+                0
+              ],
+              "editCenter": [
+                -720.3379304784179,
+                0
+              ]
+            },
+            {
+              "personId": "grandmother",
+              "side": "right",
+              "addCenter": [
+                -284.3379304784179,
+                0
+              ],
+              "editCenter": [
+                -240.3379304784179,
+                0
+              ]
+            },
+            {
+              "personId": "mother",
+              "side": "right",
+              "addCenter": [
+                75.66206952158211,
+                360
+              ],
+              "editCenter": [
+                119.66206952158211,
+                360
+              ]
+            },
+            {
+              "personId": "older",
+              "side": "left",
+              "addCenter": [
+                -656,
+                720
+              ],
+              "editCenter": [
+                -700,
+                720
+              ]
+            },
+            {
+              "personId": "selected",
+              "side": "left",
+              "addCenter": [
+                -196,
+                720
+              ],
+              "editCenter": [
+                -240,
+                720
+              ]
+            },
+            {
+              "personId": "spouse",
+              "side": "right",
+              "addCenter": [
+                196,
+                720
+              ],
+              "editCenter": [
+                240,
+                720
+              ]
+            },
+            {
+              "personId": "younger",
+              "side": "right",
+              "addCenter": [
+                656,
+                720
+              ],
+              "editCenter": [
+                700,
+                720
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "x": -590,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            },
+            {
+              "x": -130,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            },
+            {
+              "x": 590,
+              "y": 680,
+              "kind": "parent",
+              "horizontalKind": "sibling"
+            }
+          ],
+          "bounds": [
+            -1145,
+            -32,
+            2290,
+            1212
+          ],
+          "failures": [],
+          "isValid": true
+        },
+        "paths": {
+          "families": [
+            {
+              "id": "11:grandfather|11:grandmother",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -610.3379304784179,
+                      118
+                    ],
+                    [
+                      -610.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      127
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -610.34 118 L -610.34 122.5 Q -610.34 127 -605.84 127 L -480.34 127"
+                },
+                {
+                  "points": [
+                    [
+                      -350.3379304784179,
+                      119
+                    ],
+                    [
+                      -350.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      127
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M -350.34 119 L -350.34 123 Q -350.34 127 -354.34 127 L -480.34 127"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      127
+                    ],
+                    [
+                      -480.3379304784179,
+                      288
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M -480.34 127 L -480.34 288"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      288
+                    ],
+                    [
+                      -710.3379304784179,
+                      288
+                    ],
+                    [
+                      -710.3379304784179,
+                      328
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    5,
+                    7
+                  ],
+                  "roundedPath": "M -480.34 288 L -698.34 288 Q -710.34 288 -710.34 300 L -710.34 328"
+                },
+                {
+                  "points": [
+                    [
+                      -480.3379304784179,
+                      288
+                    ],
+                    [
+                      -250.3379304784179,
+                      288
+                    ],
+                    [
+                      -250.3379304784179,
+                      328
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    8
+                  ],
+                  "roundedPath": "M -480.34 288 L -262.34 288 Q -250.34 288 -250.34 300 L -250.34 328"
+                }
+              ]
+            },
+            {
+              "id": "4:aunt",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -710.3379304784179,
+                      462
+                    ],
+                    [
+                      -710.3379304784179,
+                      470
+                    ],
+                    [
+                      -1050,
+                      470
+                    ],
+                    [
+                      -1050,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3
+                  ],
+                  "roundedPath": "M -710.34 462 L -710.34 466 Q -710.34 470 -714.34 470 L -1038 470 Q -1050 470 -1050 482 L -1050 688"
+                }
+              ]
+            },
+            {
+              "id": "6:father|6:mother",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -250.3379304784179,
+                      462
+                    ],
+                    [
+                      -250.3379304784179,
+                      486
+                    ],
+                    [
+                      -130,
+                      486
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -250.34 462 L -250.34 474 Q -250.34 486 -238.34 486 L -130 486"
+                },
+                {
+                  "points": [
+                    [
+                      9.662069521582112,
+                      478
+                    ],
+                    [
+                      9.662069521582112,
+                      486
+                    ],
+                    [
+                      -130,
+                      486
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 9.66 478 L 9.66 482 Q 9.66 486 5.66 486 L -130 486"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      486
+                    ],
+                    [
+                      -130,
+                      648
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M -130 486 L -130 648"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      -590,
+                      648
+                    ],
+                    [
+                      -590,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    5,
+                    7
+                  ],
+                  "roundedPath": "M -130 648 L -578 648 Q -590 648 -590 660 L -590 688"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      590,
+                      648
+                    ],
+                    [
+                      590,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    9
+                  ],
+                  "roundedPath": "M -130 648 L 578 648 Q 590 648 590 660 L 590 688"
+                },
+                {
+                  "points": [
+                    [
+                      -130,
+                      648
+                    ],
+                    [
+                      -130,
+                      688
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    8
+                  ],
+                  "roundedPath": "M -130 648 L -130 688"
+                }
+              ]
+            },
+            {
+              "id": "8:selected|6:spouse",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -130,
+                      822
+                    ],
+                    [
+                      -130,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      846
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -130 822 L -130 834 Q -130 846 -118 846 L -11.48 846"
+                },
+                {
+                  "points": [
+                    [
+                      130,
+                      838
+                    ],
+                    [
+                      130,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      846
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 130 838 L 130 842 Q 130 846 126 846 L -11.48 846"
+                },
+                {
+                  "points": [
+                    [
+                      -11.483104533461415,
+                      846
+                    ],
+                    [
+                      -11.483104533461415,
+                      1048
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4,
+                    5
+                  ],
+                  "roundedPath": "M -11.48 846 L -11.48 1048"
+                }
+              ]
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "explicit-sibling",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -1018,
+                      720
+                    ],
+                    [
+                      -1008,
+                      720
+                    ],
+                    [
+                      -1008,
+                      680
+                    ],
+                    [
+                      1008,
+                      680
+                    ],
+                    [
+                      1008,
+                      720
+                    ],
+                    [
+                      1018,
+                      720
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                  ],
+                  "roundedPath": "M -1018 720 L -1013 720 Q -1008 720 -1008 715 L -1008 692 Q -1008 680 -996 680 L 996 680 Q 1008 680 1008 692 L 1008 715 Q 1008 720 1013 720 L 1018 720"
+                }
+              ]
+            },
+            {
+              "id": "partner-grandparents",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -578.3379304784179,
+                      0
+                    ],
+                    [
+                      -382.3379304784179,
+                      0
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -578.34 0 L -382.34 0"
+                }
+              ]
+            },
+            {
+              "id": "partner-parents",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -218.3379304784179,
+                      360
+                    ],
+                    [
+                      -22.33793047841789,
+                      360
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -218.34 360 L -22.34 360"
+                }
+              ]
+            },
+            {
+              "id": "partner-selected",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -98,
+                      720
+                    ],
+                    [
+                      98,
+                      720
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -98 720 L 98 720"
+                }
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "point": [
+                -590,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -590 672 C -580 672 -580 688 -590 688",
+              "horizontalBridgePath": "M -598 680 C -598 670 -582 670 -582 680",
+              "horizontalBridgePoints": [
+                [
+                  -598,
+                  680
+                ],
+                [
+                  -597.3125,
+                  676.71875
+                ],
+                [
+                  -595.5,
+                  674.375
+                ],
+                [
+                  -592.9375,
+                  672.96875
+                ],
+                [
+                  -590,
+                  672.5
+                ],
+                [
+                  -587.0625,
+                  672.96875
+                ],
+                [
+                  -584.5,
+                  674.375
+                ],
+                [
+                  -582.6875,
+                  676.71875
+                ],
+                [
+                  -582,
+                  680
+                ]
+              ]
+            },
+            {
+              "point": [
+                -130,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -130 672 C -120 672 -120 688 -130 688",
+              "horizontalBridgePath": "M -138 680 C -138 670 -122 670 -122 680",
+              "horizontalBridgePoints": [
+                [
+                  -138,
+                  680
+                ],
+                [
+                  -137.3125,
+                  676.71875
+                ],
+                [
+                  -135.5,
+                  674.375
+                ],
+                [
+                  -132.9375,
+                  672.96875
+                ],
+                [
+                  -130,
+                  672.5
+                ],
+                [
+                  -127.0625,
+                  672.96875
+                ],
+                [
+                  -124.5,
+                  674.375
+                ],
+                [
+                  -122.6875,
+                  676.71875
+                ],
+                [
+                  -122,
+                  680
+                ]
+              ]
+            },
+            {
+              "point": [
+                590,
+                680
+              ],
+              "kind": "parent",
+              "horizontalKind": "sibling",
+              "bridgePath": "M 590 672 C 600 672 600 688 590 688",
+              "horizontalBridgePath": "M 582 680 C 582 670 598 670 598 680",
+              "horizontalBridgePoints": [
+                [
+                  582,
+                  680
+                ],
+                [
+                  582.6875,
+                  676.71875
+                ],
+                [
+                  584.5,
+                  674.375
+                ],
+                [
+                  587.0625,
+                  672.96875
+                ],
+                [
+                  590,
+                  672.5
+                ],
+                [
+                  592.9375,
+                  672.96875
+                ],
+                [
+                  595.5,
+                  674.375
+                ],
+                [
+                  597.3125,
+                  676.71875
+                ],
+                [
+                  598,
+                  680
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "routing": {
+      "en": {
+        "plan": {
+          "families": [
+            {
+              "id": "10:outer-left|11:outer-right",
+              "parentIds": [
+                "outer-left",
+                "outer-right"
+              ],
+              "childIds": [
+                "near-b"
+              ],
+              "relationshipIds": [
+                "ol-near-b",
+                "or-near-b"
+              ],
+              "parentPorts": [
+                [
+                  -520,
+                  64
+                ],
+                [
+                  520,
+                  64
+                ]
+              ],
+              "segments": [
+                [
+                  -520,
+                  64,
+                  -520,
+                  78
+                ],
+                [
+                  520,
+                  64,
+                  520,
+                  78
+                ],
+                [
+                  -520,
+                  78,
+                  -4,
+                  78
+                ],
+                [
+                  -4,
+                  78,
+                  520,
+                  78
+                ],
+                [
+                  -4,
+                  78,
+                  -4,
+                  188
+                ],
+                [
+                  -4,
+                  188,
+                  260,
+                  188
+                ],
+                [
+                  260,
+                  188,
+                  260,
+                  228
+                ]
+              ],
+              "junctions": [
+                [
+                  -4,
+                  78
+                ],
+                [
+                  -4,
+                  188
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 2
+            },
+            {
+              "id": "10:inner-left|11:inner-right",
+              "parentIds": [
+                "inner-left",
+                "inner-right"
+              ],
+              "childIds": [
+                "near-a",
+                "deep"
+              ],
+              "relationshipIds": [
+                "il-deep",
+                "il-near-a",
+                "ir-deep",
+                "ir-near-a"
+              ],
+              "parentPorts": [
+                [
+                  -260,
+                  64
+                ],
+                [
+                  260,
+                  64
+                ]
+              ],
+              "segments": [
+                [
+                  -260,
+                  64,
+                  -260,
+                  104
+                ],
+                [
+                  260,
+                  64,
+                  260,
+                  104
+                ],
+                [
+                  -260,
+                  104,
+                  0,
+                  104
+                ],
+                [
+                  0,
+                  104,
+                  260,
+                  104
+                ],
+                [
+                  0,
+                  104,
+                  0,
+                  160
+                ],
+                [
+                  111,
+                  160,
+                  111,
+                  448
+                ],
+                [
+                  -260,
+                  160,
+                  0,
+                  160
+                ],
+                [
+                  0,
+                  160,
+                  111,
+                  160
+                ],
+                [
+                  -260,
+                  160,
+                  -260,
+                  228
+                ],
+                [
+                  0,
+                  448,
+                  111,
+                  448
+                ],
+                [
+                  0,
+                  448,
+                  0,
+                  488
+                ]
+              ],
+              "junctions": [
+                [
+                  0,
+                  104
+                ],
+                [
+                  0,
+                  160
+                ],
+                [
+                  111,
+                  160
+                ],
+                [
+                  111,
+                  448
+                ]
+              ],
+              "laneIndex": 1,
+              "laneCount": 2
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "dated-partners",
+              "relationship": {
+                "id": "dated-partners",
+                "fromPersonId": "side-left",
+                "toPersonId": "side-right",
+                "kind": "partner",
+                "subtype": "formerSpouse",
+                "marriageDate": "2004-01-02",
+                "divorceDate": "2021-02-03"
+              },
+              "segments": [
+                [
+                  -488,
+                  520,
+                  -478,
+                  520
+                ],
+                [
+                  -478,
+                  520,
+                  -478,
+                  480
+                ],
+                [
+                  -478,
+                  480,
+                  478,
+                  480
+                ],
+                [
+                  478,
+                  480,
+                  478,
+                  520
+                ],
+                [
+                  478,
+                  520,
+                  488,
+                  520
+                ]
+              ],
+              "label": {
+                "text": "Married Jan 2, 2004 · Divorced Feb 3, 2021",
+                "center": [
+                  -47.80000000000001,
+                  422
+                ],
+                "rect": [
+                  -167.8,
+                  412,
+                  240,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "side-siblings",
+              "relationship": {
+                "id": "side-siblings",
+                "fromPersonId": "side-left",
+                "toPersonId": "deep",
+                "kind": "sibling",
+                "subtype": "sibling",
+                "marriageDate": null,
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -488,
+                  508,
+                  -32,
+                  508
+                ]
+              ],
+              "label": null
+            }
+          ],
+          "obstacles": [
+            {
+              "kind": "avatar",
+              "ownerId": "deep",
+              "rect": [
+                -32,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "deep",
+              "rect": [
+                -95,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "inner-left",
+              "rect": [
+                -292,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "inner-left",
+              "rect": [
+                -355,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "inner-right",
+              "rect": [
+                228,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "inner-right",
+              "rect": [
+                165,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "near-a",
+              "rect": [
+                -292,
+                228,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "near-a",
+              "rect": [
+                -355,
+                302,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "near-b",
+              "rect": [
+                228,
+                228,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "near-b",
+              "rect": [
+                165,
+                302,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "outer-left",
+              "rect": [
+                -552,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "outer-left",
+              "rect": [
+                -615,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "outer-right",
+              "rect": [
+                488,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "outer-right",
+              "rect": [
+                425,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "side-left",
+              "rect": [
+                -552,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "side-left",
+              "rect": [
+                -615,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "side-right",
+              "rect": [
+                488,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "side-right",
+              "rect": [
+                425,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "dated-partners",
+              "rect": [
+                -167.8,
+                412,
+                240,
+                20
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "personId": "deep",
+              "side": "right",
+              "addCenter": [
+                66,
+                520
+              ],
+              "editCenter": [
+                110,
+                520
+              ]
+            },
+            {
+              "personId": "inner-left",
+              "side": "left",
+              "addCenter": [
+                -326,
+                0
+              ],
+              "editCenter": [
+                -370,
+                0
+              ]
+            },
+            {
+              "personId": "inner-right",
+              "side": "right",
+              "addCenter": [
+                326,
+                0
+              ],
+              "editCenter": [
+                370,
+                0
+              ]
+            },
+            {
+              "personId": "near-a",
+              "side": "left",
+              "addCenter": [
+                -326,
+                260
+              ],
+              "editCenter": [
+                -370,
+                260
+              ]
+            },
+            {
+              "personId": "near-b",
+              "side": "right",
+              "addCenter": [
+                326,
+                260
+              ],
+              "editCenter": [
+                370,
+                260
+              ]
+            },
+            {
+              "personId": "outer-left",
+              "side": "left",
+              "addCenter": [
+                -586,
+                0
+              ],
+              "editCenter": [
+                -630,
+                0
+              ]
+            },
+            {
+              "personId": "outer-right",
+              "side": "right",
+              "addCenter": [
+                586,
+                0
+              ],
+              "editCenter": [
+                630,
+                0
+              ]
+            },
+            {
+              "personId": "side-left",
+              "side": "left",
+              "addCenter": [
+                -586,
+                520
+              ],
+              "editCenter": [
+                -630,
+                520
+              ]
+            },
+            {
+              "personId": "side-right",
+              "side": "right",
+              "addCenter": [
+                586,
+                520
+              ],
+              "editCenter": [
+                630,
+                520
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "x": -260,
+              "y": 78,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 260,
+              "y": 78,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": -4,
+              "y": 104,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": -4,
+              "y": 160,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 111,
+              "y": 188,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 0,
+              "y": 480,
+              "kind": "parent",
+              "horizontalKind": "partner"
+            },
+            {
+              "x": -478,
+              "y": 508,
+              "kind": "partner",
+              "horizontalKind": "sibling"
+            }
+          ],
+          "bounds": [
+            -615,
+            -32,
+            1230,
+            614
+          ],
+          "failures": [],
+          "isValid": true
+        },
+        "paths": {
+          "families": [
+            {
+              "id": "10:outer-left|11:outer-right",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -520,
+                      64
+                    ],
+                    [
+                      -520,
+                      78
+                    ],
+                    [
+                      -4,
+                      78
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -520 64 L -520 71 Q -520 78 -513 78 L -4 78"
+                },
+                {
+                  "points": [
+                    [
+                      520,
+                      64
+                    ],
+                    [
+                      520,
+                      78
+                    ],
+                    [
+                      -4,
+                      78
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 520 64 L 520 71 Q 520 78 513 78 L -4 78"
+                },
+                {
+                  "points": [
+                    [
+                      -4,
+                      78
+                    ],
+                    [
+                      -4,
+                      188
+                    ],
+                    [
+                      260,
+                      188
+                    ],
+                    [
+                      260,
+                      228
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4,
+                    5,
+                    6
+                  ],
+                  "roundedPath": "M -4 78 L -4 176 Q -4 188 8 188 L 248 188 Q 260 188 260 200 L 260 228"
+                }
+              ]
+            },
+            {
+              "id": "10:inner-left|11:inner-right",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -260,
+                      64
+                    ],
+                    [
+                      -260,
+                      104
+                    ],
+                    [
+                      0,
+                      104
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -260 64 L -260 92 Q -260 104 -248 104 L 0 104"
+                },
+                {
+                  "points": [
+                    [
+                      260,
+                      64
+                    ],
+                    [
+                      260,
+                      104
+                    ],
+                    [
+                      0,
+                      104
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 260 64 L 260 92 Q 260 104 248 104 L 0 104"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      104
+                    ],
+                    [
+                      0,
+                      160
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M 0 104 L 0 160"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      160
+                    ],
+                    [
+                      -260,
+                      160
+                    ],
+                    [
+                      -260,
+                      228
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    8
+                  ],
+                  "roundedPath": "M 0 160 L -248 160 Q -260 160 -260 172 L -260 228"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      160
+                    ],
+                    [
+                      111,
+                      160
+                    ],
+                    [
+                      111,
+                      448
+                    ],
+                    [
+                      0,
+                      448
+                    ],
+                    [
+                      0,
+                      488
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    7,
+                    5,
+                    9,
+                    10
+                  ],
+                  "roundedPath": "M 0 160 L 99 160 Q 111 160 111 172 L 111 436 Q 111 448 99 448 L 12 448 Q 0 448 0 460 L 0 488"
+                }
+              ]
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "dated-partners",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -488,
+                      520
+                    ],
+                    [
+                      -478,
+                      520
+                    ],
+                    [
+                      -478,
+                      480
+                    ],
+                    [
+                      478,
+                      480
+                    ],
+                    [
+                      478,
+                      520
+                    ],
+                    [
+                      488,
+                      520
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                  ],
+                  "roundedPath": "M -488 520 L -483 520 Q -478 520 -478 515 L -478 492 Q -478 480 -466 480 L 466 480 Q 478 480 478 492 L 478 515 Q 478 520 483 520 L 488 520"
+                }
+              ]
+            },
+            {
+              "id": "side-siblings",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -488,
+                      508
+                    ],
+                    [
+                      -32,
+                      508
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -488 508 L -32 508"
+                }
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "point": [
+                -260,
+                78
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -260 70 C -250 70 -250 86 -260 86",
+              "horizontalBridgePath": "M -268 78 C -268 68 -252 68 -252 78",
+              "horizontalBridgePoints": [
+                [
+                  -268,
+                  78
+                ],
+                [
+                  -267.3125,
+                  74.71875
+                ],
+                [
+                  -265.5,
+                  72.375
+                ],
+                [
+                  -262.9375,
+                  70.96875
+                ],
+                [
+                  -260,
+                  70.5
+                ],
+                [
+                  -257.0625,
+                  70.96875
+                ],
+                [
+                  -254.5,
+                  72.375
+                ],
+                [
+                  -252.6875,
+                  74.71875
+                ],
+                [
+                  -252,
+                  78
+                ]
+              ]
+            },
+            {
+              "point": [
+                260,
+                78
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M 260 70 C 270 70 270 86 260 86",
+              "horizontalBridgePath": "M 252 78 C 252 68 268 68 268 78",
+              "horizontalBridgePoints": [
+                [
+                  252,
+                  78
+                ],
+                [
+                  252.6875,
+                  74.71875
+                ],
+                [
+                  254.5,
+                  72.375
+                ],
+                [
+                  257.0625,
+                  70.96875
+                ],
+                [
+                  260,
+                  70.5
+                ],
+                [
+                  262.9375,
+                  70.96875
+                ],
+                [
+                  265.5,
+                  72.375
+                ],
+                [
+                  267.3125,
+                  74.71875
+                ],
+                [
+                  268,
+                  78
+                ]
+              ]
+            },
+            {
+              "point": [
+                -4,
+                104
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -4 96 C 6 96 6 112 -4 112",
+              "horizontalBridgePath": "M -12 104 C -12 94 4 94 4 104",
+              "horizontalBridgePoints": [
+                [
+                  -12,
+                  104
+                ],
+                [
+                  -11.3125,
+                  100.71875
+                ],
+                [
+                  -9.5,
+                  98.375
+                ],
+                [
+                  -6.9375,
+                  96.96875
+                ],
+                [
+                  -4,
+                  96.5
+                ],
+                [
+                  -1.0625,
+                  96.96875
+                ],
+                [
+                  1.5,
+                  98.375
+                ],
+                [
+                  3.3125,
+                  100.71875
+                ],
+                [
+                  4,
+                  104
+                ]
+              ]
+            },
+            {
+              "point": [
+                -4,
+                160
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -4 152 C 6 152 6 168 -4 168",
+              "horizontalBridgePath": "M -12 160 C -12 150 4 150 4 160",
+              "horizontalBridgePoints": [
+                [
+                  -12,
+                  160
+                ],
+                [
+                  -11.3125,
+                  156.71875
+                ],
+                [
+                  -9.5,
+                  154.375
+                ],
+                [
+                  -6.9375,
+                  152.96875
+                ],
+                [
+                  -4,
+                  152.5
+                ],
+                [
+                  -1.0625,
+                  152.96875
+                ],
+                [
+                  1.5,
+                  154.375
+                ],
+                [
+                  3.3125,
+                  156.71875
+                ],
+                [
+                  4,
+                  160
+                ]
+              ]
+            },
+            {
+              "point": [
+                111,
+                188
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M 111 180 C 121 180 121 196 111 196",
+              "horizontalBridgePath": "M 103 188 C 103 178 119 178 119 188",
+              "horizontalBridgePoints": [
+                [
+                  103,
+                  188
+                ],
+                [
+                  103.6875,
+                  184.71875
+                ],
+                [
+                  105.5,
+                  182.375
+                ],
+                [
+                  108.0625,
+                  180.96875
+                ],
+                [
+                  111,
+                  180.5
+                ],
+                [
+                  113.9375,
+                  180.96875
+                ],
+                [
+                  116.5,
+                  182.375
+                ],
+                [
+                  118.3125,
+                  184.71875
+                ],
+                [
+                  119,
+                  188
+                ]
+              ]
+            },
+            {
+              "point": [
+                0,
+                480
+              ],
+              "kind": "parent",
+              "horizontalKind": "partner",
+              "bridgePath": "M 0 472 C 10 472 10 488 0 488",
+              "horizontalBridgePath": "M -8 480 C -8 470 8 470 8 480",
+              "horizontalBridgePoints": [
+                [
+                  -8,
+                  480
+                ],
+                [
+                  -7.3125,
+                  476.71875
+                ],
+                [
+                  -5.5,
+                  474.375
+                ],
+                [
+                  -2.9375,
+                  472.96875
+                ],
+                [
+                  0,
+                  472.5
+                ],
+                [
+                  2.9375,
+                  472.96875
+                ],
+                [
+                  5.5,
+                  474.375
+                ],
+                [
+                  7.3125,
+                  476.71875
+                ],
+                [
+                  8,
+                  480
+                ]
+              ]
+            },
+            {
+              "point": [
+                -478,
+                508
+              ],
+              "kind": "partner",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -478 500 C -468 500 -468 516 -478 516",
+              "horizontalBridgePath": "M -486 508 C -486 498 -470 498 -470 508",
+              "horizontalBridgePoints": [
+                [
+                  -486,
+                  508
+                ],
+                [
+                  -485.3125,
+                  504.71875
+                ],
+                [
+                  -483.5,
+                  502.375
+                ],
+                [
+                  -480.9375,
+                  500.96875
+                ],
+                [
+                  -478,
+                  500.5
+                ],
+                [
+                  -475.0625,
+                  500.96875
+                ],
+                [
+                  -472.5,
+                  502.375
+                ],
+                [
+                  -470.6875,
+                  504.71875
+                ],
+                [
+                  -470,
+                  508
+                ]
+              ]
+            }
+          ]
+        }
+      },
+      "id": {
+        "plan": {
+          "families": [
+            {
+              "id": "10:outer-left|11:outer-right",
+              "parentIds": [
+                "outer-left",
+                "outer-right"
+              ],
+              "childIds": [
+                "near-b"
+              ],
+              "relationshipIds": [
+                "ol-near-b",
+                "or-near-b"
+              ],
+              "parentPorts": [
+                [
+                  -520,
+                  64
+                ],
+                [
+                  520,
+                  64
+                ]
+              ],
+              "segments": [
+                [
+                  -520,
+                  64,
+                  -520,
+                  78
+                ],
+                [
+                  520,
+                  64,
+                  520,
+                  78
+                ],
+                [
+                  -520,
+                  78,
+                  -4,
+                  78
+                ],
+                [
+                  -4,
+                  78,
+                  520,
+                  78
+                ],
+                [
+                  -4,
+                  78,
+                  -4,
+                  188
+                ],
+                [
+                  -4,
+                  188,
+                  260,
+                  188
+                ],
+                [
+                  260,
+                  188,
+                  260,
+                  228
+                ]
+              ],
+              "junctions": [
+                [
+                  -4,
+                  78
+                ],
+                [
+                  -4,
+                  188
+                ]
+              ],
+              "laneIndex": 0,
+              "laneCount": 2
+            },
+            {
+              "id": "10:inner-left|11:inner-right",
+              "parentIds": [
+                "inner-left",
+                "inner-right"
+              ],
+              "childIds": [
+                "near-a",
+                "deep"
+              ],
+              "relationshipIds": [
+                "il-deep",
+                "il-near-a",
+                "ir-deep",
+                "ir-near-a"
+              ],
+              "parentPorts": [
+                [
+                  -260,
+                  64
+                ],
+                [
+                  260,
+                  64
+                ]
+              ],
+              "segments": [
+                [
+                  -260,
+                  64,
+                  -260,
+                  104
+                ],
+                [
+                  260,
+                  64,
+                  260,
+                  104
+                ],
+                [
+                  -260,
+                  104,
+                  0,
+                  104
+                ],
+                [
+                  0,
+                  104,
+                  260,
+                  104
+                ],
+                [
+                  0,
+                  104,
+                  0,
+                  160
+                ],
+                [
+                  111,
+                  160,
+                  111,
+                  448
+                ],
+                [
+                  -260,
+                  160,
+                  0,
+                  160
+                ],
+                [
+                  0,
+                  160,
+                  111,
+                  160
+                ],
+                [
+                  -260,
+                  160,
+                  -260,
+                  228
+                ],
+                [
+                  0,
+                  448,
+                  111,
+                  448
+                ],
+                [
+                  0,
+                  448,
+                  0,
+                  488
+                ]
+              ],
+              "junctions": [
+                [
+                  0,
+                  104
+                ],
+                [
+                  0,
+                  160
+                ],
+                [
+                  111,
+                  160
+                ],
+                [
+                  111,
+                  448
+                ]
+              ],
+              "laneIndex": 1,
+              "laneCount": 2
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "dated-partners",
+              "relationship": {
+                "id": "dated-partners",
+                "fromPersonId": "side-left",
+                "toPersonId": "side-right",
+                "kind": "partner",
+                "subtype": "formerSpouse",
+                "marriageDate": "2004-01-02",
+                "divorceDate": "2021-02-03"
+              },
+              "segments": [
+                [
+                  -488,
+                  520,
+                  -478,
+                  520
+                ],
+                [
+                  -478,
+                  520,
+                  -478,
+                  480
+                ],
+                [
+                  -478,
+                  480,
+                  478,
+                  480
+                ],
+                [
+                  478,
+                  480,
+                  478,
+                  520
+                ],
+                [
+                  478,
+                  520,
+                  488,
+                  520
+                ]
+              ],
+              "label": {
+                "text": "Nikah 2 Jan 2004 · Cerai 3 Feb 2021",
+                "center": [
+                  -47.80000000000001,
+                  422
+                ],
+                "rect": [
+                  -163.3,
+                  412,
+                  231,
+                  20
+                ]
+              }
+            },
+            {
+              "id": "side-siblings",
+              "relationship": {
+                "id": "side-siblings",
+                "fromPersonId": "side-left",
+                "toPersonId": "deep",
+                "kind": "sibling",
+                "subtype": "sibling",
+                "marriageDate": null,
+                "divorceDate": null
+              },
+              "segments": [
+                [
+                  -488,
+                  508,
+                  -32,
+                  508
+                ]
+              ],
+              "label": null
+            }
+          ],
+          "obstacles": [
+            {
+              "kind": "avatar",
+              "ownerId": "deep",
+              "rect": [
+                -32,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "deep",
+              "rect": [
+                -95,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "inner-left",
+              "rect": [
+                -292,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "inner-left",
+              "rect": [
+                -355,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "inner-right",
+              "rect": [
+                228,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "inner-right",
+              "rect": [
+                165,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "near-a",
+              "rect": [
+                -292,
+                228,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "near-a",
+              "rect": [
+                -355,
+                302,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "near-b",
+              "rect": [
+                228,
+                228,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "near-b",
+              "rect": [
+                165,
+                302,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "outer-left",
+              "rect": [
+                -552,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "outer-left",
+              "rect": [
+                -615,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "outer-right",
+              "rect": [
+                488,
+                -32,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "outer-right",
+              "rect": [
+                425,
+                42,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "side-left",
+              "rect": [
+                -552,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "side-left",
+              "rect": [
+                -615,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "avatar",
+              "ownerId": "side-right",
+              "rect": [
+                488,
+                488,
+                64,
+                64
+              ]
+            },
+            {
+              "kind": "nodeLabel",
+              "ownerId": "side-right",
+              "rect": [
+                425,
+                562,
+                190,
+                20
+              ]
+            },
+            {
+              "kind": "relationshipLabel",
+              "ownerId": "dated-partners",
+              "rect": [
+                -163.3,
+                412,
+                231,
+                20
+              ]
+            }
+          ],
+          "controls": [
+            {
+              "personId": "deep",
+              "side": "right",
+              "addCenter": [
+                66,
+                520
+              ],
+              "editCenter": [
+                110,
+                520
+              ]
+            },
+            {
+              "personId": "inner-left",
+              "side": "left",
+              "addCenter": [
+                -326,
+                0
+              ],
+              "editCenter": [
+                -370,
+                0
+              ]
+            },
+            {
+              "personId": "inner-right",
+              "side": "right",
+              "addCenter": [
+                326,
+                0
+              ],
+              "editCenter": [
+                370,
+                0
+              ]
+            },
+            {
+              "personId": "near-a",
+              "side": "left",
+              "addCenter": [
+                -326,
+                260
+              ],
+              "editCenter": [
+                -370,
+                260
+              ]
+            },
+            {
+              "personId": "near-b",
+              "side": "right",
+              "addCenter": [
+                326,
+                260
+              ],
+              "editCenter": [
+                370,
+                260
+              ]
+            },
+            {
+              "personId": "outer-left",
+              "side": "left",
+              "addCenter": [
+                -586,
+                0
+              ],
+              "editCenter": [
+                -630,
+                0
+              ]
+            },
+            {
+              "personId": "outer-right",
+              "side": "right",
+              "addCenter": [
+                586,
+                0
+              ],
+              "editCenter": [
+                630,
+                0
+              ]
+            },
+            {
+              "personId": "side-left",
+              "side": "left",
+              "addCenter": [
+                -586,
+                520
+              ],
+              "editCenter": [
+                -630,
+                520
+              ]
+            },
+            {
+              "personId": "side-right",
+              "side": "right",
+              "addCenter": [
+                586,
+                520
+              ],
+              "editCenter": [
+                630,
+                520
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "x": -260,
+              "y": 78,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 260,
+              "y": 78,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": -4,
+              "y": 104,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": -4,
+              "y": 160,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 111,
+              "y": 188,
+              "kind": "parent",
+              "horizontalKind": "parent"
+            },
+            {
+              "x": 0,
+              "y": 480,
+              "kind": "parent",
+              "horizontalKind": "partner"
+            },
+            {
+              "x": -478,
+              "y": 508,
+              "kind": "partner",
+              "horizontalKind": "sibling"
+            }
+          ],
+          "bounds": [
+            -615,
+            -32,
+            1230,
+            614
+          ],
+          "failures": [],
+          "isValid": true
+        },
+        "paths": {
+          "families": [
+            {
+              "id": "10:outer-left|11:outer-right",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -520,
+                      64
+                    ],
+                    [
+                      -520,
+                      78
+                    ],
+                    [
+                      -4,
+                      78
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -520 64 L -520 71 Q -520 78 -513 78 L -4 78"
+                },
+                {
+                  "points": [
+                    [
+                      520,
+                      64
+                    ],
+                    [
+                      520,
+                      78
+                    ],
+                    [
+                      -4,
+                      78
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 520 64 L 520 71 Q 520 78 513 78 L -4 78"
+                },
+                {
+                  "points": [
+                    [
+                      -4,
+                      78
+                    ],
+                    [
+                      -4,
+                      188
+                    ],
+                    [
+                      260,
+                      188
+                    ],
+                    [
+                      260,
+                      228
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4,
+                    5,
+                    6
+                  ],
+                  "roundedPath": "M -4 78 L -4 176 Q -4 188 8 188 L 248 188 Q 260 188 260 200 L 260 228"
+                }
+              ]
+            },
+            {
+              "id": "10:inner-left|11:inner-right",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -260,
+                      64
+                    ],
+                    [
+                      -260,
+                      104
+                    ],
+                    [
+                      0,
+                      104
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    2
+                  ],
+                  "roundedPath": "M -260 64 L -260 92 Q -260 104 -248 104 L 0 104"
+                },
+                {
+                  "points": [
+                    [
+                      260,
+                      64
+                    ],
+                    [
+                      260,
+                      104
+                    ],
+                    [
+                      0,
+                      104
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    1,
+                    3
+                  ],
+                  "roundedPath": "M 260 64 L 260 92 Q 260 104 248 104 L 0 104"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      104
+                    ],
+                    [
+                      0,
+                      160
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    4
+                  ],
+                  "roundedPath": "M 0 104 L 0 160"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      160
+                    ],
+                    [
+                      -260,
+                      160
+                    ],
+                    [
+                      -260,
+                      228
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    6,
+                    8
+                  ],
+                  "roundedPath": "M 0 160 L -248 160 Q -260 160 -260 172 L -260 228"
+                },
+                {
+                  "points": [
+                    [
+                      0,
+                      160
+                    ],
+                    [
+                      111,
+                      160
+                    ],
+                    [
+                      111,
+                      448
+                    ],
+                    [
+                      0,
+                      448
+                    ],
+                    [
+                      0,
+                      488
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    7,
+                    5,
+                    9,
+                    10
+                  ],
+                  "roundedPath": "M 0 160 L 99 160 Q 111 160 111 172 L 111 436 Q 111 448 99 448 L 12 448 Q 0 448 0 460 L 0 488"
+                }
+              ]
+            }
+          ],
+          "nonParentRoutes": [
+            {
+              "id": "dated-partners",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -488,
+                      520
+                    ],
+                    [
+                      -478,
+                      520
+                    ],
+                    [
+                      -478,
+                      480
+                    ],
+                    [
+                      478,
+                      480
+                    ],
+                    [
+                      478,
+                      520
+                    ],
+                    [
+                      488,
+                      520
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                  ],
+                  "roundedPath": "M -488 520 L -483 520 Q -478 520 -478 515 L -478 492 Q -478 480 -466 480 L 466 480 Q 478 480 478 492 L 478 515 Q 478 520 483 520 L 488 520"
+                }
+              ]
+            },
+            {
+              "id": "side-siblings",
+              "paths": [
+                {
+                  "points": [
+                    [
+                      -488,
+                      508
+                    ],
+                    [
+                      -32,
+                      508
+                    ]
+                  ],
+                  "segmentIndexes": [
+                    0
+                  ],
+                  "roundedPath": "M -488 508 L -32 508"
+                }
+              ]
+            }
+          ],
+          "crossings": [
+            {
+              "point": [
+                -260,
+                78
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -260 70 C -250 70 -250 86 -260 86",
+              "horizontalBridgePath": "M -268 78 C -268 68 -252 68 -252 78",
+              "horizontalBridgePoints": [
+                [
+                  -268,
+                  78
+                ],
+                [
+                  -267.3125,
+                  74.71875
+                ],
+                [
+                  -265.5,
+                  72.375
+                ],
+                [
+                  -262.9375,
+                  70.96875
+                ],
+                [
+                  -260,
+                  70.5
+                ],
+                [
+                  -257.0625,
+                  70.96875
+                ],
+                [
+                  -254.5,
+                  72.375
+                ],
+                [
+                  -252.6875,
+                  74.71875
+                ],
+                [
+                  -252,
+                  78
+                ]
+              ]
+            },
+            {
+              "point": [
+                260,
+                78
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M 260 70 C 270 70 270 86 260 86",
+              "horizontalBridgePath": "M 252 78 C 252 68 268 68 268 78",
+              "horizontalBridgePoints": [
+                [
+                  252,
+                  78
+                ],
+                [
+                  252.6875,
+                  74.71875
+                ],
+                [
+                  254.5,
+                  72.375
+                ],
+                [
+                  257.0625,
+                  70.96875
+                ],
+                [
+                  260,
+                  70.5
+                ],
+                [
+                  262.9375,
+                  70.96875
+                ],
+                [
+                  265.5,
+                  72.375
+                ],
+                [
+                  267.3125,
+                  74.71875
+                ],
+                [
+                  268,
+                  78
+                ]
+              ]
+            },
+            {
+              "point": [
+                -4,
+                104
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -4 96 C 6 96 6 112 -4 112",
+              "horizontalBridgePath": "M -12 104 C -12 94 4 94 4 104",
+              "horizontalBridgePoints": [
+                [
+                  -12,
+                  104
+                ],
+                [
+                  -11.3125,
+                  100.71875
+                ],
+                [
+                  -9.5,
+                  98.375
+                ],
+                [
+                  -6.9375,
+                  96.96875
+                ],
+                [
+                  -4,
+                  96.5
+                ],
+                [
+                  -1.0625,
+                  96.96875
+                ],
+                [
+                  1.5,
+                  98.375
+                ],
+                [
+                  3.3125,
+                  100.71875
+                ],
+                [
+                  4,
+                  104
+                ]
+              ]
+            },
+            {
+              "point": [
+                -4,
+                160
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M -4 152 C 6 152 6 168 -4 168",
+              "horizontalBridgePath": "M -12 160 C -12 150 4 150 4 160",
+              "horizontalBridgePoints": [
+                [
+                  -12,
+                  160
+                ],
+                [
+                  -11.3125,
+                  156.71875
+                ],
+                [
+                  -9.5,
+                  154.375
+                ],
+                [
+                  -6.9375,
+                  152.96875
+                ],
+                [
+                  -4,
+                  152.5
+                ],
+                [
+                  -1.0625,
+                  152.96875
+                ],
+                [
+                  1.5,
+                  154.375
+                ],
+                [
+                  3.3125,
+                  156.71875
+                ],
+                [
+                  4,
+                  160
+                ]
+              ]
+            },
+            {
+              "point": [
+                111,
+                188
+              ],
+              "kind": "parent",
+              "horizontalKind": "parent",
+              "bridgePath": "M 111 180 C 121 180 121 196 111 196",
+              "horizontalBridgePath": "M 103 188 C 103 178 119 178 119 188",
+              "horizontalBridgePoints": [
+                [
+                  103,
+                  188
+                ],
+                [
+                  103.6875,
+                  184.71875
+                ],
+                [
+                  105.5,
+                  182.375
+                ],
+                [
+                  108.0625,
+                  180.96875
+                ],
+                [
+                  111,
+                  180.5
+                ],
+                [
+                  113.9375,
+                  180.96875
+                ],
+                [
+                  116.5,
+                  182.375
+                ],
+                [
+                  118.3125,
+                  184.71875
+                ],
+                [
+                  119,
+                  188
+                ]
+              ]
+            },
+            {
+              "point": [
+                0,
+                480
+              ],
+              "kind": "parent",
+              "horizontalKind": "partner",
+              "bridgePath": "M 0 472 C 10 472 10 488 0 488",
+              "horizontalBridgePath": "M -8 480 C -8 470 8 470 8 480",
+              "horizontalBridgePoints": [
+                [
+                  -8,
+                  480
+                ],
+                [
+                  -7.3125,
+                  476.71875
+                ],
+                [
+                  -5.5,
+                  474.375
+                ],
+                [
+                  -2.9375,
+                  472.96875
+                ],
+                [
+                  0,
+                  472.5
+                ],
+                [
+                  2.9375,
+                  472.96875
+                ],
+                [
+                  5.5,
+                  474.375
+                ],
+                [
+                  7.3125,
+                  476.71875
+                ],
+                [
+                  8,
+                  480
+                ]
+              ]
+            },
+            {
+              "point": [
+                -478,
+                508
+              ],
+              "kind": "partner",
+              "horizontalKind": "sibling",
+              "bridgePath": "M -478 500 C -468 500 -468 516 -478 516",
+              "horizontalBridgePath": "M -486 508 C -486 498 -470 498 -470 508",
+              "horizontalBridgePoints": [
+                [
+                  -486,
+                  508
+                ],
+                [
+                  -485.3125,
+                  504.71875
+                ],
+                [
+                  -483.5,
+                  502.375
+                ],
+                [
+                  -480.9375,
+                  500.96875
+                ],
+                [
+                  -478,
+                  500.5
+                ],
+                [
+                  -475.0625,
+                  500.96875
+                ],
+                [
+                  -472.5,
+                  502.375
+                ],
+                [
+                  -470.6875,
+                  504.71875
+                ],
+                [
+                  -470,
+                  508
+                ]
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "vectors": {
+    "metrics": {
+      "minZoom": 0.08,
+      "maxZoom": 1.8,
+      "familyRailSpacing": 32,
+      "childRailClearance": 40
+    },
+    "viewport": [
+      {
+        "size": {
+          "width": 390,
+          "height": 844
+        },
+        "fit": {
+          "scrollX": 750.0000000000001,
+          "scrollY": 1348.0769230769233,
+          "zoom": 0.25999999999999995
+        },
+        "projected": [
+          [
+            35.10000000000002,
+            342.18
+          ],
+          [
+            195,
+            422
+          ],
+          [
+            354.8999999999999,
+            501.82
+          ]
+        ]
+      },
+      {
+        "size": {
+          "width": 844,
+          "height": 390
+        },
+        "fit": {
+          "scrollX": 810.2188868042529,
+          "scrollY": 99.39024390243912,
+          "zoom": 0.5208469055374592
+        },
+        "projected": [
+          [
+            101.67915309446262,
+            35.100000000000044
+          ],
+          [
+            422,
+            195
+          ],
+          [
+            742.3208469055373,
+            354.9
+          ]
+        ]
+      },
+      {
+        "size": {
+          "width": 1024,
+          "height": 768
+        },
+        "fit": {
+          "scrollX": 750,
+          "scrollY": 287.5,
+          "zoom": 0.6826666666666666
+        },
+        "projected": [
+          [
+            92.16,
+            174.42133333333334
+          ],
+          [
+            512,
+            384
+          ],
+          [
+            931.8399999999999,
+            593.5786666666667
+          ]
+        ]
+      }
+    ],
+    "zoomAt": {
+      "scrollX": -207,
+      "scrollY": -256,
+      "zoom": 1.5
+    },
+    "pan": {
+      "scrollX": -85,
+      "scrollY": -12,
+      "zoom": 0.75
+    }
+  }
+}

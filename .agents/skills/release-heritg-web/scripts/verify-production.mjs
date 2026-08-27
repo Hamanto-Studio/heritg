@@ -237,6 +237,11 @@ try {
       if (!value.includes(fragment)) failures.push(`${name} is missing ${fragment}`);
     }
   }
+  const contentSecurityPolicy = home.headers.get("content-security-policy") ?? "";
+  if (expectedVersion && (!contentSecurityPolicy.includes("https://accounts.google.com/gsi/client") ||
+      contentSecurityPolicy.includes("challenges.cloudflare.com"))) {
+    failures.push("content-security-policy is not restricted to Google account authentication");
+  }
 
   const manifest = await request("manifest.webmanifest");
   try {
@@ -254,55 +259,6 @@ try {
   const deepRoute = await request("release-verification/deep-link");
   const deepHtml = await deepRoute.text();
   if (!deepHtml.includes('<div id="root"></div>')) failures.push("SPA deep-link fallback did not return the app shell");
-  const emailRoute = await request("auth/email");
-  const emailHtml = await emailRoute.text();
-  if (!emailHtml.includes('<div id="root"></div>')) failures.push("email callback route did not return the app shell");
-
-  const emailCallback = await request("auth/email");
-  const emailCallbackHtml = await emailCallback.text();
-  if (!emailCallbackHtml.includes('<div id="root"></div>')) failures.push("email callback did not return the app shell");
-
-  const session = await fetchWithContext(new URL("/api/v1/auth/session", appBase.origin), {
-    cache: "no-store",
-    credentials: "omit",
-    redirect: "error"
-  });
-  checked.push(`${session.status} /api/v1/auth/session`);
-  if (session.status !== 401) failures.push("anonymous account session request did not return 401");
-
-  const nonceResponse = await fetchWithContext(new URL("/api/v1/auth/login-nonce", appBase.origin), {
-    cache: "no-store",
-    credentials: "omit",
-    redirect: "error"
-  });
-  checked.push(`${nonceResponse.status} /api/v1/auth/login-nonce`);
-  const nonce = await nonceResponse.json().catch(() => undefined);
-  const nonceKeys = nonce && typeof nonce === "object" && !Array.isArray(nonce) ? Object.keys(nonce).sort() : [];
-  if (nonceResponse.status !== 200 || nonceKeys.join(",") !== "expiresAt,nonce,state" ||
-      !TOKEN_PATTERN.test(nonce?.nonce) || !TOKEN_PATTERN.test(nonce?.state) ||
-      !Number.isFinite(Date.parse(nonce?.expiresAt))) {
-    failures.push("Google login nonce route did not return the strict authentication contract");
-  }
-
-  const emailReadiness = await fetchWithContext(new URL("/api/v1/auth/email/request", appBase.origin), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: appBase.origin,
-      "sec-fetch-site": "same-origin"
-    },
-    body: "{}",
-    cache: "no-store",
-    credentials: "omit",
-    redirect: "error",
-    referrerPolicy: "no-referrer"
-  });
-  checked.push(`${emailReadiness.status} /api/v1/auth/email/request`);
-  const emailError = await emailReadiness.json().catch(() => undefined);
-  if (emailReadiness.status !== 400 || emailError?.error?.code !== "invalid_request") {
-    failures.push("production email authentication is not enabled with the strict request contract");
-  }
-
   const health = await request("health");
   try {
     const healthBody = await health.json();
@@ -332,6 +288,24 @@ try {
     failures.push("anonymous account session did not return 401 unauthenticated");
   }
 
+  for (const [path, expectedStatus, label] of [
+    ["/api/v1/entitlements/free-access", 401, "free Family access"],
+    ["/api/v1/billing/checkouts", 503, "disabled payment checkout"]
+  ]) {
+    const endpoint = new URL(path, appBase.origin);
+    const response = await fetchWithContext(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: expectedCorsOrigin },
+      body: "{}",
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "no-referrer"
+    });
+    checked.push(`${response.status} ${endpoint.pathname} (expected ${label})`);
+    if (response.status !== expectedStatus) failures.push(`${label} returned ${response.status}; expected ${expectedStatus}`);
+  }
+
   const nonceUrl = new URL("/api/v1/auth/login-nonce", appBase.origin);
   const nonceResponse = await fetchWithContext(nonceUrl, {
     cache: "no-store",
@@ -348,25 +322,30 @@ try {
     failures.push("account login nonce did not return the strict public response contract");
   }
 
-  const emailRequestUrl = new URL("/api/v1/auth/email/request", appBase.origin);
-  const invalidEmailRequest = await fetchWithContext(emailRequestUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      origin: expectedCorsOrigin,
-      "sec-fetch-site": "same-origin"
-    },
-    body: "{}",
-    cache: "no-store",
-    credentials: "omit",
-    redirect: "error",
-    referrerPolicy: "no-referrer"
-  });
-  checked.push(`${invalidEmailRequest.status} ${emailRequestUrl.pathname} (expected strict validation)`);
-  let invalidEmailBody;
-  try { invalidEmailBody = await invalidEmailRequest.json(); } catch { invalidEmailBody = undefined; }
-  if (invalidEmailRequest.status !== 400 || invalidEmailBody?.error?.code !== "invalid_request") {
-    failures.push("email authentication endpoint did not return 400 invalid_request for an invalid strict request");
+  for (const [path, body] of [
+    ["/api/v1/auth/email/request", { email: "release-check@example.com", turnstileToken: "disabled" }],
+    ["/api/v1/auth/email/verify", { token: "a".repeat(43) }]
+  ]) {
+    const emailUrl = new URL(path, appBase.origin);
+    const disabledEmail = await fetchWithContext(emailUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: expectedCorsOrigin,
+        "sec-fetch-site": "same-origin"
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
+      referrerPolicy: "no-referrer"
+    });
+    checked.push(`${disabledEmail.status} ${emailUrl.pathname} (expected disabled provider)`);
+    let disabledEmailBody;
+    try { disabledEmailBody = await disabledEmail.json(); } catch { disabledEmailBody = undefined; }
+    if (disabledEmail.status !== 503 || disabledEmailBody?.error?.code !== "service_unavailable") {
+      failures.push(`${emailUrl.pathname} is not disabled`);
+    }
   }
 
   const apiProbeUrl = new URL("/api/v1/share-uploads", appBase.origin);

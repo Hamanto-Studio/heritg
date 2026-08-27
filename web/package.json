@@ -1,7 +1,7 @@
 {
   "name": "heritg",
   "private": true,
-  "version": "0.6.2",
+  "version": "0.8.0",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -17,8 +17,8 @@
     "vercel:configure:staging": "node scripts/render-vercel-config.mjs --staging",
     "release:check": "node ../.agents/skills/release-heritg-web/scripts/release-preflight.mjs --ci",
     "release:verify": "node ../.agents/skills/release-heritg-web/scripts/verify-production.mjs",
-    "deploy:stage": "node scripts/deploy-production.mjs",
-    "deploy:promote": "node scripts/promote-production.mjs",
+    "deploy:production": "node scripts/deploy-production.mjs",
+    "rollback:production": "node scripts/rollback-production.mjs",
     "deploy:staging": "node scripts/deploy-staging.mjs",
     "dns:staging": "node scripts/configure-staging-dns.mjs",
     "dns:staging:remove-beta": "node scripts/configure-staging-dns.mjs --remove-beta"

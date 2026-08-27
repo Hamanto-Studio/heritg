@@ -7,7 +7,6 @@ const EMAIL_LOCAL_PATTERN = /^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$/u;
 const EMAIL_DOMAIN_LABEL_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/u;
 const SESSION_CHANGE_EVENT = "heritg:account-session-changed";
 const SESSION_CHANGE_STORAGE_KEY = "heritg:account-session-change";
-const ACCOUNT_PROFILE_STORAGE_PREFIX = "heritg:account-profile:";
 const ERROR_CODES = new Set([
   "invalid_request",
   "unauthenticated",
@@ -95,48 +94,6 @@ const validNullableIdentity = (value: unknown, maximum: number): value is string
   value === null || (typeof value === "string" && value.length > 0 && value.length <= maximum &&
     value === value.trim() && !/[\u0000-\u001f\u007f]/u.test(value));
 
-const readStoredProfile = (accountId: string): Pick<AccountSession, "name" | "email"> | undefined => {
-  try {
-    const value: unknown = JSON.parse(window.localStorage.getItem(`${ACCOUNT_PROFILE_STORAGE_PREFIX}${accountId}`) ?? "null");
-    if (!objectWithExactKeys(value, ["name", "email"]) || !validNullableIdentity(value.name, 200) ||
-      !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email)))) return undefined;
-    return { name: value.name, email: value.email };
-  } catch {
-    return undefined;
-  }
-};
-
-const storeProfile = (session: AccountSession): void => {
-  if (!session.name && !session.email) return;
-  try {
-    window.localStorage.setItem(`${ACCOUNT_PROFILE_STORAGE_PREFIX}${session.accountId}`, JSON.stringify({
-      name: session.name,
-      email: session.email
-    }));
-  } catch {
-    // Profile display remains available for the current render when storage is unavailable.
-  }
-};
-
-const googleCredentialProfile = (credential: string): Pick<AccountSession, "name" | "email"> | undefined => {
-  const payload = credential.split(".")[1];
-  if (!payload) return undefined;
-  try {
-    const normalized = payload.replace(/-/gu, "+").replace(/_/gu, "/").padEnd(Math.ceil(payload.length / 4) * 4, "=");
-    const bytes = Uint8Array.from(atob(normalized), (character) => character.charCodeAt(0));
-    const value: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
-    const name = "name" in value && validNullableIdentity(value.name, 200) ? value.name : null;
-    const email = "email_verified" in value && value.email_verified === true && "email" in value &&
-      validNullableIdentity(value.email, 254) && value.email !== null && isConservativeEmail(value.email)
-      ? value.email
-      : null;
-    return name || email ? { name, email } : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
 const parseLoginMaterial = (value: unknown): LoginMaterial => {
   if (!objectWithExactKeys(value, ["nonce", "state", "expiresAt"]) ||
     typeof value.nonce !== "string" || !TOKEN_PATTERN.test(value.nonce) ||
@@ -148,41 +105,26 @@ const parseLoginMaterial = (value: unknown): LoginMaterial => {
 };
 
 const parseSession = (value: unknown): AccountSession => {
-  const currentContract = objectWithExactKeys(value, ["accountId", "name", "email", "expiresAt"]);
-  const deployedContract = objectWithExactKeys(value, ["accountId", "expiresAt"]);
-  if ((!currentContract && !deployedContract) ||
+  if (!objectWithExactKeys(value, ["accountId", "name", "email", "expiresAt"]) ||
     typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
-    (currentContract && (!validNullableIdentity(value.name, 200) ||
-      !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))))) ||
+    !validNullableIdentity(value.name, 200) ||
+    !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))) ||
     !validDate(value.expiresAt)) {
     throw new AccountAuthError(502, "invalid_response");
   }
-  return {
-    accountId: value.accountId,
-    name: currentContract ? value.name as string | null : null,
-    email: currentContract ? value.email as string | null : null,
-    expiresAt: value.expiresAt
-  };
+  return { accountId: value.accountId, name: value.name, email: value.email, expiresAt: value.expiresAt };
 };
 
 const parseLogin = (value: unknown): LoginResult => {
-  const currentContract = objectWithExactKeys(value, ["accountId", "name", "email", "csrfToken", "expiresAt"]);
-  const deployedContract = objectWithExactKeys(value, ["accountId", "csrfToken", "expiresAt"]);
-  if ((!currentContract && !deployedContract) ||
+  if (!objectWithExactKeys(value, ["accountId", "name", "email", "csrfToken", "expiresAt"]) ||
     typeof value.accountId !== "string" || !ID_PATTERN.test(value.accountId) ||
-    (currentContract && (!validNullableIdentity(value.name, 200) ||
-      !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))))) ||
+    !validNullableIdentity(value.name, 200) ||
+    !(value.email === null || (validNullableIdentity(value.email, 254) && isConservativeEmail(value.email))) ||
     typeof value.csrfToken !== "string" || !TOKEN_PATTERN.test(value.csrfToken) ||
     !validDate(value.expiresAt)) {
     throw new AccountAuthError(502, "invalid_response");
   }
-  return {
-    accountId: value.accountId,
-    name: currentContract ? value.name as string | null : null,
-    email: currentContract ? value.email as string | null : null,
-    csrfToken: value.csrfToken,
-    expiresAt: value.expiresAt
-  };
+  return { accountId: value.accountId, name: value.name, email: value.email, csrfToken: value.csrfToken, expiresAt: value.expiresAt };
 };
 
 const parseEmailRequest = (value: unknown): void => {
@@ -246,16 +188,12 @@ export const loginWithGoogle = async (
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
 ): Promise<LoginResult> => {
-  const result = parseLogin(await request("/google", {
+  return parseLogin(await request("/google", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
     signal
   }, fetchImpl));
-  const profile = result.name || result.email ? undefined : googleCredentialProfile(idToken);
-  const enriched = profile ? { ...result, ...profile } : result;
-  storeProfile(enriched);
-  return enriched;
 };
 
 export const isConservativeEmail = (value: string): boolean => {
@@ -296,31 +234,21 @@ export const verifyEmailLogin = async (
   fetchImpl: typeof fetch = fetch
 ): Promise<LoginResult> => {
   if (!TOKEN_PATTERN.test(token)) throw new AccountAuthError(400, "invalid_request");
-  const result = parseLogin(await request("/email/verify", {
+  return parseLogin(await request("/email/verify", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ token }),
     signal
   }, fetchImpl, 200));
-  storeProfile(result);
-  return result;
 };
 
 export const getAccountSession = async (
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
-): Promise<AccountSession> => {
-  const session = parseSession(await request("/session", {
+): Promise<AccountSession> => parseSession(await request("/session", {
     method: "GET",
     signal
   }, fetchImpl));
-  if (session.name || session.email) {
-    storeProfile(session);
-    return session;
-  }
-  const profile = readStoredProfile(session.accountId);
-  return profile ? { ...session, ...profile } : session;
-};
 
 export const logoutAccount = async (
   csrfToken: string,

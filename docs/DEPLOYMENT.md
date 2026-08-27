@@ -56,28 +56,10 @@ The same-origin `/api/v1/*` proxy covers anonymous sharing and account
 routes while preserving secure host-only cookies. Direct Cloud Run URLs are
 deployment inputs only and must not be compiled into browser code.
 
-Passwordless email uses `/api/v1/auth/email/request` and
-`/api/v1/auth/email/verify`; the callback is `/auth/email#token=...`. Vercel's
-SPA fallback must serve that direct route, while API requests remain
-network-only and uncached. Resend is called only by the backend, so do not add a
-Resend browser CSP source or secret. Keep the existing Google CSP and
-environment-specific client configuration while Google remains the separate
-migration fallback. Email and Google identities must not be described as
-automatically linked.
-
-Email-link requests are protected by Cloudflare Turnstile. Compile only the
-public widget key into Web with `HERITG_TURNSTILE_SITE_KEY`; keep the matching
-secret in GCP Secret Manager and expose it to the backend through
-`TURNSTILE_SECRET_NAME` and a pinned `TURNSTILE_SECRET_VERSION`. The widget must
-authorize the exact deployment hostname. Never place its secret in Vercel or
-browser code.
-
-The current worker activates and claims clients immediately and excludes both
-`/auth/email` and `/auth/email/` from its navigation fallback. A browser still
-controlled by an older installed worker cannot receive those rules retroactively:
-it must load the updated app once and reload before email links are enabled.
-Treat that one-update/reload requirement as a staging migration check; do not
-weaken the existing network-only `/api/v1/*` policy to work around an old worker.
+Account sign-in uses Google Identity Services with an environment-specific Web
+client ID. Account API requests remain network-only and uncached. Do not add
+Resend, Turnstile, broad Google wildcards, or other provider sources to the
+browser CSP. The current worker activates and claims clients immediately.
 
 The staging backend must exist before deploying staging:
 
@@ -86,18 +68,16 @@ The staging backend must exist before deploying staging:
 - A staging Firestore database and private Cloud Storage bucket
 - Storage CORS allowing exactly `https://staging.heritg.us`, including the signed
   upload/download methods and headers, and exposing `x-goog-generation`
-- A staging-only Resend credential, verified sender, callback origin
-  `https://staging.heritg.us/auth/email`, and short-lived verification retention
-  policy; use only synthetic recipient accounts approved for staging tests
+- A staging-only Google Web client authorizing exactly
+  `https://staging.heritg.us`
 
 The checked-in staging policies are `web/deploy/staging-storage-cors.json` and
 `web/deploy/share-lifecycle.json`.
 
 Never point staging at the production Cloud Run service or production bucket.
-Do not claim staging email delivery is ready until a real message has been
-delivered, opened, scrubbed at the callback, verified once, and followed by
-session restore, sign-out, and account deletion checks. These account checks do
-not upload or alter the browser's local family tree.
+Verify Google sign-in, session restoration, sign-out, and account deletion with
+a synthetic staging identity. These account checks do not upload or alter the
+browser's local family tree.
 
 Deploy the current worktree directly to staging from any branch:
 
@@ -138,47 +118,61 @@ tagging, and publication remain unchanged and must never use this staging path.
 
 ## Production Account Authentication
 
-Production candidates are built with account authentication enabled and with
-public, production-specific Google and Turnstile values. Configure the Google
-Web OAuth client to authorize exactly `https://heritg.us` as a JavaScript origin.
-Configure the production Turnstile widget for `heritg.us`. Keep downloaded OAuth
-JSON under the ignored root `secrets/` directory; the deploy command neither
-reads nor uploads that directory. OAuth secrets, the Turnstile secret, email
-provider credentials, session keys, and callback signing material belong only in
-the production backend's secret manager, never in Vercel or browser build values.
+Production candidates expose Google account authentication only. Configure the
+production Google Web OAuth client to authorize exactly `https://heritg.us` as a
+JavaScript origin. Keep downloaded OAuth JSON under the ignored root `secrets/`
+directory; the deploy command neither reads nor uploads that directory. Google
+Identity Services uses only the public client ID in the browser. Session and
+backend credentials remain outside Vercel and browser build values. Passwordless
+email and Turnstile are disabled for this release.
 
-From a clean release worktree, create a production-targeted candidate without
-assigning the production domain:
+From the intended clean commit, deploy production:
 
 ```sh
 HERITG_API_ORIGIN=https://heritg-share-api-ulvjjfvqpq-et.a.run.app \
 HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
-HERITG_TURNSTILE_SITE_KEY=PRODUCTION_PUBLIC_WIDGET_KEY \
-npm --prefix web run deploy:stage
+npm --prefix web run deploy:production
 ```
 
 The guarded command accepts only the approved production API origin, rejects
-the staging Google client, requires a production-shaped Google Web client ID and
-a nonempty production Turnstile site key, renders `web/vercel.json`, and refuses
-dirty worktrees. It uses Vercel CLI 58.4.4 with `--prod --skip-domain`, injects
-the production environment and build identity, and deploys from the repository
-root. Root `.vercelignore` explicitly excludes `secrets/` from that upload.
+the staging Google client, requires a production-shaped Google Web client ID,
+renders `web/vercel.json`, and refuses dirty worktrees. It uses Vercel CLI 58.4.4
+with `--prod --skip-domain`, injects only the production environment, build
+identity, and public Google client ID, and deploys from the repository root. It
+then verifies the exact deployment, promotes it without rebuilding, and verifies
+the canonical origin. A failed post-promotion check automatically restores the
+previous deployment. Root `.vercelignore` excludes `secrets/` from the upload.
 
-Before promotion, run the production verifier against the immutable candidate
-URL. Because Google authorizes only the canonical production origin, complete
-the real provider checks immediately after protected promotion without recording
-tokens, email links, cookies, or proof values:
+The automated verifier checks encrypted sharing and account readiness before and
+after promotion. Complete real Google provider acceptance in staging; after
+production deployment, investigate only if automated readiness fails. Never
+record tokens, email links, cookies, or proof values.
+
+When Vercel SSO protects the immutable deployment URL, the command verifies the
+exact inspected build, routing, and security configuration before promotion and
+runs the complete HTTP compatibility gate immediately afterward on the public
+canonical hostname. A failure still restores the prior deployment automatically.
+The independent GitHub Pages landing origin is monitored separately and does not
+block or roll back an otherwise healthy application artifact.
+
+Routine deployment does not require a version bump, changelog, release branch,
+pull request, tag, GitHub Release, separate candidate handoff, or repeated manual
+device checklist. Those remain optional for named product milestones. To restore
+an exact known-good Production deployment manually:
+
+```sh
+npm --prefix web run rollback:production -- <deployment-id-or-url>
+```
+
+Account behavior remains:
 
 - Confirm Google sign-in opens for the production OAuth client and creates a
   session only after the nonce-bound exchange.
-- Confirm Turnstile is required for the initial email request and every resend,
-  and that no request retries without its proof.
-- Request a link for an approved production test address, confirm the response
-  does not disclose account existence, and open the delivered link once.
-- Confirm `/auth/email` loads directly, the URL fragment is scrubbed, session
-  restore and sign-out work, and reusing the same link fails.
-- Confirm anonymous session access remains `401`, invalid email-auth input
-  remains `400 invalid_request`, and no auth response is cached.
+- Confirm the signed-in name and email remain visible after reload and session
+  restoration, and that sign-out and account deletion work.
+- Confirm a failed Google exchange can retry with fresh nonce and state material.
+- Confirm anonymous session access remains `401`, passwordless email remains
+  disabled with `503 service_unavailable`, and no auth response is cached.
 
 Attach `staging.heritg.us` only to Vercel project `heritg-staging`. In Cloudflare,
 create a DNS-only CNAME using the exact target Vercel assigns. Inspect and
@@ -207,27 +201,6 @@ npm --prefix web run dns:staging:remove-beta
 
 That command refuses deletion if the beta record differs from the known legacy
 staging target.
-
-## Production authentication build
-
-Production candidates must explicitly inject the public production-only Google
-Web client ID and Turnstile site key. The guarded command rejects the staging
-Google client, an unexpected backend origin, and missing values, then creates a
-production-targeted Vercel deployment without assigning `heritg.us`:
-
-```sh
-HERITG_API_ORIGIN=https://PRODUCTION-SERVICE.run.app \
-HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
-HERITG_TURNSTILE_SITE_KEY=PRODUCTION_PUBLIC_WIDGET_KEY \
-npm --prefix web run deploy:stage
-```
-
-The Google client must authorize exactly `https://heritg.us`. The Turnstile
-widget must authorize `heritg.us` and issue action `email_login`; its secret
-stays only in production GCP Secret Manager. Verify the immutable Vercel URL,
-including `/auth/email`, account-route proxying, Google popup behavior, and a
-controlled magic-link lifecycle before running `deploy:promote`. Never use the
-staging deployment command or staging identity values for production.
 
 ## Local review
 

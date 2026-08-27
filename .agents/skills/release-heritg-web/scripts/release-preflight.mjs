@@ -111,18 +111,19 @@ const requiredFiles = [
   "web/vercel.json",
   "web/scripts/deploy-production.mjs",
   "web/scripts/production-auth-config.mjs",
-  "web/scripts/promote-production.mjs"
+  "web/scripts/promote-production.mjs",
+  "web/scripts/rollback-production.mjs"
 ];
 for (const file of requiredFiles) {
   if (!existsSync(resolve(repositoryRoot, file))) fail(`required release file is missing: ${file}`);
 }
 
 const vercel = readJson(resolve(webDirectory, "vercel.json"));
-if (webPackage.scripts?.["deploy:promote"] !== "node scripts/promote-production.mjs") {
-  fail("Web production promotion must use the guarded promotion script");
+if (webPackage.scripts?.["rollback:production"] !== "node scripts/rollback-production.mjs") {
+  fail("Web production rollback must use the guarded rollback script");
 }
-if (webPackage.scripts?.["deploy:stage"] !== "node scripts/deploy-production.mjs") {
-  fail("Web staging must use the guarded production candidate deployment script");
+if (webPackage.scripts?.["deploy:production"] !== "node scripts/deploy-production.mjs") {
+  fail("Web production deployment must use the guarded one-command deployment script");
 }
 if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
     vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {
@@ -135,6 +136,16 @@ if (appRewrite?.destination !== "/index.html") {
 const viteConfig = readFileSync(resolve(webDirectory, "vite.config.ts"), "utf8");
 if (!viteConfig.includes('base: "/"') || !viteConfig.includes('outDir: "dist"')) {
   fail("web/vite.config.ts must build the application at the app origin root");
+}
+const productionDeploy = readFileSync(resolve(webDirectory, "scripts/deploy-production.mjs"), "utf8");
+const accountSettings = readFileSync(resolve(webDirectory, "src/AccountSettings.tsx"), "utf8");
+const mainEntry = readFileSync(resolve(webDirectory, "src/main.tsx"), "utf8");
+if (productionDeploy.includes("TURNSTILE") ||
+    !productionDeploy.includes('"HERITG_FAMILY_BILLING_ENABLED=true"')) {
+  fail("this production release must inject Google account and Family synchronization configuration");
+}
+if (accountSettings.includes("requestEmailLogin") || mainEntry.includes("EmailAuthCallback") || mainEntry.includes("verifyEmailLogin")) {
+  fail("this production release must expose only Google sign-in");
 }
 const headers = (vercel.headers ?? []).flatMap((rule) => rule.headers ?? []);
 const headerNames = new Set(headers.map((header) => String(header.key).toLowerCase()));

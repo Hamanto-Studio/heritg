@@ -4,20 +4,21 @@ HERITG uses one changelog for Web, iOS, and Android. Each platform has an
 independent semantic version and release history. Versions never use a `v`
 prefix.
 
-## Unreleased
+## [web-0.8.0] - 2026-08-25
 
-### Web
+### Added
 
-- Added Heritg Family+ encrypted device synchronization, collaboration for up
-  to 5 people, and longer encrypted sharing links.
-- Changed Family+ checkout to direct, one-time two-year and five-year access
-  options with supported Indonesian payment methods.
+- Added Heritg Family+ encrypted device synchronization and longer encrypted
+  sharing links.
+- Added renewable one-calendar-month Family+ access without a payment method.
 - Improved Family+ discovery with prominent, consistent benefits and a direct
-  centered checkout flow from every navigation entry.
+  centered activation flow from every navigation entry.
 - Added an isolated, search-hidden staging environment with distinctive purple
   branding and a persistent warning that it is for disposable test data only.
 - Improved sibling generation placement and kept child connector rails a
   consistent distance from person cards.
+
+## Unreleased
 
 ### iOS
 
@@ -37,6 +38,18 @@ prefix.
 
 - Refreshed the internal testing build for the current offline family-tree,
   encrypted archive, GEDCOM, and chart-export compatibility checks.
+
+## [web-0.7.0] - 2026-08-24
+
+### Added
+
+- Added Google account sign-in with the signed-in name and email visible after
+  login and session restoration.
+
+### Fixed
+
+- Added bounded Google sign-in preparation and retry handling that starts each
+  retry with fresh nonce and state material.
 
 ## [web-0.6.2] - 2026-08-18
 

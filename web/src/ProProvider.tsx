@@ -35,6 +35,18 @@ interface BillingCheckoutResponse {
 }
 
 const ProContext = createContext<ProContextValue>(unavailableProContext);
+const SYNC_ENABLED_STORAGE_KEY = "heritg:family-sync-enabled";
+
+const readSyncEnabled = (): boolean | undefined => {
+  try {
+    const value = localStorage.getItem(SYNC_ENABLED_STORAGE_KEY);
+    return value === null ? undefined : value === "true";
+  } catch { return undefined; }
+};
+
+const saveSyncEnabled = (enabled: boolean): void => {
+  try { localStorage.setItem(SYNC_ENABLED_STORAGE_KEY, String(enabled)); } catch { /* Browser storage can be unavailable. */ }
+};
 
 const jsonRequest = async <T,>(path: string, init: RequestInit = {}): Promise<T> => {
   const response = await fetch(path, {
@@ -82,6 +94,18 @@ export const requestBillingCheckout = async (
   return destination.href;
 };
 
+export const requestFreeAccess = async (
+  accountId: string,
+  csrfToken: string
+): Promise<EntitlementResponse> => jsonRequest<EntitlementResponse>("/api/v1/entitlements/free-access", {
+  method: "POST",
+  headers: {
+    "x-csrf-token": csrfToken,
+    "x-heritg-account-id": accountId
+  },
+  body: "{}"
+});
+
 export const subscriptionFromEntitlement = (
   entitlement: EntitlementResponse
 ): SubscriptionState => {
@@ -126,15 +150,16 @@ export function ProProvider({
   const sessionGenerationRef = useRef(0);
   const currentAccountIdRef = useRef<string | undefined>(undefined);
 
-  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
+  const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveSyncState = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
+    const enabled = entitlement.canRead && readSyncEnabled() === true;
     setSubscription(nextSubscription);
     setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
-    setSync((current) => preserveDisabledSync && entitlement.canRead && current.phase === "disabled"
-      ? { ...current, error: undefined }
+    setSync((current) => preserveSyncState && entitlement.canRead && current.enabled === enabled
+      ? current
       : {
-          enabled: entitlement.canRead,
-          phase: entitlement.canRead ? "comparing" : "subscriptionRequired",
+          enabled,
+          phase: entitlement.canRead ? enabled ? "comparing" : "disabled" : "subscriptionRequired",
           pendingChanges: 0
         });
     return nextSubscription;
@@ -150,13 +175,6 @@ export function ProProvider({
       setSync({ enabled: false, phase: "unavailable", pendingChanges: 0 });
       return;
     }
-    const csrfToken = readCsrfCookie();
-    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
-    await jsonRequest("/api/v1/entitlements/refresh", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-      body: "{}"
-    });
     const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== session.accountId) return;
     applyEntitlement(entitlement);
@@ -211,15 +229,8 @@ export function ProProvider({
 
   const refreshEntitlement = useCallback(async () => {
     if (account.status !== "signedIn") return undefined;
-    const csrfToken = readCsrfCookie();
-    if (!csrfToken) throw new Error("Sign in again before refreshing the subscription.");
     const accountId = account.user.id;
     const generation = sessionGenerationRef.current;
-    await jsonRequest("/api/v1/entitlements/refresh", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-      body: "{}"
-    });
     const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== accountId) return undefined;
     return applyEntitlement(entitlement, true);
@@ -346,7 +357,7 @@ export function ProProvider({
     if (account.status !== "signedIn") return;
     const csrfToken = readCsrfCookie();
     if (!csrfToken) {
-      setError("Sign in again before starting checkout.");
+      setError("Sign in again before activating Family+.");
       return;
     }
     const offer = "offer" in subscription ? subscription.offer : undefined;
@@ -357,6 +368,15 @@ export function ProProvider({
     setError(undefined);
     setSubscription({ status: "purchasing", offer });
     try {
+      if (offer.price.amount === 0) {
+        const claimed = await requestFreeAccess(account.user.id, csrfToken);
+        if (claimed.appUserId !== account.user.id) throw new Error("The Family+ response did not match this account.");
+        if (readSyncEnabled() === undefined) saveSyncEnabled(true);
+        const next = applyEntitlement(claimed);
+        if (next.status !== "active") throw new Error("Free Family+ access could not be activated.");
+        setPaywallOpen(false);
+        return;
+      }
       const paymentLink = await requestBillingCheckout(account.user.id, csrfToken);
       const refreshed = await refreshEntitlement().catch(() => undefined);
       if (refreshed?.status === "active") {
@@ -395,6 +415,7 @@ export function ProProvider({
     },
     setSyncEnabled: async (enabled) => {
       if (!syncAccess.canRead) return;
+      saveSyncEnabled(enabled);
       if (!enabled) {
         syncAbortRef.current?.abort();
         syncQueuedRef.current = false;

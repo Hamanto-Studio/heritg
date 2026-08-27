@@ -1,4 +1,5 @@
 export type Gender = "female" | "male" | "unspecified";
+export type DatePrecision = "exact" | "month" | "year";
 export const RELATIONSHIP_TERMINOLOGIES = [
   "id",
   "jv-yogyakarta",
@@ -85,7 +86,10 @@ export interface Person {
   birthDate?: string;
   birthOrderOverride?: number;
   deathDate?: string;
-  birthDatePrecision: "exact" | "month" | "year";
+  birthDatePrecision: DatePrecision;
+  deathDatePrecision?: DatePrecision;
+  birthPlace?: string;
+  deathPlace?: string;
   notes: string;
   addressLine: string;
   city: string;
@@ -104,6 +108,7 @@ export interface FamilyRelationship {
   subtype: RelationshipSubtype;
   createdAt: string;
   marriageDate?: string;
+  marriageDatePrecision?: DatePrecision;
   divorceDate?: string;
 }
 

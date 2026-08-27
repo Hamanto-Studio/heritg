@@ -93,12 +93,10 @@ sharing service receives family data only as ciphertext. The URL contains a
 share identifier, not an encryption key. Viewing is read-only, but a recipient
 may explicitly save an independent editable copy in their browser.
 
-Web users may also optionally create or access a Heritg account through one
-generic emailed magic-link flow. A new account is created only after the link
-proves control of the address; the same UI signs in an existing account without
-revealing which case applies. Google is retained as a separate migration
-fallback and is not automatically linked to email. Neither account method
-uploads, backs up, unlocks, or synchronizes the local family-tree database.
+Web users may also optionally create or access a Heritg account with Google.
+The account service verifies a nonce-bound Google identity proof and returns a
+secure session with the verified display name and email. Signing in does not
+upload, back up, unlock, or synchronize the local family-tree database.
 
 Web imports `.heritg`, legacy HERITG JSON, and GEDCOM files. It exports complete
 `.heritg` backups, GEDCOM, PNG, and SVG.
@@ -275,15 +273,14 @@ production do not share trees or encryption keys. Export and import a backup to
 move a tree between origins. The development server has no local sharing-service
 proxy; run `HERITG_SHARING_ENABLED=false npm run dev` when testing without the
 production sharing backend. Email delivery also requires the matching backend
-environment to have its Resend sender, API credential, callback origin, and
-retention configuration enabled; no Resend credential or browser CSP origin is
-needed in the Web build. Existing installed PWAs controlled by the previous
-service worker require one update and reload before magic-link callback routes
-are enabled.
+environment to enable separately reviewed provider configuration; passwordless
+email is disabled in the current Web release. Legacy `/auth/email` links are
+scrubbed without attempting authentication.
 
-Before opening a pull request, run `npm run release:check`, `npm run lint`,
-`npm test`, and `npm run build` from `web/`. Versioned deployments follow the
-shared [release policy](docs/RELEASES.md).
+Before shipping, run `npm run lint`, `npm test`, and `npm run build` from
+`web/`. Once staging is stable, `npm --prefix web run deploy:production` stages,
+verifies, promotes, and re-verifies the exact deployment with automatic rollback.
+Versioned changelog and tag releases are optional product milestones.
 
 ## Repository Layout
 

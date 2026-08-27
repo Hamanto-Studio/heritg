@@ -45,7 +45,7 @@ export function SharedTreeApp() {
       setPasswordRequired(false);
       setSharePassword("");
       setPasswordError(undefined);
-      setSelectedPersonId(result.data.trees[0]?.lastSelectedPersonId);
+      setSelectedPersonId(undefined);
       document.documentElement.lang = result.data.language;
     } finally {
       if (requestRef.current === controller) requestRef.current = undefined;

@@ -1,5 +1,4 @@
 import {
-  CHILD_RAIL_CLEARANCE,
   ROUTE_EPSILON,
   pointOnSegment,
   pointsEqual,
@@ -14,6 +13,8 @@ export const CONNECTOR_STYLE = {
   junctionRadius: 2,
   crossingRadius: 5,
   familyColor: "#9c825f",
+  highlightColor: "#654621",
+  highlightWidth: 2,
   partnerColor: "#b47c76",
   siblingColor: "#78956c",
   siblingDash: "6 7"
@@ -196,16 +197,44 @@ export const crossingBridgePath = (
   return `M ${pathNumber(x)} ${pathNumber(y - radius)} C ${pathNumber(x + bulge)} ${pathNumber(y - radius)} ${pathNumber(x + bulge)} ${pathNumber(y + radius)} ${pathNumber(x)} ${pathNumber(y + radius)}`;
 };
 
+/** Keeps terminal stems straight by making the passing horizontal rail hop over them. */
+export const horizontalCrossingBridgePath = (
+  point: RoutePoint,
+  offsetX = 0,
+  offsetY = 0,
+  radius = CONNECTOR_STYLE.crossingRadius + 3
+) => {
+  const x = point.x + offsetX;
+  const y = point.y + offsetY;
+  const bulge = radius + 2;
+  return `M ${pathNumber(x - radius)} ${pathNumber(y)} C ${pathNumber(x - radius)} ${pathNumber(y - bulge)} ${pathNumber(x + radius)} ${pathNumber(y - bulge)} ${pathNumber(x + radius)} ${pathNumber(y)}`;
+};
+
+/** Samples the horizontal crossing cubic for renderers without SVG path support. */
+export const horizontalCrossingBridgePoints = (
+  point: RoutePoint,
+  radius = CONNECTOR_STYLE.crossingRadius + 3,
+  curveSteps = 8
+) => {
+  const steps = Math.max(1, Math.floor(curveSteps));
+  const start = { x: point.x - radius, y: point.y };
+  const firstControl = { x: point.x - radius, y: point.y - radius - 2 };
+  const secondControl = { x: point.x + radius, y: point.y - radius - 2 };
+  const end = { x: point.x + radius, y: point.y };
+  return Array.from({ length: steps + 1 }, (_, index) => {
+    const progress = index / steps;
+    const remaining = 1 - progress;
+    return {
+      x: remaining ** 3 * start.x + 3 * remaining ** 2 * progress * firstControl.x +
+        3 * remaining * progress ** 2 * secondControl.x + progress ** 3 * end.x,
+      y: remaining ** 3 * start.y + 3 * remaining ** 2 * progress * firstControl.y +
+        3 * remaining * progress ** 2 * secondControl.y + progress ** 3 * end.y
+    };
+  });
+};
+
 const distance = (left: RoutePoint, right: RoutePoint) =>
   Math.abs(left.x - right.x) + Math.abs(left.y - right.y);
-
-const isShortTerminalCorner = (
-  points: readonly RoutePoint[],
-  index: number
-) => (index === 1 &&
-    distance(points[0], points[1]) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON) ||
-  (index === points.length - 2 &&
-    distance(points.at(-2)!, points.at(-1)!) <= CHILD_RAIL_CLEARANCE + ROUTE_EPSILON);
 
 const pointToward = (from: RoutePoint, to: RoutePoint, amount: number): RoutePoint => ({
   x: from.x + Math.sign(to.x - from.x) * Math.min(amount, Math.abs(to.x - from.x)),
@@ -242,7 +271,7 @@ export const roundedConnectorPoints = (
     const current = points[index];
     const next = points[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner || isShortTerminalCorner(points, index)) {
+    if (!isCorner) {
       result.push(current);
       continue;
     }
@@ -274,7 +303,7 @@ export const roundedConnectorPath = (
     const current = translated[index];
     const next = translated[index + 1];
     const isCorner = previous.x !== next.x && previous.y !== next.y;
-    if (!isCorner || isShortTerminalCorner(translated, index)) {
+    if (!isCorner) {
       commands.push(`L ${pathNumber(current.x)} ${pathNumber(current.y)}`);
       continue;
     }

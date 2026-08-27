@@ -45,6 +45,21 @@ class ImmediateResizeObserver implements ResizeObserver {
   unobserve() {}
 }
 
+class ControllableResizeObserver extends ImmediateResizeObserver {
+  static latest: ControllableResizeObserver;
+  private readonly resizeCallback: ResizeObserverCallback;
+
+  constructor(callback: ResizeObserverCallback) {
+    super(callback);
+    this.resizeCallback = callback;
+    ControllableResizeObserver.latest = this;
+  }
+
+  resize() {
+    this.resizeCallback([], this);
+  }
+}
+
 class ImmediateTreeWorker {
   onmessage: ((event: MessageEvent<TreePreparationResult>) => void) | null = null;
   onerror: (() => void) | null = null;
@@ -77,15 +92,19 @@ class PendingTreeWorker extends ImmediateTreeWorker {
 describe("SvgTreeCanvas", () => {
   let container: HTMLDivElement;
   let root: Root;
+  let hostWidth: number;
+  let hostHeight: number;
 
   beforeEach(() => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
+    hostWidth = 1000;
+    hostHeight = 600;
     vi.stubGlobal("ResizeObserver", ImmediateResizeObserver);
     vi.stubGlobal("Worker", ImmediateTreeWorker);
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
-    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(600);
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => hostWidth);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockImplementation(() => hostHeight);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       callback(performance.now());
       return 1;
@@ -97,6 +116,7 @@ describe("SvgTreeCanvas", () => {
     container.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   const renderCanvas = (
@@ -174,6 +194,46 @@ describe("SvgTreeCanvas", () => {
 
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect(container.querySelector('[data-person-id="person"]')).not.toBeNull();
+  });
+
+  it("focuses a visible person after a new tree finishes preparing", () => {
+    vi.stubGlobal("Worker", PendingTreeWorker);
+    renderCanvas(vi.fn(), person.id);
+
+    act(() => PendingTreeWorker.latest.respond());
+
+    const transform = container.querySelector<SVGGElement>(".svg-tree-scene")?.style.transform;
+    expect(transform).toContain("scale(1.35)");
+    expect(transform).not.toContain("translate3d(0px, 0px");
+  });
+
+  it("ignores a restored viewport that leaves the selected person offscreen", () => {
+    renderCanvas(
+      vi.fn(),
+      person.id,
+      [person],
+      [],
+      { scrollX: 50_000, scrollY: 50_000, zoom: 0.5 }
+    );
+
+    const transform = container.querySelector<SVGGElement>(".svg-tree-scene")?.style.transform;
+    expect(transform).toContain("scale(1.35)");
+    expect(transform).not.toContain("50000");
+  });
+
+  it("preserves the viewed center and zoom when the canvas size changes", () => {
+    vi.stubGlobal("ResizeObserver", ControllableResizeObserver);
+    renderCanvas(vi.fn(), person.id);
+    const scene = container.querySelector<SVGGElement>(".svg-tree-scene")!;
+    const initialTransform = scene.style.transform;
+
+    hostWidth = 700;
+    hostHeight = 420;
+    act(() => ControllableResizeObserver.latest.resize());
+
+    expect(scene.style.transform).not.toBe(initialTransform);
+    expect(scene.style.transform).toContain("translate3d(350px");
+    expect(scene.style.transform).toContain("scale(1.35)");
   });
 
   it("selects a person through the retained HTML hit target", () => {

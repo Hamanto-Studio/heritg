@@ -27,7 +27,7 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("Equivalent to");
     expect(markup).toContain("One-time payment");
     expect(markup).toContain("Every change, ready on every device");
-    expect(markup).toContain("Invite up to 5 people");
+    expect(markup).toContain("Continue on another device");
     expect(markup).toContain("Encrypted and still yours");
     expect(markup).toContain("Heritg Family+");
     expect(markup).toContain("Continue to secure payment");
@@ -39,6 +39,32 @@ describe("ProPaywallDialog", () => {
     expect(markup).not.toContain("2 years");
     expect(markup).not.toContain("Xendit");
     expect(markup).not.toContain("Heritg Pro");
+  });
+
+  it("shows one month free access without payment copy", () => {
+    const pro = context({ configured: true, account: { status: "signedIn", user: { id: "account-1", name: null, email: null, expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "free", offer: {
+      productId: "heritg_family_preservation",
+      name: "HERITG Family Preservation",
+      price: { amount: 0, currency: "IDR" },
+      accessMonths: 1
+    } } });
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator("en")} />);
+    expect(markup).toContain("One month of Family+ free access");
+    expect(markup).toContain("No payment required");
+    expect(markup).toContain("Claim one month free");
+    expect(markup).toContain("Claim again after access expires");
+    expect(markup).not.toContain("Continue to secure payment");
+    expect(markup).not.toContain("One-time payment");
+  });
+
+  it("does not offer another claim while access is active", () => {
+    const pro = context({ configured: true, account: { status: "signedIn", user: { id: "account-1", name: null, email: null, expiresAt: "2026-09-23T10:10:00.000Z" } }, subscription: { status: "active", offer: {
+      productId: "heritg_family_preservation", name: "HERITG Family Preservation",
+      price: { amount: 0, currency: "IDR" }, accessMonths: 1
+    } } });
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator("en")} />);
+    expect(markup).toContain(">Active</button>");
+    expect(markup).toContain("disabled");
   });
 
   it("localizes the monthly equivalent in Indonesian", () => {

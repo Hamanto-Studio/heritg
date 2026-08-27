@@ -1,5 +1,6 @@
 import { deriveKinshipLabels, type KinshipLanguage } from "./kinship";
 import { deriveBirthOrders } from "./birthOrder";
+import { arrangeFamilyBlocks } from "./familyBlockLayout";
 import { formatPersonName } from "./personName";
 import type {
   FamilyRelationship,
@@ -14,7 +15,7 @@ export const LAYOUT_METRICS = {
   roleTop: 64, roleHeight: 18,
   lifeTop: 84, lifeHeight: 16,
   nodeBottom: 100, parentPortWithoutLife: 84,
-  horizontalSpacing: 260, familyGap: 200, generationSpacing: 260
+  horizontalSpacing: 260, familyGap: 200, generationSpacing: 360
 } as const;
 export interface LayoutBounds {
   x: number;
@@ -586,160 +587,6 @@ export function createTreeLayout(
     });
   }
 
-  // Let wide descendant branches pull their parents apart instead of crossing nearby family rails.
-  const blockChildCenter = (
-    block: ReturnType<typeof orderRow>[number],
-    generation: number
-  ) => {
-    const memberIds = new Set(block.members.map((person) => person.id));
-    const children = orderedRelationships
-      .filter((relationship) => relationship.kind === "parent" && memberIds.has(relationship.fromPersonId))
-      .map((relationship) => positioned.get(relationship.toPersonId))
-      .filter((person): person is PositionedPerson =>
-        person !== undefined && person.generation > generation
-      );
-    if (children.length === 0) {
-      const members = block.members.map((person) => positioned.get(person.id)!);
-      return (members[0].x + members.at(-1)!.x) / 2;
-    }
-    const nearestGeneration = Math.min(...children.map((person) => person.generation));
-    const xs = children.filter((person) => person.generation === nearestGeneration)
-      .map((person) => person.x);
-    return (Math.min(...xs) + Math.max(...xs)) / 2;
-  };
-  for (let rowIndex = rowGenerations.length - 2; rowIndex >= 0; rowIndex -= 1) {
-    const generation = rowGenerations[rowIndex];
-    const blocks = [...(blocksByGeneration.get(generation) ?? [])].sort((left, right) =>
-      blockChildCenter(left, generation) - blockChildCenter(right, generation) ||
-      compareText(left.key, right.key)
-    );
-    blocksByGeneration.set(generation, blocks);
-    let nextX: number | undefined;
-    blocks.forEach((block, blockIndex) => {
-      const memberIds = new Set(block.members.map((person) => person.id));
-      const directChildren = orderedRelationships
-        .filter((relationship) => relationship.kind === "parent" && memberIds.has(relationship.fromPersonId))
-        .map((relationship) => positioned.get(relationship.toPersonId))
-        .filter((person): person is PositionedPerson =>
-          person !== undefined && person.generation > generation
-        );
-      const nearestChildGeneration = directChildren.length > 0
-        ? Math.min(...directChildren.map((person) => person.generation))
-        : undefined;
-      const childXs = directChildren
-        .filter((person) => person.generation === nearestChildGeneration)
-        .map((person) => person.x);
-      const currentMembers = block.members.map((person) => positioned.get(person.id)!);
-      const currentStart = currentMembers[0].x;
-      const desiredCenter = childXs.length > 0
-        ? (Math.min(...childXs) + Math.max(...childXs)) / 2
-        : (currentMembers[0].x + currentMembers.at(-1)!.x) / 2;
-      const desiredStart = desiredCenter -
-        ((currentMembers.length - 1) * LAYOUT_METRICS.horizontalSpacing) / 2;
-      const gap = blockIndex > 0 && needsFamilyGap(blocks[blockIndex - 1], block)
-        ? LAYOUT_METRICS.familyGap : 0;
-      const minimumX = nextX === undefined ? desiredStart : nextX + gap;
-      const startX = Math.max(desiredStart, minimumX);
-      const descendantShift = startX - desiredStart;
-      if (descendantShift > 0 && childXs.length > 0) {
-        const descendantIds = new Set<string>();
-        const queue = [...memberIds];
-        for (let index = 0; index < queue.length; index += 1) {
-          for (const relationship of orderedRelationships) {
-            if (
-              relationship.kind !== "parent" ||
-              relationship.fromPersonId !== queue[index] ||
-              descendantIds.has(relationship.toPersonId)
-            ) continue;
-            descendantIds.add(relationship.toPersonId);
-            queue.push(relationship.toPersonId);
-          }
-        }
-        for (const descendantGeneration of rowGenerations) {
-          if (descendantGeneration <= generation) continue;
-          for (const descendantBlock of blocksByGeneration.get(descendantGeneration) ?? []) {
-            const members = descendantBlock.members.map((person) => positioned.get(person.id)!);
-            if (!members.some((person) => descendantIds.has(person.id))) continue;
-            members.forEach((person) => {
-              person.x += descendantShift;
-            });
-          }
-        }
-      }
-      const shift = startX - currentStart;
-      currentMembers.forEach((person) => {
-        person.x += shift;
-      });
-      nextX = startX + currentMembers.length * LAYOUT_METRICS.horizontalSpacing;
-    });
-    for (let blockIndex = blocks.length - 2; blockIndex >= 0; blockIndex -= 1) {
-      const block = blocks[blockIndex];
-      const nextBlock = blocks[blockIndex + 1];
-      const sharesParentFamily = [...block.familyKeys]
-        .some((key) => nextBlock.familyKeys.has(key));
-      if (!sharesParentFamily) continue;
-      const memberIds = new Set(block.members.map((person) => person.id));
-      const hasDirectDescendants = orderedRelationships.some((relationship) =>
-        relationship.kind === "parent" &&
-        memberIds.has(relationship.fromPersonId) &&
-        (positioned.get(relationship.toPersonId)?.generation ?? generation) > generation
-      );
-      if (hasDirectDescendants) continue;
-      const currentMembers = block.members.map((person) => positioned.get(person.id)!);
-      const nextStart = positioned.get(nextBlock.members[0].id)!.x;
-      const gap = needsFamilyGap(block, nextBlock) ? LAYOUT_METRICS.familyGap : 0;
-      const compactStart = nextStart - gap -
-        currentMembers.length * LAYOUT_METRICS.horizontalSpacing;
-      const shift = compactStart - currentMembers[0].x;
-      if (shift <= 0) continue;
-      currentMembers.forEach((person) => {
-        person.x += shift;
-      });
-    }
-  }
-
-  // Ancestor alignment can move branches after their rows were laid out. Sweep downward
-  // once more from the updated parent positions to regroup siblings and remove crossings.
-  for (const generation of rowGenerations) {
-    const parentStart = (block: ReturnType<typeof orderRow>[number]) => {
-      const memberIndex = new Map(block.members.map((person, index) => [person.id, index]));
-      const starts = orderedRelationships
-        .filter((relationship) => relationship.kind === "parent" && memberIndex.has(relationship.toPersonId))
-        .map((relationship) => {
-          const parentX = positioned.get(relationship.fromPersonId)?.x;
-          const index = memberIndex.get(relationship.toPersonId)!;
-          return parentX === undefined
-            ? undefined : parentX - index * LAYOUT_METRICS.horizontalSpacing;
-        })
-        .filter((value): value is number => value !== undefined);
-      return starts.length > 0
-        ? starts.reduce((sum, value) => sum + value, 0) / starts.length
-        : positioned.get(block.members[0].id)!.x;
-    };
-    const hasDescendants = (block: ReturnType<typeof orderRow>[number]) => {
-      const ids = new Set(block.members.map((person) => person.id));
-      return orderedRelationships.some((relationship) =>
-        relationship.kind === "parent" && ids.has(relationship.fromPersonId)
-      );
-    };
-    const blocks = [...(blocksByGeneration.get(generation) ?? [])].sort((left, right) =>
-      parentStart(left) - parentStart(right) ||
-      Number(hasDescendants(left)) - Number(hasDescendants(right)) ||
-      compareText(left.key, right.key)
-    );
-    let nextX: number | undefined;
-    blocks.forEach((block, blockIndex) => {
-      const members = block.members.map((person) => positioned.get(person.id)!);
-      const gap = blockIndex > 0 && needsFamilyGap(blocks[blockIndex - 1], block)
-        ? LAYOUT_METRICS.familyGap : 0;
-      const desiredStart = generation === minimumGeneration ? members[0].x : parentStart(block);
-      const startX = nextX === undefined ? desiredStart : Math.max(desiredStart, nextX + gap);
-      const shift = startX - members[0].x;
-      if (shift !== 0) members.forEach((person) => { person.x += shift; });
-      nextX = members[0].x + members.length * LAYOUT_METRICS.horizontalSpacing;
-    });
-  }
-
   const visibleRelationships = orderedRelationships.filter((relationship) => {
     if (!visible.has(relationship.fromPersonId) || !visible.has(relationship.toPersonId)) {
       return false;
@@ -750,6 +597,25 @@ export function createTreeLayout(
       ? toGeneration > fromGeneration
       : toGeneration === fromGeneration;
   });
+  const arranged = arrangeFamilyBlocks(
+    rowGenerations.map((generation) => ({
+      generation,
+      blocks: (blocksByGeneration.get(generation) ?? []).map((block) => ({
+        key: block.key,
+        memberIds: block.members.map((person) => person.id),
+        familyKeys: [...block.familyKeys]
+      }))
+    })),
+    visibleRelationships.filter(({ kind }) => kind === "parent").map((relationship) => ({
+      parentId: relationship.fromPersonId,
+      childId: relationship.toPersonId
+    })),
+    LAYOUT_METRICS
+  );
+  resultPeople.forEach((person) => {
+    person.x = arranged.positions.get(person.id) ?? person.x;
+  });
+
   const minX = Math.min(...resultPeople.map((person) => person.x - LAYOUT_METRICS.labelWidth / 2));
   const maxX = Math.max(...resultPeople.map((person) => person.x + LAYOUT_METRICS.labelWidth / 2));
   const minY = Math.min(...resultPeople.map((person) => person.y - LAYOUT_METRICS.avatarRadius));

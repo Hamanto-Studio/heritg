@@ -19,7 +19,7 @@ const production = "https://heritg.us/";
 const vercelCli = ["--yes", "vercel@58.4.4"];
 
 if (!candidate) {
-  process.stderr.write("Usage: npm --prefix web run deploy:promote -- <tested-vercel-deployment-url>\n");
+  process.stderr.write("Usage: node web/scripts/promote-production.mjs <tested-vercel-deployment-url>\n");
   process.exit(1);
 }
 
@@ -51,13 +51,13 @@ const inspect = (target) => JSON.parse(execFileSync("npx", [
 const verify = (target, expectedVersion = packageJson.version) => {
   const args = [verifier, target];
   if (expectedVersion) args.push("--expect-version", expectedVersion);
-  args.push("--cors-origin", new URL(production).origin);
+  args.push("--cors-origin", new URL(production).origin, "--skip-landing");
   execFileSync(process.execPath, args, { cwd: repositoryRoot, stdio: "inherit" });
 };
 
 const candidateDeployment = inspect(candidateUrl.href);
 if (candidateDeployment.target !== "production") {
-  process.stderr.write("Production promotion refused: candidate must be staged with deploy:stage, not deployed as a Preview.\n");
+  process.stderr.write("Production promotion refused: deployment must target Production, not Preview.\n");
   process.exit(1);
 }
 if (candidateDeployment.readyState !== "READY") {
@@ -81,8 +81,19 @@ if (!configMatches) {
   process.exit(1);
 }
 
-process.stdout.write("Running mandatory encrypted-sharing compatibility gate before production promotion...\n");
-verify(candidateUrl.href);
+const candidateProbe = await fetch(candidateUrl, { method: "HEAD", redirect: "manual" });
+const protectionLocation = candidateProbe.headers.get("location");
+let protectedByVercel = false;
+if (candidateProbe.status === 302 && protectionLocation) {
+  const protectionUrl = new URL(protectionLocation);
+  protectedByVercel = protectionUrl.hostname === "vercel.com" && protectionUrl.pathname === "/sso-api";
+}
+if (protectedByVercel) {
+  process.stdout.write("The immutable URL is protected by Vercel SSO; exact build configuration passed, so canonical verification will be the HTTP gate.\n");
+} else {
+  process.stdout.write("Running mandatory encrypted-sharing compatibility gate before production promotion...\n");
+  verify(candidateUrl.href);
+}
 
 const previousProduction = inspect(production);
 process.stdout.write("Candidate passed. Pointing production traffic to the exact verified staged deployment...\n");

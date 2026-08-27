@@ -67,6 +67,11 @@
   stroke-dasharray: 6 7;
 }
 
+.svg-connector.blood-family {
+  stroke: #654621;
+  stroke-width: 2;
+}
+
 .svg-relationship-label {
   pointer-events: none;
 }

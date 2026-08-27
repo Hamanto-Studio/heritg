@@ -482,10 +482,15 @@ async function archiveEntries(
         ? { birthOrderOverride: person.birthOrderOverride }
         : {}),
       birthDatePrecision: person.birthDatePrecision,
+      ...(person.birthPlace ? { birthPlace: person.birthPlace } : {}),
       city: person.city,
       country: person.country,
       createdAt: exactInstant(person.createdAt),
       ...(person.deathDate ? { deathDate: person.deathDate } : {}),
+      ...(person.deathDatePrecision && person.deathDatePrecision !== "exact"
+        ? { deathDatePrecision: person.deathDatePrecision }
+        : {}),
+      ...(person.deathPlace ? { deathPlace: person.deathPlace } : {}),
       displayName: person.displayName,
       gender: person.gender,
       id: person.id,
@@ -525,6 +530,9 @@ async function archiveEntries(
     id: relationship.id,
     kind: relationship.kind,
     ...(relationship.marriageDate ? { marriageDate: relationship.marriageDate } : {}),
+    ...(relationship.marriageDatePrecision && relationship.marriageDatePrecision !== "exact"
+      ? { marriageDatePrecision: relationship.marriageDatePrecision }
+      : {}),
     ...(relationship.divorceDate ? { divorceDate: relationship.divorceDate } : {}),
     schemaVersion: SCHEMA_VERSION,
     subtype: relationship.subtype,
@@ -581,6 +589,15 @@ const optionalPositiveInteger = (value: unknown, label: string): number | undefi
 };
 const nullableText = (value: unknown, label: string): string | undefined =>
   value === null || value === undefined ? undefined : text(value, label);
+const precision = (
+  value: unknown,
+  label: string
+): Person["birthDatePrecision"] => {
+  if (value === null || value === undefined) return "exact";
+  const result = text(value, label);
+  if (!["exact", "month", "year"].includes(result)) fail(`${label} is unsupported.`);
+  return result as Person["birthDatePrecision"];
+};
 const parsedJson = (bytes: Uint8Array, label: string): JsonObject => {
   try { return object(JSON.parse(strictText(bytes)), label); } catch (error) {
     if (error instanceof Error && error.message.startsWith("Invalid .heritg")) throw error;
@@ -687,6 +704,12 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
       ),
       deathDate,
       birthDatePrecision: text(record.birthDatePrecision, `person ${index}.birthDatePrecision`) as Person["birthDatePrecision"],
+      deathDatePrecision: precision(
+        record.deathDatePrecision,
+        `person ${index}.deathDatePrecision`
+      ),
+      birthPlace: nullableText(record.birthPlace, `person ${index}.birthPlace`) ?? "",
+      deathPlace: nullableText(record.deathPlace, `person ${index}.deathPlace`) ?? "",
       notes: text(record.notes, `person ${index}.notes`, MAX_NOTES_BYTES),
       addressLine: text(record.addressLine, `person ${index}.addressLine`),
       city: text(record.city, `person ${index}.city`),
@@ -704,9 +727,10 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     const subtype = text(record.subtype, `relationship ${index}.subtype`) as RelationshipSubtype;
     const marriageDate = calendarDate(record.marriageDate, `relationship ${index}.marriageDate`);
     const isFormer = subtype === "formerPartner" || subtype === "formerSpouse";
-    const divorceDate = isFormer
-      ? calendarDate(record.divorceDate, `relationship ${index}.divorceDate`)
-      : undefined;
+    const divorceDate = calendarDate(record.divorceDate, `relationship ${index}.divorceDate`);
+    if (divorceDate && !isFormer) {
+      fail(`relationship ${index}.divorceDate is only valid for former unions.`);
+    }
     if (marriageDate && divorceDate && divorceDate < marriageDate) {
       fail(`relationship ${index} divorce date is earlier than its marriage date.`);
     }
@@ -719,6 +743,10 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
       subtype,
       createdAt: exactArchiveInstant(record.createdAt, `relationship ${index}.createdAt`),
       marriageDate,
+      marriageDatePrecision: precision(
+        record.marriageDatePrecision,
+        `relationship ${index}.marriageDatePrecision`
+      ),
       divorceDate
     };
   });
@@ -730,7 +758,7 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     selectedTreeId: tree.id,
     language: into?.language ?? "en",
     relationshipLanguage: treeRecord.relationshipLanguage,
-    viewports: { [tree.id]: { scrollX: 0, scrollY: 0, zoom: 1 } }
+    viewports: {}
   });
   const sharedView = sharedViewPolicy(treeRecord.sharedView, new Set(people.map((person) => person.id)));
   if (!into) return sharedView ? attachSharedView(imported, sharedView) : imported;
@@ -748,7 +776,7 @@ async function dataFromZip(zip: Uint8Array, into?: AppData): Promise<AppData> {
     language: target.language,
     relationshipLanguage: target.relationshipLanguage,
     relationshipTerminology: target.relationshipTerminology,
-    viewports: { ...target.viewports, [tree.id]: { scrollX: 0, scrollY: 0, zoom: 1 } }
+    viewports: { ...target.viewports }
   });
 }
 

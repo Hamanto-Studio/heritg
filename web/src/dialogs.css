@@ -1054,6 +1054,12 @@
 }
 .account-google-error { display: grid; gap: 8px; justify-items: center; }
 
+.account-google-error {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
 .account-google-button {
   background: #fff;
   border: 1px solid #dadce0;
@@ -1182,11 +1188,15 @@
 }
 
 .account-identity {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  gap: 2px;
 }
-.account-identity strong { font-size: 0.9rem; }
-.account-identity span { color: var(--subtle); font-size: 0.78rem; }
+
+.account-identity span {
+  color: var(--subtle);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
 
 .account-session .button,
 .account-error .button {

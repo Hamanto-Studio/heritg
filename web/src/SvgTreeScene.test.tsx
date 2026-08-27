@@ -54,11 +54,13 @@ describe("SvgTreeScene", () => {
       </svg>
     );
 
-    expect(markup).toContain("svg-connector family");
+    expect(markup).toContain("svg-connector family blood-family");
     expect(markup).toContain('data-person-id="parent"');
+    expect(markup).toContain('data-blood-relative="true"');
+    expect(markup).toContain('data-selected="true"');
     expect(markup).toContain("Parent Example");
     expect(markup).toContain("Child Example");
-    expect(markup).toContain('stroke="#9c825f"');
+    expect(markup).toContain('stroke="#654621"');
   });
 
   it("renders long names as two centered lines at a consistent font size", () => {
@@ -133,7 +135,7 @@ describe("SvgTreeScene", () => {
     expect(markup).toContain('fill="#e2ebf2"');
     expect(markup).toContain('data-gender="unspecified"');
     expect(markup).toContain('fill="#ede5d8"');
-    expect(markup).toContain('stroke="#9c825f"');
+    expect(markup).toContain('stroke="#654621"');
     expect(markup).toContain('data-birth-order="1"');
   });
 });

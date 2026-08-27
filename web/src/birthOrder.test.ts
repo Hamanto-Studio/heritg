@@ -82,30 +82,32 @@ describe("birth order", () => {
     expect(deriveBirthOrders(overlapping, familyRelationships).size).toBe(0);
   });
 
-  it("uses a manual order instead of the inferred order", () => {
+  it("uses manual order for every sibling instead of the inferred order", () => {
     const people = [
       person("father"), person("mother"),
-      person("oldest", "1998-01-01", "exact", 2),
-      person("middle", "2000-02-01"),
-      person("youngest", "2002-03-01")
+      person("oldest", "1998-01-01", "exact", 3),
+      person("middle", "2000-02-01", "exact", 1),
+      person("youngest", "2002-03-01", "exact", 2)
     ];
 
     expect(Object.fromEntries(deriveBirthOrders(people, familyRelationships))).toEqual({
-      oldest: 2,
-      middle: 2,
-      youngest: 3
+      oldest: 3,
+      middle: 1,
+      youngest: 2
     });
   });
 
-  it("uses a manual order when dates cannot be inferred and falls back after clearing it", () => {
-    const manuallyOrdered = [
+  it("hides all order when manual numbering is incomplete", () => {
+    const partiallyOrdered = [
       person("father"), person("mother"),
-      person("oldest", undefined, "exact", 1), person("middle"), person("youngest")
+      person("oldest", "1998-01-01", "exact", 1),
+      person("middle", "2000-02-01"),
+      person("youngest", "2002-03-01")
     ];
-    expect(Object.fromEntries(deriveBirthOrders(manuallyOrdered, familyRelationships))).toEqual({
-      oldest: 1
-    });
+    expect(deriveBirthOrders(partiallyOrdered, familyRelationships).size).toBe(0);
+  });
 
+  it("falls back to birth dates after all manual orders are cleared", () => {
     const dated = [
       person("father"), person("mother"),
       person("oldest", "1998-01-01"), person("middle", "2000-02-01"),

@@ -1,9 +1,9 @@
-import { act } from "react";
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountSyncError } from "./accountSync";
-import { ProProvider, requestBillingCheckout, subscriptionFromEntitlement, syncFailureMessage, usePro, type EntitlementResponse } from "./ProProvider";
+import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFromEntitlement, syncFailureMessage, usePro, type EntitlementResponse } from "./ProProvider";
 import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 
@@ -14,16 +14,22 @@ const PurchaseProbe = () => {
   const pro = usePro();
   return <button onClick={() => void pro.purchase()} type="button">{pro.subscription.status}</button>;
 };
+const RefreshProbe = ({ onSyncChange }: { onSyncChange: (sync: ProContextValue["sync"]) => void }) => {
+  const pro = usePro();
+  useEffect(() => onSyncChange(pro.sync), [onSyncChange, pro.sync]);
+  return <button onClick={() => void pro.refreshSubscription()} type="button">{pro.sync.phase}</button>;
+};
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
 
-afterEach(async () => {
+  afterEach(async () => {
   if (root) await act(async () => root?.unmount());
   container?.remove();
   root = undefined;
   container = undefined;
   document.cookie = "heritg_csrf=; Max-Age=0; Path=/";
+  localStorage.removeItem("heritg:family-sync-enabled");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -119,8 +125,45 @@ describe("ProProvider", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       await new Promise((resolve) => window.setTimeout(resolve, 10));
     });
-    expect(fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/entitlements/refresh")))
+    expect(fetchMock.mock.calls.filter(([request]) => String(request).endsWith("/entitlements/current")))
       .toHaveLength(2);
+  });
+
+  it("does not reset synchronization while refreshing active access", async () => {
+    localStorage.setItem("heritg:family-sync-enabled", "true");
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    const syncChanges = vi.fn();
+    let entitlementRequests = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
+        accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-09-24T00:00:00Z"
+      }));
+      if (path.endsWith("/entitlements/current")) {
+        entitlementRequests += 1;
+        return new Response(JSON.stringify(entitlement({
+          access: "active", canRead: true, canWrite: true, expiresAt: "2026-09-24T00:00:00Z"
+        })));
+      }
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><RefreshProbe onSyncChange={syncChanges} /></ProProvider>));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 10)));
+    expect(container.textContent).toBe("comparing");
+    const syncChangeCount = syncChanges.mock.calls.length;
+
+    await act(async () => {
+      container?.querySelector("button")?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 10));
+    });
+
+    expect(entitlementRequests).toBe(2);
+    expect(syncChanges).toHaveBeenCalledTimes(syncChangeCount);
+    expect(container.textContent).toBe("comparing");
   });
 
   it("shows immediate mock activation instead of redirecting after checkout", async () => {
@@ -161,6 +204,104 @@ describe("ProProvider", () => {
     });
     expect(container.textContent).toBe("active");
     expect(entitlementRequests).toBe(2);
+  });
+
+  it("claims one month free without requesting a billing checkout", async () => {
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    const freeOffer = { ...offer, price: { amount: 0, currency: "IDR" }, accessMonths: 1 };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
+        accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-09-24T00:00:00Z"
+      }));
+      if (path.endsWith("/entitlements/refresh")) return new Response("{}", { status: 200 });
+      if (path.endsWith("/entitlements/current")) return new Response(JSON.stringify(entitlement({ offer: freeOffer })));
+      if (path.endsWith("/entitlements/free-access")) return new Response(JSON.stringify(entitlement({
+        plan: "family", access: "active", canRead: true, canWrite: true,
+        expiresAt: "2026-09-24T00:00:00Z", offer: freeOffer
+      })));
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => root?.render(<ProProvider billingEnabled><PurchaseProbe /></ProProvider>));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 10)));
+    expect(container.textContent).toBe("free");
+    await act(async () => {
+      container?.querySelector("button")?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 10));
+    });
+
+    expect(container.textContent).toBe("active");
+    expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith("/entitlements/free-access"))).toBe(true);
+    expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith("/billing/checkouts"))).toBe(false);
+  });
+
+  it("keeps synchronization disabled across a session reload", async () => {
+    localStorage.setItem("heritg:family-sync-enabled", "false");
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
+        accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-09-24T00:00:00Z"
+      }));
+      if (path.endsWith("/entitlements/current")) return new Response(JSON.stringify(entitlement({
+        access: "active", canRead: true, canWrite: true, expiresAt: "2026-09-24T00:00:00Z"
+      })));
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 10)));
+    expect(container.textContent).toContain("active:disabled");
+    localStorage.removeItem("heritg:family-sync-enabled");
+  });
+
+  it("preserves an explicit synchronization opt-out when free access is renewed", async () => {
+    localStorage.setItem("heritg:family-sync-enabled", "false");
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    const freeOffer = { ...offer, price: { amount: 0, currency: "IDR" }, accessMonths: 1 };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
+        accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-09-24T00:00:00Z"
+      }));
+      if (path.endsWith("/entitlements/current")) return new Response(JSON.stringify(entitlement({ offer: freeOffer })));
+      if (path.endsWith("/entitlements/free-access")) return new Response(JSON.stringify(entitlement({
+        plan: "family", access: "active", canRead: true, canWrite: true,
+        expiresAt: "2026-09-24T00:00:00Z", offer: freeOffer
+      })));
+      throw new Error(`Unexpected request: ${path}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><PurchaseProbe /></ProProvider>));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 10)));
+    await act(async () => {
+      container?.querySelector("button")?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 10));
+    });
+    expect(localStorage.getItem("heritg:family-sync-enabled")).toBe("false");
+  });
+
+  it("claims free access with the account and CSRF contract", async () => {
+    const response = entitlement({ access: "active", canRead: true, canWrite: true });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(response)));
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(requestFreeAccess("account-1", "csrf-token")).resolves.toEqual(response);
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/entitlements/free-access", expect.objectContaining({
+      body: "{}",
+      method: "POST",
+      headers: expect.objectContaining({ "x-csrf-token": "csrf-token", "x-heritg-account-id": "account-1" })
+    }));
   });
 
   it("creates checkout with the backend contract and returns its payment URL", async () => {

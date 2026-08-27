@@ -157,44 +157,6 @@ describe("account authentication API", () => {
     }));
   });
 
-  it("accepts the deployed account contract during the profile rollout", async () => {
-    const sessionFetch = vi.fn(async () => jsonResponse({ accountId, expiresAt }));
-    await expect(getAccountSession(undefined, sessionFetch)).resolves.toEqual({
-      accountId,
-      name: null,
-      email: null,
-      expiresAt
-    });
-
-    const loginFetch = vi.fn(async () => jsonResponse({ accountId, csrfToken: token, expiresAt }));
-    await expect(loginWithGoogle("google-proof", { nonce: token, state }, undefined, loginFetch)).resolves.toEqual({
-      accountId,
-      name: null,
-      email: null,
-      csrfToken: token,
-      expiresAt
-    });
-  });
-
-  it("keeps a backend-accepted Google profile visible across deployed sessions", async () => {
-    const payload = btoa(JSON.stringify({ name: "Test User", email: "person@example.com", email_verified: true }))
-      .replace(/=/gu, "").replace(/\+/gu, "-").replace(/\//gu, "_");
-    const credential = `header.${payload}.signature`;
-    const loginFetch = vi.fn(async () => jsonResponse({ accountId, csrfToken: token, expiresAt }));
-    await expect(loginWithGoogle(credential, { nonce: token, state }, undefined, loginFetch)).resolves.toMatchObject({
-      name: "Test User",
-      email: "person@example.com"
-    });
-
-    const sessionFetch = vi.fn(async () => jsonResponse({ accountId, expiresAt }));
-    await expect(getAccountSession(undefined, sessionFetch)).resolves.toEqual({
-      accountId,
-      name: "Test User",
-      email: "person@example.com",
-      expiresAt
-    });
-  });
-
   it("does not retry email requests without Turnstile proof after schema rejection", async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => {
       void _input; void _init;

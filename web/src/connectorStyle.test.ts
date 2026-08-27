@@ -4,6 +4,8 @@ import {
   branchJunctions,
   connectorPaths,
   crossingBridgePath,
+  horizontalCrossingBridgePath,
+  horizontalCrossingBridgePoints,
   roundedConnectorPath,
   roundedConnectorPoints
 } from "./connectorStyle";
@@ -60,13 +62,13 @@ describe("modern connector rendering", () => {
     expect(svgPath).toBe("M 0 0 L 0 48 Q 0 60 12 60 L 80 60");
   });
 
-  it("keeps short terminal child stems square without moving their endpoints", () => {
+  it("rounds short terminal child stems in both directions without moving their endpoints", () => {
     const points = [{ x: 0, y: 0 }, { x: 80, y: 0 }, { x: 80, y: 40 }];
 
     expect(roundedConnectorPoints(points)[0]).toEqual(points[0]);
     expect(roundedConnectorPoints(points).at(-1)).toEqual(points.at(-1));
-    expect(roundedConnectorPath(points)).toBe("M 0 0 L 80 0 L 80 40");
-    expect(roundedConnectorPath([...points].reverse())).toBe("M 80 40 L 80 0 L 0 0");
+    expect(roundedConnectorPath(points)).toBe("M 0 0 L 68 0 Q 80 0 80 12 L 80 40");
+    expect(roundedConnectorPath([...points].reverse())).toBe("M 80 40 L 80 12 Q 80 0 68 0 L 0 0");
   });
 
   it("renders unrelated line crossings as an intentional curved bridge", () => {
@@ -76,5 +78,16 @@ describe("modern connector rendering", () => {
     expect(crossingBridgePath({ x: 40, y: 30 }, 10, 20)).toBe(
       "M 50 42 C 60 42 60 58 50 58"
     );
+    expect(horizontalCrossingBridgePath({ x: 40, y: 30 })).toBe(
+      "M 32 30 C 32 20 48 20 48 30"
+    );
+    const points = horizontalCrossingBridgePoints({ x: 40, y: 30 });
+    expect(points).toHaveLength(9);
+    expect(points[0]).toEqual({ x: 32, y: 30 });
+    expect(points[4]).toEqual({ x: 40, y: 22.5 });
+    expect(points.at(-1)).toEqual({ x: 48, y: 30 });
+    expect(horizontalCrossingBridgePoints({ x: 40, y: 30 }, 8, 0)).toEqual([
+      { x: 32, y: 30 }, { x: 48, y: 30 }
+    ]);
   });
 });

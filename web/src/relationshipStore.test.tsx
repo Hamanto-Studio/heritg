@@ -158,19 +158,15 @@ describe("atomic relationship store actions", () => {
     ));
   });
 
-  it("publishes selection immediately and persists it after the interaction", async () => {
-    vi.useFakeTimers();
+  it("publishes and persists selection immediately", async () => {
     dbMocks.saveAppData.mockClear();
 
-    act(() => currentActions().selectPerson("target"));
+    act(() => currentActions().selectPerson("active"));
 
-    expect(currentData().trees[0].lastSelectedPersonId).toBe("target");
-    expect(dbMocks.saveAppData).not.toHaveBeenCalled();
-
-    await act(async () => vi.advanceTimersByTimeAsync(800));
-    expect(dbMocks.saveAppData).toHaveBeenCalledWith(expect.objectContaining({
-      trees: [expect.objectContaining({ lastSelectedPersonId: "target" })]
-    }));
+    expect(currentData().trees[0].lastSelectedPersonId).toBe("active");
+    await vi.waitFor(() => expect(dbMocks.saveAppData).toHaveBeenCalledWith(expect.objectContaining({
+      trees: [expect.objectContaining({ lastSelectedPersonId: "active" })]
+    })));
   });
 
   it("persists viewport changes without publishing a graph update", async () => {

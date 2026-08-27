@@ -23,28 +23,19 @@ must respect the privacy and rights of living people.
 
 Core family-tree editing and local access do not require Family+. Family+ is an
 optional hosted service whose current features and access duration are shown in
-the app before payment.
+the app before activation.
 
-The Family+ paywall displays the server-provided total charge, currency, and
-access duration. A monthly amount, when shown, is only the total divided by the
-number of access months for comparison. It is not a monthly subscription or a
-monthly charge.
-
-Family+ is purchased with one payment and does not renew automatically. Access
-starts only after the backend confirms a successful payment. A failed,
-cancelled, incomplete, or unverified payment does not grant access. Any taxes
-or provider fees are shown during hosted checkout when applicable.
+The current Family+ offer grants one calendar month without payment. An active
+claim does not stack or extend its expiry. After access expires, the user may
+claim another free month. No payment method or automatic renewal is involved.
 
 ## Expiration, cancellation, and refunds
 
-When paid access expires, hosted synchronization and other paid operations may
-stop or enter a limited read-only period. Your authoritative local family tree
+When access expires, hosted synchronization operations stop. Your authoritative local family tree
 is not disabled merely because Family+ expires. Export a current encrypted
 backup before changing devices or ending use of the service.
 
-Refunds and cancellation rights are handled according to applicable law and
-the payment provider's checkout terms. Contact Hamanto Studio promptly if a
-charge is duplicated or the purchased access is not granted.
+No charge or refund applies to the current free-access offer.
 
 ## Acceptable use
 

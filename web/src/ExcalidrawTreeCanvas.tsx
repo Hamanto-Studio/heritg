@@ -26,6 +26,7 @@ import {
 
 import { downloadBlob, safeFilename } from "./images";
 import { createCircularAvatarCache } from "./avatar";
+import { deriveBloodFamilyHighlight } from "./bloodFamily";
 import { buildChartSvg, chartSvgToPng } from "./chartExport";
 import { createConnectionPlan } from "./connectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
@@ -336,6 +337,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   const pendingViewport = useRef<ViewportState | undefined>(undefined);
   const viewportCallback = useRef(onViewportChange);
   const didInitialMobileFit = useRef(false);
+  const didInitialDesktopFocus = useRef(false);
   const registeredFileIds = useRef(new Set<string>());
   const wheelFrame = useRef<number | undefined>(undefined);
   const pendingWheel = useRef<{
@@ -394,9 +396,13 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
     ),
     [language, people.length, readOnly, routingLayout]
   );
+  const bloodFamily = useMemo(
+    () => deriveBloodFamilyHighlight(selectedPersonId, layout.people, layout.relationships),
+    [layout.people, layout.relationships, selectedPersonId]
+  );
   const connectionElements = useMemo(
-    () => projectConnectionPlanToElements(connectionPlan),
-    [connectionPlan]
+    () => projectConnectionPlanToElements(connectionPlan, bloodFamily),
+    [bloodFamily, connectionPlan]
   );
   const scene = useMemo(
     () => projectLayoutToScene(
@@ -615,6 +621,27 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   }, [api, scene]);
 
   useEffect(() => {
+    if (!api || initialViewport || didInitialDesktopFocus.current ||
+        window.innerWidth <= 840 || !layout.people.length) return;
+    const focusId = layout.people.some(({ id }) => id === selectedPersonId)
+      ? selectedPersonId! : layout.people[0].id;
+    const elements = scene.elements.filter((element) => {
+      const customData = element.customData as { personId?: unknown } | undefined;
+      return customData?.personId === focusId;
+    });
+    if (!elements.length) return;
+    didInitialDesktopFocus.current = true;
+    const timer = setTimeout(() => api.scrollToContent(elements, {
+      animate: false,
+      fitToViewport: true,
+      maxZoom: 1.35,
+      minZoom: 0.25,
+      viewportZoomFactor: 0.32
+    }), 0);
+    return () => clearTimeout(timer);
+  }, [api, initialViewport, layout.people, scene.elements, selectedPersonId]);
+
+  useEffect(() => {
     if (!api || didInitialMobileFit.current || window.innerWidth > 840 || !scene.elements.length) return;
     didInitialMobileFit.current = true;
     const timer = setTimeout(() => api.scrollToContent(scene.elements, {
@@ -698,7 +725,7 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
           elements: scene.elements,
           files: scene.files,
           appState: initialAppState,
-          scrollToContent: !restoreViewport && scene.elements.length > 0
+          scrollToContent: window.innerWidth <= 840 && !restoreViewport && scene.elements.length > 0
         }}
         langCode={language === "id" ? "id-ID" : "en"}
         name={treeTitle}
