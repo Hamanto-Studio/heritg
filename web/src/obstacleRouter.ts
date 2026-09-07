@@ -5,10 +5,10 @@ import {
   expandRect,
   hasCollinearOverlap,
   hasForbiddenIntersection,
+  isAvatarCircleTerminal,
   pointsEqual,
   rectsIntersect,
   relationshipLabelRect,
-  routeIsClear,
   segmentIntersectsRect,
   segmentLength,
   segmentOrientation,
@@ -18,14 +18,46 @@ import {
   type RoutePoint,
   type RouteSegment
 } from "./connectionGeometry";
+import { createRouteClearance } from "./routeClearance";
 
 const COORDINATE_PADDING = 2;
 const BEND_PENALTY = 24;
+const CROSSING_PENALTY = 1024;
 
-const uniqueNumbers = (values: readonly number[]) => values.reduce<number[]>((result, value) => {
-  if (!result.some((existing) => Math.abs(existing - value) < ROUTE_EPSILON)) result.push(value);
+/** Prefer a clear union corridor over a slightly shorter crossing. Endpoint
+ * joins are not crossings; split segments must count one intersection once. */
+export const routeCrossingCount = (route: readonly RouteSegment[], occupied: readonly RouteSegment[]) => {
+  const points: RoutePoint[] = [];
+  for (const segment of route) for (const other of occupied) {
+    const horizontal = segmentOrientation(segment) === "horizontal" ? segment : other;
+    const vertical = horizontal === segment ? other : segment;
+    if (segmentOrientation(horizontal) !== "horizontal" || segmentOrientation(vertical) !== "vertical") continue;
+    const x = vertical.start.x, y = horizontal.start.y;
+    if (x < Math.min(horizontal.start.x, horizontal.end.x) - ROUTE_EPSILON ||
+        x > Math.max(horizontal.start.x, horizontal.end.x) + ROUTE_EPSILON ||
+        y < Math.min(vertical.start.y, vertical.end.y) - ROUTE_EPSILON ||
+        y > Math.max(vertical.start.y, vertical.end.y) + ROUTE_EPSILON) continue;
+    const point = { x, y };
+    const commonTerminal = [route[0]?.start, route.at(-1)?.end].some((end) => end && pointsEqual(end, point)) &&
+      [other.start, other.end].some((end) => pointsEqual(end, point));
+    if (!commonTerminal && !points.some((existing) => pointsEqual(existing, point))) points.push(point);
+  }
+  return points.length;
+};
+
+const uniqueNumbers = (values: readonly number[]) => {
+  const result: number[] = [];
+  const buckets = new Map<number, number[]>();
+  for (const value of values) {
+    const bucket = Math.floor(value / ROUTE_EPSILON);
+    if ([bucket - 1, bucket, bucket + 1].some((key) =>
+      buckets.get(key)?.some((existing) => Math.abs(existing - value) < ROUTE_EPSILON))) continue;
+    result.push(value);
+    const members = buckets.get(bucket) ?? [];
+    members.push(value); buckets.set(bucket, members);
+  }
   return result;
-}, []);
+};
 
 export const sortedObstacles = (obstacles: readonly RouteObstacle[]) => [...obstacles].sort(
   (left, right) => compareText(`${left.kind}:${left.ownerId}`, `${right.kind}:${right.ownerId}`) ||
@@ -34,6 +66,7 @@ export const sortedObstacles = (obstacles: readonly RouteObstacle[]) => [...obst
 );
 
 const terminalContact = (point: RoutePoint, obstacle: RouteObstacle) => {
+  if (isAvatarCircleTerminal(point, obstacle)) return true;
   const { x, y, width, height } = obstacle.rect;
   if (obstacle.kind === "avatar") {
     return (((Math.abs(point.x - x) < ROUTE_EPSILON ||
@@ -62,13 +95,6 @@ const endpointIsBlocked = (
   return !endpointIds.has(obstacle.ownerId) || !terminalContact(point, obstacle);
 });
 
-const acceptedRoute = (
-  route: readonly RouteSegment[],
-  obstacles: readonly RouteObstacle[],
-  endpointIds: ReadonlySet<string>,
-  occupied: readonly RouteSegment[]
-) => routeIsClear(route, obstacles, endpointIds) && !hasCollinearOverlap(route, occupied);
-
 const fastCandidates = (
   start: RoutePoint,
   end: RoutePoint,
@@ -96,7 +122,8 @@ const fastCandidates = (
       start, { x, y: start.y }, { x, y: end.y }, end
     ]));
   }
-  return [];
+  return [segmentsForPoints([start, { x: end.x, y: start.y }, end]),
+    segmentsForPoints([start, { x: start.x, y: end.y }, end])];
 };
 
 const escapeXCoordinates = (
@@ -140,7 +167,8 @@ const fallbackRoute = (
   end: RoutePoint,
   obstacles: readonly RouteObstacle[],
   occupied: readonly RouteSegment[],
-  isAccepted: (route: RouteSegment[]) => boolean
+  isAccepted: (route: RouteSegment[]) => boolean,
+  costLimit = Number.POSITIVE_INFINITY
 ) => {
   if (start.x === end.x || start.y === end.y) {
     const direct = segmentsForPoints([start, end]);
@@ -162,8 +190,15 @@ const fallbackRoute = (
       .flatMap((segment) => [segment.start.y - 6, segment.start.y + 6])
   ]).sort((left, right) => Math.abs(left - midpointY) - Math.abs(right - midpointY) || left - right);
   for (const y of channelYs) {
-    for (const startX of escapeXCoordinates(start, y, obstacles, occupied)) {
-      for (const endX of escapeXCoordinates(end, y, obstacles, occupied)) {
+    const minimumLength = Math.abs(end.x - start.x) + Math.abs(start.y - y) + Math.abs(end.y - y);
+    if (minimumLength >= costLimit) continue;
+    // Both escape sets depend on the channel, not on each other. Rebuilding
+    // the end set inside the Cartesian product made distant partner searches
+    // repeatedly scan/sort all of a large archive's existing routes.
+    const startXs = escapeXCoordinates(start, y, obstacles, occupied);
+    const endXs = escapeXCoordinates(end, y, obstacles, occupied);
+    for (const startX of startXs) {
+      for (const endX of endXs) {
         const candidate = segmentsForPoints([
           start,
           { x: startX, y: start.y },
@@ -172,11 +207,22 @@ const fallbackRoute = (
           { x: endX, y: end.y },
           end
         ]);
-        if (isAccepted(candidate)) return candidate;
+        const cost = candidate.reduce((sum, segment) => sum + segmentLength(segment), 0) +
+          Math.max(candidate.length - 1, 0) * BEND_PENALTY;
+        if (cost < costLimit && isAccepted(candidate)) return candidate;
       }
     }
   }
   return undefined;
+};
+
+const quickRoute = (
+  start: RoutePoint, end: RoutePoint, orderedObstacles: () => readonly RouteObstacle[],
+  occupied: readonly RouteSegment[], isAccepted: (route: RouteSegment[]) => boolean
+) => {
+  const direct = segmentsForPoints([start, end]);
+  if (isAccepted(direct)) return direct;
+  return fastCandidates(start, end, orderedObstacles(), occupied).find(isAccepted);
 };
 
 export const preferredRoute = (
@@ -184,21 +230,54 @@ export const preferredRoute = (
   end: RoutePoint,
   obstacles: readonly RouteObstacle[],
   endpointIds: ReadonlySet<string>,
-  occupied: readonly RouteSegment[] = []
+  occupied: readonly RouteSegment[] = [],
+  avoidCrossings = false
 ) => {
-  const orderedObstacles = sortedObstacles(obstacles);
-  if (endpointIsBlocked(start, orderedObstacles, endpointIds) ||
-      endpointIsBlocked(end, orderedObstacles, endpointIds)) return undefined;
-  const direct = segmentsForPoints([start, end]);
-  if (acceptedRoute(direct, orderedObstacles, endpointIds, occupied)) return direct;
-  const quick = fastCandidates(start, end, orderedObstacles, occupied).find((candidate) =>
-    acceptedRoute(candidate, orderedObstacles, endpointIds, occupied)
-  );
-  if (quick) return quick;
-  return fallbackRoute(start, end, orderedObstacles, occupied, (candidate) =>
-    acceptedRoute(candidate, orderedObstacles, endpointIds, occupied)
-  );
+  // Ordering matters only for deterministic detour candidates, not for the
+  // yes/no clearance check. Clear rails need no archive-wide sort at all.
+  let ordered: RouteObstacle[] | undefined;
+  const orderedObstacles = () => ordered ??= sortedObstacles(obstacles);
+  const isClear = createRouteClearance(obstacles, endpointIds);
+  const isAccepted = (route: RouteSegment[]) => isClear(route) && !hasCollinearOverlap(route, occupied);
+  if (endpointIsBlocked(start, obstacles, endpointIds) ||
+      endpointIsBlocked(end, obstacles, endpointIds)) return undefined;
+  const quick = quickRoute(start, end, orderedObstacles, occupied, isAccepted);
+  if (quick) {
+    // A family rail may take a longer path around a neighboring branch.
+    // Keep both joins fixed; vertical stems must retain their original
+    // direction at each end, including the real person's terminal socket.
+    const horizontal = start.y === end.y;
+    const orthogonal = horizontal || start.x === end.x;
+    let best = quick, count = avoidCrossings && orthogonal ? routeCrossingCount(quick, occupied) : 0;
+    if (!count) return best;
+    let length = best.reduce((sum, segment) => sum + segmentLength(segment), 0);
+    const along = (point: RoutePoint) => horizontal ? point.x : point.y;
+    const across = (point: RoutePoint) => horizontal ? point.y : point.x;
+    const point = (u: number, v: number) => horizontal ? { x: u, y: v } : { x: v, y: u };
+    const blockers = occupied.filter((segment) => segmentOrientation(segment) === (horizontal ? "vertical" : "horizontal") &&
+      along(segment.start) >= Math.min(along(start), along(end)) && along(segment.start) <= Math.max(along(start), along(end)) &&
+      across(start) >= Math.min(across(segment.start), across(segment.end)) && across(start) <= Math.max(across(segment.start), across(segment.end)));
+    const channels = uniqueNumbers(blockers.flatMap((segment) => [Math.min(across(segment.start), across(segment.end)) - 32,
+      Math.max(across(segment.start), across(segment.end)) + 32])).sort((a, b) => Math.abs(a - across(start)) - Math.abs(b - across(start)) || a - b);
+    const inset = Math.sign(along(end) - along(start)) * Math.min(32, Math.abs(along(end) - along(start)) / 4);
+    for (const channel of channels) for (const keepJoin of horizontal ? [false, true] : [true]) {
+      const candidate = segmentsForPoints(keepJoin ? [start,
+        point(along(start) + inset, across(start)), point(along(start) + inset, channel),
+        point(along(end) - inset, channel), point(along(end) - inset, across(end)), end]
+        : [start, point(along(start), channel), point(along(end), channel), end]);
+      const candidateLength = candidate.reduce((sum, segment) => sum + segmentLength(segment), 0);
+      if ((!count && candidateLength >= length) || !isAccepted(candidate)) continue;
+      const candidateCount = routeCrossingCount(candidate, occupied);
+      if (candidateCount < count || candidateCount === count && candidateLength < length) {
+        best = candidate; count = candidateCount; length = candidateLength;
+      }
+    }
+    return best;
+  }
+  return fallbackRoute(start, end, orderedObstacles(), occupied, isAccepted);
 };
+
+export interface RelationshipPortPair { start: RoutePoint; end: RoutePoint; penalty: number }
 
 export const routeBetweenPeople = (
   left: RoutePoint,
@@ -206,27 +285,63 @@ export const routeBetweenPeople = (
   endpointIds: ReadonlySet<string>,
   obstacles: readonly RouteObstacle[],
   occupied: readonly RouteSegment[],
-  radius: number
+  radius: number,
+  additionalPorts: readonly RelationshipPortPair[] = []
 ) => {
+  const insetRadius = Math.sqrt(Math.max(0, radius * radius - 12 * 12));
   const candidates = [
     { penalty: 0, start: { x: left.x + radius, y: left.y }, end: { x: right.x - radius, y: right.y } },
-    { penalty: 20, start: { x: left.x + radius, y: left.y - 12 }, end: { x: right.x - radius, y: right.y - 12 } },
-    { penalty: 40, start: { x: left.x + radius, y: left.y + 12 }, end: { x: right.x - radius, y: right.y + 12 } },
+    { penalty: 20, start: { x: left.x + insetRadius, y: left.y - 12 }, end: { x: right.x - insetRadius, y: right.y - 12 } },
+    { penalty: 40, start: { x: left.x + insetRadius, y: left.y + 12 }, end: { x: right.x - insetRadius, y: right.y + 12 } },
     { penalty: 80, start: { x: left.x, y: left.y - radius }, end: { x: right.x, y: right.y - radius } },
-    { penalty: 90, start: { x: left.x - 12, y: left.y - radius }, end: { x: right.x - 12, y: right.y - radius } },
-    { penalty: 100, start: { x: left.x + 12, y: left.y - radius }, end: { x: right.x + 12, y: right.y - radius } },
+    { penalty: 90, start: { x: left.x - 12, y: left.y - insetRadius }, end: { x: right.x - 12, y: right.y - insetRadius } },
+    { penalty: 100, start: { x: left.x + 12, y: left.y - insetRadius }, end: { x: right.x + 12, y: right.y - insetRadius } },
     { penalty: 120, start: { x: left.x - radius, y: left.y }, end: { x: right.x + radius, y: right.y } },
-    { penalty: 160, start: { x: left.x, y: left.y + radius }, end: { x: right.x, y: right.y + radius } }
+    { penalty: 160, start: { x: left.x, y: left.y + radius }, end: { x: right.x, y: right.y + radius } },
+    ...additionalPorts
   ];
   let best: { segments: RouteSegment[]; cost: number } | undefined;
+  let ordered: RouteObstacle[] | undefined;
+  const orderedObstacles = () => ordered ??= sortedObstacles(obstacles);
+  const isClear = createRouteClearance(obstacles, endpointIds);
+  const isAccepted = (route: RouteSegment[]) => isClear(route) && !hasCollinearOverlap(route, occupied);
+  const candidatesToSearch: typeof candidates = [];
+  const accept = (segments: RouteSegment[], penalty: number) => {
+    const cost = segments.reduce((sum, segment) => sum + segmentLength(segment), 0) +
+      Math.max(segments.length - 1, 0) * BEND_PENALTY + penalty +
+      routeCrossingCount(segments, occupied) * CROSSING_PENALTY;
+    if (!best || cost < best.cost) best = { segments, cost };
+  };
+  // Establish a cheap valid route before searching difficult side ports.
+  // A partner behind another spouse often has a clear top port; exploring
+  // the whole archive for a blocked side port first is unnecessarily costly.
   for (const candidate of candidates) {
-    const segments = preferredRoute(
-      candidate.start, candidate.end, obstacles, endpointIds, occupied
+    // Even the quick detours scan the archive. Manhattan distance plus the
+    // port penalty is a lower bound before bends and crossings are added;
+    // a later port cannot beat (or win a tie with) an incumbent below it.
+    const lowerBound = Math.abs(candidate.start.x - candidate.end.x) +
+      Math.abs(candidate.start.y - candidate.end.y) + candidate.penalty;
+    if (best && lowerBound >= best.cost) continue;
+    if (endpointIsBlocked(candidate.start, obstacles, endpointIds) ||
+        endpointIsBlocked(candidate.end, obstacles, endpointIds)) continue;
+    const quick = quickRoute(candidate.start, candidate.end, orderedObstacles, occupied, isAccepted);
+    if (quick) accept(quick, candidate.penalty);
+    else candidatesToSearch.push(candidate);
+  }
+  for (const candidate of candidatesToSearch) {
+    // Manhattan distance is a lower bound on every orthogonal route between
+    // these ports. Once a straight spouse line wins, expensive detour searches
+    // for the seven worse port pairs cannot improve it. Preserve tie ordering.
+    const lowerBound = Math.abs(candidate.start.x - candidate.end.x) +
+      Math.abs(candidate.start.y - candidate.end.y) + candidate.penalty;
+    if (best && lowerBound >= best.cost) continue;
+    const segments = fallbackRoute(
+      candidate.start, candidate.end, orderedObstacles(), occupied,
+      isAccepted,
+      best ? best.cost - candidate.penalty : Number.POSITIVE_INFINITY
     );
     if (!segments) continue;
-    const cost = segments.reduce((sum, segment) => sum + segmentLength(segment), 0) +
-      Math.max(segments.length - 1, 0) * BEND_PENALTY + candidate.penalty;
-    if (!best || cost < best.cost) best = { segments, cost };
+    accept(segments, candidate.penalty);
   }
   return best?.segments;
 };
@@ -236,7 +351,8 @@ export const placeRelationshipLabel = (
   text: string,
   segments: readonly RouteSegment[],
   obstacles: readonly RouteObstacle[],
-  occupied: readonly RouteSegment[]
+  occupied: readonly RouteSegment[],
+  allowVertical = false
 ): { label: PlannedRelationshipLabel; obstacle: RouteObstacle } | undefined => {
   const horizontal = segments.filter((segment) => segmentOrientation(segment) === "horizontal")
     .sort((left, right) => segmentLength(right) - segmentLength(left) ||
@@ -263,6 +379,21 @@ export const placeRelationshipLabel = (
             label: { text, center, rect },
             obstacle: { kind: "relationshipLabel", ownerId: relationshipId, rect }
           };
+        }
+      }
+    }
+  }
+  if (allowVertical) for (const segment of segments.filter((part) => segmentOrientation(part) === "vertical")
+    .sort((a, b) => segmentLength(b) - segmentLength(a) || a.start.x - b.start.x)) {
+    for (const fraction of fractions) {
+      const y = segment.start.y + (segment.end.y - segment.start.y) * fraction;
+      const width = relationshipLabelRect(text, { x: 0, y: 0 }).width;
+      for (const direction of [1, -1]) {
+        const center = { x: segment.start.x + direction * (width / 2 + 12), y };
+        const rect = relationshipLabelRect(text, center);
+        if (obstacles.every((obstacle) => !rectsIntersect(expandRect(obstacle.rect, ROUTE_CLEARANCE), rect)) &&
+            occupied.every((part) => !segmentIntersectsRect(part, rect, 2))) {
+          return { label: { text, center, rect }, obstacle: { kind: "relationshipLabel", ownerId: relationshipId, rect } };
         }
       }
     }

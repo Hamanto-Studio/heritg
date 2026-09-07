@@ -17,6 +17,7 @@ import {
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import { obstacleCollisions } from "./obstacleRouter";
 import { importGedcom } from "./portability";
+import { routeClarity } from "./testFixtures/routeClarity";
 import type {
   FamilyRelationship,
   PositionedPerson,
@@ -82,6 +83,32 @@ const parent = (from: string, to: string) =>
   relationship(`${from}-${to}`, from, to, "parent");
 
 describe("family connection planning", () => {
+  it("orders a remarried parent's sockets by household position, never by record IDs", () => {
+    for (const ids of [["d", "a", "b", "c"], ["a", "b", "c", "d"]]) {
+      const people = ids.map((id, index) => person(id, (index - 1.5) * 260, 0));
+      const edges: FamilyRelationship[] = [];
+      for (let union = 0; union < 3; union++) {
+        const child = `child-${union}`;
+        people.push(person(child, (union - 1) * 500, 320));
+        edges.push(parent(ids[union], child), parent(ids[union + 1], child),
+          relationship(`union-${union}`, ids[union], ids[union + 1], "partner"));
+      }
+      const value = layout(people, edges), before = JSON.stringify(value);
+      const plan = createConnectionPlan(value, "en", undefined, false);
+      for (const shared of ids.slice(1, 3)) {
+        const families = plan.families.filter((family) => family.parentIds.includes(shared))
+          .sort((a, b) => a.childPorts[0].x - b.childPorts[0].x);
+        const x = (family: typeof families[number]) => family.parentPorts[family.parentIds.indexOf(shared)].x;
+        expect(x(families[0])).toBeLessThan(x(families[1]));
+      }
+      expect(routeClarity(value, plan)).toMatchObject({ people: 7, missingParentOrPartnerEdges: 0,
+        missingTerminals: 0, disconnectedRoutes: 0, obstacleHits: 0, personOverlaps: 0,
+        unrelatedOverlaps: 0, crossings: 0, failures: 0 });
+      expect(createConnectionPlan(layout([...people].reverse(), [...edges].reverse()), "en", undefined, false)).toEqual(plan);
+      expect(JSON.stringify(value)).toBe(before);
+    }
+  });
+
   it("places a person shared by two partner relationships between both partners", () => {
     const people = [
       person("shared-partner", 0, 0),
@@ -288,6 +315,19 @@ describe("family connection planning", () => {
     expect(value.relationships.some(({ id }) => id === "redundant-siblings")).toBe(true);
   });
 
+  it.each(["halfSibling", "stepSibling"] as const)("does not redraw %s links across already-connected households", (subtype) => {
+    const people = ["father", "mother-one", "mother-two", "child-one", "child-two"].map((id) => person(id, 0, 0));
+    const edges = [parent("father", "child-one"), parent("mother-one", "child-one"),
+      { ...parent("father", "child-two"), subtype: subtype === "stepSibling" ? "stepParent" as const : "biologicalParent" as const },
+      parent("mother-two", "child-two"),
+      { ...relationship("siblings", "child-one", "child-two", "sibling"), subtype }];
+    const before = JSON.stringify(edges);
+    const plan = createConnectionPlan(createTreeLayout(people, edges), "id", undefined, false);
+    expect(plan.nonParentRoutes.some((route) => route.id === "siblings")).toBe(false);
+    expect(plan.families.flatMap((family) => family.relationshipIds).sort()).toEqual(edges.filter((edge) => edge.kind === "parent").map((edge) => edge.id).sort());
+    expect(JSON.stringify(edges)).toBe(before);
+  });
+
   it("gives a shared parent separate ports and lanes for remarriage families", () => {
     const value = layout(
       [
@@ -456,6 +496,28 @@ describe("family connection planning", () => {
     expect(plan.isValid).toBe(true);
   });
 
+  it("extends a clear lower-row child stem from the upper sibling rail", () => {
+    const people = [
+      person("parent-a", -130, 0), person("parent-b", 130, 0),
+      person("near-child", 260, 260), person("deep-child", -260, 520)
+    ];
+    const plan = createConnectionPlan(layout(people, [
+      parent("parent-a", "near-child"), parent("parent-b", "near-child"),
+      parent("parent-a", "deep-child"), parent("parent-b", "deep-child")
+    ]));
+    const family = plan.families[0];
+    const railY = 260 - LAYOUT_METRICS.avatarRadius - CHILD_RAIL_CLEARANCE;
+
+    expect(family.segments).toContainEqual({
+      start: { x: -260, y: railY },
+      end: { x: -260, y: 520 - LAYOUT_METRICS.avatarRadius }
+    });
+    expect(family.segments.filter((segment) => segmentOrientation(segment) === "horizontal")
+      .every((segment) => segment.start.y <= railY)).toBe(true);
+    expect(segmentsFormConnectedNetwork(family.segments)).toBe(true);
+    expect(plan.isValid).toBe(true);
+  });
+
   it("moves a multi-generation trunk away from children sharing one column", () => {
     const people = [
       person("parent-a", -130, 0), person("parent-b", 130, 0),
@@ -546,7 +608,11 @@ describe("family connection planning", () => {
       .flatMap((match) => match[1].split(","));
     expect(representedFamilySegments).toHaveLength(plan.families[0].segments.length);
     expect(representedMarriageSegments).toHaveLength(plan.nonParentRoutes[0].segments.length);
-    expect(chart.svg).toContain('d="M 151 172 L 151 180 L 281 180"');
+    // With roles hidden, attach immediately below the visible name instead
+    // of leaving the 20px reserved role row as a floating gap.
+    expect(chart.svg).toContain('d="M 151 152 L 151 180 L 281 180"');
+    expect(buildChartSvg(value, "Family", "parent-a", "en", plan).svg)
+      .toContain('d="M 151 172 L 151 180 L 281 180"');
     expect(chart.svg).not.toContain('stroke-width="1.5"');
     expect(chart.svg).toContain('data-relationship-label="marriage"');
   });

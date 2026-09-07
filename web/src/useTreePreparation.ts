@@ -22,6 +22,7 @@ interface TreePreparationOptions {
   language: AppData["language"];
   relationshipLanguage: RelationshipLanguage;
   controlsVisible: boolean;
+  layoutMode?: "full" | "focus";
 }
 
 export function useTreePreparation(options: TreePreparationOptions) {
@@ -33,7 +34,8 @@ export function useTreePreparation(options: TreePreparationOptions) {
       generationLimits: options.generationLimits,
       language: options.language,
       relationshipLanguage: options.relationshipLanguage,
-      controlsVisible: options.controlsVisible
+      controlsVisible: options.controlsVisible,
+      layoutMode: options.layoutMode
     };
     return { ...payload, requestKey: JSON.stringify(payload) };
   }, [
@@ -42,6 +44,7 @@ export function useTreePreparation(options: TreePreparationOptions) {
     options.language,
     options.relationshipLanguage,
     options.layoutSelectionId,
+    options.layoutMode,
     options.people,
     options.relationships
   ]);
@@ -79,5 +82,7 @@ export function useTreePreparation(options: TreePreparationOptions) {
   }, [request]);
 
   const current = result?.requestKey === request.requestKey ? result : undefined;
-  return { result: current, isPreparing: current === undefined };
+  // Keep the previous scene visible while a new focused family is prepared.
+  // The canvas waits for isPreparing=false before fitting the new geometry.
+  return { result: current ?? result, isPreparing: current === undefined };
 }

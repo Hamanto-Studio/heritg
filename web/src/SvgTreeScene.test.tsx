@@ -42,6 +42,15 @@ const layout = createTreeLayout(people, relationships, undefined, {
 const plan = createConnectionPlan(layout, "en");
 
 describe("SvgTreeScene", () => {
+  it("highlights actual selected routes without removing any people or relationships", () => {
+    const ordinary = renderToStaticMarkup(<svg><SvgTreeScene connectionPlan={plan} language="en" layout={layout} selectedPersonId="child" /></svg>);
+    const traced = renderToStaticMarkup(<svg><SvgTreeScene connectionPlan={plan} language="en" layout={layout} selectedPersonId="child" traceSelectedConnections /></svg>);
+    expect(ordinary).not.toContain("is-traced");
+    expect(traced).toContain("is-traced");
+    expect(traced.match(/data-person-id=/g)).toHaveLength(2);
+    expect(traced.match(/data-family-id=/g)?.length).toBe(ordinary.match(/data-family-id=/g)?.length);
+    expect(traced.match(/d="[^"]+"/g)).toEqual(ordinary.match(/d="[^"]+"/g));
+  });
   it("renders routed connectors, person metadata, labels, and selected styling", () => {
     const markup = renderToStaticMarkup(
       <svg>
@@ -135,5 +144,10 @@ describe("SvgTreeScene", () => {
     expect(markup).toContain('fill="#ede5d8"');
     expect(markup).toContain('stroke="#9c825f"');
     expect(markup).toContain('data-birth-order="1"');
+    const document = new DOMParser().parseFromString(markup, "image/svg+xml");
+    const badge = document.querySelector('[data-birth-order="1"] circle')!;
+    const positioned = genderLayout.people.find((value) => value.id === "female")!;
+    expect(Number(badge.getAttribute("cx"))).toBe(positioned.x - 23);
+    expect(Number(badge.getAttribute("cy"))).toBe(positioned.y + 23);
   });
 });

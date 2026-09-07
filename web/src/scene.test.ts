@@ -68,6 +68,16 @@ describe("canvas avatar projection", () => {
     expect(chart.svg).not.toContain('rx="16"');
   });
 
+  it("keeps exported birth-order badges below incoming parent and care connections", () => {
+    const chart = buildChartSvg({ ...layout, people: [{ ...person, birthOrder: 2 }] }, "Family");
+    const document = new DOMParser().parseFromString(chart.svg, "image/svg+xml");
+    const node = document.querySelector('[data-person-id="person"]')!;
+    const avatar = node.querySelector(":scope > circle")!;
+    const badge = node.querySelector('[data-birth-order="2"] circle')!;
+    expect(Number(badge.getAttribute("cx")) - Number(avatar.getAttribute("cx"))).toBe(-23);
+    expect(Number(badge.getAttribute("cy")) - Number(avatar.getAttribute("cy"))).toBe(23);
+  });
+
   it("exports long names on two centered lines without reducing their font size", () => {
     const svg = buildChartSvg(layout, "Family", person.id).svg;
 

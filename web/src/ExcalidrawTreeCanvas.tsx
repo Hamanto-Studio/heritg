@@ -27,12 +27,13 @@ import {
 import { downloadBlob, safeFilename } from "./images";
 import { createCircularAvatarCache } from "./avatar";
 import { buildChartSvg, chartSvgToPng } from "./chartExport";
-import { createConnectionPlan } from "./connectionPlan";
+import { prepareTree } from "./treePreparation";
+import { visibleConnectionPlan } from "./visibleConnectionPlan";
 import type { ControlPlacement } from "./connectionGeometry";
 import type { ExportPrivacySelection } from "./exportPrivacy";
 import type { Translator } from "./i18n";
 import { deriveKinshipLabels } from "./kinship";
-import { createTreeLayout, LAYOUT_METRICS } from "./layout";
+import { LAYOUT_METRICS } from "./layout";
 import {
   projectConnectionPlanToElements,
   projectLayoutToScene
@@ -58,6 +59,7 @@ export interface TreeCanvasHandle {
 }
 
 export interface TreeCanvasProps {
+  familyFocus?: import("./focusedFamily").FamilyFocus;
   treeId: string;
   treeTitle: string;
   people: Person[];
@@ -243,7 +245,7 @@ function CanvasActions({
       <div className="canvas-actions-scene" ref={sceneLayerRef}>
         {people.map((person) => {
           const selected = person.id === selectedPersonId;
-          const showActions = actionsVisible && (people.length <= 24 || selected);
+          const showActions = actionsVisible && selected;
           const side = controlsByPerson.get(person.id)?.side ?? (person.x <= 0 ? "left" : "right");
           const anchorX = person.x + (side === "left" ? -1 : 1) *
             (LAYOUT_METRICS.avatarRadius + 12);
@@ -353,16 +355,12 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
   const selectionFiltersLayout = generationLimits.ancestors !== null ||
     generationLimits.descendants !== null;
   const layoutSelectionId = selectionFiltersLayout ? selectedPersonId : undefined;
-  const geometryLayout = useMemo(
-    () => createTreeLayout(
-      people,
-      relationships,
-      layoutSelectionId,
-      generationLimits,
-      relationshipLanguage
-    ),
-    [generationLimits, layoutSelectionId, people, relationshipLanguage, relationships]
+  const preparedTree = useMemo(
+    () => prepareTree({ requestKey: "fallback-canvas", people, relationships, layoutSelectionId,
+      generationLimits, relationshipLanguage, language, controlsVisible: !readOnly && people.length <= 24 }),
+    [generationLimits, layoutSelectionId, people, relationshipLanguage, relationships, language, readOnly]
   );
+  const geometryLayout = preparedTree.geometryLayout;
   const layout = useMemo(() => {
     if (selectionFiltersLayout || !selectedPersonId || geometryLayout.people.length === 1) {
       return geometryLayout;
@@ -381,18 +379,9 @@ export const ExcalidrawTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps
       }))
     };
   }, [geometryLayout, people, relationshipLanguage, relationships, selectedPersonId, selectionFiltersLayout]);
-  const routingLayout = useMemo(() => ({
-    ...geometryLayout,
-    people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
-  }), [geometryLayout]);
   const connectionPlan = useMemo(
-    () => createConnectionPlan(
-      routingLayout,
-      language,
-      undefined,
-      !readOnly && people.length <= 24
-    ),
-    [language, people.length, readOnly, routingLayout]
+    () => visibleConnectionPlan(preparedTree.connectionPlan, layout, language, selectedPersonId, lifeSummaryOptions),
+    [preparedTree, layout, language, selectedPersonId, lifeSummaryOptions]
   );
   const connectionElements = useMemo(
     () => projectConnectionPlanToElements(connectionPlan),

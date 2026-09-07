@@ -143,6 +143,15 @@ export interface TreeLayout {
   relationships: FamilyRelationship[];
   width: number;
   height: number;
+  /** Layout-only sibling rails above inset ancestry; never archive data. */
+  familyRailY?: Record<string, number>;
+  /** Candidate layout-only family corridors; never saved in an archive. */
+  familyRouteGeometry?: Record<string, {
+    parentPorts: Record<string, { x: number; y: number }>;
+    childPorts: Record<string, { x: number; y: number }>;
+    segments: { start: { x: number; y: number }; end: { x: number; y: number } }[];
+  }>;
+  partnerRouteCandidates?: Record<string, { start: { x: number; y: number }; end: { x: number; y: number } }[][]>;
 }
 
 export interface SceneLifeSummaryOptions {

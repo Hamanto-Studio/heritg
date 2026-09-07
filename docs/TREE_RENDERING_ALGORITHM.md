@@ -2,6 +2,11 @@
 
 Status: canonical Web reference and cross-platform target, version 1
 
+The Web worktree is developing a version-2 clarity candidate for large families.
+See [Large-tree clarity](LARGE_TREE_CLARITY.md) for explicit differences,
+measurements, and incomplete acceptance criteria. Native version-1 conformance
+is not changed by this work in progress.
+
 This document defines the canonical Web algorithm for deterministic person
 coordinates, routed relationship connectors, rendering layers, and an
 interactive viewport. Other platforms may adopt individual layers without

@@ -4,6 +4,7 @@ import {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   type CSSProperties,
@@ -11,9 +12,12 @@ import {
 } from "react";
 
 import {
+  MIN_CANVAS_ZOOM,
   fitSceneRect,
   interpolateViewport,
   panViewport,
+  nearestCanvasPerson,
+  sceneToViewport,
   zoomViewportAt,
   type Point,
   type SceneRect
@@ -24,11 +28,15 @@ import type { ControlPlacement } from "./connectionGeometry";
 import type { TreeCanvasHandle, TreeCanvasProps } from "./ExcalidrawTreeCanvas";
 import { downloadBlob, safeFilename } from "./images";
 import { deriveKinshipLabels } from "./kinship";
+import { focusedFamily } from "./focusedFamily";
+import { prepareTree } from "./treePreparation";
 import { createTreeLayout, LAYOUT_METRICS } from "./layout";
 import { formatPersonName } from "./personName";
 import { SvgTreeScene } from "./SvgTreeScene";
 import type { TreeLayout, ViewportState } from "./types";
 import { useTreePreparation } from "./useTreePreparation";
+import { FAMILY_MOTION_MS, reducedFamilyMotion } from "./familyMotion";
+import { CanvasConnections } from "./CanvasConnections";
 
 interface PendingWheel {
   deltaX: number;
@@ -96,7 +104,7 @@ function SvgCanvasActions({
   "actionsVisible" | "emptyContent" | "language" | "onAddRelative" | "onEditPerson" | "selectedPersonId" | "t"
 > & {
   controls: ControlPlacement[];
-  onTogglePerson: (personId: string) => void;
+  onTogglePerson: (personId: string, pointer?: Point) => void;
   people: ReturnType<typeof createTreeLayout>["people"];
   sceneRef: React.RefObject<HTMLDivElement | null>;
 }) {
@@ -115,7 +123,7 @@ function SvgCanvasActions({
       <div className="canvas-actions-scene" ref={sceneRef}>
         {people.map((person) => {
           const selected = person.id === selectedPersonId;
-          const showActions = actionsVisible && (people.length <= 24 || selected);
+          const showActions = actionsVisible && selected;
           const side = controlsByPerson.get(person.id)?.side ?? (person.x <= 0 ? "left" : "right");
           const anchorX = person.x + (side === "left" ? -1 : 1) *
             (LAYOUT_METRICS.avatarRadius + 12);
@@ -132,7 +140,7 @@ function SvgCanvasActions({
                 aria-pressed={selected}
                 className="canvas-person-hit"
                 data-canvas-person={person.id}
-                onClick={() => onTogglePerson(person.id)}
+                onClick={(event) => onTogglePerson(person.id, event.detail ? { x: event.clientX, y: event.clientY } : undefined)}
                 style={{
                   height: LAYOUT_METRICS.avatarDiameter,
                   left: person.x,
@@ -189,6 +197,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   relationships,
   selectedPersonId,
   generationLimits,
+  familyFocus,
   language,
   relationshipLanguage = "id",
   initialViewport,
@@ -213,6 +222,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const pendingPersistedViewport = useRef<ViewportState | undefined>(undefined);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const resizeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const resizeFit = useRef<() => void>(() => {});
   const wheelFrame = useRef<number | undefined>(undefined);
   const pendingWheel = useRef<PendingWheel | undefined>(undefined);
   const animationFrame = useRef<number | undefined>(undefined);
@@ -223,17 +233,19 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const drag = useRef<DragState | undefined>(undefined);
   const pinch = useRef<PinchState | undefined>(undefined);
   const gestureMoved = useRef(false);
-  const selectionFiltersLayout = generationLimits.ancestors !== null ||
-    generationLimits.descendants !== null;
+  const family = useMemo(() => focusedFamily(people, relationships, familyFocus), [people, relationships, familyFocus]);
+  const selectionFiltersLayout = !familyFocus && (generationLimits.ancestors !== null ||
+    generationLimits.descendants !== null);
   const layoutSelectionId = selectionFiltersLayout ? selectedPersonId : undefined;
   const { result: preparedTree, isPreparing } = useTreePreparation({
-    people,
-    relationships,
+    people: family.people,
+    relationships: family.relationships,
     layoutSelectionId,
     generationLimits,
     language,
     relationshipLanguage,
-    controlsVisible: !readOnly && people.length <= 24
+    controlsVisible: !readOnly && family.people.length <= 24,
+    layoutMode: familyFocus ? "focus" : "full"
   });
   const geometryLayout = useMemo<TreeLayout>(() => {
     if (!preparedTree) return { people: [], relationships: [], width: 0, height: 0 };
@@ -271,6 +283,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const connectionPlan = preparedTree?.connectionPlan ?? {
     families: [],
     nonParentRoutes: [],
+    sharedParentPaths: [],
     obstacles: [],
     controls: [],
     crossings: [],
@@ -282,7 +295,12 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   const updateTransforms = (next: ViewportState, navigating = false) => {
     const transform = `translate3d(${next.scrollX * next.zoom}px, ${next.scrollY * next.zoom}px, 0) scale(${next.zoom})`;
     if (sceneGroupRef.current) {
-      sceneGroupRef.current.style.transform = transform;
+      // Use SVG coordinates: WebKit can offset a composited CSS transform on a
+      // <g> relative to the HTML action overlay, especially when zoomed out.
+      sceneGroupRef.current.setAttribute(
+        "transform",
+        `translate(${next.scrollX * next.zoom} ${next.scrollY * next.zoom}) scale(${next.zoom})`
+      );
       sceneGroupRef.current.style.visibility = "visible";
     }
     const actionsScene = actionsSceneRef.current;
@@ -326,9 +344,19 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
 
   const animateViewport = (target: ViewportState, duration: number) => {
     if (animationFrame.current !== undefined) cancelAnimationFrame(animationFrame.current);
+    if (reducedFamilyMotion()) {
+      animationFrame.current = undefined;
+      applyViewport(target, false);
+      return;
+    }
     const start = viewport.current;
     const startedAt = performance.now();
     const step = (now: number) => {
+      if (reducedFamilyMotion()) {
+        applyViewport(target, false);
+        animationFrame.current = undefined;
+        return;
+      }
       const elapsed = Math.min(1, (now - startedAt) / duration);
       const eased = 1 - Math.pow(1 - elapsed, 3);
       applyViewport(interpolateViewport(start, target, eased));
@@ -349,14 +377,40 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     height: Math.max(1, hostRef.current?.clientHeight ?? 1)
   });
 
-  const fitAll = (animate = true) => {
+  const fitAll = (animate = true, readable = true) => {
     if (!layout.people.length) return;
-    const target = fitSceneRect(sceneRectFromPlan(connectionPlan.bounds), hostSize(), {
+    const size = hostSize();
+    const preserveReadability = readable && (Boolean(familyFocus) || layout.people.length >= 100);
+    const reserveControls = Boolean(familyFocus) || preserveReadability;
+    const topInset = reserveControls ? Math.min(size.width <= 620 ? 140 : 160, size.height * 0.3) : 0;
+    const contentWidth = Math.max(160, size.width - (reserveControls && size.width <= 620 ? 64 : 0));
+    const contentHeight = Math.max(160, size.height - topInset - (reserveControls ? 80 : 0));
+    const target = fitSceneRect(sceneRectFromPlan(connectionPlan.bounds), { width: contentWidth, height: contentHeight }, {
       viewportFactor: 0.82,
-      minZoom: 0.08,
+      minZoom: preserveReadability ? 0.85 : MIN_CANVAS_ZOOM,
       maxZoom: 1.1
     });
-    if (animate) animateViewport(target, 320);
+    target.scrollY += topInset / target.zoom;
+    const anchorId = familyFocus?.personId ?? selectedPersonId ?? people[0]?.id;
+    const focusPerson = (familyFocus || preserveReadability) &&
+      (layout.people.find((person) => person.id === anchorId) ?? layout.people[0]);
+    if (focusPerson) {
+      if (preserveReadability && (connectionPlan.bounds.width * target.zoom > contentWidth ||
+          connectionPlan.bounds.height * target.zoom > contentHeight)) {
+        // A 500-person Full tree can be so tall that auto-fit looks empty.
+        // Open at the selected (or first recorded) person without selecting
+        // or filtering anyone. Explicit Fit still shows the complete bounds.
+        target.scrollX = contentWidth / 2 / target.zoom - focusPerson.x;
+        target.scrollY = (topInset + contentHeight * 0.42) / target.zoom - focusPerson.y;
+      }
+      // Extremely broad/deep families can hit the minimum zoom. Keep the
+      // navigation anchor in the unobscured canvas even when panning is needed.
+      const x = (focusPerson.x + target.scrollX) * target.zoom;
+      const y = (focusPerson.y + target.scrollY) * target.zoom;
+      target.scrollX += (Math.max(48, Math.min(contentWidth - 48, x)) - x) / target.zoom;
+      target.scrollY += (Math.max(topInset + 48, Math.min(size.height - 140, y)) - y) / target.zoom;
+    }
+    if (animate) animateViewport(target, FAMILY_MOTION_MS);
     else applyViewport(target, false, false);
   };
 
@@ -373,39 +427,64 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         cityExtraHeight
     }, hostSize(), {
       viewportFactor: 0.32,
-      minZoom: 0.25,
+      minZoom: 0.85,
       maxZoom: 1.35
     });
-    animateViewport(target, 280);
+    animateViewport(target, FAMILY_MOTION_MS);
   };
+
+  useLayoutEffect(() => {
+    // A breakpoint change must not strand the just-selected relative in a
+    // tiny 500-person overview. The observer needs the latest selection.
+    resizeFit.current = () => {
+      if (!familyFocus && selectedPersonId) focusPerson(selectedPersonId);
+      else fitAll();
+    };
+  });
 
   const zoomBy = (change: number) => {
     cancelViewportAnimation();
     const size = hostSize();
-    const nextZoom = Math.round((viewport.current.zoom + change) * 10) / 10;
+    const nextZoom = viewport.current.zoom < 0.2
+      ? viewport.current.zoom * (change > 0 ? 1.5 : 1 / 1.5)
+      : Math.round((viewport.current.zoom + change) * 10) / 10;
     applyViewport(zoomViewportAt(viewport.current, {
       x: size.width / 2,
       y: size.height / 2
     }, nextZoom));
   };
 
-  const togglePerson = (personId: string) => {
-    if (personId === selectedPersonId) onDeselectPerson();
-    else onSelectPerson(personId);
+  const togglePerson = (personId: string, pointer?: Point) => {
+    const bounds = hostRef.current?.getBoundingClientRect();
+    const chosen = pointer && bounds ? nearestCanvasPerson(layout.people, viewport.current,
+      { x: pointer.x - bounds.left, y: pointer.y - bounds.top }) ?? personId : personId;
+    if (chosen === selectedPersonId) onDeselectPerson();
+    else onSelectPerson(chosen);
+  };
+
+  const exportScene = () => {
+    const full = prepareTree({
+      requestKey: "export", people, relationships, layoutSelectionId: selectedPersonId,
+      generationLimits: { ancestors: null, descendants: null }, language, relationshipLanguage,
+      controlsVisible: false
+    });
+    return { layout: full.geometryLayout, connectionPlan: full.connectionPlan };
   };
 
   const exportPng = async (privacy: Parameters<TreeCanvasHandle["exportPng"]>[0]) => {
+    const scene = exportScene();
     downloadBlob(
       await chartSvgToPng(buildChartSvg(
-        layout, treeTitle, selectedPersonId, language, connectionPlan, privacy
+        scene.layout, treeTitle, selectedPersonId, language, scene.connectionPlan, privacy
       )),
       safeFilename(treeTitle, "png")
     );
   };
 
   const exportSvg = async (privacy: Parameters<TreeCanvasHandle["exportSvg"]>[0]) => {
+    const scene = exportScene();
     const chart = buildChartSvg(
-      layout, treeTitle, selectedPersonId, language, connectionPlan, privacy
+      scene.layout, treeTitle, selectedPersonId, language, scene.connectionPlan, privacy
     );
     downloadBlob(
       new Blob([chart.svg], { type: "image/svg+xml;charset=utf-8" }),
@@ -414,7 +493,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
   };
 
   useImperativeHandle(ref, () => ({
-    fitAll: () => fitAll(),
+    fitAll: () => fitAll(true, false),
     focusPerson,
     zoomIn: () => zoomBy(0.1),
     zoomOut: () => zoomBy(-0.1),
@@ -431,13 +510,22 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     if (!host) return;
     const initializeOrResize = () => {
       const mobile = window.innerWidth <= 840;
+      // During a Full→Focus preparation, a resize must not queue a fit using
+      // the retained 500-person scene and later overwrite the new family's fit.
+      if (isPreparing) {
+        updateTransforms(viewport.current);
+        return;
+      }
       if (!initialized.current) {
-        if (isPreparing) {
-          updateTransforms(viewport.current);
-          return;
-        }
         initialized.current = true;
-        if (!mobile && initialViewport && layout.people.length) {
+        const savedViewShowsPerson = initialViewport && Object.values(initialViewport).every(Number.isFinite) &&
+          initialViewport.zoom > 0 && layout.people.some((person) => {
+            const point = sceneToViewport(person, initialViewport), size = hostSize();
+            return point.x >= -130 * initialViewport.zoom && point.x <= size.width + 130 * initialViewport.zoom &&
+              point.y >= -140 * initialViewport.zoom && point.y <= size.height + 32 * initialViewport.zoom;
+          });
+        if (!familyFocus && !mobile && initialViewport && layout.people.length &&
+            (!layout.familyRouteGeometry || savedViewShowsPerson)) {
           applyViewport(initialViewport, false, false);
         } else if (layout.people.length) {
           fitAll(false);
@@ -452,7 +540,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         if (resizeTimer.current) clearTimeout(resizeTimer.current);
         resizeTimer.current = setTimeout(() => {
           resizeTimer.current = undefined;
-          fitAll();
+          resizeFit.current();
         }, 80);
       } else {
         updateTransforms(viewport.current);
@@ -461,10 +549,41 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     const observer = new ResizeObserver(initializeOrResize);
     observer.observe(host);
     initializeOrResize();
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (resizeTimer.current) clearTimeout(resizeTimer.current);
+      resizeTimer.current = undefined;
+    };
   // The observer intentionally reads the latest imperative viewport methods.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connectionPlan.bounds, initialViewport, isPreparing, layout.people.length]);
+
+  const focusViewKey = familyFocus ? `${familyFocus.personId}:${familyFocus.ancestors}:${familyFocus.descendants}:${Boolean(familyFocus.siblings)}` : "full";
+  const lastFocusViewKey = useRef(focusViewKey);
+  const previousFocusLayout = useRef(layout);
+  useLayoutEffect(() => {
+    if (isPreparing) return;
+    const routingStrategyChanged = previousFocusLayout.current.people.length > 0 &&
+      Boolean(previousFocusLayout.current.familyRouteGeometry) !== Boolean(layout.familyRouteGeometry);
+    if (lastFocusViewKey.current !== focusViewKey || routingStrategyChanged) {
+      const personId = familyFocus?.personId ?? selectedPersonId;
+      const before = previousFocusLayout.current.people.find((person) => person.id === personId);
+      const after = layout.people.find((person) => person.id === personId);
+      if (before && after && !reducedFamilyMotion()) {
+        // Keep the tapped person at the same screen position as their branch
+        // changes, then let the camera reveal the newly focused family.
+        applyViewport({ ...viewport.current,
+          scrollX: viewport.current.scrollX + before.x - after.x,
+          scrollY: viewport.current.scrollY + before.y - after.y
+        }, false, false);
+      }
+      lastFocusViewKey.current = focusViewKey;
+      fitAll();
+    }
+    previousFocusLayout.current = layout;
+  // Fit once after the new family has been laid out, never on selection clearing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusViewKey, isPreparing, layout]);
 
   useEffect(() => {
     updateTransforms(viewport.current);
@@ -474,6 +593,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
     const host = hostRef.current;
     if (!host) return;
     const handleWheel = (event: WheelEvent) => {
+      if (event.target instanceof Element && event.target.closest(".canvas-connections")) return;
       event.preventDefault();
       const bounds = host.getBoundingClientRect();
       const zooming = event.ctrlKey || event.metaKey;
@@ -689,6 +809,7 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
             layout={layout}
             lifeSummaryOptions={lifeSummaryOptions}
             selectedPersonId={selectedPersonId}
+            traceSelectedConnections={!familyFocus && !selectionFiltersLayout && actionsVisible}
           />
         </g>
       </svg>
@@ -705,6 +826,9 @@ export const SvgTreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(funct
         selectedPersonId={selectedPersonId}
         t={t}
       />
+      {!familyFocus && !selectionFiltersLayout && actionsVisible ? <CanvasConnections key={treeId}
+        people={people} relationships={relationships} selectedPersonId={selectedPersonId} language={relationshipLanguage}
+        onNavigate={(id) => { onSelectPerson(id); focusPerson(id); }} t={t} /> : null}
       {isPreparing ? (
         <div aria-live="polite" className="canvas-preparing" role="status">
           <LoaderCircle aria-hidden="true" className="button-loader" size={20} />

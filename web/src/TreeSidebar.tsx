@@ -117,7 +117,7 @@ export function TreeSidebar({
       const protection = heritgArchiveProtection(bytes);
       if (protection === "encrypted" || protection === "legacy-encrypted") {
         try {
-          actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
+          await actions.importData(await importHeritgArchive(bytes, "", { into: data }));
         } catch (error) {
           if (!(error instanceof HeritgArchivePasswordError)) throw error;
           setArchivePassword("");
@@ -126,16 +126,16 @@ export function TreeSidebar({
           return;
         }
       } else {
-        actions.replaceData(await importHeritgArchive(bytes, "", { into: data }));
+        await actions.importData(await importHeritgArchive(bytes, "", { into: data }));
       }
     } else if (lowerName.endsWith(".json")) {
-      actions.replaceData(importHeritgBackup(await file.text(), { into: data }));
+      await actions.importData(importHeritgBackup(await file.text(), { into: data }));
     } else if (GEDCOM_FILE_SUFFIX.test(lowerName)) {
       const imported = importGedcom(await file.text(), {
         title: file.name.replace(GEDCOM_FILE_SUFFIX, ""),
         language: data.language
       });
-      actions.replaceData(validateAppData({
+      await actions.importData(validateAppData({
         ...data,
         trees: [...data.trees, ...imported.trees],
         people: [...data.people, ...imported.people],
@@ -155,7 +155,7 @@ export function TreeSidebar({
     setArchiveError(undefined);
     setIsUnlocking(true);
     try {
-      actions.replaceData(await importHeritgArchive(pendingArchive.bytes, archivePassword, { into: data }));
+      await actions.importData(await importHeritgArchive(pendingArchive.bytes, archivePassword, { into: data }));
       setArchivePassword("");
       setPendingArchive(undefined);
       onImported();

@@ -12,7 +12,7 @@ import type {
 } from "@excalidraw/excalidraw/element/types";
 import type { BinaryFiles } from "@excalidraw/excalidraw/types";
 import { circularAvatarData, type AvatarImageResolver } from "./avatar";
-import { BIRTH_ORDER_BADGE } from "./birthOrder";
+import { BIRTH_ORDER_BADGE, birthOrderBadgePosition } from "./birthOrder";
 import {
   CONNECTOR_STYLE,
   branchJunctions,
@@ -29,6 +29,7 @@ import {
 import { LAYOUT_METRICS } from "./layout";
 import { personCitySummary, personLifeSummary } from "./lifeSummary";
 import { personAvatarAppearance } from "./personAvatarAppearance";
+import { visibleConnectionPlan } from "./visibleConnectionPlan";
 import { formatPersonName, PERSON_NAME_FONT_SIZE } from "./personName";
 import type {
   AppData,
@@ -320,8 +321,7 @@ const personSkeletons = (
     );
   }
   if (person.birthOrder) {
-    const badgeX = person.x - BIRTH_ORDER_BADGE.offset;
-    const badgeY = person.y - BIRTH_ORDER_BADGE.offset;
+    const { x: badgeX, y: badgeY } = birthOrderBadgePosition(person);
     values.push(
       {
         type: "ellipse",
@@ -446,7 +446,7 @@ export const projectConnectionPlanToElements = (
       `heritg:family:${familyKey}:path:${index}`,
       HERITG_SCENE_COLORS.brand,
       CONNECTOR_STYLE.width,
-      "solid",
+      family.care ? "dashed" : "solid",
       `#heritg-family=${familyKey}`,
       data,
       [`heritg:family:${familyKey}`]
@@ -480,7 +480,7 @@ export const projectConnectionPlanToElements = (
       `heritg:relationship:${key}:path:${index}`,
       color,
       CONNECTOR_STYLE.width,
-      relationship.kind === "sibling" ? "dashed" : "solid",
+      relationship.kind !== "partner" ? "dashed" : "solid",
       `#heritg-relationship=${key}`,
       relationshipData(relationship),
       [`heritg:relationship:${key}`]
@@ -508,7 +508,7 @@ export const projectConnectionPlanToElements = (
       `heritg:crossing:${encodedId(key)}:rail`,
       relationshipColor(point.horizontalKind),
       CONNECTOR_STYLE.width,
-      point.horizontalKind === "sibling" ? "dashed" : "solid",
+      point.horizontalDashed ? "dashed" : "solid",
       "",
       { heritgType: "crossing" }
     ));
@@ -521,11 +521,15 @@ export const projectConnectionPlanToElements = (
       `heritg:crossing:${encodedId(key)}:bridge`,
       relationshipColor(point.kind),
       CONNECTOR_STYLE.width,
-      point.kind === "sibling" ? "dashed" : "solid",
+      point.dashed ? "dashed" : "solid",
       "",
       { heritgType: "crossing" }
     ));
   });
+  for (const family of plan.families) {
+    if (family.label && family.care) skeletons.push(...plannedLabelSkeletons(family.care, family.label));
+    for (const annotation of family.childLabels ?? []) skeletons.push(...plannedLabelSkeletons(annotation.relationship, annotation.label));
+  }
   for (const route of plan.nonParentRoutes) {
     if (route.label) {
       skeletons.push(...plannedLabelSkeletons(route.relationship, route.label));
@@ -550,8 +554,9 @@ export function projectLayoutToScene(
       left.x - right.x ||
       compareText(left.id, right.id)
   );
-  const plan = suppliedPlan ?? createConnectionPlan(layout, language);
-  const connectionElements = suppliedConnectionElements ??
+  const preparedPlan = suppliedPlan ?? createConnectionPlan(layout, language);
+  const plan = visibleConnectionPlan(preparedPlan, layout, language, selectedPersonId, lifeSummaryOptions);
+  const connectionElements = (plan === preparedPlan ? suppliedConnectionElements : undefined) ??
     projectConnectionPlanToElements(plan);
 
   const files: BinaryFiles = {};

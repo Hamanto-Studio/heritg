@@ -596,12 +596,68 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   z-index: 13;
 }
 
-.canvas-visibility-toggle {
+.family-view-controls {
+  position: relative;
+  width: max-content;
+  min-width: 0;
+}
+
+.family-view-summary { display: flex; align-items: center; gap: 8px; min-height: 44px; max-width: min(340px, calc(100vw - 340px)); padding: 0 12px; border-radius: 12px; background: var(--base); color: var(--brand-deep); box-shadow: var(--shadow-soft); font-size: 0.82rem; }
+.family-view-summary > svg { flex-shrink: 0; }
+.family-view-summary-mode { font-weight: 600; white-space: nowrap; }
+.family-view-summary:hover, .family-view-summary[aria-expanded="true"] { background: var(--elevated); }
+.family-view-summary[aria-expanded="true"] .family-view-chevron { transform: rotate(180deg); }
+.family-view-options { position: absolute; bottom: calc(100% + 12px); left: 0; width: min(304px, calc(100vw - 44px)); max-height: calc(100dvh - 120px); overflow-y: auto; overscroll-behavior: contain; padding: 10px; border-radius: 16px; background: var(--base); box-shadow: var(--shadow-soft); }
+.family-view-empty { margin: 12px 8px 4px; font-size: 0.8rem; color: var(--subtle); line-height: 1.5; }
+.family-view-options .focus-person-popover { position: static; margin-top: 8px; box-shadow: none; }
+
+.family-view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; background: var(--recessed); border-radius: 10px; }
+.family-view-switch button { flex: 1; min-height: 44px; padding: 6px 8px; border-radius: 8px; background: transparent; color: var(--subtle); font-size: 0.85rem; font-weight: 600; }
+.family-view-switch button[aria-pressed="true"] { background: var(--base); color: var(--brand-deep); box-shadow: 0 2px 5px rgba(62, 48, 34, 0.08); }
+.family-view-switch button:hover:not([aria-pressed="true"]) { color: var(--text); }
+.family-view-count { margin: 0 8px 12px; font-size: 0.75rem; color: var(--subtle); }
+.family-siblings-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0 0 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.family-siblings-toggle:hover { background: var(--recessed); }
+.family-siblings-toggle input { width: 18px; height: 18px; flex-shrink: 0; margin: 0; accent-color: var(--brand-deep); }
+.family-siblings-toggle strong { display: block; font-size: 0.8rem; font-weight: 600; }
+.family-siblings-toggle small { display: block; margin-top: 2px; font-size: 0.72rem; color: var(--subtle); line-height: 1.4; }
+.family-siblings-toggle:has(input:disabled) { cursor: default; opacity: 0.6; }
+.family-expand-controls { display: flex; gap: 4px; padding-top: 6px; border-top: 1px solid var(--line); }
+.family-expand-controls button { display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px; flex: 1; padding: 6px 3px; border-radius: 8px; background: transparent; color: var(--brand-deep); font-size: 0.75rem; font-weight: 600; }
+.family-expand-controls button svg { flex-shrink: 0; }
+.family-expand-controls .family-view-reset { flex: 0 0 44px; }
+.family-expand-controls button:hover:not(:disabled) { background: var(--recessed); }
+.family-expand-controls button:disabled { opacity: 0.45; cursor: default; }
+
+.focus-person-picker { position: relative; margin: 10px 0 4px; }
+.focus-person-trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 62px; padding: 8px; border-radius: 10px; text-align: left; background: transparent; }
+.focus-person-trigger:hover, .focus-person-trigger[aria-expanded="true"] { background: var(--recessed); }
+.focus-person-trigger > svg { flex-shrink: 0; color: var(--subtle); }
+.focus-person-copy { display: grid; flex: 1; gap: 2px; min-width: 0; }
+.focus-person-copy > span { font-size: 0.72rem; color: var(--subtle); }
+.focus-person-copy strong { font-size: 0.96rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-person-popover { position: absolute; left: -10px; right: -10px; top: calc(100% + 2px); z-index: 1; background: var(--base); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.focus-person-search { display: flex; align-items: center; gap: 8px; margin: 8px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--subtle); }
+.focus-person-search:focus-within { border-color: var(--brand-deep); outline: 2px solid var(--brand-deep); outline-offset: 1px; }
+.focus-person-search input { width: 100%; min-width: 0; min-height: 44px; border: 0; border-radius: 0; padding: 8px 0; background: transparent; font: inherit; font-size: 0.88rem; }
+.focus-person-search input:focus-visible { outline: none; }
+.focus-person-results { max-height: min(264px, calc(100dvh - 340px)); overflow-y: auto; overscroll-behavior: contain; padding: 4px 8px 8px; }
+.focus-person-option { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px; border-radius: 8px; background: transparent; text-align: left; }
+.focus-person-option > span:not(.person-avatar) { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 0.86rem; }
+.focus-person-option > svg { flex-shrink: 0; color: var(--brand-deep); }
+.focus-person-option:hover, .focus-person-option[aria-pressed="true"] { background: var(--recessed); }
+.focus-person-results > p { padding: 12px 8px; margin: 0; color: var(--subtle); font-size: 0.85rem; }
+
+.canvas-view-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   bottom: max(18px, env(safe-area-inset-bottom, 0px));
   left: max(18px, env(safe-area-inset-left, 0px));
   position: absolute;
   z-index: 13;
 }
+.canvas-visibility-toggle { flex-shrink: 0; }
 
 .canvas-controls .generation-popover {
   bottom: 0;
@@ -832,8 +888,8 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
 }
 
 .canvas-controls-hint {
-  bottom: 220px;
-  right: max(64px, calc(env(safe-area-inset-right, 0px) + 52px));
+  bottom: 280px;
+  right: max(48px, calc(env(safe-area-inset-right, 0px) + 36px));
   text-align: right;
   width: 188px;
 }
@@ -855,6 +911,23 @@ html[data-deployment-environment="staging"] .canvas-host .excalidraw {
   display: block;
   margin-right: 16px;
 }
+
+.tutorial-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+.family-view-hint { bottom: calc(100% + 10px); left: 0; width: 180px; }
+.family-view-hint > span { display: block; margin-left: 16px; }
+.family-view-hint svg { display: block; width: 76px; height: 58px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 .empty-canvas {
   background: rgba(255, 253, 248, 0.93);
