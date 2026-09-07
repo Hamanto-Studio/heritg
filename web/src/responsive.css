@@ -42,15 +42,21 @@
     right: max(12px, env(safe-area-inset-right, 0px));
   }
 
-  .canvas-visibility-toggle {
+  .canvas-view-tools {
     bottom: max(12px, env(safe-area-inset-bottom, 0px));
     left: max(12px, env(safe-area-inset-left, 0px));
   }
 
   .canvas-controls-hint {
-    bottom: 208px;
-    right: max(56px, calc(env(safe-area-inset-right, 0px) + 46px));
+    bottom: 264px;
+    right: max(40px, calc(env(safe-area-inset-right, 0px) + 28px));
   }
+}
+
+@media (max-width: 760px) {
+  .canvas-utilities { bottom: max(68px, calc(env(safe-area-inset-bottom, 0px) + 56px)); }
+  .family-view-summary { max-width: calc(100vw - 136px); }
+  .family-view-options { left: -52px; width: min(304px, calc(100vw - 24px)); }
 }
 
 @media (max-width: 620px) {
@@ -160,9 +166,19 @@
 @media (max-width: 460px), (max-height: 620px) {
   .tree-pane-hint,
   .settings-pane-hint,
-  .canvas-controls-hint {
+  .canvas-controls-hint,
+  .family-view-hint {
     display: none;
   }
+}
+
+@media (max-width: 460px) and (min-height: 740px) {
+  .tree-pane-hint { display: block; top: 124px; font-size: 0.7rem; }
+  .tree-pane-hint svg { height: 66px; top: -72px; }
+  .tree-pane-hint span { margin-left: 24px; max-width: 124px; }
+  .settings-pane-hint span { margin-left: auto; margin-right: 24px; }
+  .settings-pane-hint svg { right: 20px; }
+  .family-view-hint { display: block; width: min(180px, calc(100vw - 160px)); font-size: 0.7rem; }
 }
 
 @media (max-width: 340px) and (max-height: 520px) {

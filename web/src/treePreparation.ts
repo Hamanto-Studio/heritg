@@ -1,5 +1,6 @@
 import { createConnectionPlan, type ConnectionPlan } from "./connectionPlan";
 import { createTreeLayout } from "./layout";
+import { fullTreeRouting } from "./fullTreeRouting";
 import type {
   AppData,
   FamilyRelationship,
@@ -18,6 +19,7 @@ export interface TreePreparationRequest {
   language: AppData["language"];
   relationshipLanguage: RelationshipLanguage;
   controlsVisible: boolean;
+  layoutMode?: "full" | "focus";
 }
 
 export interface TreePreparationResult {
@@ -34,7 +36,8 @@ export function prepareTree({
   generationLimits,
   language,
   relationshipLanguage,
-  controlsVisible
+  controlsVisible,
+  layoutMode = "full"
 }: TreePreparationRequest): TreePreparationResult {
   const geometryLayout = createTreeLayout(
     people,
@@ -47,10 +50,15 @@ export function prepareTree({
     ...geometryLayout,
     people: geometryLayout.people.map((person) => ({ ...person, role: " " }))
   };
+  const createPlan = () => createConnectionPlan(routingLayout, language, undefined, controlsVisible);
+  const prepared = layoutMode === "full" ? fullTreeRouting(routingLayout, createPlan, language, controlsVisible)
+    : { layout: routingLayout, plan: createPlan() };
+  const roles = new Map(geometryLayout.people.map((person) => [person.id, person.role]));
   return {
     requestKey,
-    geometryLayout,
-    connectionPlan: createConnectionPlan(routingLayout, language, undefined, controlsVisible)
+    geometryLayout: prepared.layout === routingLayout ? geometryLayout : { ...prepared.layout,
+      people: prepared.layout.people.map((person) => ({ ...person, role: roles.get(person.id)! })) },
+    connectionPlan: prepared.plan
   };
 }
 

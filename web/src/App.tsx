@@ -1,4 +1,6 @@
 import {
+  ArrowDown,
+  ArrowUp,
   CircleHelp,
   Cloud,
   CloudOff,
@@ -9,6 +11,7 @@ import {
   Maximize2,
   Menu,
   Pencil,
+  RotateCcw,
   Share2,
   Settings2,
   ShieldCheck,
@@ -26,6 +29,11 @@ import {
 } from "react";
 
 import { availableGenerationLevels } from "./layout";
+import { FocusPersonPicker } from "./FocusPersonPicker";
+import { FamilyExplorer } from "./FamilyExplorer";
+import { explorerViews, explorerLabels, explorerDescriptions, type ExplorerView } from "./familyExplorers";
+import { FamilyViewControls } from "./FamilyViewControls";
+import { defaultFamilyFocus, focusedFamily, nextFamilyExpansion, sharedParentSiblingIds, type FamilyFocus } from "./focusedFamily";
 import { createTranslator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
 import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
@@ -58,6 +66,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const [rightPanel, setRightPanel] = useState<RightPanel | undefined>(initialPanel);
   const [generationOpen, setGenerationOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  const [alternateViews, setAlternateViews] = useState<Record<string, ExplorerView | undefined>>({});
+  const [familyViews, setFamilyViews] = useState<Record<string, { mode: "focus" | "full"; focus: FamilyFocus }>>({});
   const [generationLimitsByTree, setGenerationLimitsByTree] = useState<Record<string, GenerationLimits>>({});
   const [editingPerson, setEditingPerson] = useState<Person | "new">();
   const [renamingTree, setRenamingTree] = useState<{ id: string; title: string }>();
@@ -71,6 +81,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const activeTree = data?.trees.find((tree) => tree.id === data.selectedTreeId)
     ?? data?.trees[0];
   const activeTreeId = activeTree?.id;
+  const alternateView = activeTreeId && alternateViews[activeTreeId] === "fan" ? "fan" : undefined;
+  const showAlternate = Boolean(alternateView);
   const allPeople = data?.people;
   const allRelationships = data?.relationships;
   const people = useMemo(
@@ -86,6 +98,26 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     [activeTreeId, allRelationships]
   );
   const selectedPerson = people.find((person) => person.id === activeTree?.lastSelectedPersonId);
+  const familyView = activeTreeId ? familyViews[activeTreeId] : undefined;
+  const focusId = selectedPerson?.id
+    ?? people.find((person) => person.id === familyView?.focus.personId)?.id
+    ?? defaultFamilyFocus(people, relationships);
+  const isFocusedView = familyView?.mode === "focus" || (!familyView && Boolean(focusId));
+  const familyFocus = useMemo<FamilyFocus | undefined>(() => {
+    if (!focusId || familyView?.mode === "full") return undefined;
+    return {
+      personId: focusId,
+      ancestors: familyView?.focus.ancestors ?? 1,
+      descendants: familyView?.focus.descendants ?? 1,
+      siblings: familyView?.focus.siblings
+    };
+  }, [familyView, focusId]);
+  const focusedPeople = useMemo(() => focusedFamily(people, relationships, familyFocus).people, [people, relationships, familyFocus]);
+  const hasFocusSiblings = useMemo(() => Boolean(focusId && sharedParentSiblingIds(people, relationships, focusId).size), [people, relationships, focusId]);
+  const familyExpansions = useMemo(() => familyFocus ? {
+    ancestors: nextFamilyExpansion(people, relationships, familyFocus, "ancestors"),
+    descendants: nextFamilyExpansion(people, relationships, familyFocus, "descendants")
+  } : {}, [people, relationships, familyFocus]);
   const generationLimits = activeTree
     ? generationLimitsByTree[activeTree.id] ?? unlimited
     : unlimited;
@@ -120,10 +152,37 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
 
   const relationshipLanguage = relationshipLanguageForData(data);
 
+  const rememberFocus = (personId: string) => {
+    if (!activeTreeId) return;
+    setFamilyViews((current) => ({ ...current, [activeTreeId]: {
+      mode: current[activeTreeId]?.mode ?? "focus",
+      focus: { personId,
+        ancestors: current[activeTreeId]?.focus.ancestors ?? 1,
+        descendants: current[activeTreeId]?.focus.descendants ?? 1,
+        siblings: current[activeTreeId]?.focus.siblings }
+    } }));
+  };
+  const updateFamilyView = (mode: "focus" | "full", focus = familyFocus) => {
+    if (!activeTreeId) return;
+    if (mode === "full") setGenerationLimitsByTree((current) => ({ ...current, [activeTreeId]: unlimited }));
+    setFamilyViews((current) => ({ ...current, [activeTreeId]: {
+      mode, focus: focus ?? { personId: focusId ?? "",
+        ancestors: current[activeTreeId]?.focus.ancestors ?? 1,
+        descendants: current[activeTreeId]?.focus.descendants ?? 1,
+        siblings: current[activeTreeId]?.focus.siblings }
+    } }));
+    setGenerationOpen(false);
+  };
+  const chooseCanvasView = (mode: "focus" | "full") => {
+    if (activeTreeId) setAlternateViews((current) => ({ ...current, [activeTreeId]: undefined }));
+    updateFamilyView(mode);
+  };
+
   const selectAndFocus = (personId: string) => {
     setGenerationOpen(false);
+    rememberFocus(personId);
     actions.selectPerson(personId);
-    requestAnimationFrame(() => canvasRef.current?.focusPerson(personId));
+    if (!familyFocus) requestAnimationFrame(() => canvasRef.current?.focusPerson(personId));
   };
 
   const addRelativeTo = (personId: string) => {
@@ -131,6 +190,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     if (!target) return;
     setGenerationOpen(false);
     actions.selectPerson(target.id);
+    rememberFocus(target.id);
     canvasRef.current?.focusPerson(target.id);
     setRelativeTarget(target);
   };
@@ -260,13 +320,15 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               <path d="M58 73C39 67 21 40 12 16" />
               <path d="M8 27 12 16l11 4" />
             </svg>
-            <span>{t("treeMenuHintDetailed")}</span>
+            <span><b className="tutorial-step">1</b>{t("treeMenuHintDetailed")}</span>
           </div>
         ) : null}
 
         {activeTree ? (
-          <div className="canvas-frame">
+          <div className={`canvas-frame${showAlternate ? " is-explorer" : ""}`}>
+            <div className={`canvas-chart-layer${showAlternate && people.length ? " is-hidden" : ""}`} aria-hidden={showAlternate && people.length > 0} inert={showAlternate && people.length > 0}>
             <TreeCanvas
+              familyFocus={familyFocus}
               generationLimits={generationLimits}
               emptyContent={emptyWelcome}
               initialViewport={data.viewports[activeTree.id]}
@@ -277,13 +339,13 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               onCanvasInteract={dismissCanvasPanels}
               onDeselectPerson={() => {
                 setGenerationOpen(false);
+                if (selectedPerson) {
+                  updateFamilyView(familyFocus ? "focus" : "full", familyFocus);
+                }
                 actions.selectPerson(undefined);
               }}
               onEditPerson={editPerson}
-              onSelectPerson={(personId) => {
-                setGenerationOpen(false);
-                actions.selectPerson(personId);
-              }}
+              onSelectPerson={selectAndFocus}
               onViewportChange={(viewport) => actions.setViewport(activeTree.id, viewport)}
               people={people}
               ref={canvasRef}
@@ -294,6 +356,13 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               treeId={activeTree.id}
               treeTitle={activeTree.title}
             />
+            </div>
+            {people.length > 0 && alternateView ? <FamilyExplorer key={activeTree.id}
+              mode={alternateView} people={people} relationships={relationships} initialPersonId={focusId}
+              selectedPersonId={selectedPerson?.id} onSelect={(id) => { rememberFocus(id); actions.selectPerson(selectedPerson?.id === id ? undefined : id); }}
+              onEdit={editPerson} onAdd={addRelativeTo} onInteract={dismissCanvasPanels}
+              onBackToTree={() => setAlternateViews((current) => ({ ...current, [activeTree.id]: undefined }))}
+              actionsVisible={controlsVisible} language={data.language} t={t} /> : null}
 
             <header className="workspace-header">
               <div className="workspace-title">
@@ -354,7 +423,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               </div> : null}
             </header>
 
-            {controlsVisible ? <div className="canvas-controls" aria-label={t("canvasControls")} role="toolbar">
+            {controlsVisible && !showAlternate ? <div className="canvas-controls" aria-label={t("canvasControls")} role="toolbar">
               <button
                 aria-label={t("allPeople")}
                 className="icon-button"
@@ -366,7 +435,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               >
                 <UsersRound aria-hidden="true" size={19} />
               </button>
-              <div className="tree-menu-wrap">
+              {!familyFocus ? <div className="tree-menu-wrap">
                 <button
                   aria-expanded={generationOpen && Boolean(selectedPerson)}
                   aria-label={t("branchDepth")}
@@ -400,7 +469,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                     </label>
                   </div>
                 ) : null}
-              </div>
+              </div> : null}
               <button
                 aria-label={t("zoomIn")}
                 className="icon-button"
@@ -430,7 +499,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
 
             {showSettingsOnboarding ? (
               <div className="tree-pane-hint settings-pane-hint" id="settings-menu-onboarding" role="note">
-                <span>{t("workspaceToolsHint")}</span>
+                <span><b className="tutorial-step">2</b>{t("workspaceToolsHint")}</span>
                 <svg aria-hidden="true" viewBox="0 0 64 78">
                   <path d="M6 67C25 62 43 38 52 16" />
                   <path d="m41 20 11-4 4 11" />
@@ -448,6 +517,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               </button>
             </div> : null}
 
+            <div className="canvas-view-tools">
             <button
               aria-label={controlsVisible ? t("hideCanvasControls") : t("showCanvasControls")}
               aria-pressed={!controlsVisible}
@@ -463,10 +533,44 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
             >
               {controlsVisible ? <Eye aria-hidden="true" size={18} /> : <EyeOff aria-hidden="true" size={18} />}
             </button>
+            {controlsVisible ? <FamilyViewControls key={activeTree.id}
+              label={t("familyView")} mode={t(alternateView ? explorerLabels[alternateView] : isFocusedView ? "focusedFamily" : "fullTree")}
+              shortMode={t(alternateView ? explorerLabels[alternateView] : isFocusedView ? "focusViewShort" : "fullViewShort")}
+              describedBy={showSettingsOnboarding && !sidebarOpen ? "family-view-onboarding" : undefined}
+              hint={showSettingsOnboarding && !sidebarOpen ? <div className="family-view-hint onboarding-hint" id="family-view-onboarding" role="note">
+                <span><b className="tutorial-step">3</b>{t("familyViewHint")}</span>
+                <svg aria-hidden="true" viewBox="0 0 76 58"><path d="M66 5C43 5 25 23 20 50" /><path d="m12 40 8 10 9-8" /></svg>
+              </div> : undefined}
+              personName={!showAlternate && familyFocus ? people.find((person) => person.id === focusId)?.displayName : undefined}>
+              <div className="family-view-switch" role="group" aria-label={t("familyView")}>
+                <button data-view-option type="button" aria-label={t("focusedFamily")} aria-pressed={!showAlternate && isFocusedView} onClick={() => chooseCanvasView("focus")}>{t("focusViewShort")}</button>
+                <button data-view-option type="button" aria-label={t("fullTree")} aria-pressed={!showAlternate && !isFocusedView} onClick={() => chooseCanvasView("full")}>{t("fullViewShort")}</button>
+                {explorerViews.map((view) => <button data-view-option type="button" key={view} title={t(explorerDescriptions[view])} aria-pressed={alternateView === view}
+                  onClick={() => { setAlternateViews((current) => ({ ...current, [activeTree.id]: view })); setGenerationOpen(false); }}>{t(explorerLabels[view])}</button>)}
+              </div>
+              {!people.length ? <p className="family-view-empty">{t("familyViewEmpty")}</p> : null}
+              {alternateView && people.length > 0 ? <p className="family-view-empty">{t(explorerDescriptions[alternateView])}</p> : null}
+              {!showAlternate && familyFocus ? <>
+                <FocusPersonPicker people={people} personId={focusId} onSelect={selectAndFocus} t={t} />
+                <p className="family-view-count">{t("familyViewCount", { shown: focusedPeople.length, total: people.length })}</p>
+                <label className="family-siblings-toggle">
+                  <input type="checkbox" checked={Boolean(familyFocus.siblings)}
+                    disabled={!hasFocusSiblings && !familyFocus.siblings}
+                    onChange={(event) => updateFamilyView("focus", { ...familyFocus, siblings: event.target.checked })} />
+                  <span><strong>{t("showSiblings")}</strong><small>{t(hasFocusSiblings ? "sharedParentSiblings" : "noSharedParentSiblings")}</small></span>
+                </label>
+                <div className="family-expand-controls">
+                  <button type="button" disabled={!familyExpansions.ancestors} onClick={() => updateFamilyView("focus", familyExpansions.ancestors)}><ArrowUp aria-hidden="true" size={14} />{t("showMoreAncestors")}</button>
+                  <button type="button" disabled={!familyExpansions.descendants} onClick={() => updateFamilyView("focus", familyExpansions.descendants)}><ArrowDown aria-hidden="true" size={14} />{t("showMoreDescendants")}</button>
+                  {familyFocus.ancestors > 1 || familyFocus.descendants > 1 || familyFocus.siblings ? <button className="family-view-reset" type="button" aria-label={t("resetFamilyView")} title={t("resetFamilyView")} onClick={() => updateFamilyView("focus", { ...familyFocus, ancestors: 1, descendants: 1, siblings: undefined })}><RotateCcw aria-hidden="true" size={14} /></button> : null}
+                </div>
+              </> : null}
+            </FamilyViewControls> : null}
+            </div>
 
-            {showSettingsOnboarding ? (
+            {showSettingsOnboarding && !showAlternate ? (
               <div className="canvas-controls-hint onboarding-hint" role="note">
-                <span>{t("canvasToolsHint")}</span>
+                <span><b className="tutorial-step">4</b>{t("canvasToolsHint")}</span>
                 <svg aria-hidden="true" viewBox="0 0 76 58">
                   <path d="M5 5c23 4 43 25 57 45" />
                   <path d="m51 46 11 4 4-11" />

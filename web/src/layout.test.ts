@@ -592,6 +592,36 @@ describe("deterministic family layout", () => {
     expect(layout.bounds.height).toBe(layout.height);
   });
 
+  it("preserves every parent link when partners belong to different generations of the same family", () => {
+    const members = ["root", "root-partner", "son-a", "son-b", "son-c", "daughter", "daughter-b", "grandchild-a", "grandchild-b", "bride"].map((id) => person(id));
+    const edges = [
+      partner("root", "root-partner", "roots-married"),
+      ...["son-a", "son-b", "son-c", "daughter", "daughter-b"].flatMap((id) => [parent("root", id), parent("root-partner", id)]),
+      parent("son-b", "grandchild-a"), parent("son-c", "grandchild-b"), parent("daughter", "bride"),
+      partner("son-a", "bride", "cross-generation-marriage")
+    ];
+    const layout = createTreeLayout(members, edges);
+    const positions = new Map(layout.people.map((person) => [person.id, person]));
+    expect(positions.get("son-a")!.y).toBe(positions.get("bride")!.y);
+    expect(positions.get("daughter")!.y).toBeLessThan(positions.get("bride")!.y);
+    expect(positions.get("son-b")!.y).toBe(positions.get("daughter")!.y);
+    for (const edge of edges.filter((edge) => edge.kind === "parent")) {
+      expect(positions.get(edge.fromPersonId)!.y).toBeLessThan(positions.get(edge.toPersonId)!.y);
+    }
+    expect(layout.relationships.map((edge) => edge.id).sort()).toEqual(edges.map((edge) => edge.id).sort());
+    const plan = createConnectionPlan(layout, "en");
+    expect(plan.failures).toEqual([]);
+    expect(plan.nonParentRoutes.some((route) => route.relationship.id === "cross-generation-marriage")).toBe(true);
+    expect(plan.crossings).toEqual([]);
+    expect(plan.isValid).toBe(true);
+    expect(positions.get("daughter")!.x).toBe(positions.get("bride")!.x);
+    expect(positions.get("son-b")!.x).toBe(positions.get("grandchild-a")!.x);
+    expect(positions.get("son-c")!.x).toBe(positions.get("grandchild-b")!.x);
+    expect(positions.get("son-a")!.x).toBeLessThan(positions.get("daughter")!.x);
+    expect(layout.width).toBeLessThan(7 * LAYOUT_METRICS.horizontalSpacing);
+    expect(createTreeLayout([...members].reverse(), [...edges].reverse())).toEqual(layout);
+  });
+
   it("compacts a shallow ancestry branch when partners merge at a deeper generation", () => {
     const branchPeople = [
       person("deep-grandparent"), person("deep-parent"), person("deep-partner"),
@@ -679,6 +709,48 @@ describe("deterministic family layout", () => {
     expect(positioned.get("left-child")?.x).toBe(parentCenter("left-father", "left-mother"));
     expect(positioned.get("right-child")?.x).toBe(parentCenter("right-father", "right-mother"));
     expect(createConnectionPlan(value).crossings).toEqual([]);
+  });
+
+  it("reorders partners when ancestor alignment moves their parent families", () => {
+    const people = ["yatmin", "binem", "djemangun", "mudjiati", "karno", "sukamto", "fadmudikah", "child"]
+      .map((id) => person(id));
+    const relationships = [
+      parent("yatmin", "karno"), parent("binem", "karno"),
+      parent("yatmin", "sukamto"), parent("binem", "sukamto"),
+      parent("djemangun", "fadmudikah"), parent("mudjiati", "fadmudikah"),
+      partner("sukamto", "fadmudikah"),
+      parent("sukamto", "child"), parent("fadmudikah", "child")
+    ];
+    const layout = createTreeLayout(people, relationships);
+    const x = (id: string) => layout.people.find((person) => person.id === id)!.x;
+    expect(x("yatmin")).toBeLessThan(x("djemangun"));
+    expect(x("sukamto")).toBeLessThan(x("fadmudikah"));
+    expect(createConnectionPlan(layout).crossings).toEqual([]);
+    expect(createTreeLayout([...people].reverse(), [...relationships].reverse())).toEqual(layout);
+  });
+
+  it("keeps eight sibling branches above their own children without crossing rails", () => {
+    const people = [person("root-a"), person("root-b")];
+    const relationships = [partner("root-a", "root-b")];
+    for (let branch = 0; branch < 8; branch += 1) {
+      const id = `branch-${branch}`;
+      people.push(person(id));
+      relationships.push(parent("root-a", id), parent("root-b", id));
+      for (let child = 0; child < 2; child += 1) {
+        const childId = `child-${7 - branch}-${child}`;
+        people.push(person(childId));
+        relationships.push(parent(id, childId));
+      }
+    }
+    const layout = createTreeLayout(people, relationships);
+    expect(createConnectionPlan(layout).crossings).toEqual([]);
+    const x = (id: string) => layout.people.find((person) => person.id === id)!.x;
+    for (let branch = 0; branch < 8; branch += 1) {
+      expect(x(`branch-${branch}`)).toBe((x(`child-${7 - branch}-0`) + x(`child-${7 - branch}-1`)) / 2);
+    }
+    expect((x("root-a") + x("root-b")) / 2).toBe((x("branch-0") + x("branch-7")) / 2);
+    expect(layout.width).toBeLessThan(16 * LAYOUT_METRICS.horizontalSpacing);
+    expect(createTreeLayout([...people].reverse(), [...relationships].reverse())).toEqual(layout);
   });
 
   it("adds extra horizontal space between children from different families", () => {

@@ -1,7 +1,7 @@
-import { useId } from "react";
+import { useId, useMemo } from "react";
 
 import { isValidAvatarImage } from "./avatar";
-import { BIRTH_ORDER_BADGE, birthOrderLabel } from "./birthOrder";
+import { BIRTH_ORDER_BADGE, birthOrderBadgePosition, birthOrderLabel } from "./birthOrder";
 import type { ConnectionPlan } from "./connectionPlan";
 import { personCityTop, personLifeTop } from "./connectionGeometry";
 import {
@@ -14,6 +14,8 @@ import {
 import { LAYOUT_METRICS } from "./layout";
 import { personCitySummary, personLifeSummary } from "./lifeSummary";
 import { personAvatarAppearance } from "./personAvatarAppearance";
+import { visibleConnectionPlan } from "./visibleConnectionPlan";
+import { connectionTrace } from "./connectionTrace";
 import {
   formatPersonName,
   PERSON_NAME_FONT_SIZE,
@@ -32,6 +34,7 @@ interface SvgTreeSceneProps {
   layout: TreeLayout;
   lifeSummaryOptions?: SceneLifeSummaryOptions;
   selectedPersonId?: string;
+  traceSelectedConnections?: boolean;
 }
 
 const SCENE_COLORS = {
@@ -68,6 +71,7 @@ const PersonNode = ({
     ageOverride: lifeSummaryOptions.ageByPersonId?.[person.id]
   } : undefined);
   const city = personCitySummary(person);
+  const badge = birthOrderBadgePosition(person);
 
   return (
     <g className="svg-person" data-gender={person.gender} data-person-id={person.id}>
@@ -116,8 +120,8 @@ const PersonNode = ({
           <g className="svg-birth-order" data-birth-order={person.birthOrder}>
             <title>{birthOrderLabel(person.birthOrder, language)}</title>
             <circle
-              cx={person.x - BIRTH_ORDER_BADGE.offset}
-              cy={person.y - BIRTH_ORDER_BADGE.offset}
+              cx={badge.x}
+              cy={badge.y}
               fill={SCENE_COLORS.canvas}
               r={BIRTH_ORDER_BADGE.radius}
               stroke={appearance.stroke}
@@ -129,8 +133,8 @@ const PersonNode = ({
               fontSize={10}
               fontWeight={700}
               textAnchor="middle"
-              x={person.x - BIRTH_ORDER_BADGE.offset}
-              y={person.y - BIRTH_ORDER_BADGE.offset}
+              x={badge.x}
+              y={badge.y}
             >
               {person.birthOrder}
             </text>
@@ -193,19 +197,24 @@ const PersonNode = ({
 };
 
 export function SvgTreeScene({
-  connectionPlan,
+  connectionPlan: preparedPlan,
   language,
   layout,
   lifeSummaryOptions,
-  selectedPersonId
+  selectedPersonId,
+  traceSelectedConnections = false
 }: SvgTreeSceneProps) {
   const clipPrefix = useId().replaceAll(":", "-");
+  const connectionPlan = useMemo(() => visibleConnectionPlan(preparedPlan, layout, language, selectedPersonId, lifeSummaryOptions),
+    [preparedPlan, layout, language, selectedPersonId, lifeSummaryOptions]);
+  const trace = useMemo(() => connectionTrace(connectionPlan, layout.relationships, traceSelectedConnections ? selectedPersonId : undefined),
+    [connectionPlan, layout.relationships, traceSelectedConnections, selectedPersonId]);
   return <>
     <g className="svg-connectors">
       {connectionPlan.families.flatMap((family) =>
-        connectorPaths(family.segments).map((path, index) => (
+        (trace.families.get(family.id)?.paths ?? connectorPaths(family.segments).map((path) => ({ ...path, traced: false }))).map((path, index) => (
           <path
-            className="svg-connector family"
+            className={`svg-connector family${family.care ? " care" : ""}${path.traced ? " is-traced" : ""}`}
             d={roundedConnectorPath(path.points)}
             data-family-id={family.id}
             key={`${family.id}:path:${index}`}
@@ -215,7 +224,7 @@ export function SvgTreeScene({
       {connectionPlan.nonParentRoutes.flatMap((route) =>
         connectorPaths(route.segments).map((path, index) => (
           <path
-            className={`svg-connector ${route.relationship.kind}`}
+            className={`svg-connector ${route.relationship.kind}${trace.nonParents.has(route.id) ? " is-traced" : ""}`}
             d={roundedConnectorPath(path.points)}
             data-relationship-id={route.id}
             key={`${route.id}:path:${index}`}
@@ -238,14 +247,14 @@ export function SvgTreeScene({
           <line
             stroke={SCENE_COLORS.canvas}
             strokeLinecap="butt"
-            strokeWidth={CONNECTOR_STYLE.width + 4}
+            strokeWidth={CONNECTOR_STYLE.width + (trace.crosses(point, "vertical") ? 5 : 4)}
             x1={point.x}
             x2={point.x}
             y1={point.y - CONNECTOR_STYLE.crossingRadius - 5}
             y2={point.y + CONNECTOR_STYLE.crossingRadius + 5}
           />
           <line
-            className={`svg-connector ${point.horizontalKind}`}
+            className={`svg-connector ${point.horizontalKind}${point.horizontalDashed ? " dashed" : ""}${trace.crosses(point, "horizontal") ? " is-traced" : ""}`}
             x1={point.x - CONNECTOR_STYLE.crossingRadius - 5}
             x2={point.x + CONNECTOR_STYLE.crossingRadius + 7}
             y1={point.y}
@@ -256,16 +265,17 @@ export function SvgTreeScene({
             fill="none"
             stroke={SCENE_COLORS.canvas}
             strokeLinecap="round"
-            strokeWidth={CONNECTOR_STYLE.width + 4}
+            strokeWidth={CONNECTOR_STYLE.width + (trace.crosses(point, "vertical") ? 5 : 4)}
           />
           <path
-            className={`svg-connector ${point.kind}`}
+            className={`svg-connector ${point.kind}${point.dashed ? " dashed" : ""}${trace.crosses(point, "vertical") ? " is-traced" : ""}`}
             d={crossingBridgePath(point)}
             fill="none"
           />
         </g>
       ))}
-      {connectionPlan.nonParentRoutes.map((route) => route.label ? (
+      {[...connectionPlan.families, ...connectionPlan.nonParentRoutes,
+        ...connectionPlan.families.flatMap((family) => family.childLabels ?? [])].map((route) => route.label ? (
         <g className="svg-relationship-label" key={`${route.id}:label`}>
           <rect {...route.label.rect} rx={12} />
           <text textAnchor="middle" x={route.label.center.x} y={route.label.center.y + 4}>

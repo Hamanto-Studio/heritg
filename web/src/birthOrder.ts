@@ -5,6 +5,12 @@ export const BIRTH_ORDER_BADGE = {
   radius: 10
 } as const;
 
+/** Leave the upper avatar edge clear for recorded parent/care terminals. */
+export const birthOrderBadgePosition = ({ x, y }: { x: number; y: number }) => ({
+  x: x - BIRTH_ORDER_BADGE.offset,
+  y: y + BIRTH_ORDER_BADGE.offset
+});
+
 export function birthOrderLabel(order: number, language: "en" | "id"): string {
   if (language === "id") {
     if (order === 1) return "Anak pertama";

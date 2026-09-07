@@ -7,6 +7,7 @@ import {
   fitSceneRect,
   interpolateViewport,
   panViewport,
+  nearestCanvasPerson,
   sceneToViewport,
   zoomViewportAt
 } from "./canvasViewport";
@@ -16,6 +17,19 @@ const expectPointCloseTo = (actual: Point, expected: Point) => {
   expect(actual.x).toBeCloseTo(expected.x, 12);
   expect(actual.y).toBeCloseTo(expected.y, 12);
 };
+
+describe("overview person selection", () => {
+  it.each([0.001, 0.01, 0.1, 1])("picks the visible person at %s zoom instead of a later overlapping touch target", (zoom) => {
+    const people = [{ id: "a", x: 80, y: 100 }, { id: "b", x: 400, y: 100 }, { id: "c", x: 80, y: 400 }];
+    const viewport = { scrollX: 900, scrollY: -30, zoom };
+    for (const person of people) expect(nearestCanvasPerson(people, viewport, sceneToViewport(person, viewport))).toBe(person.id);
+  });
+  it("breaks distance ties deterministically and handles an empty tree", () => {
+    const viewport = { scrollX: 0, scrollY: 0, zoom: 1 };
+    expect(nearestCanvasPerson([{ id: "b", x: 1, y: 0 }, { id: "a", x: -1, y: 0 }], viewport, { x: 0, y: 0 })).toBe("a");
+    expect(nearestCanvasPerson([], viewport, { x: 0, y: 0 })).toBeUndefined();
+  });
+});
 
 describe("clampZoom", () => {
   it("keeps zoom inside the canvas limits", () => {
@@ -144,7 +158,7 @@ describe("fitSceneRect", () => {
 
   it("uses global zoom limits for defaults and degenerate rectangles", () => {
     const pointRect: SceneRect = { x: 40, y: -20, width: 0, height: 0 };
-    const lineRect: SceneRect = { x: 10, y: 15, width: 0, height: 12000 };
+    const lineRect: SceneRect = { x: 10, y: 15, width: 0, height: 1_200_000 };
 
     const pointFit = fitSceneRect(pointRect, viewportSize, { viewportFactor: 0.82 });
     const lineFit = fitSceneRect(lineRect, viewportSize, { viewportFactor: 0.82 });
@@ -153,6 +167,20 @@ describe("fitSceneRect", () => {
     expect(lineFit.zoom).toBe(MIN_CANVAS_ZOOM);
     expectCentered(pointRect, pointFit);
     expectCentered(lineRect, lineFit);
+  });
+
+  it("fits a broad 500-person tree without cropping its outer branches", () => {
+    const rect = { x: -45000, y: -32, width: 90000, height: 2000 };
+    for (const width of [390, 1280]) {
+      const fitted = fitSceneRect(rect, { width, height: 800 }, { viewportFactor: 0.82 });
+      const left = sceneToViewport({ x: rect.x, y: rect.y }, fitted);
+      const right = sceneToViewport({ x: rect.x + rect.width, y: rect.y + rect.height }, fitted);
+      expect(left.x).toBeGreaterThanOrEqual(0);
+      expect(right.x).toBeLessThanOrEqual(width);
+      expect(left.y).toBeGreaterThanOrEqual(0);
+      expect(right.y).toBeLessThanOrEqual(800);
+      expect(fitted.zoom).toBeLessThan(0.08);
+    }
   });
 
   it("rejects dimensions and options that cannot define a fit", () => {

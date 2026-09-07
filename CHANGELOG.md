@@ -20,6 +20,119 @@ prefix.
 
 ## Unreleased
 
+### Web
+
+- Kept person click targets aligned with the tree after keyboard navigation
+  and switching between Full and Focus.
+- Opened large Full trees at a readable family instead of an almost invisible
+  overview, while keeping every person on the canvas and retaining Fit all.
+- Kept Fan centered on the person selected elsewhere in the app, preserving
+  generation settings and Back navigation.
+- Opened large shared-adoption and linked-household Full trees faster by
+  accepting verified clear layouts without first routing a discarded drawing.
+- Kept related birth and adoptive households together with their shared
+  ancestry in Full view, removing crossings through neighboring family joins
+  without combining their recorded parent types or losing care relationships.
+- Added a selected-person Connections guide in Full view, with highlighted
+  recorded family paths, named-relative navigation, and a return action.
+- Fixed selecting the wrong person where overview click targets overlap,
+  and kept the selected relative readable when switching viewport sizes.
+- Untangled longer Full-tree loops when marriages join different ancestry
+  depths, keeping remarried partners above both households' earlier children.
+- Kept descendant branches clear when they leave nested, reconnecting family
+  loops, without hiding people or changing recorded relationships.
+- Separated reconverging ancestry and shared-loop marriage paths in Full trees,
+  preserving complete households and their recorded parent and care labels.
+- Fixed offset marriage lines that stopped just outside a person's circle.
+- Sped up large-family tree preparation by avoiding redundant route searches
+  and checking nearby obstacles without changing the resulting connections.
+- Kept siblings' different adoption and foster histories separate in large Full
+  trees, and restored guardian labels on vertical care connections.
+- Moved birth-order badges away from incoming parent and care lines.
+- Clarified Full trees whose siblings have recorded birth, adoptive, and foster
+  families, retaining every parent-type label and separate guardian connection.
+- Kept intermarrying sibling families and their attached unions and descendants
+  together in Full view, with separate origin-family lines and complete records.
+- Let crossing family lines take longer clear routes around neighboring
+  branches in Full view, preserving their people, connections and typed labels.
+- Reduced crossings in Full trees that combine reconnecting marriages with
+  multiple unions and care relationships, preserving every recorded connection.
+  Complex-family clarity improvements remain in progress.
+- Fixed overlapping family joins caused by earlier connector detours.
+- Separated intermarrying sibling households into clear origin-family corridors,
+  keeping each person's ancestry and complete descendant family attached.
+- Separated shared biological/adoptive sibling households into individually
+  labeled side corridors in Full view, retaining childless partnerships and
+  complete descendant families. Reserved more room for parent-type labels in
+  compact views too.
+- Added coordinated whole-branch routing for crossed Full trees, retaining all
+  people and relationships and keeping compact layouts when already clear.
+- Kept parent and marriage lines attached when relationship labels, birthdays,
+  or ages are hidden. Refit outdated saved views that no longer show a person.
+- Kept connected spouse-origin branches together in complex Full trees and
+  separated birth/adoptive households during layout. Compound-family crossing
+  reduction remains in progress; no people or relationships are hidden.
+- Gave isolated guardians a clear connection below a child's shared ancestry
+  line, retaining the labeled care relationship and recorded parent sets.
+- Separated nested spouse households with coordinated marriage and child
+  connections, removing crossings in the covered 500-person multiple-wife
+  trees without losing people or recorded relationships.
+- Kept birth, adoptive, and foster parent sets distinct, with labeled child
+  connections in the canvas and image exports. Untangled converging parent
+  sets without hiding people or changing their recorded relationships.
+- Preferred clear marriage-connector routes over shorter crossing paths in
+  large families with multiple unions.
+- Kept expanded Focus views readable when changing people, with a separate
+  Fit overview that still includes the entire displayed family.
+- Kept descendant households together when spouses bring independent in-law
+  parents, and untangled shared parents' connectors in remarried families.
+- Gave independent in-law ancestors their own space below sibling lines,
+  keeping their connections separate without changing recorded generations.
+- Clarified guardian branches and remarriage chains while retaining explicit
+  relationships. Large, mixed-family crossing reduction remains in progress.
+- Separated competing family connectors into their own lanes, with extra
+  generation spacing and improved ordering when marriages join ancestry.
+- Accelerated distant-partner routing for large archives without dropping
+  people or relationships; complex 500-person crossing clarity remains in progress.
+- Reserved more space for descendant households and stopped child rails from
+  merging into neighboring families. Removed redundant half-/step-sibling
+  lines already represented by recorded parents, without changing archives.
+- Allowed very wide trees to fit fully on the canvas, with gentler zoom steps
+  at overview scale. Added synthetic Indonesian-family stress cases up to 500
+  people; complex-family clarity improvements remain in progress.
+- Simplified the view selector to Focus, Full, and Fan, removing Family groups,
+  People, Ancestors, and the expandable “Find another person” section.
+- Kept every word of Fan names visible with up to three fitted lines instead
+  of truncated labels.
+- Added smooth person-to-person camera and Fan transitions, preserving the
+  current scene while a family loads and respecting reduced-motion preferences.
+- Matched Fan's children to the radial chart: curved segments below the current
+  person replace tree cards. Larger families can page through children without
+  squeezing names into tiny slices; Back remembers the previous child page.
+- Added direct parent and child navigation in Fan. Tap relatives to explore
+  without a menu, with Back and generation depth preserved. Names stay inside
+  their segments and remain complete in accessible labels and person details.
+- Added Fan alongside Focus and Full in the existing view selector. All three
+  presentations use the same archive without changing exports; unknown
+  ancestors stay explicit.
+- Removed the experimental Map, Timeline, and Branches views to simplify
+  the selector, following user feedback.
+- Showed the add-relative and edit buttons only for the selected person,
+  keeping unselected people free of floating action buttons.
+- Added an optional sibling view in Focus mode for people who share a parent,
+  without expanding their partners or descendants.
+- Moved the tree-view switch beside the visibility button and added numbered
+  onboarding hints, including guidance for choosing a view before adding people.
+- Kept expanded ancestor and descendant depths when selecting another person
+  or switching between focused-family and full-tree views.
+- Fixed disappearing full-tree connections when a marriage joins different
+  generations of the same family, preserving parent-child links and the couple.
+- Improved full-tree branch placement for cross-generation marriages, aligning
+  parents over their children and using clear outer stems instead of crossing rails.
+- Added a focused family view with a person picker and expandable ancestor and
+  descendant generations. Full-tree browsing and complete chart exports remain
+  available without changing the saved archive or sharing scope.
+
 ### iOS
 
 - Migrated local family storage to Core Data while preserving the private,

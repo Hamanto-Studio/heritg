@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { birthOrderLabel, deriveBirthOrders } from "./birthOrder";
+import { BIRTH_ORDER_BADGE, birthOrderBadgePosition, birthOrderLabel, deriveBirthOrders } from "./birthOrder";
 import type { FamilyRelationship, Person } from "./types";
 
 const person = (
@@ -42,6 +42,16 @@ const familyRelationships = [
 ];
 
 describe("birth order", () => {
+  it("keeps the badge clear of every upper-half parent terminal and side marriage ports", () => {
+    const badge = birthOrderBadgePosition({ x: 100, y: 200 });
+    expect(badge).toEqual({ x: 77, y: 223 });
+    for (let offset = -32; offset <= 32; offset++) {
+      const terminal = { x: 100 + offset, y: 200 - Math.sqrt(32 ** 2 - offset ** 2) };
+      expect(Math.hypot(badge.x - terminal.x, badge.y - terminal.y)).toBeGreaterThan(BIRTH_ORDER_BADGE.radius + 3);
+    }
+    // The badge ends before the person's name block begins (44 units down).
+    expect(badge.y + BIRTH_ORDER_BADGE.radius + 1).toBeLessThan(244);
+  });
   it("describes ordinal badges in English and Indonesian", () => {
     expect([1, 2, 3, 4, 11, 22].map((order) => birthOrderLabel(order, "en"))).toEqual([
       "First child", "Second child", "Third child", "4th child", "11th child", "22nd child"

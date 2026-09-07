@@ -2,7 +2,9 @@ import type { ViewportState } from "./types";
 
 export type { ViewportState } from "./types";
 
-export const MIN_CANVAS_ZOOM = 0.08;
+// Wide 500-person trees can exceed 90,000 scene units. Fit-all must not clip
+// most of the family just because its natural overview is below eight percent.
+export const MIN_CANVAS_ZOOM = 0.001;
 export const MAX_CANVAS_ZOOM = 1.8;
 
 export interface Point {
@@ -117,3 +119,17 @@ export const interpolateViewport = (
     zoom: from.zoom + (to.zoom - from.zoom) * amount
   };
 };
+/** Minimum touch targets overlap at Full-tree overview zoom. Resolve pointer
+ * selections by visible distance, not which transparent button paints last.
+ * Keyboard activation keeps the explicitly focused person's identity. */
+export function nearestCanvasPerson(people: readonly (Point & { id: string })[], viewport: ViewportState, pointer: Point) {
+  let nearest: string | undefined, distance = Infinity;
+  for (const person of people) {
+    const screen = sceneToViewport(person, viewport);
+    const candidate = (screen.x - pointer.x) ** 2 + (screen.y - pointer.y) ** 2;
+    if (candidate < distance || candidate === distance && (!nearest || person.id < nearest)) {
+      nearest = person.id; distance = candidate;
+    }
+  }
+  return nearest;
+}

@@ -122,6 +122,22 @@ export const segmentIntersectsRect = (
   return false;
 };
 
+export const isAvatarCircleTerminal = (point: RoutePoint, obstacle: RouteObstacle) => {
+  if (obstacle.kind !== "avatar") return false;
+  const { x, y, width, height } = obstacle.rect;
+  const dx = (point.x - x - width / 2) / (width / 2);
+  const dy = (point.y - y - height / 2) / (height / 2);
+  return Math.abs(dx * dx + dy * dy - 1) < ROUTE_EPSILON;
+};
+
+const circleTerminalExit = (segment: RouteSegment, obstacle: RouteObstacle, endpointIds: ReadonlySet<string>) =>
+  endpointIds.has(obstacle.ownerId) && [[segment.start, segment.end], [segment.end, segment.start]].some(([point, other]) => {
+    if (!isAvatarCircleTerminal(point, obstacle)) return false;
+    const centerX = obstacle.rect.x + obstacle.rect.width / 2, centerY = obstacle.rect.y + obstacle.rect.height / 2;
+    return (segmentOrientation(segment) === "vertical" && (point.y - centerY) * (other.y - point.y) > 0) ||
+      (segmentOrientation(segment) === "horizontal" && (point.x - centerX) * (other.x - point.x) > 0);
+  });
+
 const terminalContact = (point: RoutePoint, obstacle: RouteObstacle) => {
   const { x, y, width, height } = obstacle.rect;
   if (obstacle.kind === "avatar") {
@@ -169,6 +185,9 @@ export const hasForbiddenIntersection = (
   endpointIds: ReadonlySet<string>
 ) => {
   if (!segmentIntersectsRect(segment, obstacle.rect)) return false;
+  // Offset care sockets meet the circle, not its bounding square. An outward
+  // radial-side exit may cross that square's empty corner without hitting the avatar.
+  if (circleTerminalExit(segment, obstacle, endpointIds)) return false;
   if (!permitsTerminalExit(segment, obstacle, endpointIds)) return true;
   return segmentIntersectsRect(segment, obstacle.rect, 0);
 };
@@ -224,19 +243,20 @@ export const personCityTop = (
   : (showRole ? LAYOUT_METRICS.roleTop + LAYOUT_METRICS.roleHeight :
       LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight) + nameExtraHeight;
 
-export const nodeLabelRect = (person: PositionedPerson): RouteRect => {
+export const nodeLabelRect = (person: PositionedPerson, visible?: { showRole: boolean; hasLife: boolean }): RouteRect => {
   const nameExtraHeight = formatPersonName(person.displayName).extraHeight;
-  const hasLife = hasLifeText(person);
+  const hasLife = visible?.hasLife ?? hasLifeText(person);
+  const showRole = visible?.showRole ?? Boolean(person.role);
   const hasCity = Boolean(person.city.trim());
   return {
     x: person.x - LAYOUT_METRICS.labelWidth / 2,
     y: person.y + LAYOUT_METRICS.labelTop,
     width: LAYOUT_METRICS.labelWidth,
     height: (hasCity
-      ? personCityTop(Boolean(person.role), hasLife, nameExtraHeight) + LAYOUT_METRICS.lifeHeight
+      ? personCityTop(showRole, hasLife, nameExtraHeight) + LAYOUT_METRICS.lifeHeight
       : hasLife
-        ? personLifeTop(Boolean(person.role), nameExtraHeight) + LAYOUT_METRICS.lifeHeight
-      : person.role
+        ? personLifeTop(showRole, nameExtraHeight) + LAYOUT_METRICS.lifeHeight
+      : showRole
         ? LAYOUT_METRICS.roleTop + nameExtraHeight + LAYOUT_METRICS.roleHeight
         : LAYOUT_METRICS.labelTop + LAYOUT_METRICS.nameHeight + nameExtraHeight) -
       LAYOUT_METRICS.labelTop

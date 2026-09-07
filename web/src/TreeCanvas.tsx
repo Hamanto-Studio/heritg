@@ -12,7 +12,7 @@ const ExcalidrawTreeCanvas = __EXCALIDRAW_FALLBACK__
   : undefined;
 
 export const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(props, ref) {
-  return ExcalidrawTreeCanvas ? (
+  return ExcalidrawTreeCanvas && !props.familyFocus ? (
     <Suspense fallback={null}>
       <ExcalidrawTreeCanvas {...props} ref={ref} />
     </Suspense>

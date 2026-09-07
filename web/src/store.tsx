@@ -91,7 +91,7 @@ export interface AppActions {
   setRelationshipLanguage(language: RelationshipLanguage): void;
   setViewport(treeId: string, viewport: ViewportState): void;
   replaceData(data: unknown): void;
-  importData(data: unknown): void;
+  importData(data: unknown): Promise<void>;
   replaceDataPersisted(data: unknown, expectedDataFingerprint: string): Promise<boolean>;
   applySyncedData(data: unknown, expectedDataFingerprint: string, accountId: string, mappings: readonly SyncMapping[]): Promise<boolean>;
   prepareSyncData(): Promise<{ data: AppData; currentDataFingerprint: string }>;
@@ -210,7 +210,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .then((stored) => {
         if (!active) return;
         const next = stored ? replaceAppData(stored) : createInitialAppData();
-        persistedFingerprintRef.current = stored ? syncDataFingerprint(next) : undefined;
+        // Compare against the record actually on disk, before adding defaults
+        // for older archives. Otherwise migration is mistaken for a tab conflict.
+        persistedFingerprintRef.current = stored ? syncDataFingerprint(stored) : undefined;
         queuedFingerprintRef.current = persistedFingerprintRef.current;
         dataRef.current = next;
         setData(next);
@@ -489,6 +491,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     commit(() => [next, undefined]);
   }
 
+  async function importData(replacement: unknown) {
+    const current = dataRef.current;
+    if (!current) throw new Error("The family data store is not ready.");
+    const imported = await replaceDataPersisted(replacement, syncDataFingerprint(current));
+    if (!imported) throw new Error("Family data changed while importing. Please try again.");
+  }
+
   async function replaceDataPersisted(replacement: unknown, expectedDataFingerprint: string) {
     const current = dataRef.current;
     if (!current || syncDataFingerprint(current) !== expectedDataFingerprint) return false;
@@ -567,7 +576,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRelationshipLanguage,
     setViewport,
     replaceData,
-    importData: replaceData,
+    importData,
     replaceDataPersisted,
     applySyncedData,
     prepareSyncData,

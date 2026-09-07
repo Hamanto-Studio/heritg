@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Synthetic accessibility target diagnostic</title></head>
+  <body>
+    <h1>Plain synthetic buttons</h1>
+    <p>No canvas, transforms, positioning, hidden content or family archives.</p>
+    <label>Button count <select id="count"><option>250</option><option>499</option><option selected>500</option><option>501</option></select></label>
+    <main id="targets" aria-label="Synthetic targets"></main>
+    <script type="module">
+      const count = document.getElementById("count"), targets = document.getElementById("targets");
+      const render = () => {
+        targets.replaceChildren(...Array.from({length: Number(count.value)}, (_, index) => {
+          const button = document.createElement("button");
+          button.textContent = `Target ${index + 1}`;
+          button.addEventListener("click", () => { button.textContent = `Selected ${index + 1}`; });
+          return button;
+        }));
+      };
+      count.addEventListener("change", render); render();
+    </script>
+  </body>
+</html>

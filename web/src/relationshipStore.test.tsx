@@ -114,6 +114,34 @@ afterEach(async () => {
 });
 
 describe("atomic relationship store actions", () => {
+  it("migrates older saved data and persists an import across a restart", async () => {
+    await act(async () => root?.unmount());
+    const legacy = family();
+    delete legacy.relationshipLanguage;
+    delete legacy.relationshipTerminology;
+    dbMocks.state.data = JSON.parse(JSON.stringify(legacy));
+    root = createRoot(container!);
+    await act(async () => root?.render(createElement(AppProvider, null, createElement(StoreProbe))));
+    await act(async () => currentActions().flushLocalSaves());
+    const imported = { ...currentData(), trees: currentData().trees.map((tree) => ({ ...tree, title: "Imported family" })) };
+    await act(async () => currentActions().importData(imported));
+    expect((dbMocks.state.data as AppData).trees[0].title).toBe("Imported family");
+    await act(async () => root?.unmount());
+    root = createRoot(container!);
+    await act(async () => root?.render(createElement(AppProvider, null, createElement(StoreProbe))));
+    expect(currentData().trees[0].title).toBe("Imported family");
+  });
+
+  it("rejects an import and restores the previous tree when saving fails", async () => {
+    await act(async () => currentActions().flushLocalSaves());
+    const before = currentData();
+    dbMocks.saveAppData.mockRejectedValueOnce(new Error("storage failed"));
+    await act(async () => {
+      await expect(currentActions().importData({ ...before, selectedTreeId: undefined })).rejects.toThrow("storage failed");
+    });
+    expect(currentData()).toBe(before);
+  });
+
   it("rolls back a synchronized replacement when atomic persistence fails", async () => {
     const before = currentData();
     const replacement: AppData = {

@@ -1,6 +1,12 @@
 import { deriveKinshipLabels, type KinshipLanguage } from "./kinship";
 import { deriveBirthOrders } from "./birthOrder";
 import { formatPersonName } from "./personName";
+import { joinedFamilyPositions } from "./joinedFamilyLayout";
+import { independentInlawGroups, insetInlawAncestors } from "./inlawCorridors";
+import { staggerUnionParents } from "./unionCorridors";
+import { insetCareParents } from "./careCorridors";
+import { familyRouteLanes, FAMILY_ROUTE_LANE_SPACING } from "./familyRouteLanes";
+import { isCareRelationship, isFamilyParent } from "./parentConnections";
 import type {
   FamilyRelationship,
   GenerationLimits,
@@ -130,7 +136,7 @@ const buildGenerationMap = (
   const groups = new StableGroups(ids);
 
   for (const relationship of relationships) {
-    if (relationship.kind !== "parent") {
+    if (relationship.kind === "partner") {
       groups.union(relationship.fromPersonId, relationship.toPersonId);
     }
   }
@@ -147,6 +153,44 @@ const buildGenerationMap = (
       groups.union(ordered[0], ordered[index]);
     }
   }
+  const parentGroupGraph = () => {
+    const graph = new Map<string, Set<string>>();
+    for (const relationship of relationships) {
+      if (relationship.kind !== "parent") continue;
+      const from = groups.find(relationship.fromPersonId);
+      const to = groups.find(relationship.toPersonId);
+      if (from === to) continue;
+      if (!graph.has(from)) graph.set(from, new Set());
+      graph.get(from)!.add(to);
+    }
+    return graph;
+  };
+  const reachable = (start: string, graph: Map<string, Set<string>>) => {
+    const visited = new Set<string>();
+    const queue = [start];
+    for (let index = 0; index < queue.length; index++) {
+      for (const next of graph.get(queue[index]) ?? []) {
+        if (visited.has(next)) continue;
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+    return visited;
+  };
+  const alignSiblings = (first: string, second: string) => {
+    const from = groups.find(first);
+    const to = groups.find(second);
+    if (from === to) return;
+    const graph = parentGroupGraph();
+    // Row alignment is a preference, not a genealogical constraint. A marriage
+    // across generations can put one sibling's partner below another sibling.
+    // Merging those rows would erase a parent edge or introduce a rank cycle.
+    if (reachable(from, graph).has(to) || reachable(to, graph).has(from)) return;
+    groups.union(first, second);
+  };
+  for (const relationship of relationships) {
+    if (relationship.kind === "sibling") alignSiblings(relationship.fromPersonId, relationship.toPersonId);
+  }
   const childrenByParent = new Map<string, string[]>();
   for (const relationship of relationships) {
     if (relationship.kind !== "parent") continue;
@@ -156,8 +200,17 @@ const buildGenerationMap = (
   }
   for (const children of childrenByParent.values()) {
     const ordered = [...new Set(children)].sort(compareText);
+    const graph = parentGroupGraph();
+    const downstream = new Set<string>();
+    const peers = new Set(ordered.map((id) => groups.find(id)));
+    for (const peer of peers) for (const descendant of reachable(peer, graph)) {
+      if (peers.has(descendant)) downstream.add(descendant);
+    }
+    // Align ordinary siblings first, leaving the cross-generation spouse on
+    // the lower row rather than pulling all their siblings down with them.
+    ordered.sort((a, b) => Number(downstream.has(groups.find(a))) - Number(downstream.has(groups.find(b))) || compareText(a, b));
     for (let index = 1; index < ordered.length; index += 1) {
-      groups.union(ordered[0], ordered[index]);
+      alignSiblings(ordered[0], ordered[index]);
     }
   }
 
@@ -416,6 +469,7 @@ const orderRow = (
     const stableRank = new Map(members.map((person, index) => [person.id, index]));
     const partnerGroups = new StableGroups(memberIds);
     const partnerDegree = new Map<string, number>();
+    const partnerNeighbors = new Map<string, Set<string>>();
     for (const relationship of relationships) {
       if (
         relationship.kind !== "partner" ||
@@ -423,6 +477,10 @@ const orderRow = (
         !memberIds.has(relationship.toPersonId)
       ) continue;
       partnerGroups.union(relationship.fromPersonId, relationship.toPersonId);
+      for (const [from, to] of [[relationship.fromPersonId, relationship.toPersonId], [relationship.toPersonId, relationship.fromPersonId]]) {
+        if (!partnerNeighbors.has(from)) partnerNeighbors.set(from, new Set());
+        partnerNeighbors.get(from)!.add(to);
+      }
       partnerDegree.set(
         relationship.fromPersonId,
         (partnerDegree.get(relationship.fromPersonId) ?? 0) + 1
@@ -441,6 +499,20 @@ const orderRow = (
         (stableRank.get(left[0].id) ?? 0) - (stableRank.get(right[0].id) ?? 0)
       );
     members.splice(0, members.length, ...partnerComponents.flatMap((component) => {
+      // Remarriage often forms a simple chain, not a star: former spouse ↔
+      // parent ↔ current spouse ↔ their former spouse. Follow the actual
+      // partnerships so every couple is adjacent instead of centering one hub.
+      const endpoints = component.filter((person) => partnerNeighbors.get(person.id)?.size === 1);
+      if (component.length > 2 && endpoints.length === 2 && component.every((person) => (partnerNeighbors.get(person.id)?.size ?? 0) <= 2)) {
+        const path: Person[] = [];
+        let id: string | undefined = endpoints[0].id, previous: string | undefined;
+        while (id && path.length < component.length) {
+          path.push(peopleById.get(id)!);
+          const next: string | undefined = [...partnerNeighbors.get(id)!].find((neighbor) => neighbor !== previous);
+          previous = id; id = next;
+        }
+        if (path.length === component.length) return path;
+      }
       const hub = [...component].sort((left, right) =>
         (partnerDegree.get(right.id) ?? 0) - (partnerDegree.get(left.id) ?? 0) ||
         (stableRank.get(left.id) ?? 0) - (stableRank.get(right.id) ?? 0)
@@ -701,6 +773,11 @@ export function createTreeLayout(
   // Ancestor alignment can move branches after their rows were laid out. Sweep downward
   // once more from the updated parent positions to regroup siblings and remove crossings.
   for (const generation of rowGenerations) {
+    // Recompute partner order too: the upward pass may have reversed the order
+    // of their parent families since the first placement.
+    const updatedBlocks = generation === minimumGeneration
+      ? [...(blocksByGeneration.get(generation) ?? [])]
+      : orderRow(rows.get(generation) ?? [], orderedRelationships, positioned);
     const parentStart = (block: ReturnType<typeof orderRow>[number]) => {
       const memberIndex = new Map(block.members.map((person, index) => [person.id, index]));
       const starts = orderedRelationships
@@ -722,23 +799,219 @@ export function createTreeLayout(
         relationship.kind === "parent" && ids.has(relationship.fromPersonId)
       );
     };
-    const blocks = [...(blocksByGeneration.get(generation) ?? [])].sort((left, right) =>
+    const blocks = updatedBlocks.sort((left, right) =>
       parentStart(left) - parentStart(right) ||
       Number(hasDescendants(left)) - Number(hasDescendants(right)) ||
       compareText(left.key, right.key)
     );
+    blocksByGeneration.set(generation, blocks);
     let nextX: number | undefined;
     blocks.forEach((block, blockIndex) => {
       const members = block.members.map((person) => positioned.get(person.id)!);
       const gap = blockIndex > 0 && needsFamilyGap(blocks[blockIndex - 1], block)
         ? LAYOUT_METRICS.familyGap : 0;
-      const desiredStart = generation === minimumGeneration ? members[0].x : parentStart(block);
+      // Keep the space allocated by the upward pass for descendant families.
+      // Pulling these parents back toward their own parents collapses wide
+      // sibling branches and sends their child rails across neighboring trees.
+      const desiredStart = generation === minimumGeneration || hasDescendants(block)
+        ? Math.min(...members.map((person) => person.x)) : parentStart(block);
       const startX = nextX === undefined ? desiredStart : Math.max(desiredStart, nextX + gap);
-      const shift = startX - members[0].x;
-      if (shift !== 0) members.forEach((person) => { person.x += shift; });
+      members.forEach((person, index) => {
+        person.x = startX + index * LAYOUT_METRICS.horizontalSpacing;
+      });
       nextX = members[0].x + members.length * LAYOUT_METRICS.horizontalSpacing;
     });
   }
+
+  // Reserve subtree widths before placing simple forests and unions whose
+  // ancestry can share a primary branch. Keep the general alignment sweeps for
+  // other joined ancestry, without accumulating whitespace on ordinary trees.
+  const simpleBlocks = rowGenerations.flatMap((generation) => blocksByGeneration.get(generation) ?? []);
+  const blockForPerson = new Map(simpleBlocks.flatMap((block) => block.members.map((person) => [person.id, block] as const)));
+  // A hanging, single-child in-law couple is an inset ancestor, not a second
+  // descendant backbone. Do not let it interleave otherwise disjoint sibling
+  // subtrees in the general DAG ordering. Its people and edges remain present;
+  // the physical inset is placed after the descendant slots are reserved.
+  const insetRootBlocks = new Set(independentInlawGroups(resultPeople, orderedRelationships).flatMap((family) => {
+    const parent = blockForPerson.get(family.parentIds[0])!;
+    const child = blockForPerson.get(family.childIds[0])!;
+    return parent.members.length === 2 && child.members.length === 2 &&
+      family.parentIds.every((id) => blockForPerson.get(id) === parent) ? [parent] : [];
+  }));
+  const parentsOfBlock = new Map(simpleBlocks.map((block) => [block, new Set<typeof block>()]));
+  const childrenOfBlock = new Map(simpleBlocks.map((block) => [block, new Set<typeof block>()]));
+  for (const relationship of orderedRelationships) {
+    if (relationship.kind !== "parent") continue;
+    const parentBlock = blockForPerson.get(relationship.fromPersonId);
+    const childBlock = blockForPerson.get(relationship.toPersonId);
+    if (!parentBlock || !childBlock || parentBlock === childBlock) continue;
+    if (insetRootBlocks.has(parentBlock)) continue;
+    if (positioned.get(relationship.fromPersonId)!.generation >= positioned.get(relationship.toPersonId)!.generation) continue;
+    parentsOfBlock.get(childBlock)!.add(parentBlock);
+    childrenOfBlock.get(parentBlock)!.add(childBlock);
+  }
+  const isSimpleForest = simpleBlocks.every((block) => {
+    const parents = parentsOfBlock.get(block)!;
+    // A descendant's spouse does not stop this being a branch. Reserve the
+    // complete household's descendant width, including all of its partners.
+    // Only unions connecting independent ancestral branches need the DAG path.
+    return parents.size <= 1;
+  });
+  type Block = typeof simpleBlocks[number];
+  const primaryParent = new Map<Block, Block>();
+  const crossGenerationUnions: Block[] = [];
+  const isAncestorBlock = (ancestor: Block, descendant: Block) => {
+    const queue = [descendant];
+    const seen = new Set(queue);
+    for (let index = 0; index < queue.length; index++) {
+      for (const parent of parentsOfBlock.get(queue[index])!) {
+        if (parent === ancestor) return true;
+        if (!seen.has(parent)) { seen.add(parent); queue.push(parent); }
+      }
+    }
+    return false;
+  };
+  const canUsePrimaryBranches = simpleBlocks.every((block) => {
+    const parents = [...parentsOfBlock.get(block)!];
+    if (!parents.length) return true;
+    const level = (parent: Block) => positioned.get(parent.members[0].id)!.generation;
+    parents.sort((a, b) => level(b) - level(a) || compareText(a.key, b.key));
+    const closest = parents[0];
+    if (parents.slice(1).some((parent) => level(parent) === level(closest) || !isAncestorBlock(parent, closest))) return false;
+    primaryParent.set(block, closest);
+    if (parents.length > 1) crossGenerationUnions.push(block);
+    return true;
+  });
+  const usePrimaryBranches = canUsePrimaryBranches && crossGenerationUnions.length > 0;
+  const outerBranches = new Set<Block>();
+  if (usePrimaryBranches) {
+    // A union can belong to both a nearby parent and an earlier ancestor.
+    // Allocate its space once under the nearby branch, retaining ALL edges for
+    // routing. Put that branch at the outside so the long ancestor stem has a
+    // clear corridor rather than cutting across unrelated descendants.
+    for (const children of childrenOfBlock.values()) children.clear();
+    for (const [child, parent] of primaryParent) childrenOfBlock.get(parent)!.add(child);
+    for (const union of crossGenerationUnions) {
+      const nearbyParent = primaryParent.get(union)!;
+      const remoteChild = (id: string) => orderedRelationships.some((edge) => edge.kind === "parent" && edge.toPersonId === id && blockForPerson.get(edge.fromPersonId) !== nearbyParent);
+      union.members.sort((a, b) => Number(remoteChild(b.id)) - Number(remoteChild(a.id)) || comparePeople(a, b));
+      let branch: Block | undefined = nearbyParent;
+      while (branch) { outerBranches.add(branch); branch = primaryParent.get(branch); }
+    }
+  }
+  if (isSimpleForest || usePrimaryBranches) {
+    // Name sorting must not interleave children from different unions. Keep
+    // each recorded parent set under its own side of the shared household;
+    // name order is only a tie-break within that branch.
+    const childSource = (block: Block, child: Block) => {
+      const ids = new Set(child.members.map((person) => person.id));
+      const source = orderedRelationships.filter((edge) => isFamilyParent(edge) && ids.has(edge.toPersonId))
+        .map((edge) => block.members.findIndex((person) => person.id === edge.fromPersonId)).filter((index) => index >= 0);
+      return source.length ? source.reduce((sum, index) => sum + index, 0) / source.length : block.members.length / 2;
+    };
+    const childSources = new Map(simpleBlocks.flatMap((block) => [...childrenOfBlock.get(block)!].map((child) => [child, childSource(block, child)] as const)));
+    const orderedChildren = (block: typeof simpleBlocks[number]) => [...childrenOfBlock.get(block)!]
+      .sort((left, right) => Number(outerBranches.has(right)) - Number(outerBranches.has(left)) ||
+        childSources.get(left)! - childSources.get(right)! || comparePeople(left.members[0], right.members[0]) || compareText(left.key, right.key));
+    const widths = new Map<typeof simpleBlocks[number], number>();
+    const childrenSpan = (children: typeof simpleBlocks) => children.reduce((sum, child, index) =>
+      sum + widths.get(child)! + (index > 0 && needsFamilyGap(children[index - 1], child) ? LAYOUT_METRICS.familyGap : 0), 0);
+    for (const generation of [...rowGenerations].reverse()) {
+      for (const block of blocksByGeneration.get(generation) ?? []) {
+        const children = orderedChildren(block);
+        const childrenWidth = childrenSpan(children);
+        widths.set(block, Math.max(block.members.length * LAYOUT_METRICS.horizontalSpacing, childrenWidth));
+      }
+    }
+    const roots = simpleBlocks.filter((block) => !insetRootBlocks.has(block) && parentsOfBlock.get(block)!.size === 0)
+      .sort((left, right) => comparePeople(left.members[0], right.members[0]) || compareText(left.key, right.key));
+    const totalWidth = roots.reduce((sum, root) => sum + widths.get(root)!, 0) +
+      Math.max(0, roots.length - 1) * LAYOUT_METRICS.familyGap;
+    const queue: { block: typeof simpleBlocks[number]; left: number }[] = [];
+    let rootLeft = -totalWidth / 2;
+    for (const root of roots) {
+      queue.push({ block: root, left: rootLeft });
+      rootLeft += widths.get(root)! + LAYOUT_METRICS.familyGap;
+    }
+    for (let index = 0; index < queue.length; index += 1) {
+      const { block, left } = queue[index];
+      const center = left + widths.get(block)! / 2;
+      block.members.forEach((person, memberIndex) => {
+        positioned.get(person.id)!.x = center + (memberIndex - (block.members.length - 1) / 2) * LAYOUT_METRICS.horizontalSpacing;
+      });
+      const children = orderedChildren(block);
+      const childrenWidth = childrenSpan(children);
+      let childLeft = center - childrenWidth / 2;
+      for (const [childIndex, child] of children.entries()) {
+        if (childIndex > 0 && needsFamilyGap(children[childIndex - 1], child)) childLeft += LAYOUT_METRICS.familyGap;
+        queue.push({ block: child, left: childLeft });
+        childLeft += widths.get(child)!;
+      }
+    }
+    if (isSimpleForest || usePrimaryBranches) {
+      // Align to the actual child within a couple, not to the couple's midpoint.
+      // This gives ordinary branches a straight stem and avoids parallel rails.
+      for (const generation of [...rowGenerations].reverse()) {
+        for (const block of blocksByGeneration.get(generation) ?? []) {
+          const ids = new Set(block.members.map((person) => person.id));
+          const childXs = orderedRelationships.filter((edge) => edge.kind === "parent" && ids.has(edge.fromPersonId))
+            .map((edge) => positioned.get(edge.toPersonId))
+            .filter((person): person is PositionedPerson => person !== undefined && person.generation > generation)
+            .map((person) => person.x);
+          if (!childXs.length) continue;
+          const center = (Math.min(...childXs) + Math.max(...childXs)) / 2;
+          // A guardian without a recorded partnership belongs beside the
+          // branch they care for, not before the couple because they are older.
+          // Keep couples intact and move only care-only members of this block.
+          const careTargets = new Map(block.members.flatMap((person) => {
+            const outgoing = orderedRelationships.filter((edge) => edge.fromPersonId === person.id && edge.kind === "parent");
+            if (!outgoing.length || outgoing.some((edge) => !isCareRelationship(edge)) ||
+                orderedRelationships.some((edge) => edge.kind === "partner" && [edge.fromPersonId, edge.toPersonId].includes(person.id))) return [];
+            const xs = outgoing.map((edge) => positioned.get(edge.toPersonId)!.x);
+            return [[person.id, xs.reduce((sum, x) => sum + x, 0) / xs.length] as const];
+          }));
+          const carers = block.members.filter((person) => careTargets.has(person.id))
+            .sort((a, b) => careTargets.get(a.id)! - careTargets.get(b.id)! || comparePeople(a, b));
+          if (carers.length) block.members.splice(0, block.members.length,
+            ...carers.filter((person) => careTargets.get(person.id)! < center),
+            ...block.members.filter((person) => !careTargets.has(person.id)),
+            ...carers.filter((person) => careTargets.get(person.id)! >= center));
+          block.members.forEach((person, index) => {
+            positioned.get(person.id)!.x = center + (index - (block.members.length - 1) / 2) * LAYOUT_METRICS.horizontalSpacing;
+          });
+        }
+      }
+    }
+  }
+
+  if (!isSimpleForest && !usePrimaryBranches) {
+    const joined = joinedFamilyPositions(simpleBlocks, positioned, orderedRelationships,
+      LAYOUT_METRICS.horizontalSpacing, LAYOUT_METRICS.familyGap);
+    for (const [id, x] of joined) positioned.get(id)!.x = x;
+  }
+
+  // Do not squeeze several relationship corridors into the ordinary row gap.
+  // Reserve enough space above the child rails and below the longest labels;
+  // generation numbers stay logical while their physical spacing can grow.
+  const laneReservations = familyRouteLanes(resultPeople, orderedRelationships);
+  const newRowY = new Map<number, number>([[rowGenerations[0], 0]]);
+  for (let index = 1; index < rowGenerations.length; index++) {
+    const previous = rowGenerations[index - 1], generation = rowGenerations[index];
+    const row = resultPeople.filter((person) => person.generation === previous);
+    const originalY = row[0].y;
+    const childY = resultPeople.find((person) => person.generation === generation)!.y;
+    const parentLanes = Math.max(0, ...laneReservations.filter((family) => family.parentBand === originalY).map((family) => family.parentLaneCount - 1));
+    const childLanes = Math.max(0, ...laneReservations.filter((family) => family.children.some((child) => child.y === childY)).map((family) => family.childLaneIndex));
+    const childStemClearance = Math.max(40, ...laneReservations.filter((family) => family.children.some((child) => child.y === childY)).map((family) => family.childStemClearance));
+    const labelBottom = Math.max(...row.map((person) => LAYOUT_METRICS.nodeBottom +
+      formatPersonName(person.displayName).extraHeight + (person.city.trim() ? LAYOUT_METRICS.lifeHeight : 0) + 16));
+    const clearance = labelBottom + 8 + 32 + childStemClearance + LAYOUT_METRICS.avatarRadius + (parentLanes + childLanes) * FAMILY_ROUTE_LANE_SPACING;
+    newRowY.set(generation, newRowY.get(previous)! + Math.max(LAYOUT_METRICS.generationSpacing, clearance));
+  }
+  for (const person of resultPeople) person.y = newRowY.get(person.generation)!;
+  staggerUnionParents(resultPeople, orderedRelationships);
+  const familyRailY = insetInlawAncestors(resultPeople, orderedRelationships, LAYOUT_METRICS.horizontalSpacing);
+  insetCareParents(resultPeople, orderedRelationships, familyRailY);
 
   const visibleRelationships = orderedRelationships.filter((relationship) => {
     if (!visible.has(relationship.fromPersonId) || !visible.has(relationship.toPersonId)) {
@@ -772,7 +1045,8 @@ export function createTreeLayout(
     relationships: visibleRelationships,
     width: bounds.width,
     height: bounds.height,
-    bounds
+    bounds,
+    ...(Object.keys(familyRailY).length ? { familyRailY } : {})
   };
 }
 
