@@ -26,6 +26,8 @@ prefix.
   explicit prices, shortened test durations, and manual-renewal terms.
 - Preserve the selected plan across checkout retries and stop cloud writes when
   paid access expires, without interrupting free local editing.
+- Prevent staging service-worker installation or updates from interrupting an
+  in-flight payment with an automatic page reload.
 
 - Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
   hosts, unexpected paths, insecure URLs, and embedded credentials.
