@@ -6,6 +6,7 @@ import { ACCOUNT_SYNC_LOCK_NAME, claimSyncOwnerAccountId, loadSyncMappings, load
 import type { AccountState, ProContextValue, ProOffer, SubscriptionState, SyncState } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 import { syncDataFingerprint, syncTreeVersion, type AppStoreValue } from "./store";
+import { clearBillingAttempt, readBillingAttempt, saveBillingAttempt, type BillingAttempt } from "./billingAttempt";
 
 export interface EntitlementResponse {
   appUserId: string;
@@ -55,6 +56,7 @@ const jsonRequest = async <T,>(path: string, init: RequestInit = {}): Promise<T>
     credentials: "include",
     redirect: "error",
     referrerPolicy: "no-referrer",
+    signal: init.signal ?? AbortSignal.timeout(15_000),
     headers: {
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers
@@ -90,8 +92,18 @@ export const requestBillingCheckout = async (
     throw new Error("The payment service returned an invalid response.");
   }
   const destination = new URL(result.paymentLinkUrl);
-  if (destination.protocol !== "https:") throw new Error("The checkout URL is invalid.");
+  if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port) throw new Error("The checkout URL is invalid.");
+  if (__DEPLOYMENT_ENV__ === "staging" && destination.hostname !== "sandbox.doku.com" &&
+      !(destination.origin === window.location.origin && destination.pathname === "/billing/return")) throw new Error("The checkout URL is not a sandbox payment page.");
   return destination.href;
+};
+
+export const requestBillingStatus = async (attempt: BillingAttempt, csrfToken: string) => {
+  const result = await jsonRequest<{ status: string }>("/api/v1/billing/checkouts/status", {
+    method: "POST", headers: { "idempotency-key": attempt.idempotencyKey, "x-csrf-token": csrfToken, "x-heritg-account-id": attempt.accountId }, body: "{}"
+  });
+  if (!result || !["pending", "completed", "not_found", "failed", "expired"].includes(result.status)) throw new Error("Payment status is unavailable.");
+  return result.status;
 };
 
 export const requestFreeAccess = async (
@@ -149,6 +161,11 @@ export function ProProvider({
   const runSyncRef = useRef<(resolution?: "device" | "cloud" | "both") => Promise<void>>(async () => undefined);
   const sessionGenerationRef = useRef(0);
   const currentAccountIdRef = useRef<string | undefined>(undefined);
+  const checkoutInFlight = useRef(false);
+  const [billingAttempt, setBillingAttempt] = useState(readBillingAttempt);
+  const [payment, setPayment] = useState<ProContextValue["payment"]>();
+  const [paymentNoticeHidden, setPaymentNoticeHidden] = useState(false);
+  const paymentCheckInFlight = useRef(false);
 
   const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
@@ -244,6 +261,49 @@ export function ProProvider({
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
   }, [account.status, refreshEntitlement, value]);
+
+  const refreshPayment = useCallback(async () => {
+    if (!billingAttempt || paymentCheckInFlight.current) return;
+    const csrf = readCsrfCookie();
+    if (account.status !== "signedIn" || account.user.id !== billingAttempt.accountId || !csrf) {
+      setPayment({ status: "signedOut", checking: false });
+      return;
+    }
+    const generation = sessionGenerationRef.current;
+    paymentCheckInFlight.current = true;
+    setPayment({ status: "pending", checking: true });
+    try {
+      const status = await requestBillingStatus(billingAttempt, csrf);
+      if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== billingAttempt.accountId) return;
+      if (status === "completed") {
+        await refreshEntitlement();
+        if (generation !== sessionGenerationRef.current) return;
+        clearBillingAttempt();
+        setBillingAttempt(undefined);
+        setPayment({ status: "confirmed", checking: false });
+        setPaymentNoticeHidden(false);
+        setPaywallOpen(false);
+      } else {
+        setPayment({ status: status === "failed" || status === "expired" ? status : "pending", checking: false });
+      }
+    } catch {
+      if (generation === sessionGenerationRef.current) setPayment({ status: "unavailable", checking: false });
+    } finally { paymentCheckInFlight.current = false; }
+  }, [account, billingAttempt, refreshEntitlement]);
+
+  useEffect(() => {
+    if (value || !configured || !billingAttempt || account.status === "loading") return;
+    let count = 0;
+    let timer: number;
+    let stopped = false;
+    const check = async () => {
+      if (stopped) return;
+      if (navigator.onLine && document.visibilityState === "visible") { await refreshPayment(); count++; }
+      if (!stopped && count < 18) timer = window.setTimeout(() => void check(), 10_000);
+    };
+    timer = window.setTimeout(() => void check(), 0);
+    return () => { stopped = true; window.clearTimeout(timer); };
+  }, [account.status, billingAttempt, configured, refreshPayment, value]);
 
   const runSync = useCallback(async (resolution?: "device" | "cloud" | "both") => {
     if (value || !appStore?.ready || !appStore.data || account.status !== "signedIn" || !syncAccess.canRead || (!sync.enabled && !resolution)) return;
@@ -354,7 +414,10 @@ export function ProProvider({
 
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
   const purchase = async () => {
-    if (account.status !== "signedIn") return;
+    if (account.status !== "signedIn" || checkoutInFlight.current) return;
+    const generation = sessionGenerationRef.current;
+    const accountId = account.user.id;
+    const isCurrentAccount = () => generation === sessionGenerationRef.current && currentAccountIdRef.current === accountId;
     const csrfToken = readCsrfCookie();
     if (!csrfToken) {
       setError("Sign in again before activating Family+.");
@@ -366,10 +429,13 @@ export function ProProvider({
       return;
     }
     setError(undefined);
+    checkoutInFlight.current = true;
+    setPaymentNoticeHidden(false);
     setSubscription({ status: "purchasing", offer });
     try {
       if (offer.price.amount === 0) {
         const claimed = await requestFreeAccess(account.user.id, csrfToken);
+        if (!isCurrentAccount()) return;
         if (claimed.appUserId !== account.user.id) throw new Error("The Family+ response did not match this account.");
         if (readSyncEnabled() === undefined) saveSyncEnabled(true);
         const next = applyEntitlement(claimed);
@@ -377,18 +443,28 @@ export function ProProvider({
         setPaywallOpen(false);
         return;
       }
-      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken);
-      const refreshed = await refreshEntitlement().catch(() => undefined);
-      if (refreshed?.status === "active") {
-        setPaywallOpen(false);
+      const prior = readBillingAttempt();
+      const attempt = prior?.accountId === account.user.id ? prior : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now() };
+      saveBillingAttempt(attempt);
+      setBillingAttempt(attempt);
+      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken, attempt.idempotencyKey);
+      if (!isCurrentAccount()) return;
+      // Hosted purchases must redirect even when existing Family access is active.
+      // Only the same-origin mock return can complete locally without navigating.
+      const destination = new URL(paymentLink);
+      if (destination.origin === window.location.origin && destination.pathname === "/billing/return") {
+        await refreshEntitlement();
+        if (!isCurrentAccount()) return;
+        setPayment({ status: "pending", checking: false });
         return;
       }
       window.location.assign(paymentLink);
     } catch (cause) {
+      if (!isCurrentAccount()) return;
       const message = cause instanceof Error ? cause.message : String(cause);
       setError(message);
       setSubscription({ status: "error", message, offer });
-    }
+    } finally { checkoutInFlight.current = false; }
   };
   const refreshSubscription = async () => {
     if (account.status !== "signedIn") return;
@@ -404,6 +480,15 @@ export function ProProvider({
     sync,
     paywallOpen,
     error,
+    payment: paymentNoticeHidden ? undefined : payment,
+    refreshPayment,
+    dismissPayment: () => {
+      setPaymentNoticeHidden(true);
+      if (payment?.status === "confirmed" || payment?.status === "expired" || payment?.status === "failed") {
+        clearBillingAttempt(); setBillingAttempt(undefined);
+      }
+      if (window.location.pathname === "/billing/return") window.history.replaceState(window.history.state, "", "/");
+    },
     openPaywall: () => setPaywallOpen(true),
     closePaywall: () => setPaywallOpen(false),
     purchase,

@@ -1335,6 +1335,26 @@
 .sync-workspace-button.sync-error,
 .sync-workspace-button.sync-conflict { color: var(--danger); }
 
+.payment-status-notice {
+  position: fixed;
+  inset-block-start: calc(88px + env(safe-area-inset-top));
+  inset-inline-end: 16px;
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(430px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--base);
+  color: var(--text);
+}
+.payment-status-notice > svg { flex: none; margin-top: 2px; color: var(--brand-deep); }
+.payment-status-notice > .icon-button { flex: none; width: 32px; height: 32px; min-width: 32px; }
+.payment-status-copy { min-width: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.payment-status-copy p { margin: 5px 0 12px; color: var(--subtle); }
+.payment-status-copy p:last-child { margin-bottom: 0; }
 .pro-paywall-hero { align-items: flex-start; display: flex; gap: 14px; }
 .pro-mark {
   align-items: center;

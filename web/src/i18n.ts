@@ -1,6 +1,17 @@
 import type { AppData } from "./types";
 
 const en = {
+  paymentStatus: "Payment status",
+  paymentConfirmed: "Payment confirmed",
+  paymentConfirmedDetail: "Your Family+ access has been updated. You can return to your tree.",
+  paymentPending: "Checking your payment",
+  paymentPendingDetail: "DOKU confirmation can take a few minutes. Please don’t pay again. You can keep using your tree while we check.",
+  paymentUnavailable: "We can’t reach the payment service right now. If you paid, please don’t pay again. Check the status shortly.",
+  paymentSignIn: "Sign in to check your payment",
+  paymentSignInDetail: "Use the same account you used at checkout. Your local tree is still available.",
+  paymentNotCompleted: "This payment was not completed. If you paid, check again before starting another payment.",
+  paymentChecking: "Checking…",
+  paymentCheckAgain: "Check payment",
   familyView: "Tree view",
   canvasConnections: "Connections",
   connectionsOf: "Connections of {name}",
@@ -217,7 +228,7 @@ const en = {
   freeAccessLegal: "Free access ends on the date shown in your account. After it expires, you can claim another free month.",
   priceAtLaunch: "Price available at launch",
   proComingSoon: "One-time purchases are not enabled in this deployment",
-  proComingSoonDetail: "The interface is ready, but checkout stays locked until Xendit billing is configured.",
+  proComingSoonDetail: "Checkout is not available in this environment yet.",
   signInRequired: "Sign in required",
   signInBeforePurchase: "Continue with Google before activating Family+ access.",
   subscriptionsComingSoon: "Purchases coming soon",
@@ -576,6 +587,17 @@ const en = {
 } as const;
 
 const id = {
+  paymentStatus: "Status pembayaran",
+  paymentConfirmed: "Pembayaran dikonfirmasi",
+  paymentConfirmedDetail: "Akses Family+ kamu sudah diperbarui. Kamu bisa kembali ke pohon keluarga.",
+  paymentPending: "Memeriksa pembayaran",
+  paymentPendingDetail: "Konfirmasi DOKU bisa memerlukan beberapa menit. Jangan bayar lagi. Kamu tetap bisa menggunakan pohon keluarga sambil menunggu.",
+  paymentUnavailable: "Layanan pembayaran belum bisa dihubungi. Jika sudah membayar, jangan bayar lagi. Cek status beberapa saat lagi.",
+  paymentSignIn: "Masuk untuk memeriksa pembayaran",
+  paymentSignInDetail: "Gunakan akun yang sama saat checkout. Pohon keluarga lokal tetap tersedia.",
+  paymentNotCompleted: "Pembayaran ini belum selesai. Jika sudah membayar, cek kembali sebelum membuat pembayaran baru.",
+  paymentChecking: "Memeriksa…",
+  paymentCheckAgain: "Cek pembayaran",
   familyView: "Tampilan pohon",
   canvasConnections: "Hubungan",
   connectionsOf: "Hubungan {name}",
@@ -792,7 +814,7 @@ const id = {
   freeAccessLegal: "Akses gratis berakhir pada tanggal yang tertera di akunmu. Setelah berakhir, kamu bisa klaim satu bulan gratis lagi.",
   priceAtLaunch: "Harga tersedia saat peluncuran",
   proComingSoon: "Fitur pembayaran belum aktif saat ini",
-  proComingSoonDetail: "Tampilan ini hanya preview. Kamu belum bisa bayar atau checkout sampai sistem Xendit selesai diatur.",
+  proComingSoonDetail: "Checkout belum tersedia di lingkungan ini.",
   signInRequired: "Harus login dulu",
   signInBeforePurchase: "Lanjutkan dengan Google sebelum mengaktifkan akses Family+.",
   subscriptionsComingSoon: "Pembelian segera hadir",

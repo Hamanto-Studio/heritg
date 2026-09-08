@@ -19,7 +19,7 @@ export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
   const prices = offerPrices(offer);
   const freeAccess = offer?.price.amount === 0 || (!offer && pro.configured && __DEPLOYMENT_ENV__ === "production");
   const purchasing = pro.subscription.status === "purchasing";
-  const alreadyActive = pro.subscription.status === "active" || pro.subscription.status === "readOnly";
+  const alreadyActive = freeAccess && (pro.subscription.status === "active" || pro.subscription.status === "readOnly");
   const signedIn = pro.account.status === "signedIn";
   return <Modal closeLabel={t("close")} onClose={pro.closePaywall} size="medium" title={t("proPaywallTitle")}>
     <FamilyPlusBenefits t={t} />

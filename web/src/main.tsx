@@ -20,6 +20,11 @@ if (/^\/auth\/email\/?$/u.test(window.location.pathname)) {
   window.history.replaceState(window.history.state, "", "/");
 }
 
+if (/^\/billing\/return\/?$/u.test(window.location.pathname)) {
+  // Provider return parameters are not payment evidence and are not retained.
+  window.history.replaceState(window.history.state, "", "/billing/return");
+}
+
 const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
 const isStaging = __DEPLOYMENT_ENV__ === "staging";
 

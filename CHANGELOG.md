@@ -22,6 +22,13 @@ prefix.
 
 ### Web
 
+- Added staging DOKU checkout recovery with account-verified payment status and
+  non-blocking English/Indonesian confirmation notices. Real sandbox payment
+  verification remains pending; production billing is unchanged.
+- Reuse checkout retry keys after network failures to avoid duplicate invoices,
+  and keep existing Family access from suppressing a renewal checkout.
+- Updated vulnerable transitive dependencies used by the web build and editor.
+
 - Kept person click targets aligned with the tree after keyboard navigation
   and switching between Full and Focus.
 - Opened large Full trees at a readable family instead of an almost invisible

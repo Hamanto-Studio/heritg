@@ -41,6 +41,7 @@ import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
 import { ProPaywallDialog } from "./ProPaywallDialog";
+import { PaymentStatusNotice } from "./PaymentStatusNotice";
 import { usePro } from "./ProProvider";
 import { RelativeDialog } from "./RelativeDialog";
 import { ReportBugSheet } from "./ReportBugSheet";
@@ -673,6 +674,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       ) : null}
 
       {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} /> : null}
+      <PaymentStatusNotice pro={pro} t={t} />
       {pro.sync.phase === "conflict" ? <SyncResolutionDialog pro={pro} t={t} /> : null}
 
       {activeTree && rightPanel === "share" ? (
