@@ -22,6 +22,9 @@ prefix.
 
 ### Web
 
+- Show monthly, six-month, yearly and three-year Family+ prices before sign-in
+  in staging, including English/Indonesian copy and clear preview-only status.
+  Keep subscription purchases unavailable until DOKU integration is verified.
 - Added staging weekly, monthly, yearly, and two-year Family+ plan choices with
   explicit prices, shortened test durations, and manual-renewal terms.
 - Preserve the selected plan across checkout retries and stop cloud writes when

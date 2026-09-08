@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTranslator } from "./i18n";
 import { ProPaywallDialog } from "./ProPaywallDialog";
 import type { ProContextValue } from "./proTypes";
@@ -9,6 +9,43 @@ import { unavailableProContext } from "./proTypes";
 
 const context = (overrides: Partial<ProContextValue> = {}): ProContextValue => ({ ...unavailableProContext, closePaywall: vi.fn(), purchase: vi.fn(async () => undefined), ...overrides });
 describe("ProPaywallDialog", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(["signedOut", "loading", "error", "signedIn"] as const)("shows the staging prices with account state %s, without invoking checkout", async status => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const purchase = vi.fn(async () => undefined);
+    const closePaywall = vi.fn();
+    const account: ProContextValue["account"] = status === "signedIn"
+      ? { status, user: { id: "synthetic", name: null, email: null, expiresAt: "2099-01-01" } }
+      : status === "error" ? { status, message: "Service unavailable" } : { status };
+    const pro = context({ configured: true, account, purchase, closePaywall });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator("en")} />));
+      expect(Array.from(host.querySelectorAll("dt"), item => item.textContent)).toEqual(["Monthly", "6 months", "1 year", "3 years"]);
+      for (const price of ["15.000", "49.000", "79.000", "199.000"]) expect(host.textContent).toContain(price);
+      expect(host.textContent).toContain("Explore the prices without signing in");
+      expect(host.textContent).toContain("purchases not available yet");
+      expect(host.textContent).not.toContain("Sign in to load the current price");
+      expect(host.querySelector(".pro-purchase-button")).toBeNull();
+      for (const button of host.querySelectorAll<HTMLButtonElement>("button")) await act(async () => button.click());
+      expect(purchase).not.toHaveBeenCalled();
+      expect(closePaywall).toHaveBeenCalled();
+    } finally { await act(async () => root.unmount()); host.remove(); }
+  });
+
+  it("localizes the public staging preview and separates test timers from real periods", () => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={context()} t={createTranslator("id")} />);
+    expect(markup).toContain("Lihat harga tanpa login");
+    expect(markup).toContain("setiap 3 tahun");
+    for (const duration of [10, 15, 20, 30]) expect(markup).toContain(`${duration} menit`);
+    expect(markup).toContain("pembelian belum tersedia");
+    expect(markup).toContain("Tidak ada pendebitan otomatis");
+  });
   it("selects every server-priced plan and submits only its ID with clear sandbox durations", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     const offers = ([['weekly', 9000, 10], ['monthly', 15000, 15], ['yearly', 79000, 20], ['two_year', 120000, 30]] as const).map(([planId, amount, stagingAccessMinutes]) => ({

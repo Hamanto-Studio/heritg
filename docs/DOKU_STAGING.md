@@ -6,10 +6,42 @@ The four-plan catalog is deployed to staging. Its deployment receipt below is
 separate from the previous single-plan verification; provider success and actual
 expiry must be verified, not inferred from a successful build.
 
-The next requested target is DOKU-managed auto-charge for weekly/monthly/yearly,
-not manual renewal. It is not implemented or enabled in this deployment. See the
-[backend recurring activation gate](https://github.com/Hamanto-Studio/heritg-be/blob/feat/family-plan-options/docs/DOKU_RECURRING.md)
-for merchant provisioning, cancellation, notification and sandbox-test requirements.
+The September 9 target supersedes auto-charge: **DOKU-managed subscription
+invoices paid manually**, with monthly Rp15.000, six-month Rp49.000, yearly
+Rp79.000 and three-year Rp199.000. Planned new staging access is 10/15/20/30
+minutes respectively, no grace. These are entitlement-test timers, not DOKU's
+real invoice intervals. This subscription integration is **not yet enabled**;
+the receipt and browser flow below describe the existing VA deployment.
+See the [backend subscription integration gate](https://github.com/Hamanto-Studio/heritg-be/blob/feat/family-plan-options/docs/DOKU_RECURRING.md)
+for catalog creation, invoice-contact disclosure, authenticated paid-cycle
+reconciliation and cancellation requirements. Preserve all existing checkout
+attempts and saved terms, including the current monthly 15-minute term.
+
+For the new picker use **Monthly / 6 months / 1 year / 3 years**, showing the full
+amount due each period. Explain “DOKU sends an invoice each period. Pay it manually
+to renew. No automatic charges.” Do not expose these offers through the old
+one-off Checkout adapter or treat registration as paid access. Required contact
+data must be disclosed before it is sent to DOKU; never silently transmit family
+members' data or the user's Google profile. Backend verification precedes UI enablement.
+
+## Public pricing preview
+
+The staging paywall now presents the September 9 proposal before sign-in:
+Rp15.000 monthly, Rp49.000 per six months, Rp79.000 yearly and Rp199.000 per
+three years. Prices are a display-only build-time proposal, **not** a fallback
+checkout catalog or entitlement authority. They remain visible when auth is
+loading, signed out, signed in or unavailable, without an anonymous entitlement
+API or any customer data. Both English and Indonesian are supported.
+
+The preview explicitly says subscriptions cannot be purchased yet. It has no
+checkout action and does not pass proposed plans or amounts to the existing
+one-off VA service. Test timers are in a separate expandable section. “Back to
+tree” returns to free local editing. Existing pending checkout status and
+scheduled backend recovery remain unchanged. Production keeps its existing
+server-owned free-access offer and is not deployed by this change.
+
+The following browser flow and September 8 receipt describe the **previous**
+staging VA purchase UI, not currently available purchases in the new preview.
 
 ## Browser flow
 

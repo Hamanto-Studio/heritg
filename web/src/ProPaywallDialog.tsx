@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { FamilyPlusBenefits } from "./FamilyPlusBenefits";
+import { FamilyPlanPreview } from "./FamilyPlanPreview";
 import type { Translator } from "./i18n";
 import type { ProContextValue, ProOffer } from "./proTypes";
 import { ButtonLoader, ErrorNotice, Modal } from "./ui";
@@ -16,6 +17,14 @@ const offerPrices = (offer: ProOffer | undefined) => offer ? {
 } : undefined;
 
 export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
+  // The public preview has no session dependency or purchase handler. Keep the
+  // production offer and legacy pending-payment recovery unchanged.
+  return __DEPLOYMENT_ENV__ === "staging"
+    ? <FamilyPlanPreview onClose={pro.closePaywall} t={t} />
+    : <CurrentProPaywallDialog pro={pro} t={t} />;
+}
+
+function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
   const [selectedPlan, setSelectedPlan] = useState<ProOffer["planId"]>("two_year");
   const plans = pro.offers?.filter(item => item.planId);
   const offer = plans?.length ? plans.find(item => item.planId === selectedPlan) ?? plans[0] : offerFor(pro);
