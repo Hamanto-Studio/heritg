@@ -1,6 +1,17 @@
 import type { AppData } from "./types";
 
 const en = {
+  familyPlanWeekly: "Weekly",
+  familyPlanBenefits: "What’s included with Family+?",
+  manualRenewalShort: "No automatic charges",
+  familyPlanMonthly: "Monthly",
+  familyPlanYearly: "Yearly",
+  familyPlanTwoYear: "Two years · one-time purchase",
+  stagingPlanNotice: "Sandbox only. Test the plan prices below without transferring real money.",
+  stagingPlanDuration: "Active for {count} minutes in staging",
+  manualRenewalNotice: "Manual renewal: pay again when you need more time. No automatic charges.",
+  testPaymentTotal: "Test payment · {price}",
+  stagingPlanLegal: "Staging uses shortened access periods with no grace period. Renewals add time to remaining paid access. Existing purchases keep their original terms. Local editing stays free after access expires.",
   paymentStatus: "Payment status",
   paymentConfirmed: "Payment confirmed",
   paymentConfirmedDetail: "Your Family+ access has been updated. You can return to your tree.",
@@ -588,6 +599,17 @@ const en = {
 
 const id = {
   paymentStatus: "Status pembayaran",
+  familyPlanWeekly: "Mingguan",
+  familyPlanBenefits: "Apa saja yang termasuk Family+?",
+  manualRenewalShort: "Tanpa tagihan otomatis",
+  familyPlanMonthly: "Bulanan",
+  familyPlanYearly: "Tahunan",
+  familyPlanTwoYear: "Dua tahun · sekali bayar",
+  stagingPlanNotice: "Hanya sandbox. Uji harga paket di bawah tanpa mentransfer uang sungguhan.",
+  stagingPlanDuration: "Aktif selama {count} menit di staging",
+  manualRenewalNotice: "Perpanjangan manual: bayar lagi saat perlu tambahan waktu. Tidak ada tagihan otomatis.",
+  testPaymentTotal: "Uji pembayaran · {price}",
+  stagingPlanLegal: "Staging memakai durasi singkat tanpa masa tenggang. Perpanjangan menambah sisa waktu akses berbayar. Pembelian sebelumnya tetap mengikuti ketentuan awal. Pengeditan lokal tetap gratis setelah akses berakhir.",
   paymentConfirmed: "Pembayaran dikonfirmasi",
   paymentConfirmedDetail: "Akses Family+ kamu sudah diperbarui. Kamu bisa kembali ke pohon keluarga.",
   paymentPending: "Memeriksa pembayaran",

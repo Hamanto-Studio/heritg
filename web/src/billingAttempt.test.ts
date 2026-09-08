@@ -15,3 +15,11 @@ it("fails safely on malformed browser storage", () => {
     expect(readBillingAttempt()).toBeUndefined();
   }
 });
+
+it("keeps the chosen plan across reloads and rejects unknown stored plans", () => {
+  const attempt = { accountId: 'A'.repeat(22), idempotencyKey: 'synthetic-attempt-key', createdAt: Date.now(), planId: 'weekly' as const };
+  saveBillingAttempt(attempt);
+  expect(readBillingAttempt()).toEqual(attempt);
+  sessionStorage.setItem('heritg:pending-checkout', JSON.stringify({ ...attempt, planId: 'unlimited' }));
+  expect(readBillingAttempt()).toBeUndefined();
+});

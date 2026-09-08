@@ -1,5 +1,10 @@
 export interface ProUser { id: string; name: string | null; email: string | null; expiresAt: string }
 export interface ProOffer {
+  planId?: "weekly" | "monthly" | "yearly" | "two_year";
+  accessDays?: number;
+  stagingAccessMinutes?: number;
+  renewal?: "manual";
+  graceDays?: number;
   productId: string;
   name: string;
   price: { amount: number; currency: string };
@@ -39,6 +44,7 @@ export interface ProContextValue {
   configured: boolean;
   account: AccountState;
   subscription: SubscriptionState;
+  offers?: ProOffer[];
   sync: SyncState;
   paywallOpen: boolean;
   error?: string;
@@ -47,7 +53,7 @@ export interface ProContextValue {
   refreshPayment?: () => Promise<void>;
   dismissPayment?: () => void;
   closePaywall: () => void;
-  purchase: () => Promise<void>;
+  purchase: (planId?: ProOffer["planId"]) => Promise<void>;
   refreshSubscription: () => Promise<void>;
   manageSubscription: () => void;
   setSyncEnabled: (enabled: boolean) => Promise<void>;

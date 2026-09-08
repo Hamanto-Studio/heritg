@@ -20,6 +20,7 @@ export interface EntitlementResponse {
   checkedAt: string | null;
   managementUrl: string | null;
   offer: ProOffer;
+  offers?: ProOffer[];
 }
 
 export const syncFailureMessage = (cause: unknown, staging = __DEPLOYMENT_ENV__ === "staging") => {
@@ -77,7 +78,8 @@ const jsonRequest = async <T,>(path: string, init: RequestInit = {}): Promise<T>
 export const requestBillingCheckout = async (
   accountId: string,
   csrfToken: string,
-  idempotencyKey: string = crypto.randomUUID()
+  idempotencyKey: string = crypto.randomUUID(),
+  planId?: ProOffer["planId"]
 ): Promise<string> => {
   const result = await jsonRequest<BillingCheckoutResponse>("/api/v1/billing/checkouts", {
     method: "POST",
@@ -86,7 +88,7 @@ export const requestBillingCheckout = async (
       "x-csrf-token": csrfToken,
       "x-heritg-account-id": accountId
     },
-    body: "{}"
+    body: JSON.stringify(planId ? { planId } : {})
   });
   if (!result || typeof result.paymentLinkUrl !== "string") {
     throw new Error("The payment service returned an invalid response.");
@@ -152,6 +154,7 @@ export function ProProvider({
   const configured = billingEnabled;
   const [account, setAccount] = useState<AccountState>(readCsrfCookie() ? { status: "loading" } : { status: "signedOut" });
   const [subscription, setSubscription] = useState<SubscriptionState>(configured ? { status: "loading" } : { status: "unavailable" });
+  const [offers, setOffers] = useState<ProOffer[]>();
   const [sync, setSync] = useState<SyncState>({ enabled: false, phase: "unavailable", pendingChanges: 0 });
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -167,9 +170,11 @@ export function ProProvider({
   const [payment, setPayment] = useState<ProContextValue["payment"]>();
   const [paymentNoticeHidden, setPaymentNoticeHidden] = useState(false);
   const paymentCheckInFlight = useRef(false);
+  const expiryRefreshRef = useRef<string | undefined>(undefined);
 
   const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
+    setOffers(entitlement.offers);
     const enabled = entitlement.canRead && readSyncEnabled() === true;
     setSubscription(nextSubscription);
     setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
@@ -199,6 +204,7 @@ export function ProProvider({
   }, [applyEntitlement, configured]);
 
   const loadSession = useCallback(async () => {
+    setOffers(undefined);
     const generation = ++sessionGenerationRef.current;
     syncAbortRef.current?.abort();
     syncQueuedRef.current = false;
@@ -262,6 +268,31 @@ export function ProProvider({
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => document.removeEventListener("visibilitychange", refreshWhenVisible);
   }, [account.status, refreshEntitlement, value]);
+
+  // Expire cloud-write access even if the tab stays open or a refresh is offline.
+  // The server remains authoritative and rejects expired writes independently.
+  const activeExpiry = subscription.status === "active" ? subscription.expiresAt : undefined;
+  useEffect(() => {
+    if (value || !activeExpiry || account.status !== "signedIn") return;
+    const expiryKey = `${account.user.id}:${activeExpiry}`;
+    if (expiryRefreshRef.current === expiryKey) return;
+    const deadline = Date.parse(activeExpiry);
+    if (!Number.isFinite(deadline)) return;
+    let timer: number;
+    const check = () => {
+      const remaining = deadline - Date.now();
+      if (remaining > 0) { timer = window.setTimeout(check, Math.min(remaining, 2_000_000_000)); return; }
+      expiryRefreshRef.current = expiryKey;
+      syncAbortRef.current?.abort();
+      setSyncAccess({ canRead: false, canWrite: false });
+      setSync(current => ({ ...current, enabled: false, phase: "subscriptionRequired" }));
+      setSubscription(current => current.status === "active" && current.expiresAt === activeExpiry
+        ? { status: "expired", expiresAt: activeExpiry, offer: current.offer } : current);
+      void refreshEntitlement().catch(() => undefined);
+    };
+    timer = window.setTimeout(check, Math.max(0, Math.min(deadline - Date.now(), 2_000_000_000)));
+    return () => window.clearTimeout(timer);
+  }, [account, activeExpiry, refreshEntitlement, value]);
 
   const refreshPayment = useCallback(async () => {
     if (!billingAttempt || paymentCheckInFlight.current) return;
@@ -414,7 +445,7 @@ export function ProProvider({
   if (value) return <ProContext.Provider value={value}>{children}</ProContext.Provider>;
 
   const fail = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
-  const purchase = async () => {
+  const purchase = async (planId?: ProOffer["planId"]) => {
     if (account.status !== "signedIn" || checkoutInFlight.current) return;
     const generation = sessionGenerationRef.current;
     const accountId = account.user.id;
@@ -424,7 +455,7 @@ export function ProProvider({
       setError("Sign in again before activating Family+.");
       return;
     }
-    const offer = "offer" in subscription ? subscription.offer : undefined;
+    const offer = planId ? offers?.find(item => item.planId === planId) : "offer" in subscription ? subscription.offer : undefined;
     if (!offer) {
       setError("The Family+ offer is unavailable. Refresh and try again.");
       return;
@@ -445,10 +476,13 @@ export function ProProvider({
         return;
       }
       const prior = readBillingAttempt();
-      const attempt = prior?.accountId === account.user.id ? prior : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now() };
+      if (prior?.accountId === account.user.id && (prior.planId ?? "two_year") !== (planId ?? "two_year")) {
+        throw new Error("A payment for another plan is pending. Check that payment before choosing a different plan.");
+      }
+      const attempt = prior?.accountId === account.user.id ? prior : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now(), ...(planId ? { planId } : {}) };
       saveBillingAttempt(attempt);
       setBillingAttempt(attempt);
-      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken, attempt.idempotencyKey);
+      const paymentLink = await requestBillingCheckout(account.user.id, csrfToken, attempt.idempotencyKey, attempt.planId);
       if (!isCurrentAccount()) return;
       // Hosted purchases must redirect even when existing Family access is active.
       // Only the same-origin mock return can complete locally without navigating.
@@ -478,6 +512,7 @@ export function ProProvider({
     configured,
     account,
     subscription,
+    offers,
     sync,
     paywallOpen,
     error,

@@ -22,6 +22,11 @@ prefix.
 
 ### Web
 
+- Added staging weekly, monthly, yearly, and two-year Family+ plan choices with
+  explicit prices, shortened test durations, and manual-renewal terms.
+- Preserve the selected plan across checkout retries and stop cloud writes when
+  paid access expires, without interrupting free local editing.
+
 - Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
   hosts, unexpected paths, insecure URLs, and embedded credentials.
 - Added staging DOKU checkout recovery with account-verified payment status and

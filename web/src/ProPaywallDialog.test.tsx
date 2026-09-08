@@ -1,4 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { createTranslator } from "./i18n";
 import { ProPaywallDialog } from "./ProPaywallDialog";
@@ -7,6 +9,30 @@ import { unavailableProContext } from "./proTypes";
 
 const context = (overrides: Partial<ProContextValue> = {}): ProContextValue => ({ ...unavailableProContext, closePaywall: vi.fn(), purchase: vi.fn(async () => undefined), ...overrides });
 describe("ProPaywallDialog", () => {
+  it("selects every server-priced plan and submits only its ID with clear sandbox durations", async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const offers = ([['weekly', 9000, 10], ['monthly', 15000, 15], ['yearly', 79000, 20], ['two_year', 120000, 30]] as const).map(([planId, amount, stagingAccessMinutes]) => ({
+      planId, productId: `family-${planId}`, name: 'Family+', price: { amount, currency: 'IDR' }, accessMonths: 0, stagingAccessMinutes, renewal: 'manual' as const
+    }));
+    const purchase = vi.fn(async () => undefined);
+    const pro = context({ configured: true, offers, purchase, account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } }, subscription: { status: 'free', offer: offers[0] } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator('en')} />));
+      expect(host.textContent).toContain('No automatic charges');
+      expect(host.textContent).toContain('Sandbox only');
+      expect(host.textContent).not.toContain('Infinity');
+      for (const plan of offers) {
+        expect(host.textContent).toContain(`Active for ${plan.stagingAccessMinutes} minutes in staging`);
+        await act(async () => host.querySelector<HTMLInputElement>(`input[value="${plan.planId}"]`)!.click());
+        await act(async () => host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.click());
+        expect(purchase).toHaveBeenLastCalledWith(plan.planId);
+        expect(host.querySelector('.pro-purchase-button')?.textContent).toContain(new Intl.NumberFormat('id-ID').format(plan.price.amount));
+      }
+    } finally { await act(async () => root.unmount()); host.remove(); }
+  });
   it("renders a truthful unavailable preview with disabled checkout", () => {
     const markup = renderToStaticMarkup(<ProPaywallDialog pro={context()} t={createTranslator("en")} />);
     expect(markup).toContain("Price available at launch");

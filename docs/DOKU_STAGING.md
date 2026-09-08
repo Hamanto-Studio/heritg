@@ -2,19 +2,23 @@
 
 This integration targets `https://staging.heritg.us` only. Production at
 `https://heritg.us` keeps its existing free Family+ access and has no DOKU keys.
-Current state: implemented locally; live DOKU credential verification, deployment,
-and simulated-payment acceptance are still pending.
+The single-plan DOKU VA integration is deployed and verified. This branch adds a
+multi-plan catalog; its new deployment and four-plan simulator acceptance must be
+recorded separately before calling that change live.
 
 ## Browser flow
 
 1. Sign in with a disposable staging account. Local tree editing remains available
    without signing in or buying anything.
-2. Read the server-owned Family offer. Paid staging access is a single IDR 120000
-   purchase for 24 calendar months, not automatic recurring billing.
+2. Choose a server-owned plan: weekly Rp9.000 / 10 minutes, monthly Rp15.000 /
+   15 minutes, yearly Rp79.000 / 20 minutes, or two-year one-time Rp120.000 /
+   30 minutes. These are shortened sandbox periods with no grace. All renew
+   manually; no automatic billing mandate is created. Existing access is not shortened.
 3. Save a random checkout idempotency key in session storage, then call
-   `POST /api/v1/billing/checkouts` with `{}`, the session cookie, CSRF token,
+   `POST /api/v1/billing/checkouts` with `{ "planId": "monthly" }`, the session cookie, CSRF token,
    Idempotency-Key, and expected account header. Retry that same key after a
-   network failure; never automatically create a fresh invoice.
+   network failure; retain the plan ID with that attempt. Never automatically
+   create a fresh invoice or replace a pending invoice with another plan.
 4. Redirect to the returned HTTPS `sandbox.doku.com` payment page. The DOKU
    Secret Key stays in the backend's staging Secret Manager; it is never a Vite
    variable or frontend build secret.
@@ -39,11 +43,15 @@ the backend status route and scheduled recovery job first; then deploy the web
 staging project. The same-origin `/api/v1/*` rewrite must target only `heritg-be-stg`.
 Service workers must not cache API responses or payment-provider traffic.
 
-Before calling this integration ready, complete a real QRIS simulation from the
-staging UI, verify 24-month access in the backend, resend the callback, and prove
-that access is not extended twice. Also test failed/pending payments, provider
+Before calling the multi-plan integration ready, complete a DOKU VA simulation
+for every plan, verify its exact minute duration and expiry, resend the callback,
+and prove access is not extended twice. QRIS remains separately unavailable.
+Also test failed/pending payments, provider
 outages, account changes, manual renewal, return-page reloads, mobile widths, and
 local editing/import/export. Never use real payment money or real family data.
 
 Backend protocol, safe setup, deployment prerequisites, and recovery operations:
-[DOKU integration guide](https://github.com/Hamanto-Studio/heritg-be/blob/feat/doku-checkout/docs/DOKU.md).
+[DOKU integration guide](https://github.com/Hamanto-Studio/heritg-be/blob/main/docs/DOKU.md).
+
+Pricing sources, cost assumptions, and live-launch risks:
+[Family pricing model](https://github.com/Hamanto-Studio/heritg-be/blob/feat/family-plan-options/docs/PRICING.md).
