@@ -93,7 +93,8 @@ export const requestBillingCheckout = async (
   }
   const destination = new URL(result.paymentLinkUrl);
   if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port) throw new Error("The checkout URL is invalid.");
-  if (__DEPLOYMENT_ENV__ === "staging" && destination.hostname !== "sandbox.doku.com" &&
+  const dokuSandbox = ["sandbox.doku.com", "staging.doku.com"].includes(destination.hostname) && destination.pathname.startsWith("/checkout-link-v2/");
+  if (__DEPLOYMENT_ENV__ === "staging" && !dokuSandbox &&
       !(destination.origin === window.location.origin && destination.pathname === "/billing/return")) throw new Error("The checkout URL is not a sandbox payment page.");
   return destination.href;
 };

@@ -22,6 +22,8 @@ prefix.
 
 ### Web
 
+- Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
+  hosts, unexpected paths, insecure URLs, and embedded credentials.
 - Added staging DOKU checkout recovery with account-verified payment status and
   non-blocking English/Indonesian confirmation notices. Real sandbox payment
   verification remains pending; production billing is unchanged.

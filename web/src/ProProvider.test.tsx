@@ -55,6 +55,26 @@ const entitlement = (overrides: Partial<EntitlementResponse> = {}): EntitlementR
 });
 
 describe("ProProvider", () => {
+  it.each(["sandbox.doku.com", "staging.doku.com"])("accepts verified sandbox checkout host %s", async (host) => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    const paymentLinkUrl = `https://${host}/checkout-link-v2/synthetic`;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl }), { status: 201 })));
+    expect(await requestBillingCheckout("synthetic-account", "synthetic-csrf", "synthetic-idempotency")).toBe(paymentLinkUrl);
+  });
+
+  it.each([
+    "https://staging.doku.com.attacker.test/checkout-link-v2/synthetic",
+    "https://staging.doku.com/other", "https://doku.com/checkout-link-v2/synthetic",
+    "http://staging.doku.com/checkout-link-v2/synthetic",
+    "https://staging.doku.com:8443/checkout-link-v2/synthetic",
+    "https://user:pass@staging.doku.com/checkout-link-v2/synthetic",
+    "https://staging.doku.com/checkout-link-v2/synthetic#fragment"
+  ])("rejects an unsafe sandbox checkout URL: %s", async (paymentLinkUrl) => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl }), { status: 201 })));
+    await expect(requestBillingCheckout("synthetic-account", "synthetic-csrf", "synthetic-idempotency")).rejects.toThrow();
+  });
+
   it("confirms only the same checkout's durable completion, not an already-active subscription", async () => {
     document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
