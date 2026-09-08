@@ -6,6 +6,11 @@ The four-plan catalog is deployed to staging. Its deployment receipt below is
 separate from the previous single-plan verification; provider success and actual
 expiry must be verified, not inferred from a successful build.
 
+The next requested target is DOKU-managed auto-charge for weekly/monthly/yearly,
+not manual renewal. It is not implemented or enabled in this deployment. See the
+[backend recurring activation gate](https://github.com/Hamanto-Studio/heritg-be/blob/feat/family-plan-options/docs/DOKU_RECURRING.md)
+for merchant provisioning, cancellation, notification and sandbox-test requirements.
+
 ## Browser flow
 
 1. Sign in with a disposable staging account. Local tree editing remains available
@@ -39,19 +44,31 @@ unavailable, checkout stops before creating a bill.
 
 September 8, 2026 staging deployment:
 
-- Web commit `574ff3f`, build `574ff3f-202609081410`, deployment
-  `dpl_8nU5LS26CsuF4aS1eD2re2cB7JUD`, at `https://staging.heritg.us/`.
+- Initial catalog: web commit `574ff3f`, build `574ff3f-202609081410`, deployment
+  `dpl_8nU5LS26CsuF4aS1eD2re2cB7JUD`. Current follow-up: commit `320d3c9`, build
+  `320d3c9-202609081458`, deployment `dpl_Gb3F7sxmBwneWVXmE1WTH5yBQYJD`,
+  at `https://staging.heritg.us/`.
 - Backend commit `9d9f8fd5c987484fabfd29b31c0bdfee69cd8722`, successful isolated
   [staging run 34235931427](https://github.com/Hamanto-Studio/heritg-be/actions/runs/34235931427).
-- Web: 893 tests passed, one existing skip; lint/build/audit/secret scan and PR CI
-  passed. Desktop/mobile review confirmed all four plans and the selected-price
+- Initial web catalog: 893 tests passed, one existing skip; lint/build/audit/secret
+  scan and PR CI passed. Follow-up [CI 34240887582](https://github.com/Hamanto-Studio/heritg/actions/runs/34240887582)
+  passed 897 tests with one existing skip, lint, build, and secret scans.
+  Desktop/mobile review confirmed all four plans and the selected-price
   action remain visible, with the staging banner clear of the modal header.
 - All four DOKU VA simulator payments succeeded at the selected amounts. The
   public API and Firestore confirmed completed purchases with exactly
-  10/15/20/30-minute access and no grace. Wall-clock expiry observation is ongoing.
+  10/15/20/30-minute access and no grace. Full wall-clock expiry passed for all
+  four plans: cloud read/write became unavailable and the local add-person action
+  remained available. The fixture exited successfully and cleaned its four
+  synthetic accounts/sessions; only minimal terminal provider correlation remains.
   The lifecycle uses disposable server-created sessions and public API checkout
   requests; it does not qualify Google sign-in or a flawless browser-only
   four-plan checkout run. Production was not deployed or enabled for payments.
+- The follow-up prevents first-install service-worker reloads and defers update
+  reloads while a payment record exists (including unreadable storage). The next
+  navigation uses the new worker. A fresh deployed browser submitted weekly,
+  received 201, and reached DOKU without interruption; retry returned the same
+  invoice. No simulator payment was necessary for that separate navigation check.
 
 Use the repo-local web release skill and the existing pinned Vercel staging
 script. Never deploy this work through the production script. Deploy and verify
