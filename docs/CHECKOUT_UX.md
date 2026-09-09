@@ -57,7 +57,31 @@ cancellation before and after VA issuance, legacy Request-Id recovery and real
 Firestore transaction-race qualification. DOKU sandbox cancellation is enabled;
 abandoned-cart recovery remains off. No real payment or family data was used.
 
-Before declaring rollout complete, verify the deployed Google popup, public
-authenticated recovery and a real browser return/resume. Keep production unchanged. Deploy backend
-support before the frontend exposes these actions. Never clear website data to
-test refresh behavior: that can erase locally saved trees.
+## Staging deployment receipt — September 9, 2026
+
+Frontend commit `f416989` is deployed as build `f416989-202609091625`, Vercel
+deployment `dpl_CrwzHxP1a2pb77SJoEh6twLaSsob`, at https://staging.heritg.us/.
+[Web CI 34375827119](https://github.com/Hamanto-Studio/heritg/actions/runs/34375827119)
+passed; secret-scan and commit-title checks also passed. The deployed asset and
+build string, `/billing/return` fallback, manifest, security headers, backend
+health and readiness were verified after deployment.
+
+In a fresh private Safari window, the deployed paywall displayed all three prices
+without sign-in. Selecting three years and clicking the real Google button
+opened Google's sign-in window directly, with no Settings navigation. Closing
+that window retained the Family+ dialog and selected three-year plan. No real
+Google account was signed in or charged for this check; successful callback and
+session exchange are covered by the component integration tests above.
+
+Backend staging was deployed and verified first. The public authenticated API
+smoke passed with a disposable session: reopening the same URL, account-based
+pending recovery, wrong-account/CSRF denial, duplicate prevention, actual DOKU
+cancellation, then a new one-year invoice at Rp79.000. Both orders were cancelled,
+and the test account/session were removed. See
+[the backend receipt](https://github.com/Hamanto-Studio/heritg-be/blob/feat/family-plan-options/docs/CHECKOUT_RECOVERY.md).
+
+Production is unchanged. Runtime dependency audit reports no vulnerabilities;
+the full build-tool audit reports existing Vitest/mocker and js-yaml advisories
+(two moderate, one high). These are not shipped runtime dependencies and were
+not changed by this checkout patch; review their patches before a production
+release. Never clear website data to test refresh: it can erase local trees.
