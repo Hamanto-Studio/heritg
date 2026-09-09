@@ -11,7 +11,7 @@ export function readBillingAttempt(): BillingAttempt | undefined {
   try {
     const value = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? "null") as BillingAttempt | null;
     return value && /^[A-Za-z0-9_-]{22}$/.test(value.accountId) && /^[A-Za-z0-9._~-]{16,128}$/.test(value.idempotencyKey) &&
-      Number.isFinite(value.createdAt) && (value.planId === undefined || ["weekly", "monthly", "yearly", "two_year"].includes(value.planId)) ? value : undefined;
+      Number.isFinite(value.createdAt) && (value.planId === undefined || ["weekly", "monthly", "yearly", "two_year", "six_month", "three_year"].includes(value.planId)) ? value : undefined;
   } catch { return undefined; }
 }
 

@@ -1,6 +1,6 @@
 export interface ProUser { id: string; name: string | null; email: string | null; expiresAt: string }
 export interface ProOffer {
-  planId?: "weekly" | "monthly" | "yearly" | "two_year";
+  planId?: "weekly" | "monthly" | "yearly" | "two_year" | "six_month" | "three_year";
   accessDays?: number;
   stagingAccessMinutes?: number;
   renewal?: "manual";

@@ -673,7 +673,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         />
       ) : null}
 
-      {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} /> : null}
+      {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} onSignIn={() => { pro.closePaywall(); setRightPanel("settings"); }} /> : null}
       <PaymentStatusNotice pro={pro} t={t} />
       {pro.sync.phase === "conflict" ? <SyncResolutionDialog pro={pro} t={t} /> : null}
 

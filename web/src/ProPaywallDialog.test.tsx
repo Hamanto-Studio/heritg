@@ -8,8 +8,37 @@ import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 
 const context = (overrides: Partial<ProContextValue> = {}): ProContextValue => ({ ...unavailableProContext, closePaywall: vi.fn(), purchase: vi.fn(async () => undefined), ...overrides });
+const prepaidOffers = ([['six_month', 49000, 15, 6], ['yearly', 79000, 20, 12], ['three_year', 199000, 30, 36]] as const).map(([planId, amount, stagingAccessMinutes, accessMonths]) => ({
+  planId, productId: `family-${planId}`, name: 'Family+', price: { amount, currency: 'IDR' }, accessMonths, stagingAccessMinutes, renewal: 'manual' as const
+}));
 describe("ProPaywallDialog", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it('offers a sign-in action and never starts checkout before authentication', async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const onSignIn = vi.fn();
+    const pro = context({ configured: true, offers: prepaidOffers });
+    const host = document.createElement('div'); document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator('en')} onSignIn={onSignIn} />));
+      await act(async () => host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.click());
+      expect(onSignIn).toHaveBeenCalledOnce();
+      expect(pro.purchase).not.toHaveBeenCalled();
+    } finally { await act(async () => root.unmount()); host.remove(); }
+  });
+
+  it('blocks a second purchase while payment status is pending', () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+    const pro = context({ configured: true, offers: prepaidOffers,
+      account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } },
+      payment: { status: 'pending', checking: false } });
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator('en')} />);
+    expect(markup).toContain('You already have a payment in progress');
+    expect(markup).toContain('Check payment');
+    expect(markup).toMatch(/pro-purchase-button[^>]*disabled/);
+  });
 
   it.each(["signedOut", "loading", "error", "signedIn"] as const)("shows the staging prices with account state %s, without invoking checkout", async status => {
     vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
@@ -19,43 +48,40 @@ describe("ProPaywallDialog", () => {
     const account: ProContextValue["account"] = status === "signedIn"
       ? { status, user: { id: "synthetic", name: null, email: null, expiresAt: "2099-01-01" } }
       : status === "error" ? { status, message: "Service unavailable" } : { status };
-    const pro = context({ configured: true, account, purchase, closePaywall });
+    const pro = context({ configured: true, account, purchase, closePaywall, offers: prepaidOffers });
     const host = document.createElement("div");
     document.body.append(host);
     const root = createRoot(host);
     try {
       await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator("en")} />));
-      expect(Array.from(host.querySelectorAll("dt"), item => item.textContent)).toEqual(["Monthly", "6 months", "1 year", "3 years"]);
-      for (const price of ["15.000", "49.000", "79.000", "199.000"]) expect(host.textContent).toContain(price);
-      expect(host.textContent).toContain("Explore the prices without signing in");
-      expect(host.textContent).toContain("purchases not available yet");
+      expect(Array.from(host.querySelectorAll("input[type=radio]"), item => (item as HTMLInputElement).value)).toEqual(["six_month", "yearly", "three_year"]);
+      for (const price of ["49.000", "79.000", "199.000"]) expect(host.textContent).toContain(price);
+      expect(host.textContent).toContain("No recurring invoices or automatic charges");
+      expect(host.textContent).not.toContain("purchases not available yet");
       expect(host.textContent).not.toContain("Sign in to load the current price");
-      expect(host.querySelector(".pro-purchase-button")).toBeNull();
+      expect((host.querySelector(".pro-purchase-button") as HTMLButtonElement).disabled).toBe(status !== "signedIn");
       const benefits = host.querySelector(".family-plus-benefits")!;
       expect(benefits.closest("details")).toBeNull();
       expect(benefits.textContent).toContain("Included with Family+");
-      expect(benefits.compareDocumentPosition(host.querySelector(".family-price-list")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(benefits.compareDocumentPosition(host.querySelector(".pro-plan-picker")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(host.querySelectorAll(".family-plus-benefits")).toHaveLength(1);
-      for (const button of host.querySelectorAll<HTMLButtonElement>("button")) await act(async () => button.click());
       expect(purchase).not.toHaveBeenCalled();
+      await act(async () => host.querySelector<HTMLButtonElement>('.modal-header button')!.click());
       expect(closePaywall).toHaveBeenCalled();
     } finally { await act(async () => root.unmount()); host.remove(); }
   });
 
   it("localizes the public staging preview and separates test timers from real periods", () => {
     vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
-    const markup = renderToStaticMarkup(<ProPaywallDialog pro={context()} t={createTranslator("id")} />);
-    expect(markup).toContain("Lihat harga tanpa login");
-    expect(markup).toContain("setiap 3 tahun");
-    for (const duration of [10, 15, 20, 30]) expect(markup).toContain(`${duration} menit`);
-    expect(markup).toContain("pembelian belum tersedia");
-    expect(markup).toContain("Tidak ada pendebitan otomatis");
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers: prepaidOffers })} t={createTranslator("id")} />);
+    expect(markup).toContain("3 tahun");
+    for (const duration of [15, 20, 30]) expect(markup).toContain(`${duration} menit`);
+    expect(markup).toContain("Tanpa tagihan berulang atau pendebitan otomatis");
   });
   it("selects every server-priced plan and submits only its ID with clear sandbox durations", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const offers = ([['weekly', 9000, 10], ['monthly', 15000, 15], ['yearly', 79000, 20], ['two_year', 120000, 30]] as const).map(([planId, amount, stagingAccessMinutes]) => ({
-      planId, productId: `family-${planId}`, name: 'Family+', price: { amount, currency: 'IDR' }, accessMonths: 0, stagingAccessMinutes, renewal: 'manual' as const
-    }));
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    const offers = prepaidOffers;
     const purchase = vi.fn(async () => undefined);
     const pro = context({ configured: true, offers, purchase, account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } }, subscription: { status: 'free', offer: offers[0] } });
     const host = document.createElement('div');
@@ -63,7 +89,7 @@ describe("ProPaywallDialog", () => {
     const root = createRoot(host);
     try {
       await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator('en')} />));
-      expect(host.textContent).toContain('No automatic charges');
+      expect(host.textContent).toContain('No recurring invoices or automatic charges');
       expect(host.textContent).toContain('Sandbox only');
       expect(host.textContent).not.toContain('Infinity');
       const benefits = host.querySelector('.family-plus-benefits')!;

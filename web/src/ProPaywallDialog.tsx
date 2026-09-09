@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { FamilyPlusBenefits } from "./FamilyPlusBenefits";
-import { FamilyPlanPreview } from "./FamilyPlanPreview";
 import type { Translator } from "./i18n";
 import type { ProContextValue, ProOffer } from "./proTypes";
 import { ButtonLoader, ErrorNotice, Modal } from "./ui";
@@ -16,24 +15,17 @@ const offerPrices = (offer: ProOffer | undefined) => offer ? {
   total: formattedPrice(offer.price.amount, offer.price.currency)
 } : undefined;
 
-export function ProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
-  // The public preview has no session dependency or purchase handler. Keep the
-  // production offer and legacy pending-payment recovery unchanged.
-  return __DEPLOYMENT_ENV__ === "staging"
-    ? <FamilyPlanPreview onClose={pro.closePaywall} t={t} />
-    : <CurrentProPaywallDialog pro={pro} t={t} />;
-}
-
-function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translator }) {
-  const [selectedPlan, setSelectedPlan] = useState<ProOffer["planId"]>("two_year");
-  const plans = pro.offers?.filter(item => item.planId);
-  const offer = plans?.length ? plans.find(item => item.planId === selectedPlan) ?? plans[0] : offerFor(pro);
+export function ProPaywallDialog({ pro, t, onSignIn }: { pro: ProContextValue; t: Translator; onSignIn?: () => void }) {
+  const [selectedPlan, setSelectedPlan] = useState<ProOffer["planId"]>("six_month");
+  const staging = __DEPLOYMENT_ENV__ === "staging";
+  const plans = pro.offers?.filter(item => item.planId && (!staging || ["six_month", "yearly", "three_year"].includes(item.planId)));
+  const offer = plans?.length ? plans.find(item => item.planId === selectedPlan) ?? plans[0] : staging ? undefined : offerFor(pro);
   const prices = offerPrices(offer);
   const freeAccess = offer?.price.amount === 0 || (!offer && pro.configured && __DEPLOYMENT_ENV__ === "production");
   const purchasing = pro.subscription.status === "purchasing";
   const alreadyActive = freeAccess && (pro.subscription.status === "active" || pro.subscription.status === "readOnly");
   const signedIn = pro.account.status === "signedIn";
-  const purchaseButton = <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing || alreadyActive} onClick={() => void pro.purchase(offer?.planId)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? freeAccess ? t("activatingFreeAccess") : t("openingCheckout") : alreadyActive ? t("familyPlusActive") : !pro.configured ? t("subscriptionsComingSoon") : freeAccess ? t("claimFreeAccess") : plans?.length && prices ? t("testPaymentTotal", { price: prices.total }) : t("subscribeToPro")}</button>;
+  const purchaseButton = !signedIn && onSignIn ? <button className="button primary pro-purchase-button" onClick={onSignIn} type="button">{t("signInRequired")}</button> : <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing || alreadyActive || (staging && !plans?.length) || pro.payment?.status === "pending" || pro.payment?.status === "unavailable"} onClick={() => void pro.purchase(offer?.planId)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? freeAccess ? t("activatingFreeAccess") : t("openingCheckout") : alreadyActive ? t("familyPlusActive") : !pro.configured ? t("subscriptionsComingSoon") : freeAccess ? t("claimFreeAccess") : plans?.length && prices ? t("testPaymentTotal", { price: prices.total }) : t("subscribeToPro")}</button>;
   const footer = plans?.length ? <div className="pro-plan-checkout">
     <span>{t("stagingPlanDuration", { count: offer?.stagingAccessMinutes ?? 0 })} · {t("manualRenewalShort")}</span>
     {purchaseButton}
@@ -46,7 +38,7 @@ function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
         <div className="pro-plan-choices" role="radiogroup" aria-label={t("choosePlan")}>
           {plans.map(plan => <label key={plan.planId} className={`pro-plan-option ${offer?.planId === plan.planId ? "selected" : ""}`}>
             <input type="radio" name="family-plan" value={plan.planId} checked={offer?.planId === plan.planId} disabled={purchasing} onChange={() => setSelectedPlan(plan.planId)} />
-            <span className="pro-plan-copy"><span><strong>{t(plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : plan.planId === "yearly" ? "familyPlanYearly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span><small>{formattedPrice(plan.price.amount, plan.price.currency)}<span>{t("oneTimePayment")}</span></small></span>
+            <span className="pro-plan-copy"><span><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span><small>{formattedPrice(plan.price.amount, plan.price.currency)}<span>{t("oneTimePayment")}</span></small></span>
           </label>)}
         </div>
         <p className="payment-provider-note">{t("manualRenewalNotice")}</p>
@@ -54,6 +46,8 @@ function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
     </section>
     {!pro.configured ? <div className="pro-availability" role="status"><strong>{t("proComingSoon")}</strong><span>{t("proComingSoonDetail")}</span></div> : null}
     {pro.configured && !signedIn ? <div className="pro-availability" role="status"><strong>{t("signInRequired")}</strong><span>{t("signInBeforePurchase")}</span></div> : null}
+    {staging && !plans?.length ? <p role="status">{t("prepaidPlansUnavailable")}</p> : null}
+    {pro.payment?.status === "pending" || pro.payment?.status === "unavailable" ? <div className="pro-availability" role="status"><p>{t("prepaidPaymentPending")}</p><button className="button secondary" disabled={pro.payment.checking} onClick={() => void pro.refreshPayment?.()} type="button">{t("paymentCheckAgain")}</button></div> : null}
     <p className="payment-provider-note">{freeAccess ? t("freeAccessDetail") : t("secureCheckoutDetail")}</p>
     <ErrorNotice message={pro.error} />
     {!plans?.length ? purchaseButton : null}

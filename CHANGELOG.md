@@ -22,6 +22,10 @@ prefix.
 
 ### Web
 
+- Enable staging Family+ purchases for six months, one year or three years with
+  one-time sandbox payments, public prices, visible benefits and pending-payment
+  protection. No recurring invoices or automatic charges.
+
 - Show Family+ benefits expanded above the prices instead of hiding them behind
   an extra click, including before sign-in.
 - Show monthly, six-month, yearly and three-year Family+ prices before sign-in

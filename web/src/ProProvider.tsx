@@ -155,6 +155,16 @@ export function ProProvider({
   const [account, setAccount] = useState<AccountState>(readCsrfCookie() ? { status: "loading" } : { status: "signedOut" });
   const [subscription, setSubscription] = useState<SubscriptionState>(configured ? { status: "loading" } : { status: "unavailable" });
   const [offers, setOffers] = useState<ProOffer[]>();
+  const [publicOffers, setPublicOffers] = useState<ProOffer[]>();
+  useEffect(() => {
+    if (value || !configured || __DEPLOYMENT_ENV__ !== "staging") return;
+    const controller = new AbortController();
+    void jsonRequest<{ offers: ProOffer[] }>("/api/v1/billing/plans", { signal: controller.signal })
+      .then(result => {
+        if (!controller.signal.aborted && Array.isArray(result.offers)) setPublicOffers(result.offers);
+      }).catch(() => { /* No invented fallback price; the paywall offers a refresh. */ });
+    return () => controller.abort();
+  }, [configured, value]);
   const [sync, setSync] = useState<SyncState>({ enabled: false, phase: "unavailable", pendingChanges: 0 });
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [error, setError] = useState<string>();
@@ -512,7 +522,7 @@ export function ProProvider({
     configured,
     account,
     subscription,
-    offers,
+    offers: offers ?? publicOffers,
     sync,
     paywallOpen,
     error,
