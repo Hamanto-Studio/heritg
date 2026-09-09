@@ -1,5 +1,31 @@
 # DOKU sandbox checkout
 
+## Current prepaid release — September 9, 2026
+
+The latest user decision supersedes the historical sections below: **prepaid
+access with one-time payments**. Six months Rp49.000, one year Rp79.000, three
+years Rp199.000. No recurring invoices, automatic charges or FlexiBill enrollment.
+Staging access lasts 15/20/30 minutes, with no grace. These explicit test timers
+are not the intended 6/12/36 calendar-month live periods.
+
+Backend staging run [34365645118](https://github.com/Hamanto-Studio/heritg-be/actions/runs/34365645118)
+deployed commit `f2607c07b13e0006d04363bf9bb828a16a2c6267`; API, entitlement
+service and recovery job use digest
+`sha256:fb0ba1a23267cab832fb4abbb421f30d5a6b468d3ebfd08021c31713b1cb1cb8`.
+Web commit `239c9f7`, build `239c9f7-202609091447`, deployment
+`dpl_6DnzNtmuKrNoUmgPc3R2TKsw8Bny` serves `https://staging.heritg.us`.
+
+Prices come from public GET `/api/v1/billing/plans`, without sign-in. Benefits
+remain expanded above the picker. Signed-out users have an action leading to
+Google sign-in; signed-in users can select and pay for a plan. Pending payments
+disable another purchase and offer a status check. Existing invoices keep their
+original terms. Production's free access and local editing are unchanged.
+
+See backend `docs/PREPAID.md` for migration and synthetic test evidence. This
+staging release does not enable production payments or live calendar-month terms.
+
+## Historical integration decisions and receipts
+
 This integration targets `https://staging.heritg.us` only. Production at
 `https://heritg.us` keeps its existing free Family+ access and has no DOKU keys.
 The four-plan catalog is deployed to staging. Its deployment receipt below is
