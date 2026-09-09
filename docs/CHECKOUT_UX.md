@@ -50,7 +50,7 @@ selection, no automatic checkout, dismissal across provider remount, and a faile
 then confirmed cancellation while switching plans. These use synthetic Google and
 payment responses, not a claim of real Google or DOKU end-to-end qualification.
 
-The full frontend suite passed 909 tests with one existing skip; lint and build
+The full frontend suite passed 912 tests with one existing skip; lint and build
 passed. Phone (390px) and tablet/desktop (832px) layouts were inspected together.
 The backend receipt in `heritg-be/docs/CHECKOUT_RECOVERY.md` records real provider
 cancellation before and after VA issuance, legacy Request-Id recovery and real
@@ -96,4 +96,31 @@ authentication, and an open pending panel refreshes when the session is restored
 without reviving its dismissed reminder. The regression test deliberately delays
 the session response. Separate fake-clock tests prove automatic status checks stop
 after three attempts, both normally and during provider errors; manual checking
-remains available. This follow-up needs its own deployment/browser receipt below.
+remains available.
+
+Follow-up commit `df021b0` is deployed as build `df021b0-202609091649`, Vercel
+deployment `dpl_GzvLtmBe9sMTRbHavZ2CCDchmGCJ`, at https://staging.heritg.us/.
+The exact built JavaScript, billing-return route, manifest, service worker,
+registration script and security headers were rechecked. Backend revision and
+production remain unchanged.
+
+The isolated Chrome browser smoke passed against this deployed build using a
+disposable server-created session (not Google credentials):
+
+1. Select three years in the actual paywall and open DOKU.
+2. Use DOKU Back to Merchant, hide the reminder, reload and immediately reopen
+   Family+. The three-year choice and pending actions remain available.
+3. Close the paywall: the dismissed reminder stays hidden. Reopen and resume:
+   the exact original DOKU URL opens, with only one checkout-creation request.
+4. Return again, choose one year and confirm cancellation of the old order.
+   DOKU confirms closure before another purchase becomes available. The one-year
+   selection remains; no replacement is purchased automatically.
+5. Respect the rate window, then explicitly purchase one year. Exactly two
+   invoices exist with the original Rp199.000 and new Rp79.000 amounts.
+
+No payment was simulated or money transferred during this recovery test; no
+entitlement was granted. Both orders were confirmed cancelled and the disposable
+account/session removed. The reproducible browser smoke lives in
+`heritg-be/scripts/smoke-checkout-browser.mjs`. The Safari Google-popup check above
+is separate evidence; this browser fixture does not independently qualify Google
+credential exchange or every device.
