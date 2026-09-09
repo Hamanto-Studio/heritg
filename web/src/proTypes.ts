@@ -49,7 +49,11 @@ export interface ProContextValue {
   paywallOpen: boolean;
   error?: string;
   openPaywall: () => void;
-  payment?: { status: "pending" | "confirmed" | "unavailable" | "signedOut" | "failed" | "expired"; checking: boolean };
+  payment?: { status: "pending" | "confirmed" | "unavailable" | "signedOut" | "failed" | "expired" | "cancelled"; checking: boolean; planId?: ProOffer["planId"]; resumable?: boolean; cancellable?: boolean };
+  paymentNoticeHidden?: boolean;
+  paymentAction?: "resuming" | "cancelling";
+  resumePayment?: () => Promise<void>;
+  cancelPayment?: () => Promise<boolean>;
   refreshPayment?: () => Promise<void>;
   dismissPayment?: () => void;
   closePaywall: () => void;

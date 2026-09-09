@@ -22,6 +22,9 @@ prefix.
 
 ### Web
 
+- Keep Google sign-in inside Family+ and preserve the selected plan. Add saved
+  payment recovery, cancellation confirmation and persistent reminder dismissal.
+
 - Enable staging Family+ purchases for six months, one year or three years with
   one-time sandbox payments, public prices, visible benefits and pending-payment
   protection. No recurring invoices or automatic charges.

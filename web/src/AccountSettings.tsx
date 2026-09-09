@@ -29,12 +29,14 @@ interface AccountSettingsProps {
   language: AppData["language"];
   t: Translator;
   googleClientId?: string;
+  variant?: "settings" | "checkout";
 }
 
 export function AccountSettings({
   language,
   t,
-  googleClientId = __GOOGLE_CLIENT_ID__
+  googleClientId = __GOOGLE_CLIENT_ID__,
+  variant = "settings"
 }: AccountSettingsProps) {
   const [initialCsrfToken] = useState(readCsrfCookie);
   const csrfToken = useRef<string | undefined>(initialCsrfToken);
@@ -249,6 +251,27 @@ export function AccountSettings({
     }
   };
 
+  const signIn = <div className="account-sign-in">
+    <div className="account-google-primary">
+      {googleStatus !== "error" ? <div className="google-sign-in">
+        <div aria-label={t("accountGoogleButton")} key={googleAttempt} ref={googleButton} />
+        {googleStatus === "idle" || googleStatus === "preparing" ? <p className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
+        {googleStatus === "signingIn" ? <p className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
+      </div> : <div className="account-google-error">
+        <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p>
+        {googleClientId ? <button className="button secondary" onClick={retryGoogle} type="button">{t("accountRetry")}</button> : null}
+      </div>}
+    </div>
+  </div>;
+
+  // The real Google SDK button opens its popup from the user's click. Reuse the
+  // same nonce/session exchange as Settings, without navigating away from checkout.
+  if (variant === "checkout") return <div className="checkout-sign-in">
+    {status === "anonymous" ? signIn : status === "error"
+      ? <button className="button secondary" onClick={() => void checkSession()} type="button">{t("accountRetry")}</button>
+      : <p role="status"><ButtonLoader /> {t("accountChecking")}</p>}
+  </div>;
+
   return (
     <div className="settings-group">
       <h3>{t("account")}</h3>
@@ -262,23 +285,7 @@ export function AccountSettings({
         </div>
 
         {status === "checking" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountChecking")}</p> : null}
-        {status === "anonymous" ? (
-          <div className="account-sign-in">
-            <div className="account-google-primary">
-              {googleStatus !== "error" ? (
-                <div className="google-sign-in">
-                  <div aria-label={t("accountGoogleButton")} key={googleAttempt} ref={googleButton} />
-                  {googleStatus === "idle" || googleStatus === "preparing" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountPreparing")}</p> : null}
-                  {googleStatus === "signingIn" ? <p aria-live="polite" className="account-status" role="status"><ButtonLoader /> {t("accountSigningIn")}</p> : null}
-                </div>
-              ) : null}
-              {googleStatus === "error" ? <div className="account-google-error">
-                <p className="danger-text" role="alert">{googleClientId ? t("accountGoogleError") : t("accountUnavailable")}</p>
-                {googleClientId ? <button className="button secondary" onClick={retryGoogle} type="button">{t("accountRetry")}</button> : null}
-              </div> : null}
-            </div>
-          </div>
-        ) : null}
+        {status === "anonymous" ? signIn : null}
         {status === "authenticated" && session ? (
           <div className="account-session">
             {session.name || session.email ? (

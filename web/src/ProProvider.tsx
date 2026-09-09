@@ -93,7 +93,11 @@ export const requestBillingCheckout = async (
   if (!result || typeof result.paymentLinkUrl !== "string") {
     throw new Error("The payment service returned an invalid response.");
   }
-  const destination = new URL(result.paymentLinkUrl);
+  return validatedPaymentLink(result.paymentLinkUrl);
+};
+
+const validatedPaymentLink = (link: string) => {
+  const destination = new URL(link);
   if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port) throw new Error("The checkout URL is invalid.");
   const dokuSandbox = ["sandbox.doku.com", "staging.doku.com"].includes(destination.hostname) && destination.pathname.startsWith("/checkout-link-v2/");
   if (__DEPLOYMENT_ENV__ === "staging" && !dokuSandbox &&
@@ -102,11 +106,11 @@ export const requestBillingCheckout = async (
 };
 
 export const requestBillingStatus = async (attempt: BillingAttempt, csrfToken: string) => {
-  const result = await jsonRequest<{ status: string }>("/api/v1/billing/checkouts/status", {
+  const result = await jsonRequest<{ status: string; planId?: ProOffer["planId"]; resumable?: boolean; cancellable?: boolean }>("/api/v1/billing/checkouts/status", {
     method: "POST", headers: { "idempotency-key": attempt.idempotencyKey, "x-csrf-token": csrfToken, "x-heritg-account-id": attempt.accountId }, body: "{}"
   });
-  if (!result || !["pending", "completed", "not_found", "failed", "expired"].includes(result.status)) throw new Error("Payment status is unavailable.");
-  return result.status;
+  if (!result || !["pending", "completed", "not_found", "failed", "expired", "cancelled"].includes(result.status)) throw new Error("Payment status is unavailable.");
+  return result;
 };
 
 export const requestFreeAccess = async (
@@ -178,9 +182,31 @@ export function ProProvider({
   const checkoutInFlight = useRef(false);
   const [billingAttempt, setBillingAttempt] = useState(readBillingAttempt);
   const [payment, setPayment] = useState<ProContextValue["payment"]>();
-  const [paymentNoticeHidden, setPaymentNoticeHidden] = useState(false);
+  const [paymentNoticeHidden, setPaymentNoticeHidden] = useState(() => readBillingAttempt()?.noticeHidden === true);
+  const [paymentAction, setPaymentAction] = useState<ProContextValue["paymentAction"]>();
+  const paymentActionInFlight = useRef(false);
   const paymentCheckInFlight = useRef(false);
   const expiryRefreshRef = useRef<string | undefined>(undefined);
+
+  const discoverPendingPayment = useCallback(async (accountId: string, csrf: string, generation: number) => {
+    if (__DEPLOYMENT_ENV__ !== "staging") return false;
+    const result = await jsonRequest<{ status: string; recoveryKey?: string; planId?: ProOffer["planId"]; resumable?: boolean; cancellable?: boolean }>("/api/v1/billing/checkouts/pending", {
+      method: "POST", headers: { "x-csrf-token": csrf, "x-heritg-account-id": accountId }, body: "{}"
+    });
+    if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== accountId) return true;
+    if (result?.status === "not_found") return false;
+    if (result?.status !== "pending" || typeof result.recoveryKey !== "string" || !/^recovery_[a-f0-9]{64}$/.test(result.recoveryKey)) {
+      throw new Error("We couldn’t check for an existing payment. Try again before starting a new checkout.");
+    }
+    const prior = readBillingAttempt();
+    const attempt: BillingAttempt = { accountId, idempotencyKey: result.recoveryKey, createdAt: Date.now(), planId: result.planId,
+      noticeHidden: prior?.accountId === accountId ? prior.noticeHidden : true };
+    saveBillingAttempt(attempt);
+    setBillingAttempt(attempt);
+    setPaymentNoticeHidden(attempt.noticeHidden === true);
+    setPayment({ status: "pending", checking: false, planId: result.planId, resumable: result.resumable, cancellable: result.cancellable });
+    return true;
+  }, []);
 
   const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
@@ -211,7 +237,13 @@ export function ProProvider({
     const entitlement = await jsonRequest<EntitlementResponse>("/api/v1/entitlements/current");
     if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== session.accountId) return;
     applyEntitlement(entitlement);
-  }, [applyEntitlement, configured]);
+    const csrf = readCsrfCookie();
+    if (csrf && readBillingAttempt()?.accountId !== session.accountId) {
+      // Reopening a tab must not lose an unpaid invoice. Discovery is quiet;
+      // checkout itself requires a successful check before creating another.
+      await discoverPendingPayment(session.accountId, csrf, generation).catch(() => undefined);
+    }
+  }, [applyEntitlement, configured, discoverPendingPayment]);
 
   const loadSession = useCallback(async () => {
     setOffers(undefined);
@@ -252,12 +284,15 @@ export function ProProvider({
     if (value) return;
     const timer = window.setTimeout(() => void loadSession(), 0);
     const sessionChanged = () => void loadSession();
+    const restored = (event: PageTransitionEvent) => { if (event.persisted) void loadSession(); };
+    window.addEventListener("pageshow", restored);
     const unsubscribe = subscribeToAccountSessionChanges(sessionChanged);
     return () => {
       sessionGenerationRef.current += 1;
       syncAbortRef.current?.abort();
       window.clearTimeout(timer);
       unsubscribe();
+      window.removeEventListener("pageshow", restored);
     };
   }, [loadSession, value]);
 
@@ -305,7 +340,7 @@ export function ProProvider({
   }, [account, activeExpiry, refreshEntitlement, value]);
 
   const refreshPayment = useCallback(async () => {
-    if (!billingAttempt || paymentCheckInFlight.current) return;
+    if (!billingAttempt || paymentCheckInFlight.current || paymentActionInFlight.current || checkoutInFlight.current) return;
     const csrf = readCsrfCookie();
     if (account.status !== "signedIn" || account.user.id !== billingAttempt.accountId || !csrf) {
       setPayment({ status: "signedOut", checking: false });
@@ -313,9 +348,10 @@ export function ProProvider({
     }
     const generation = sessionGenerationRef.current;
     paymentCheckInFlight.current = true;
-    setPayment({ status: "pending", checking: true });
+    setPayment(current => ({ ...current, planId: billingAttempt.planId, status: "pending", checking: true }));
     try {
-      const status = await requestBillingStatus(billingAttempt, csrf);
+      const result = await requestBillingStatus(billingAttempt, csrf);
+      const { status } = result;
       if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== billingAttempt.accountId) return;
       if (status === "completed") {
         await refreshEntitlement();
@@ -326,26 +362,29 @@ export function ProProvider({
         setPaymentNoticeHidden(false);
         setPaywallOpen(false);
       } else {
-        setPayment({ status: status === "failed" || status === "expired" ? status : "pending", checking: false });
+        const terminal = status === "failed" || status === "expired" || status === "cancelled";
+        if (terminal) { clearBillingAttempt(); setBillingAttempt(undefined); }
+        setPayment({ status: terminal ? status : "pending", checking: false,
+          planId: result.planId ?? billingAttempt.planId, resumable: result.resumable, cancellable: result.cancellable });
       }
     } catch {
-      if (generation === sessionGenerationRef.current) setPayment({ status: "unavailable", checking: false });
+      if (generation === sessionGenerationRef.current) setPayment(current => ({ ...current, planId: billingAttempt.planId, status: "unavailable", checking: false }));
     } finally { paymentCheckInFlight.current = false; }
   }, [account, billingAttempt, refreshEntitlement]);
 
   useEffect(() => {
-    if (value || !configured || !billingAttempt || account.status === "loading") return;
+    if (value || !configured || !billingAttempt || account.status === "loading" || paymentNoticeHidden) return;
     let count = 0;
     let timer: number;
     let stopped = false;
     const check = async () => {
       if (stopped) return;
       if (navigator.onLine && document.visibilityState === "visible") { await refreshPayment(); count++; }
-      if (!stopped && count < 18) timer = window.setTimeout(() => void check(), 10_000);
+      if (!stopped && count < 3) timer = window.setTimeout(() => void check(), 15_000);
     };
     timer = window.setTimeout(() => void check(), 0);
     return () => { stopped = true; window.clearTimeout(timer); };
-  }, [account.status, billingAttempt, configured, refreshPayment, value]);
+  }, [account.status, billingAttempt, configured, paymentNoticeHidden, refreshPayment, value]);
 
   const runSync = useCallback(async (resolution?: "device" | "cloud" | "both") => {
     if (value || !appStore?.ready || !appStore.data || account.status !== "signedIn" || !syncAccess.canRead || (!sync.enabled && !resolution)) return;
@@ -465,7 +504,7 @@ export function ProProvider({
       setError("Sign in again before activating Family+.");
       return;
     }
-    const offer = planId ? offers?.find(item => item.planId === planId) : "offer" in subscription ? subscription.offer : undefined;
+    const offer = planId ? (offers ?? publicOffers)?.find(item => item.planId === planId) : "offer" in subscription ? subscription.offer : undefined;
     if (!offer) {
       setError("The Family+ offer is unavailable. Refresh and try again.");
       return;
@@ -486,12 +525,18 @@ export function ProProvider({
         return;
       }
       const prior = readBillingAttempt();
+      if (prior?.accountId !== accountId && await discoverPendingPayment(accountId, csrfToken, generation)) {
+        if (isCurrentAccount()) setSubscription(subscription);
+        return;
+      }
+      if (!isCurrentAccount()) return;
       if (prior?.accountId === account.user.id && (prior.planId ?? "two_year") !== (planId ?? "two_year")) {
         throw new Error("A payment for another plan is pending. Check that payment before choosing a different plan.");
       }
-      const attempt = prior?.accountId === account.user.id ? prior : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now(), ...(planId ? { planId } : {}) };
+      const attempt = prior?.accountId === account.user.id ? { ...prior, noticeHidden: false } : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now(), ...(planId ? { planId } : {}) };
       saveBillingAttempt(attempt);
       setBillingAttempt(attempt);
+      setPayment({ status: "pending", checking: false, planId: attempt.planId });
       const paymentLink = await requestBillingCheckout(account.user.id, csrfToken, attempt.idempotencyKey, attempt.planId);
       if (!isCurrentAccount()) return;
       // Hosted purchases must redirect even when existing Family access is active.
@@ -506,10 +551,67 @@ export function ProProvider({
       window.location.assign(paymentLink);
     } catch (cause) {
       if (!isCurrentAccount()) return;
+      if (cause && typeof cause === "object" && "status" in cause && cause.status === 409) {
+        // A different tab may have reserved an invoice after our initial check.
+        // Recover that invoice rather than leaving an unusable new browser key.
+        try {
+          if (await discoverPendingPayment(accountId, csrfToken, generation)) {
+            if (isCurrentAccount()) setSubscription(subscription);
+            return;
+          }
+        } catch { /* Retain the existing attempt and show the original error. */ }
+      }
       const message = cause instanceof Error ? cause.message : String(cause);
       setError(message);
       setSubscription({ status: "error", message, offer });
     } finally { checkoutInFlight.current = false; }
+  };
+  const paymentOperation = async (operation: "resume" | "cancel"): Promise<boolean> => {
+    const attempt = readBillingAttempt();
+    const csrf = readCsrfCookie();
+    if (!attempt || paymentActionInFlight.current || paymentCheckInFlight.current || checkoutInFlight.current) return false;
+    if (account.status !== "signedIn" || account.user.id !== attempt.accountId || !csrf) {
+      setPayment({ status: "signedOut", checking: false });
+      return false;
+    }
+    const generation = sessionGenerationRef.current;
+    const current = () => generation === sessionGenerationRef.current && currentAccountIdRef.current === attempt.accountId;
+    paymentActionInFlight.current = true;
+    setPaymentAction(operation === "resume" ? "resuming" : "cancelling");
+    setError(undefined);
+    try {
+      const result = await jsonRequest<{ status: string; paymentLinkUrl?: string }>(`/api/v1/billing/checkouts/${operation}`, {
+        signal: AbortSignal.timeout(operation === "cancel" ? 30_000 : 15_000),
+        method: "POST", headers: { "idempotency-key": attempt.idempotencyKey, "x-csrf-token": csrf, "x-heritg-account-id": attempt.accountId }, body: "{}"
+      });
+      if (!current()) return false;
+      if (result.status === "completed") {
+        await refreshEntitlement();
+        if (!current()) return false;
+        clearBillingAttempt(); setBillingAttempt(undefined);
+        setPayment({ status: "confirmed", checking: false });
+        setPaymentNoticeHidden(false); setPaywallOpen(false);
+        return false; // Never start a replacement purchase after discovering payment.
+      }
+      if (["cancelled", "expired", "failed"].includes(result.status)) {
+        clearBillingAttempt(); setBillingAttempt(undefined);
+        setPayment({ status: result.status as "cancelled" | "expired" | "failed", checking: false });
+        return true;
+      }
+      if (operation === "resume" && result.status === "pending" && typeof result.paymentLinkUrl === "string") {
+        const destination = validatedPaymentLink(result.paymentLinkUrl);
+        saveBillingAttempt({ ...attempt, noticeHidden: false });
+        setPaymentNoticeHidden(false);
+        window.location.assign(destination);
+        return true;
+      }
+      throw new Error(operation === "cancel"
+        ? "DOKU has not confirmed cancellation. Your checkout is still saved. Resume it or check its status; do not start a second payment yet."
+        : "The saved checkout could not be reopened. Check its status or try again shortly. No new payment was created.");
+    } catch (cause) {
+      if (current()) setError(cause instanceof Error ? cause.message : "Payment service unavailable. Your checkout is still saved.");
+      return false;
+    } finally { paymentActionInFlight.current = false; setPaymentAction(undefined); }
   };
   const refreshSubscription = async () => {
     if (account.status !== "signedIn") return;
@@ -526,16 +628,32 @@ export function ProProvider({
     sync,
     paywallOpen,
     error,
-    payment: paymentNoticeHidden ? undefined : payment,
+    payment,
+    paymentNoticeHidden,
+    paymentAction,
+    resumePayment: async () => { await paymentOperation("resume"); },
+    cancelPayment: async () => paymentOperation("cancel"),
     refreshPayment,
     dismissPayment: () => {
       setPaymentNoticeHidden(true);
-      if (payment?.status === "confirmed" || payment?.status === "expired" || payment?.status === "failed") {
+      const attempt = readBillingAttempt();
+      if (attempt) {
+        try { saveBillingAttempt({ ...attempt, noticeHidden: true }); } catch { /* Keep the existing retry key if persistence is unavailable. */ }
+      }
+      if (payment?.status === "confirmed" || payment?.status === "expired" || payment?.status === "failed" || payment?.status === "cancelled") {
         clearBillingAttempt(); setBillingAttempt(undefined);
       }
       if (window.location.pathname === "/billing/return") window.history.replaceState(window.history.state, "", "/");
     },
-    openPaywall: () => setPaywallOpen(true),
+    openPaywall: () => {
+      setPaywallOpen(true);
+      if (billingAttempt) {
+        setPayment(current => current ?? { status: "pending", checking: false, planId: billingAttempt.planId });
+        void refreshPayment();
+      } else if (account.status === "signedIn" && readCsrfCookie()) {
+        void discoverPendingPayment(account.user.id, readCsrfCookie()!, sessionGenerationRef.current).catch(() => undefined);
+      }
+    },
     closePaywall: () => setPaywallOpen(false),
     purchase,
     refreshSubscription,

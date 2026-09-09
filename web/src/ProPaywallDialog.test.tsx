@@ -17,14 +17,14 @@ describe("ProPaywallDialog", () => {
   it('offers a sign-in action and never starts checkout before authentication', async () => {
     vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
-    const onSignIn = vi.fn();
     const pro = context({ configured: true, offers: prepaidOffers });
     const host = document.createElement('div'); document.body.append(host);
     const root = createRoot(host);
     try {
-      await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator('en')} onSignIn={onSignIn} />));
-      await act(async () => host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.click());
-      expect(onSignIn).toHaveBeenCalledOnce();
+      await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator('en')} />));
+      expect(host.querySelector('.checkout-sign-in')).not.toBeNull();
+      expect(host.querySelector('.account-settings')).toBeNull();
+      expect(pro.closePaywall).not.toHaveBeenCalled();
       expect(pro.purchase).not.toHaveBeenCalled();
     } finally { await act(async () => root.unmount()); host.remove(); }
   });
@@ -35,7 +35,8 @@ describe("ProPaywallDialog", () => {
       account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } },
       payment: { status: 'pending', checking: false } });
     const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator('en')} />);
-    expect(markup).toContain('You already have a payment in progress');
+    expect(markup).toContain('Resume payment');
+    expect(markup).toContain('Cancel payment');
     expect(markup).toContain('Check payment');
     expect(markup).toMatch(/pro-purchase-button[^>]*disabled/);
   });
@@ -59,7 +60,8 @@ describe("ProPaywallDialog", () => {
       expect(host.textContent).toContain("No recurring invoices or automatic charges");
       expect(host.textContent).not.toContain("purchases not available yet");
       expect(host.textContent).not.toContain("Sign in to load the current price");
-      expect((host.querySelector(".pro-purchase-button") as HTMLButtonElement).disabled).toBe(status !== "signedIn");
+      if (status === "signedIn") expect((host.querySelector(".pro-purchase-button") as HTMLButtonElement).disabled).toBe(false);
+      else expect(host.querySelector('.checkout-sign-in')).not.toBeNull();
       const benefits = host.querySelector(".family-plus-benefits")!;
       expect(benefits.closest("details")).toBeNull();
       expect(benefits.textContent).toContain("Included with Family+");

@@ -663,7 +663,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         />
       ) : null}
 
-      {rightPanel === "settings" && pro.sync.phase !== "conflict" ? (
+      {rightPanel === "settings" && pro.sync.phase !== "conflict" && !pro.paywallOpen ? (
         <SettingsDialog
           actions={actions}
           data={data}
@@ -673,7 +673,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
         />
       ) : null}
 
-      {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} onSignIn={() => { pro.closePaywall(); setRightPanel("settings"); }} /> : null}
+      {pro.paywallOpen ? <ProPaywallDialog pro={pro} t={t} language={data.language} /> : null}
       <PaymentStatusNotice pro={pro} t={t} />
       {pro.sync.phase === "conflict" ? <SyncResolutionDialog pro={pro} t={t} /> : null}
 

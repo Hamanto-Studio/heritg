@@ -1451,6 +1451,14 @@
 .modal-card:has(.pro-plan-choices) .modal-header,
 .modal-card:has(.pro-plan-choices) .modal-footer { flex-shrink: 0; }
 .pro-plan-checkout { width: 100%; }
+.checkout-sign-in .account-google-primary { display: flex; justify-content: center; }
+.checkout-sign-in { margin-block-start: 10px; }
+.pending-payment { border-block: 1px solid var(--line); padding-block: 16px; margin-block: 20px; }
+.pending-payment h3 { font-size: 1rem; margin: 0 0 8px; }
+.pending-payment p { font-size: 1rem; line-height: 1.5; margin: 8px 0 12px; }
+.payment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.payment-actions .button { min-height: 44px; white-space: normal; }
+.payment-cancel-confirmation { margin-block-start: 16px; }
 .pro-plan-checkout > span { display: block; color: var(--subtle); font-size: 0.75rem; text-align: center; }
 .pro-plan-checkout .pro-purchase-button { margin-top: 8px; }
 .pro-plan-benefits { margin-top: 18px; }
