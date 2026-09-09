@@ -30,6 +30,7 @@ let container: HTMLDivElement | undefined;
   sessionStorage.removeItem("heritg:pending-checkout");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const offer = {
@@ -55,6 +56,34 @@ const entitlement = (overrides: Partial<EntitlementResponse> = {}): EntitlementR
 });
 
 describe("ProProvider", () => {
+  it('submits only the selected plan identifier, never an amount or duration', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: 'https://sandbox.doku.com/checkout-link-v2/synthetic' })));
+    vi.stubGlobal('fetch', fetchMock);
+    await requestBillingCheckout('A'.repeat(22), 'synthetic-csrf', 'synthetic-retry-key', 'weekly');
+    expect(fetchMock.mock.calls[0]).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/billing/checkouts', expect.objectContaining({ body: '{"planId":"weekly"}' }));
+  });
+
+  it('expires active cloud access at the deadline even if the refresh is offline', async () => {
+    vi.useFakeTimers();
+    const start = new Date('2026-09-08T12:00:00Z');
+    vi.setSystemTime(start);
+    document.cookie = `heritg_csrf=${'c'.repeat(43)}; Path=/`;
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/auth/session')) return new Response(JSON.stringify({ accountId: 'A'.repeat(22), name: null, email: null, expiresAt: '2026-09-24T00:00:00Z' }));
+      reads++;
+      if (reads > 1) throw new Error('offline');
+      return new Response(JSON.stringify(entitlement({ access: 'active', canRead: true, canWrite: true, expiresAt: new Date(start.getTime() + 10 * 60_000).toISOString() })));
+    }));
+    container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(container.textContent).toContain('signedIn:active');
+    await act(async () => vi.advanceTimersByTimeAsync(10 * 60_000));
+    expect(container.textContent).toContain('signedIn:expired:subscriptionRequired');
+    expect(reads).toBe(2);
+  });
   it.each(["sandbox.doku.com", "staging.doku.com"])("accepts verified sandbox checkout host %s", async (host) => {
     vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
     const paymentLinkUrl = `https://${host}/checkout-link-v2/synthetic`;

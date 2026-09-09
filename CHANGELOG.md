@@ -22,6 +22,25 @@ prefix.
 
 ### Web
 
+- Keep Google sign-in inside Family+ and preserve the selected plan. Add saved
+  payment recovery, cancellation confirmation and persistent reminder dismissal.
+
+- Enable staging Family+ purchases for six months, one year or three years with
+  one-time sandbox payments, public prices, visible benefits and pending-payment
+  protection. No recurring invoices or automatic charges.
+
+- Show Family+ benefits expanded above the prices instead of hiding them behind
+  an extra click, including before sign-in.
+- Show monthly, six-month, yearly and three-year Family+ prices before sign-in
+  in staging, including English/Indonesian copy and clear preview-only status.
+  Keep subscription purchases unavailable until DOKU integration is verified.
+- Added staging weekly, monthly, yearly, and two-year Family+ plan choices with
+  explicit prices, shortened test durations, and manual-renewal terms.
+- Preserve the selected plan across checkout retries and stop cloud writes when
+  paid access expires, without interrupting free local editing.
+- Prevent staging service-worker installation or updates from interrupting an
+  in-flight payment with an automatic page reload.
+
 - Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
   hosts, unexpected paths, insecure URLs, and embedded credentials.
 - Added staging DOKU checkout recovery with account-verified payment status and

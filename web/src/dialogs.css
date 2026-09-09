@@ -1431,6 +1431,45 @@
 .pro-purchase-button.button.primary:hover,
 .pro-settings-card .button.primary:hover { background: linear-gradient(145deg, var(--family-plus-deep), var(--family-plus-hover)); }
 .pro-plan-picker { display: grid; gap: 9px; margin: 0; }
+.pro-plan-choices { display: grid; gap: 10px; }
+.family-price-preview h3 { margin: 0 0 8px; font-size: 1.1rem; }
+.family-price-preview p { color: var(--subtle); font-size: 0.84rem; line-height: 1.55; margin: 0 0 16px; }
+.family-price-list { margin: 20px 0; }
+.family-price-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.family-price-row dt { font-weight: 650; }
+.family-price-row dd { margin: 0; text-align: right; }
+.family-price-row dd strong { display: block; font-size: 1.08rem; color: var(--text); font-variant-numeric: tabular-nums; }
+.family-price-row dd span { display: block; margin-top: 3px; color: var(--subtle); font-size: 0.78rem; }
+.family-price-preview .pro-plan-benefits { margin-top: 8px; }
+.family-price-preview li { font-size: 0.84rem; line-height: 1.6; }
+.staging-content .modal-backdrop:has(.family-price-preview) { position: absolute; }
+.modal-card:has(.family-price-preview) { max-height: 100%; }
+.modal-card:has(.family-price-preview) .modal-header,
+.modal-card:has(.family-price-preview) .modal-footer { flex-shrink: 0; }
+.staging-content .modal-backdrop:has(.pro-plan-choices) { position: absolute; }
+.modal-card:has(.pro-plan-choices) { max-height: 100%; }
+.modal-card:has(.pro-plan-choices) .modal-header,
+.modal-card:has(.pro-plan-choices) .modal-footer { flex-shrink: 0; }
+.pro-plan-checkout { width: 100%; }
+.checkout-sign-in .account-google-primary { display: flex; justify-content: center; }
+.checkout-sign-in { margin-block-start: 10px; }
+.pending-payment { border-block: 1px solid var(--line); padding-block: 16px; margin-block: 20px; }
+.pending-payment h3 { font-size: 1rem; margin: 0 0 8px; }
+.pending-payment p { font-size: 1rem; line-height: 1.5; margin: 8px 0 12px; }
+.payment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.payment-actions .button { min-height: 44px; white-space: normal; }
+.payment-cancel-confirmation { margin-block-start: 16px; }
+.pro-plan-checkout > span { display: block; color: var(--subtle); font-size: 0.75rem; text-align: center; }
+.pro-plan-checkout .pro-purchase-button { margin-top: 8px; }
+.pro-plan-benefits { margin-top: 18px; }
+.pro-plan-benefits > summary { cursor: pointer; font-weight: 650; padding: 12px 0; }
+.pro-plan-choices .pro-plan-copy { align-items: center; flex-direction: row; gap: 10px; }
+.pro-plan-choices .pro-plan-copy small { flex-shrink: 0; text-align: right; }
+.pro-plan-choices .pro-plan-copy > span { min-width: 0; }
+.pro-plan-choices .pro-plan-option { cursor: pointer; }
+.pro-plan-choices .pro-plan-option:focus-within { outline: 2px solid var(--family-plus); outline-offset: 3px; }
+.pro-plan-choices input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--family-plus); }
+.pro-plan-choices .pro-plan-copy > span > span { color: var(--subtle); font-size: 0.78rem; }
 .pro-plan-picker > h3 { font-size: 0.78rem; margin: 0 0 8px; }
 .pro-plan-option {
   align-items: center;
