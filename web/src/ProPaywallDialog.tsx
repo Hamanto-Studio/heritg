@@ -39,7 +39,7 @@ function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
     {purchaseButton}
   </div> : undefined;
   return <Modal closeLabel={t("close")} onClose={pro.closePaywall} size="medium" title={t("proPaywallTitle")} footer={footer}>
-    {!plans?.length ? <FamilyPlusBenefits t={t} /> : null}
+    <FamilyPlusBenefits t={t} />
     <section className="pro-plan-picker" aria-labelledby="family-offer-title"><h3 id="family-offer-title">{t("choosePlan")}</h3>
       {plans?.length ? <>
         <p className="payment-provider-note">{t("stagingPlanNotice")}</p>
@@ -59,6 +59,5 @@ function CurrentProPaywallDialog({ pro, t }: { pro: ProContextValue; t: Translat
     {!plans?.length ? purchaseButton : null}
     <p className="pro-legal-links">{t("purchaseAgreementPrefix")} <a href="/terms/" rel="noopener noreferrer" target="_blank">{t("termsOfUse")}</a> {t("purchaseAgreementAnd")} <a href="https://family.heritg.us/privacy/" rel="noopener noreferrer" target="_blank">{t("privacyPolicy")}</a>.</p>
     <p className="pro-legal">{plans?.length ? t("stagingPlanLegal") : freeAccess ? t("freeAccessLegal") : t("subscriptionLegal")}</p>
-    {plans?.length ? <details className="pro-plan-benefits"><summary>{t("familyPlanBenefits")}</summary><FamilyPlusBenefits t={t} /></details> : null}
   </Modal>;
 }

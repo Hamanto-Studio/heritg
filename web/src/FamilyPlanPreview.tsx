@@ -15,6 +15,7 @@ export function FamilyPlanPreview({ onClose, t }: { onClose: () => void; t: Tran
   const price = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
   return <Modal closeLabel={t("close")} onClose={onClose} size="medium" title={t("proPaywallTitle")}
     footer={<button className="button secondary" onClick={onClose} type="button">{t("familyPreviewBack")}</button>}>
+    <FamilyPlusBenefits t={t} />
     <section className="family-price-preview" aria-labelledby="family-price-preview-title">
       <h3 id="family-price-preview-title">{t("familyPreviewTitle")}</h3>
       <p>{t("familyPreviewPublic")}</p>
@@ -33,7 +34,6 @@ export function FamilyPlanPreview({ onClose, t }: { onClose: () => void; t: Tran
         <p>{t("familyPreviewTestingDetail")}</p>
         <ul>{previewPlans.map(plan => <li key={plan.label}>{t("familyPreviewTestDuration", { plan: t(plan.label), count: plan.minutes })}</li>)}</ul>
       </details>
-      <details className="pro-plan-benefits"><summary>{t("familyPlanBenefits")}</summary><FamilyPlusBenefits t={t} /></details>
     </section>
   </Modal>;
 }

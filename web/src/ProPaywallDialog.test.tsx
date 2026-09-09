@@ -31,6 +31,11 @@ describe("ProPaywallDialog", () => {
       expect(host.textContent).toContain("purchases not available yet");
       expect(host.textContent).not.toContain("Sign in to load the current price");
       expect(host.querySelector(".pro-purchase-button")).toBeNull();
+      const benefits = host.querySelector(".family-plus-benefits")!;
+      expect(benefits.closest("details")).toBeNull();
+      expect(benefits.textContent).toContain("Included with Family+");
+      expect(benefits.compareDocumentPosition(host.querySelector(".family-price-list")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(host.querySelectorAll(".family-plus-benefits")).toHaveLength(1);
       for (const button of host.querySelectorAll<HTMLButtonElement>("button")) await act(async () => button.click());
       expect(purchase).not.toHaveBeenCalled();
       expect(closePaywall).toHaveBeenCalled();
@@ -61,6 +66,9 @@ describe("ProPaywallDialog", () => {
       expect(host.textContent).toContain('No automatic charges');
       expect(host.textContent).toContain('Sandbox only');
       expect(host.textContent).not.toContain('Infinity');
+      const benefits = host.querySelector('.family-plus-benefits')!;
+      expect(benefits.closest('details')).toBeNull();
+      expect(benefits.compareDocumentPosition(host.querySelector('.pro-plan-picker')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       for (const plan of offers) {
         expect(host.textContent).toContain(`Active for ${plan.stagingAccessMinutes} minutes in staging`);
         await act(async () => host.querySelector<HTMLInputElement>(`input[value="${plan.planId}"]`)!.click());

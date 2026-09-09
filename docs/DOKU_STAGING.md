@@ -32,6 +32,8 @@ three years. Prices are a display-only build-time proposal, **not** a fallback
 checkout catalog or entitlement authority. They remain visible when auth is
 loading, signed out, signed in or unavailable, without an anonymous entitlement
 API or any customer data. Both English and Indonesian are supported.
+Family+ benefits are expanded above pricing by default, before sign-in as well
+as afterward. Only staging test-duration guidance remains collapsible.
 
 The preview explicitly says subscriptions cannot be purchased yet. It has no
 checkout action and does not pass proposed plans or amounts to the existing
