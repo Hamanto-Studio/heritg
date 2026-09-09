@@ -43,6 +43,31 @@ server-owned free-access offer and is not deployed by this change.
 The following browser flow and September 8 receipt describe the **previous**
 staging VA purchase UI, not currently available purchases in the new preview.
 
+### September 9 public-preview deployment
+
+- Source commit `d694ed6`; build `d694ed6-202609082356`.
+- Vercel project `heritg-staging`, deployment
+  `dpl_6Xf8i37v5tihPzsWyWcN6QVFbMig`, alias `https://staging.heritg.us/`.
+- 902 tests passed, one existing skip; lint, staging build and source secret
+  scan passed. Local desktop/phone review confirmed readable prices and no
+  horizontal overflow, expandable test guidance and return to the canvas.
+- The deployed Family+ dialog shows all four prices and its preview-only notice.
+  This does not qualify the unfinished DOKU subscription/payment lifecycle.
+- Public HTTP verification passed for the exact build, security headers, SPA
+  deep links, manifest, service worker, registration script, immutable assets,
+  API health/readiness and anonymous session denial.
+- No backend deployment or production change. Existing backend purchase terms
+  and recovery remain unchanged.
+
+The install audit reports development-tool advisories in Vitest/@vitest/mocker
+and lint-time js-yaml. Patched versions are Vitest 4.1.11 and js-yaml 4.3.2:
+[Vitest advisory](https://github.com/advisories/GHSA-82fw-gwwq-j7x9),
+[js-yaml advisory](https://github.com/advisories/GHSA-2883-xcg3-v3hh).
+The attempted patch resolution failed with npm's `edgesOut` resolver error;
+manifest edits were reverted and the verified lockfile was preserved. Resolve
+the dependency-install issue and rerun the suite before claiming an audit-clean
+build. This is not evidence of payment-service or browser-runtime exploitation.
+
 ## Browser flow
 
 1. Sign in with a disposable staging account. Local tree editing remains available
