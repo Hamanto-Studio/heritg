@@ -44,7 +44,7 @@ another payment may be created, rather than the browser return URL.
 
 ## Verification status
 
-Implementation is in the working trees; this document is not a deployment receipt.
+The component tests below are distinct from the deployed runtime receipt that follows.
 Component tests exercise direct Google callback/session exchange, preserved plan
 selection, no automatic checkout, dismissal across provider remount, and a failed
 then confirmed cancellation while switching plans. These use synthetic Google and
@@ -85,3 +85,15 @@ the full build-tool audit reports existing Vitest/mocker and js-yaml advisories
 (two moderate, one high). These are not shipped runtime dependencies and were
 not changed by this checkout patch; review their patches before a production
 release. Never clear website data to test refresh: it can erase local trees.
+
+### Reload race follow-up
+
+A real isolated Chrome test reached DOKU and returned through Back to Merchant.
+Opening Family+ immediately after a dismissed-reminder reload exposed a session
+restoration race: pending actions stayed in the signed-out state. Session loading
+is now distinct from signed out; the saved plan is preserved, actions wait for
+authentication, and an open pending panel refreshes when the session is restored
+without reviving its dismissed reminder. The regression test deliberately delays
+the session response. Separate fake-clock tests prove automatic status checks stop
+after three attempts, both normally and during provider errors; manual checking
+remains available. This follow-up needs its own deployment/browser receipt below.

@@ -112,6 +112,33 @@ it('dismissal survives provider remount while the pending checkout stays accessi
   expect(readBillingAttempt()?.idempotencyKey).toBe('synthetic-recovery-key');
 });
 
+it('opening a hidden pending checkout before session restoration keeps its plan and recovers actions after sign-in', async () => {
+  vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+  document.cookie = `heritg_csrf=${token}; Path=/`;
+  saveBillingAttempt({ accountId, idempotencyKey: 'synthetic-recovery-key', planId: 'three_year', createdAt: Date.now(), noticeHidden: true });
+  let restoreSession!: () => void;
+  const sessionReady = new Promise<void>(resolve => { restoreSession = resolve; });
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/auth/session')) { await sessionReady; return json(account); }
+    if (url.endsWith('/status')) return json({ status: 'pending', planId: 'three_year', resumable: true, cancellable: true });
+    return json(entitlements());
+  });
+  vi.stubGlobal('fetch', fetcher); await mount(); await clickText('Family+');
+  expect(observed.account.status).toBe('loading');
+  expect(observed.payment).toMatchObject({ status: 'pending', planId: 'three_year' });
+  expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Resume payment')?.disabled).toBe(true);
+  await act(async () => { restoreSession(); await sessionReady; });
+  await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+  expect(observed.account.status).toBe('signedIn');
+  expect(host.querySelector<HTMLInputElement>('input[value=three_year]')!.checked).toBe(true);
+  expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Resume payment')?.disabled).toBe(false);
+  expect(observed.payment?.status).toBe('pending');
+  expect(host.querySelector('.payment-status-notice')).toBeNull();
+  expect(readBillingAttempt()?.noticeHidden).toBe(true);
+  expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/billing/checkouts'))).toBe(false);
+});
+
 it('a plan change requires confirmed cancellation, preserves selection and never automatically creates a replacement', async () => {
   vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
   document.cookie = `heritg_csrf=${token}; Path=/`;
@@ -136,4 +163,34 @@ it('a plan change requires confirmed cancellation, preserves selection and never
   expect(host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.disabled).toBe(false);
   expect(host.querySelector('.pro-purchase-button')!.textContent).toContain('79.000');
   expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/billing/checkouts'))).toBe(false);
+});
+
+it.each([false, true])('stops automatic status checks after three attempts and keeps manual recovery available (outage=%s)', async outage => {
+  vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+  vi.useFakeTimers();
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible');
+  vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+  document.cookie = `heritg_csrf=${token}; Path=/`;
+  saveBillingAttempt({ accountId, idempotencyKey: 'synthetic-recovery-key', planId: 'three_year', createdAt: Date.now() });
+  let checks = 0;
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/auth/session')) return json(account);
+    if (url.endsWith('/status')) {
+      checks++;
+      return outage ? new Response('{}', { status: 503 }) : json({ status: 'pending', planId: 'three_year', resumable: true });
+    }
+    return json(entitlements());
+  }));
+  host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  await act(async () => root!.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+  await act(async () => vi.advanceTimersByTimeAsync(1));
+  await act(async () => vi.advanceTimersByTimeAsync(60_000));
+  expect(checks).toBe(3);
+  expect(observed.payment).toMatchObject({ status: outage ? 'unavailable' : 'pending', checking: false });
+  await act(async () => vi.advanceTimersByTimeAsync(600_000));
+  expect(checks).toBe(3);
+  await act(async () => observed.refreshPayment?.());
+  expect(checks).toBe(4);
+  expect(readBillingAttempt()?.idempotencyKey).toBe('synthetic-recovery-key');
 });

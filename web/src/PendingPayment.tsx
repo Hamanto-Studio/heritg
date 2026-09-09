@@ -10,7 +10,7 @@ export function PendingPayment({ pro, t, selectedPlan }: { pro: ProContextValue;
   const payment = pro.payment;
   if (!payment || !["pending", "unavailable", "signedOut"].includes(payment.status)) return null;
   const changing = selectedPlan && payment.planId && selectedPlan !== payment.planId;
-  const busy = Boolean(pro.paymentAction) || payment.checking;
+  const busy = Boolean(pro.paymentAction) || payment.checking || pro.account.status !== "signedIn";
   return <section className="pending-payment" aria-labelledby="pending-payment-title">
     <h3 id="pending-payment-title">{t("paymentAwaiting")}{payment.planId ? ` · ${planLabel(payment.planId, t)}` : ""}</h3>
     <p role="status">{t(payment.status === "signedOut" ? "paymentSignInDetail" : payment.status === "unavailable" ? "paymentUnavailable" : "paymentAwaitingDetail")}</p>

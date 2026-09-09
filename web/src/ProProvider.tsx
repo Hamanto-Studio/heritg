@@ -341,9 +341,12 @@ export function ProProvider({
 
   const refreshPayment = useCallback(async () => {
     if (!billingAttempt || paymentCheckInFlight.current || paymentActionInFlight.current || checkoutInFlight.current) return;
+    // A reload restores the cookie-backed session asynchronously. Do not turn a
+    // known pending checkout into signedOut while that verification is in flight.
+    if (account.status === "loading") return;
     const csrf = readCsrfCookie();
     if (account.status !== "signedIn" || account.user.id !== billingAttempt.accountId || !csrf) {
-      setPayment({ status: "signedOut", checking: false });
+      setPayment({ status: "signedOut", checking: false, planId: billingAttempt.planId });
       return;
     }
     const generation = sessionGenerationRef.current;
@@ -371,6 +374,14 @@ export function ProProvider({
       if (generation === sessionGenerationRef.current) setPayment(current => ({ ...current, planId: billingAttempt.planId, status: "unavailable", checking: false }));
     } finally { paymentCheckInFlight.current = false; }
   }, [account, billingAttempt, refreshEntitlement]);
+
+  useEffect(() => {
+    // Dismissal stops background polling, not an explicit visit to the saved
+    // checkout. Re-check after session restoration without reviving the banner.
+    if (!value && paywallOpen && paymentNoticeHidden && account.status === "signedIn" && billingAttempt) {
+      void refreshPayment();
+    }
+  }, [account.status, billingAttempt, paymentNoticeHidden, paywallOpen, refreshPayment, value]);
 
   useEffect(() => {
     if (value || !configured || !billingAttempt || account.status === "loading" || paymentNoticeHidden) return;
