@@ -47,6 +47,11 @@ staging VA purchase UI, not currently available purchases in the new preview.
 
 ### September 9 public-preview deployment
 
+- Benefits-first follow-up: source `795a3ad`, build `795a3ad-202609090038`,
+  deployment `dpl_56NdALbmCwfmc2EtED6TRrPKKEDE`. All 38 focused paywall,
+  provider and update-safeguard tests passed, plus lint/build/source secret scan.
+  Desktop/mobile and the deployed DOM confirm one expanded benefits section
+  before prices; exact-build, health/readiness and PWA asset checks passed.
 - Source commit `d694ed6`; build `d694ed6-202609082356`.
 - Vercel project `heritg-staging`, deployment
   `dpl_6Xf8i37v5tihPzsWyWcN6QVFbMig`, alias `https://staging.heritg.us/`.
