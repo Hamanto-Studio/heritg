@@ -24,6 +24,17 @@ original terms. Production's free access and local editing are unchanged.
 See backend `docs/PREPAID.md` for migration and synthetic test evidence. This
 staging release does not enable production payments or live calendar-month terms.
 
+All three new one-time purchases were paid in the official DOKU VA sandbox
+simulator at their exact amounts. Public API status and Firestore confirmed
+15/20/30-minute access respectively, with one checkout per disposable account.
+Repeated verification did not extend expiry. Test accounts were then cleaned,
+retaining minimal terminal payment correlation. No real family data was sent.
+Backend verification passed 264 tests; web verification passed 904 tests with
+one existing skip. The rendered desktop paywall and its sign-in action were
+checked; component tests verify authenticated selection and pending-payment
+blocking. This is not a fresh Google sign-in, mobile-device or full real-user
+browser click-to-return qualification. See backend `docs/PREPAID.md` for scope.
+
 ## Historical integration decisions and receipts
 
 This integration targets `https://staging.heritg.us` only. Production at
