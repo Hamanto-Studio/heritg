@@ -14,7 +14,7 @@ const formattedPrice = (amount: number, currency: string) => new Intl.NumberForm
 ).format(amount);
 
 const offerPrices = (offer: ProOffer | undefined) => offer ? {
-  monthly: offer.accessMonths > 0 ? formattedPrice(offer.price.amount / offer.accessMonths, offer.price.currency) : undefined,
+  monthly: Number.isFinite(offer.accessMonths) && offer.accessMonths > 0 ? formattedPrice(offer.price.amount / offer.accessMonths, offer.price.currency) : undefined,
   total: formattedPrice(offer.price.amount, offer.price.currency)
 } : undefined;
 
@@ -43,11 +43,21 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
     <section className="pro-plan-picker" aria-labelledby="family-offer-title"><h3 id="family-offer-title">{t("choosePlan")}</h3>
       {plans?.length ? <>
         <p className="payment-provider-note">{t("stagingPlanNotice")}</p>
+        <p className="pro-plan-price-explanation">{t("planMonthlyExplanation")}</p>
         <div className="pro-plan-choices" role="radiogroup" aria-label={t("choosePlan")}>
-          {plans.map(plan => <label key={plan.planId} className={`pro-plan-option ${offer?.planId === plan.planId ? "selected" : ""}`}>
-            <input type="radio" name="family-plan" value={plan.planId} checked={offer?.planId === plan.planId} disabled={purchasing} onChange={() => setSelectedPlan(plan.planId)} />
-            <span className="pro-plan-copy"><span><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span><small>{formattedPrice(plan.price.amount, plan.price.currency)}<span>{t("oneTimePayment")}</span></small></span>
-          </label>)}
+          {plans.map(plan => {
+            const planPrices = offerPrices(plan)!;
+            return <label key={plan.planId} className={`pro-plan-option ${offer?.planId === plan.planId ? "selected" : ""}`}>
+              <input type="radio" name="family-plan" value={plan.planId} checked={offer?.planId === plan.planId} disabled={purchasing} onChange={() => setSelectedPlan(plan.planId)} />
+              <span className="pro-plan-copy">
+                <span className="pro-plan-details"><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span>
+                <span className="pro-plan-pricing">
+                  {planPrices.monthly ? <strong className="pro-plan-monthly"><span aria-hidden="true">{t("planMonthlyApproximate", { price: planPrices.monthly })}</span><span className="sr-only">{t("planMonthlyAccessible", { price: planPrices.monthly })}</span></strong> : null}
+                  <span className="pro-plan-total">{t("planPaidOnce", { price: planPrices.total })}</span>
+                </span>
+              </span>
+            </label>;
+          })}
         </div>
         <p className="payment-provider-note">{t("manualRenewalNotice")}</p>
       </> : <div className={`pro-plan-option ${offer ? "selected" : ""}`}><span className="pro-plan-copy"><span><strong>{freeAccess ? t("oneMonthFreeAccess") : offer ? t("familyAccessMonths", { count: offer.accessMonths }) : t("familyAccessOffer")}</strong><em>{freeAccess ? t("noPaymentRequired") : t("oneTimePayment")}</em></span><small>{freeAccess ? t("freeAccessPrice") : prices?.total ?? t("priceAtLaunch")}<span>{freeAccess ? t("freeAccessRenewal") : prices?.monthly ? t("monthlyEquivalent", { price: prices.monthly }) : t("signInForPrice")}</span></small></span></div>}
