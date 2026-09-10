@@ -13,10 +13,20 @@ const formattedPrice = (amount: number, currency: string) => new Intl.NumberForm
   { style: "currency", currency, maximumFractionDigits: currency === "IDR" ? 0 : 2 }
 ).format(amount);
 
-const offerPrices = (offer: ProOffer | undefined) => offer ? {
-  monthly: Number.isFinite(offer.accessMonths) && offer.accessMonths > 0 ? formattedPrice(offer.price.amount / offer.accessMonths, offer.price.currency) : undefined,
-  total: formattedPrice(offer.price.amount, offer.price.currency)
-} : undefined;
+const offerPrices = (offer: ProOffer | undefined, roundMonthly = false) => {
+  if (!offer) return undefined;
+  let monthly: string | undefined;
+  if (Number.isFinite(offer.accessMonths) && offer.accessMonths > 0) {
+    const amount = offer.price.amount / offer.accessMonths;
+    // Only simplify the IDR comparison; never round the actual charge or
+    // turn a small, nonzero monthly equivalent into a free-price claim.
+    const comparison = roundMonthly && offer.price.currency === "IDR" && amount >= 100
+      ? Math.round(amount / 100) * 100
+      : amount;
+    monthly = formattedPrice(comparison, offer.price.currency);
+  }
+  return { monthly, total: formattedPrice(offer.price.amount, offer.price.currency) };
+};
 
 export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextValue; t: Translator; language?: AppData["language"] }) {
   const [selectedPlan, setSelectedPlan] = useState<ProOffer["planId"]>(pro.payment?.planId ?? "six_month");
@@ -46,14 +56,15 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
         <p className="pro-plan-price-explanation">{t("planMonthlyExplanation")}</p>
         <div className="pro-plan-choices" role="radiogroup" aria-label={t("choosePlan")}>
           {plans.map(plan => {
-            const planPrices = offerPrices(plan)!;
+            const planPrices = offerPrices(plan, true)!;
             return <label key={plan.planId} className={`pro-plan-option ${offer?.planId === plan.planId ? "selected" : ""}`}>
               <input type="radio" name="family-plan" value={plan.planId} checked={offer?.planId === plan.planId} disabled={purchasing} onChange={() => setSelectedPlan(plan.planId)} />
               <span className="pro-plan-copy">
                 <span className="pro-plan-details"><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span>
                 <span className="pro-plan-pricing">
-                  {planPrices.monthly ? <strong className="pro-plan-monthly"><span aria-hidden="true">{t("planMonthlyApproximate", { price: planPrices.monthly })}</span><span className="sr-only">{t("planMonthlyAccessible", { price: planPrices.monthly })}</span></strong> : null}
-                  <span className="pro-plan-total">{t("planPaidOnce", { price: planPrices.total })}</span>
+                  <strong className="pro-plan-total">{planPrices.total}</strong>
+                  <span className="pro-plan-payment-kind">{t("oneTimePayment")}</span>
+                  {planPrices.monthly ? <span className="pro-plan-monthly"><span aria-hidden="true">{t("planMonthlyApproximate", { price: planPrices.monthly })}</span><span className="sr-only">{t("planMonthlyAccessible", { price: planPrices.monthly })}</span></span> : null}
                 </span>
               </span>
             </label>;

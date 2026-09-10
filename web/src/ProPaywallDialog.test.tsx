@@ -56,7 +56,7 @@ describe("ProPaywallDialog", () => {
     try {
       await act(async () => root.render(<ProPaywallDialog pro={pro} t={createTranslator("en")} />));
       expect(Array.from(host.querySelectorAll("input[type=radio]"), item => (item as HTMLInputElement).value)).toEqual(["six_month", "yearly", "three_year"]);
-      for (const price of ["49.000", "79.000", "199.000", "8.167", "6.583", "5.528"]) expect(host.textContent).toContain(price);
+      for (const price of ["49.000", "79.000", "199.000", "8.200", "6.600", "5.500"]) expect(host.textContent).toContain(price);
       expect(host.textContent).toContain("No recurring invoices or automatic charges");
       expect(host.textContent).not.toContain("purchases not available yet");
       expect(host.textContent).not.toContain("Sign in to load the current price");
@@ -81,20 +81,24 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("Tanpa tagihan berulang atau pendebitan otomatis");
   });
 
-  it.each(['en', 'id'] as const)('shows rounded monthly equivalents with full upfront totals in %s', language => {
+  it.each(['en', 'id'] as const)('keeps upfront totals primary with monthly equivalents as supporting context in %s', language => {
     vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     const host = document.createElement('div');
     host.innerHTML = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers: prepaidOffers })} t={createTranslator(language)} />);
     const rows = host.querySelectorAll('.pro-plan-choices label');
-    const monthly = ['8.167', '6.583', '5.528'];
+    const monthly = ['8.200', '6.600', '5.500'];
     const totals = ['49.000', '79.000', '199.000'];
     rows.forEach((row, index) => {
-      expect(row.querySelector('.pro-plan-monthly [aria-hidden]')?.textContent?.replace(/\s/g, '')).toBe(`≈Rp${monthly[index]}/${language === 'en' ? 'month' : 'bulan'}`);
-      expect(row.querySelector('.pro-plan-monthly .sr-only')?.textContent).toContain(language === 'en' ? 'Approximately' : 'Sekitar');
+      expect(row.querySelector('.pro-plan-monthly [aria-hidden]')?.textContent?.replace(/\s/g, '')).toBe(`${language === 'en' ? 'About' : 'Sekitar'}Rp${monthly[index]}/${language === 'en' ? 'month' : 'bulan'}`);
+      expect(row.querySelector('.pro-plan-monthly .sr-only')?.textContent).toContain(language === 'en' ? 'About' : 'Sekitar');
       expect(row.querySelector('.pro-plan-total')?.textContent).toContain(totals[index]);
-      expect(row.querySelector('.pro-plan-total')?.textContent).toContain(language === 'en' ? 'paid once' : 'sekali bayar');
+      expect(row.querySelector('.pro-plan-payment-kind')?.textContent).toBe(language === 'en' ? 'One-time payment' : 'Sekali bayar');
+      expect(row.querySelector('.pro-plan-pricing')?.firstElementChild).toBe(row.querySelector('.pro-plan-total'));
+      expect(row.querySelector('.pro-plan-total')?.tagName).toBe('STRONG');
+      expect(row.querySelector('.pro-plan-monthly')?.tagName).toBe('SPAN');
+      expect(row.querySelector('.pro-plan-payment-kind')?.nextElementSibling).toBe(row.querySelector('.pro-plan-monthly'));
     });
-    expect(host.querySelector('.pro-plan-price-explanation')?.textContent).toContain(language === 'en' ? 'not every month' : 'bukan setiap bulan');
+    expect(host.querySelector('.pro-plan-price-explanation')?.textContent).toContain(language === 'en' ? 'for comparison' : 'sebagai perbandingan');
   });
 
   it('derives the comparison from server price and calendar months, never shortened staging minutes', () => {
@@ -102,8 +106,29 @@ describe("ProPaywallDialog", () => {
     const offers = [{ ...prepaidOffers[0], price: { amount: 60_000, currency: 'IDR' }, stagingAccessMinutes: 1 }];
     const markup = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers })} t={createTranslator('en')} />);
     expect(markup).toContain('10.000/month');
-    expect(markup).toContain('60.000 paid once');
-    expect(markup).not.toContain('8.167');
+    expect(markup).toContain('60.000</strong>');
+    expect(markup).toContain('One-time payment');
+    expect(markup).not.toContain('8.200');
+  });
+
+  it.each([
+    [48_894, '8.100'], [48_900, '8.200'], [48_000, '8.000'], [180, '30']
+  ] as const)('rounds only the IDR comparison for total %s, preserving the exact price', (amount, monthly) => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+    const offers = [{ ...prepaidOffers[0], price: { amount, currency: 'IDR' } }];
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers })} t={createTranslator('en')} />);
+    expect(host.querySelector('.pro-plan-monthly [aria-hidden]')?.textContent?.replace(/\s/g, '')).toBe(`AboutRp${monthly}/month`);
+    expect(host.querySelector('.pro-plan-total')?.textContent?.replace(/\s/g, '')).toBe(`Rp${new Intl.NumberFormat('id-ID').format(amount)}`);
+  });
+
+  it('does not apply rupiah rounding to other currencies', () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+    const offers = [{ ...prepaidOffers[0], price: { amount: 59, currency: 'USD' } }];
+    const host = document.createElement('div');
+    host.innerHTML = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers })} t={createTranslator('en')} />);
+    expect(host.querySelector('.pro-plan-monthly [aria-hidden]')?.textContent).toBe('About $9.83/month');
+    expect(host.querySelector('.pro-plan-total')?.textContent).toBe('$59.00');
   });
 
   it.each([0, -1, Infinity, NaN])('does not invent a monthly price with invalid month duration %s', accessMonths => {
@@ -111,7 +136,8 @@ describe("ProPaywallDialog", () => {
     const offers = [{ ...prepaidOffers[0], accessMonths }];
     const markup = renderToStaticMarkup(<ProPaywallDialog pro={context({ offers })} t={createTranslator('en')} />);
     expect(markup).not.toContain('pro-plan-monthly');
-    expect(markup).toContain('49.000 paid once');
+    expect(markup).toContain('49.000</strong>');
+    expect(markup).toContain('One-time payment');
   });
   it("selects every server-priced plan and submits only its ID with clear sandbox durations", async () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

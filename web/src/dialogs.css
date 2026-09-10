@@ -1489,13 +1489,14 @@
 .pro-plan-copy em { background: var(--family-plus-soft); border-radius: 999px; color: var(--family-plus-deep); font-size: 0.65rem; font-style: normal; font-weight: 750; padding: 3px 7px; }
 .pro-plan-copy small { color: var(--text); font-weight: 700; text-align: right; }
 .pro-plan-copy small > span { color: var(--subtle); display: block; font-size: 0.68rem; font-weight: 500; margin-top: 3px; }
-.pro-plan-price-explanation { color: var(--text); font-size: 0.875rem; line-height: 1.5; margin: 0 0 3px; }
+.pro-plan-price-explanation { color: var(--subtle); font-size: 0.8125rem; line-height: 1.5; margin: 0 0 3px; }
 .pro-plan-choices .pro-plan-option { padding-block: 14px; }
 .pro-plan-choices .pro-plan-copy { gap: 16px; min-width: 0; }
 .pro-plan-choices .pro-plan-details > span { font-size: 0.875rem; line-height: 1.4; }
 .pro-plan-choices .pro-plan-pricing { align-items: flex-end; flex: 0 1 auto; gap: 4px; text-align: end; }
-.pro-plan-monthly { color: var(--text); font-size: 1.125rem; font-variant-numeric: tabular-nums; line-height: 1.35; }
-.pro-plan-choices .pro-plan-pricing .pro-plan-total { color: var(--text); font-size: 0.875rem; font-variant-numeric: tabular-nums; font-weight: 500; line-height: 1.4; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-total { color: var(--text); font-size: 1.125rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1.35; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-payment-kind { color: var(--subtle); font-size: 0.75rem; line-height: 1.4; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-monthly { color: var(--subtle); font-size: 0.875rem; font-variant-numeric: tabular-nums; font-weight: 400; line-height: 1.4; }
 @media (max-width: 380px) {
   .pro-plan-choices .pro-plan-option { align-items: flex-start; }
   .pro-plan-choices input { margin-top: 4px; }

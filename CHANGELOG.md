@@ -22,8 +22,9 @@ prefix.
 
 ### Web
 
-- Show rounded monthly cost equivalents alongside each Family+ plan, with clear
-  full upfront prices and one-time-payment explanations in English and Indonesian.
+- Keep each Family+ plan's full upfront price prominent, with a smaller monthly
+  cost comparison rounded to the nearest Rp100, labeled “About” / “Sekitar”,
+  and one-time-payment explanations in English and Indonesian.
 
 - Keep Google sign-in inside Family+ and preserve the selected plan. Add saved
   payment recovery, cancellation confirmation and persistent reminder dismissal.
