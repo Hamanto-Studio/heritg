@@ -26,6 +26,16 @@ another payment may be created, rather than the browser return URL.
 
 ## Interaction contract
 
+Plan choices show a rounded monthly cost equivalent with the full upfront total
+directly underneath. For the current offers: Rp49.000 / 6 ≈ Rp8.167 per month;
+Rp79.000 / 12 ≈ Rp6.583; Rp199.000 / 36 ≈ Rp5.528. These comparisons use the
+server-owned calendar-month term, never accelerated staging minutes. The copy
+explicitly says payment is upfront, not monthly. The purchase button continues
+to show the exact full charge; selecting a plan still submits only its ID.
+English and Indonesian copy, before-sign-in visibility, missing/invalid durations,
+and server-price changes have regression coverage. Phone/tablet, 320px and 200%
+text-size checks preserve readable pricing without horizontal overflow.
+
 | Situation | User experience | Safety rule |
 | --- | --- | --- |
 | Signed out | Real Continue with Google button inside Family+ | Same nonce/session exchange as Settings; no invoice until explicit payment click |
