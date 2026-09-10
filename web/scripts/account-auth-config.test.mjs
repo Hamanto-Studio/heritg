@@ -99,7 +99,8 @@ describe("account authentication deployment policy", () => {
     expect(viteConfig).toContain("urlPattern: /\\/api\\/v1\\//");
     expect(viteConfig).toContain('handler: "NetworkOnly"');
     expect(viteConfig).toContain("/^\\/auth\\/email\\/?$/");
-    expect(main).toContain('navigator.serviceWorker.addEventListener("controllerchange"');
+    expect(main).toContain('registerStagingWorkerRefresh(navigator.serviceWorker, hasPendingBillingAttempt');
+    expect(read("src/stagingWorkerRefresh.ts")).toContain('workers.addEventListener("controllerchange"');
     expect(main).toContain("window.location.reload()");
   });
 

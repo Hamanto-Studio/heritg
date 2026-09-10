@@ -22,6 +22,37 @@ prefix.
 
 ### Web
 
+- Show rounded monthly cost equivalents alongside each Family+ plan, with clear
+  full upfront prices and one-time-payment explanations in English and Indonesian.
+
+- Keep Google sign-in inside Family+ and preserve the selected plan. Add saved
+  payment recovery, cancellation confirmation and persistent reminder dismissal.
+
+- Enable staging Family+ purchases for six months, one year or three years with
+  one-time sandbox payments, public prices, visible benefits and pending-payment
+  protection. No recurring invoices or automatic charges.
+
+- Show Family+ benefits expanded above the prices instead of hiding them behind
+  an extra click, including before sign-in.
+- Show monthly, six-month, yearly and three-year Family+ prices before sign-in
+  in staging, including English/Indonesian copy and clear preview-only status.
+  Keep subscription purchases unavailable until DOKU integration is verified.
+- Added staging weekly, monthly, yearly, and two-year Family+ plan choices with
+  explicit prices, shortened test durations, and manual-renewal terms.
+- Preserve the selected plan across checkout retries and stop cloud writes when
+  paid access expires, without interrupting free local editing.
+- Prevent staging service-worker installation or updates from interrupting an
+  in-flight payment with an automatic page reload.
+
+- Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
+  hosts, unexpected paths, insecure URLs, and embedded credentials.
+- Added staging DOKU checkout recovery with account-verified payment status and
+  non-blocking English/Indonesian confirmation notices. Real sandbox payment
+  verification remains pending; production billing is unchanged.
+- Reuse checkout retry keys after network failures to avoid duplicate invoices,
+  and keep existing Family access from suppressing a renewal checkout.
+- Updated vulnerable transitive dependencies used by the web build and editor.
+
 - Kept person click targets aligned with the tree after keyboard navigation
   and switching between Full and Focus.
 - Opened large Full trees at a readable family instead of an almost invisible

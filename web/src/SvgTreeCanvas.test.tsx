@@ -225,7 +225,9 @@ describe("SvgTreeCanvas", () => {
     act(() => ref.current!.focusPerson(data.people[2].id));
     expect(scale()).toBeGreaterThanOrEqual(0.85);
     expect(ids()).toHaveLength(500);
-  });
+    // Three full 500-person jsdom renders compete with the routing stress suite
+    // on CI. This checks behavior, not wall-clock rendering performance.
+  }, 30_000);
 
   it("animates focused-family changes and lets manual zoom interrupt the camera", () => {
     const frames = new Map<number, FrameRequestCallback>();
