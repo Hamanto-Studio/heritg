@@ -52,13 +52,16 @@ canonical origin, not authorized on a new preview hostname.
 
 ## Publish
 
-For the initial migration only, remove the exact old apex CNAME after recording
-it, then explicitly confirm `HERITG_INITIAL_CUTOVER_CONFIRM=heritg.us` and run:
+For the initial migration only, record the exact old apex CNAME, then explicitly
+confirm `HERITG_INITIAL_CUTOVER_CONFIRM=heritg.us` and run:
 
 ```
 node scripts/publish-cloudflare-production.mjs publish --initial-cutover --payments-disabled
 ```
 
+Wrangler's custom-domain update may replace the conflicting apex CNAME directly.
+If Cloudflare refuses, leave checkout disabled and resolve only that exact record
+in the signed-in dashboard; never delete unrelated DNS records.
 The script attaches only `heritg.us`, reuses the tested assets without rebuilding,
 verifies the canonical app, and disables the candidate URL. Verify Google
 sign-in, existing local data, offline startup and the landing page separately.

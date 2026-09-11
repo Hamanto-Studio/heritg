@@ -1,61 +1,61 @@
 ---
 name: release-heritg-web
-description: Deploy, verify, or roll back Heritg Web on Vercel. Use for staging and production deployments, production smoke checks, DNS, and rollback.
+description: Deploy, verify, or roll back Heritg Web on Cloudflare Workers at heritg.us or isolated staging. Use for Web release, hosting, DNS cutover, and production smoke checks.
 ---
 
 # Deploy Heritg Web
 
-Deploy frequently while preserving exact-artifact verification and rollback.
-Version bumps, changelog entries, release branches, pull requests, tags, and
-GitHub Releases are optional milestones, not deployment prerequisites.
+Read [release-policy.md](references/release-policy.md) before deployment. For
+production, read [CLOUDFLARE_PRODUCTION.md](../../../docs/CLOUDFLARE_PRODUCTION.md)
+for the candidate, exact-asset publication, initial cutover and recovery steps.
+Use Node 22 and repository-locked Wrangler 4.130.0. Existing credentials should
+be reused without displaying them.
 
-## Routine production deployment
+## Production
 
-1. Confirm staging is stable with synthetic data.
-2. Work from the intended clean commit.
-3. Confirm `npx --yes vercel@58.4.4 whoami` succeeds.
-4. Run lint, tests, and build when they have not already passed for that commit.
-5. Run:
+Use a clean intended commit whose lint, tests, types and production build pass.
+Qualify backend changes in the separate backend repository first. Never infer
+that a frontend deployment authorizes enabling payments or changing IAM.
 
-   ```sh
-   HERITG_API_ORIGIN=https://heritg-share-api-ulvjjfvqpq-et.a.run.app \
-   HERITG_GOOGLE_CLIENT_ID=PRODUCTION_GOOGLE_WEB_CLIENT_ID \
-   npm --prefix web run deploy:production
-   ```
-
-The command refuses a dirty worktree or unexpected production configuration,
-builds a Production-targeted deployment without assigning domains, verifies the
-exact deployment, promotes it without rebuilding, and verifies `heritg.us`. If
-post-promotion verification fails, it automatically restores the prior Vercel
-deployment.
-
-Routine production deployment requires no separate candidate handoff,
-promotion confirmation, version bump, changelog, release branch, PR, tag,
-GitHub Release, or repeated manual device checklist. Interactive and responsive
-acceptance belongs in staging.
-
-## Rollback
-
-Restore an exact known-good Production deployment:
+From `web/`, build and verify an isolated candidate:
 
 ```sh
-npm --prefix web run rollback:production -- <deployment-id-or-url>
+node scripts/publish-cloudflare-production.mjs candidate
 ```
 
-The command verifies the target, rolls back, confirms the canonical deployment
-ID, and runs the production smoke check. Never infer rollback from a branch or
-mutable alias.
+Then publish its exact tested assets without rebuilding:
 
-## Staging
+```sh
+node scripts/publish-cloudflare-production.mjs publish
+```
 
-Use `npm --prefix web run deploy:staging` from any branch or dirty worktree.
-Staging is isolated and may use disposable synthetic data only.
+For the initial hosting migration while payments are off, follow the documented
+`--payments-disabled` and `--initial-cutover` gates. Normal releases require
+the canonical origin to already be on Cloudflare. Do not use Vercel Hobby for
+the paid app. Routine deployment needs no repeated authorization beyond the
+user's request, but initial domain migration and new credentials/resources
+remain explicit scope decisions.
 
-## Invariants
+Verify the canonical app and landing page separately. Synthetic HTTP checks
+must not create a real invoice, charge a user, or modify real family records.
+A browser return is not evidence of payment. A real payment is a separate
+owner-performed acceptance check.
 
-- Vercel project: `heritg`; CLI: exactly `58.4.4`.
-- Deployment root: repository root; package: `web`; output: `web/dist`.
-- Keep `web/vercel.json` attached and production Google-only configuration pinned.
-- Do not add runtime secrets, server functions, analytics, or Git integration.
-- Keep Cloudflare authoritative and DNS-only.
-- Never use real family data in deployment verification.
+## Staging and dry run
+
+`npm --prefix web run deploy:staging` publishes only isolated staging.
+`node web/scripts/publish-cloudflare-production.mjs candidate --dry-run`
+builds and checks without remote changes. It does not enable checkout.
+
+## Recovery
+
+For routine production failures, publication restores the recorded Worker
+version. Use `npm --prefix web run rollback:production -- EXACT_VERSION_UUID`
+for a deliberate rollback and verify its result. During initial cutover use
+the recorded DNS backup if the canonical app is unavailable. Never clear
+IndexedDB, change the application origin, or disable backend callbacks and
+payment recovery to repair a frontend deployment.
+
+Versioned milestones may retain the shared platform changelog and independent
+versions without a `v` prefix. Tags and GitHub Releases remain separate
+user-authorized milestones, not an automatic consequence of deployment.

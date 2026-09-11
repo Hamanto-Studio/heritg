@@ -5,6 +5,10 @@ operational action; a versioned release is an optional product milestone.
 
 ## Routine Web Shipping
 
+Production uses Cloudflare Workers. Follow [Cloudflare production](CLOUDFLARE_PRODUCTION.md)
+and the repository-local release skill. The Vercel commands below are historical
+migration references, not the current paid-app deployment path.
+
 Once staging is stable, ship from the intended clean commit with:
 
 ```sh
