@@ -98,10 +98,12 @@ export const requestBillingCheckout = async (
 
 export const validatedPaymentLink = (link: string) => {
   const destination = new URL(link);
-  if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port) throw new Error("The checkout URL is invalid.");
+  if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port || destination.href.length > 4096) throw new Error("The checkout URL is invalid.");
   const dokuSandbox = ["sandbox.doku.com", "staging.doku.com"].includes(destination.hostname) && destination.pathname.startsWith("/checkout-link-v2/");
-  const dokuProduction = destination.hostname === "jokul.doku.com" &&
-    (destination.pathname.startsWith("/checkout-link-v2/") || destination.pathname.startsWith("/checkout/link/"));
+  // Match the backend's verified live host/path pairs; retain older issued links.
+  const dokuProduction =
+    (["checkout.doku.com", "jokul.doku.com"].includes(destination.hostname) && destination.pathname.startsWith("/checkout-link-v2/")) ||
+    (destination.hostname === "jokul.doku.com" && destination.pathname.startsWith("/checkout/link/"));
   if (__DEPLOYMENT_ENV__ === "production" && !dokuProduction) throw new Error("The checkout URL is not a live DOKU payment page.");
   if (__DEPLOYMENT_ENV__ === "staging" && !dokuSandbox &&
       !(destination.origin === window.location.origin && destination.pathname === "/billing/return")) throw new Error("The checkout URL is not a sandbox payment page.");

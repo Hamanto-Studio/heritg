@@ -39,6 +39,9 @@ prefix.
 
 ### Web
 
+- Open Family+ checkout links from DOKU's verified production payment host,
+  while preserving older links and rejecting unsafe or sandbox destinations.
+
 - Explain when a saved checkout has no usable payment link, show only confirmed
   recovery options, and dismiss failed cancellation prompts without discarding
   the pending order or creating a duplicate payment.
