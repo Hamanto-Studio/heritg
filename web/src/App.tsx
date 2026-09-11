@@ -40,6 +40,7 @@ import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
 import { PeopleDialog } from "./PeopleDialog";
 import { PersonEditor } from "./PersonEditor";
 import { PrivacyPanel } from "./PrivacyPanel";
+import { analytics } from "./analytics";
 import { ProPaywallDialog } from "./ProPaywallDialog";
 import { PaymentStatusNotice } from "./PaymentStatusNotice";
 import { usePro } from "./ProProvider";
@@ -128,6 +129,24 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   );
   const showTreeOnboarding = controlsVisible && !sidebarOpen && (!activeTree || !people.length);
   const showSettingsOnboarding = Boolean(controlsVisible && activeTree && !people.length && !rightPanel);
+  const visitRecorded = useRef(false);
+  useEffect(() => {
+    const ready = () => {
+      if (store.isLoading || !data || visitRecorded.current || analytics.status() !== "on") return;
+      visitRecorded.current = true;
+      analytics.begin("app_visit");
+      analytics.end("app_visit", "success");
+    };
+    ready();
+    return analytics.subscribe(ready);
+  }, [store.isLoading, data]);
+
+  useEffect(() => {
+    if (store.isLoading || !data || people.length) return;
+    const start = () => analytics.ensure("onboarding");
+    start();
+    return analytics.subscribe(start);
+  }, [store.isLoading, data, people.length]);
 
   useEffect(() => {
     document.documentElement.lang = uiLanguage === "id" ? "id" : "en";
@@ -175,6 +194,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     setGenerationOpen(false);
   };
   const chooseCanvasView = (mode: "focus" | "full") => {
+    analytics.selectedView(mode);
     if (activeTreeId) setAlternateViews((current) => ({ ...current, [activeTreeId]: undefined }));
     updateFamilyView(mode);
   };
@@ -260,7 +280,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
       <h3 id="welcome-title">{t("startTitle")}</h3>
       <p>{t("startDetail")}</p>
       <div className="welcome-actions">
-        <button className="welcome-action" onClick={() => setEditingPerson("new")} type="button">
+        <button className="welcome-action" onClick={() => { analytics.ensure("onboarding"); analytics.advance("onboarding"); setEditingPerson("new"); }} type="button">
           <UserRoundPlus aria-hidden="true" size={19} />
           <span><strong>{t("addFirstPerson")}</strong><small>{t("welcomeAddDetail")}</small></span>
         </button>
@@ -547,7 +567,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
                 <button data-view-option type="button" aria-label={t("focusedFamily")} aria-pressed={!showAlternate && isFocusedView} onClick={() => chooseCanvasView("focus")}>{t("focusViewShort")}</button>
                 <button data-view-option type="button" aria-label={t("fullTree")} aria-pressed={!showAlternate && !isFocusedView} onClick={() => chooseCanvasView("full")}>{t("fullViewShort")}</button>
                 {explorerViews.map((view) => <button data-view-option type="button" key={view} title={t(explorerDescriptions[view])} aria-pressed={alternateView === view}
-                  onClick={() => { setAlternateViews((current) => ({ ...current, [activeTree.id]: view })); setGenerationOpen(false); }}>{t(explorerLabels[view])}</button>)}
+                  onClick={() => { analytics.selectedView(view); setAlternateViews((current) => ({ ...current, [activeTree.id]: view })); setGenerationOpen(false); }}>{t(explorerLabels[view])}</button>)}
               </div>
               {!people.length ? <p className="family-view-empty">{t("familyViewEmpty")}</p> : null}
               {alternateView && people.length > 0 ? <p className="family-view-empty">{t(explorerDescriptions[alternateView])}</p> : null}
@@ -627,8 +647,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
           actions={actions}
           language={data.language}
           key={editingPerson === "new" ? `new-${activeTree.id}` : editingPerson.id}
-          onClose={() => setEditingPerson(undefined)}
-          onSaved={(personId) => setTimeout(() => canvasRef.current?.focusPerson(personId), 60)}
+          onClose={() => { analytics.end("onboarding", "cancelled"); setEditingPerson(undefined); }}
+          onSaved={(personId) => { analytics.end("onboarding", "success"); setTimeout(() => canvasRef.current?.focusPerson(personId), 60); }}
           people={people}
           person={editingPerson === "new" ? undefined : editingPerson}
           relationships={relationships}

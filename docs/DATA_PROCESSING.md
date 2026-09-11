@@ -1,6 +1,6 @@
 # Data Processing Register
 
-Last reviewed: August 24, 2026
+Last reviewed: September 12, 2026
 
 This register identifies data flows in the official HERITG application. It is
 intended to keep the privacy policy, implementation, and App Store disclosures
@@ -10,6 +10,8 @@ consistent.
 
 | Component | Status | Purpose | Data | Destination | User control |
 | --- | --- | --- | --- | --- | --- |
+| First-party Web usage statistics | Implemented, disabled by default | Task success, view choices and Family+ funnel drop-off | Fixed journey/variant/step/outcome, random per-attempt ID hashed at rest, server timestamps; no family/account data | Cloudflare API forwarding; existing Cloud Run and private Firestore in Jakarta | Explicit browser-only consent; DNT/GPC honored; withdraw anytime; 180-day consent, 24-hour attempt, 30-day report retention plus asynchronous deletion/recovery |
+| Private billing report | Read-only operator tool | Verified checkout conversion and gross completed amounts by plan | Allowlisted projection of existing provider/status/immutable terms/timestamps; no customer IDs in output, no identity join | Existing private Firestore; aggregate terminal report | No new billing collection; restricted operator access; small cells suppressed; saved reports expire after 30 days |
 | Core Data and app container | Active | Store family trees locally | User-entered family data and app preferences | User's device | Edit or delete data; delete the app |
 | IndexedDB | Active at `heritg.us` | Store family trees and preferences locally | User-entered family data and app preferences | Browser storage on the user's device | Edit or delete data; clear site data |
 | File import | Active | Import genealogy records or backups | User-selected file contents | Processed on-device or in-browser | User explicitly selects a file |
@@ -31,7 +33,7 @@ consistent.
 
 | Service | Status | Policy |
 | --- | --- | --- |
-| Product analytics | Not integrated | May be introduced only as optional collection under `ANALYTICS.md` |
+| Third-party product analytics | Not integrated | First-party optional collection only, under `ANALYTICS.md` |
 | Firebase Analytics / Google Analytics | Not used | Not approved for HERITG under the current policy |
 | Firebase infrastructure | Not integrated | A selected service requires a documented purpose and register update |
 | Sentry | Not integrated | Optional diagnostics would require separate consent and sanitization |

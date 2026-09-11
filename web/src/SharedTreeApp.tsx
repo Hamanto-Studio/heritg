@@ -8,6 +8,7 @@ import {
   type LoadedShare
 } from "./encryptedSharing";
 import { createTranslator } from "./i18n";
+import { analytics } from "./analytics";
 import { relationshipLanguageForData } from "./kinship";
 import { mergeImportedData } from "./portability";
 import { PasswordField } from "./PasswordField";
@@ -40,7 +41,7 @@ export function SharedTreeApp() {
     requestRef.current = controller;
     try {
       const result = await loadEncryptedShare(window.location.pathname, window.location.hash, fetch, controller.signal, password);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
       setLoaded(result);
       setPasswordRequired(false);
       setSharePassword("");
@@ -86,7 +87,9 @@ export function SharedTreeApp() {
     if (!sharePassword || isUnlocking) return;
     setPasswordError(undefined);
     setIsUnlocking(true);
-    void loadShare(sharePassword).catch((reason: unknown) => {
+    analytics.begin("share_open");
+    void loadShare(sharePassword).then(() => analytics.end("share_open", "success")).catch((reason: unknown) => {
+      analytics.end("share_open", reason instanceof DOMException && reason.name === "AbortError" ? "cancelled" : "failed");
       if (reason instanceof DOMException && reason.name === "AbortError") return;
       setPasswordError(reason instanceof ShareDecryptionError
         ? t("sharedPasswordInvalid")

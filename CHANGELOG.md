@@ -39,6 +39,11 @@ prefix.
 
 ### Web
 
+- Add optional, default-off usage statistics for app views, key tasks and the
+  Family+ upgrade funnel, with English/Indonesian consent controls and no family
+  content or permanent user identifiers. Pair with private backend conversion
+  reports; collection requires a separately verified rollout.
+
 - Open Family+ checkout links from DOKU's verified production payment host,
   while preserving older links and rejecting unsafe or sandbox destinations.
 

@@ -8,6 +8,7 @@ import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFro
 import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 import { saveBillingAttempt } from "./billingAttempt";
+import { analytics } from "./analytics";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -108,6 +109,8 @@ describe("ProProvider", () => {
   });
 
   it("confirms only the same checkout's durable completion, not an already-active subscription", async () => {
+    const analyticsEnd = vi.spyOn(analytics, "end");
+    const analyticsRestore = vi.spyOn(analytics, "restoreCheckout");
     document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
     vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
     saveBillingAttempt({ accountId: "A".repeat(22), idempotencyKey: "synthetic-checkout-key", createdAt: Date.now() });
@@ -127,9 +130,12 @@ describe("ProProvider", () => {
     await act(async () => observed.refreshPayment?.());
     expect(observed.subscription.status).toBe("active");
     expect(container.textContent).toBe("pending");
+    expect(analyticsEnd).not.toHaveBeenCalledWith("checkout", "success");
     completed = true;
     await act(async () => observed.refreshPayment?.());
     expect(container.textContent).toBe("confirmed");
+    expect(analyticsRestore).toHaveBeenCalled();
+    expect(analyticsEnd).toHaveBeenCalledWith("checkout", "success");
     expect(observed.subscription).toMatchObject({ status: "active", expiresAt: "2030-09-08T00:00:00Z" });
     expect(sessionStorage.getItem("heritg:pending-checkout")).toBeNull();
   });

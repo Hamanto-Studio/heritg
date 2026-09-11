@@ -6,6 +6,7 @@ import { ACCOUNT_SYNC_LOCK_NAME, claimSyncOwnerAccountId, loadSyncMappings, load
 import type { AccountState, ProContextValue, ProOffer, SubscriptionState, SyncState } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 import { syncDataFingerprint, syncTreeVersion, type AppStoreValue } from "./store";
+import { analytics } from "./analytics";
 import { clearBillingAttempt, readBillingAttempt, saveBillingAttempt, type BillingAttempt } from "./billingAttempt";
 
 export interface EntitlementResponse {
@@ -362,8 +363,10 @@ export function ProProvider({
       const { status } = result;
       if (generation !== sessionGenerationRef.current || currentAccountIdRef.current !== billingAttempt.accountId) return;
       if (status === "completed") {
-        await refreshEntitlement();
+        const confirmedAccess = await refreshEntitlement();
         if (generation !== sessionGenerationRef.current) return;
+        analytics.restoreCheckout();
+        if (confirmedAccess?.status === "active") { analytics.end("checkout", "success"); analytics.end("family_discovery", "success"); }
         clearBillingAttempt();
         setBillingAttempt(undefined);
         setPayment({ status: "confirmed", checking: false });
@@ -371,7 +374,12 @@ export function ProProvider({
         setPaywallOpen(false);
       } else {
         const terminal = status === "failed" || status === "expired" || status === "cancelled";
-        if (terminal) { clearBillingAttempt(); setBillingAttempt(undefined); }
+        if (terminal) {
+          analytics.restoreCheckout();
+          analytics.end("checkout", status === "cancelled" ? "cancelled" : "failed");
+          analytics.end("family_discovery", status === "cancelled" ? "cancelled" : "failed");
+          clearBillingAttempt(); setBillingAttempt(undefined);
+        }
         setPayment({ status: terminal ? status : "pending", checking: false,
           planId: result.planId ?? billingAttempt.planId, resumable: result.resumable, cancellable: result.cancellable });
       }
@@ -462,8 +470,10 @@ export function ProProvider({
           ...(result.cloud ? { cloud: result.cloud } : {})
         });
         if (result.phase === "pending" && syncAccess.canWrite) syncQueuedRef.current = true;
+        if (result.phase === "upToDate") analytics.end("sync_enable", "success");
       });
     } catch (cause) {
+      analytics.end("sync_enable", controller.signal.aborted ? "cancelled" : "failed");
       if (controller.signal.aborted) return;
       const authenticationRequired = ((cause instanceof AccountSyncError || cause instanceof AccountAuthError) && cause.status === 401) ||
         (cause instanceof AccountSyncError && cause.status === 409 && cause.code === "session_changed");
@@ -526,17 +536,23 @@ export function ProProvider({
       return;
     }
     setError(undefined);
+    analytics.reach("family_discovery", 1);
     checkoutInFlight.current = true;
     setPaymentNoticeHidden(false);
     setSubscription({ status: "purchasing", offer });
     try {
       if (offer.price.amount === 0) {
+        analytics.begin("checkout", "free");
         const claimed = await requestFreeAccess(account.user.id, csrfToken);
         if (!isCurrentAccount()) return;
         if (claimed.appUserId !== account.user.id) throw new Error("The Family+ response did not match this account.");
         if (readSyncEnabled() === undefined) saveSyncEnabled(true);
         const next = applyEntitlement(claimed);
         if (next.status !== "active") throw new Error("Free Family+ access could not be activated.");
+        analytics.advance("checkout");
+        analytics.end("checkout", "success");
+        analytics.reach("family_discovery", 2);
+        analytics.end("family_discovery", "success");
         setPaywallOpen(false);
         return;
       }
@@ -550,11 +566,15 @@ export function ProProvider({
         throw new Error("A payment for another plan is pending. Check that payment before choosing a different plan.");
       }
       const attempt = prior?.accountId === account.user.id ? { ...prior, noticeHidden: false } : { accountId: account.user.id, idempotencyKey: crypto.randomUUID(), createdAt: Date.now(), ...(planId ? { planId } : {}) };
+      if (prior?.accountId === account.user.id) analytics.restoreCheckout();
+      else analytics.begin("checkout", planId ?? "two_year");
       saveBillingAttempt(attempt);
       setBillingAttempt(attempt);
       setPayment({ status: "pending", checking: false, planId: attempt.planId });
       const paymentLink = await requestBillingCheckout(account.user.id, csrfToken, attempt.idempotencyKey, attempt.planId);
       if (!isCurrentAccount()) return;
+      analytics.advance("checkout");
+      analytics.reach("family_discovery", 2);
       // Hosted purchases must redirect even when existing Family access is active.
       // Only the same-origin mock return can complete locally without navigating.
       const destination = new URL(paymentLink);
@@ -578,6 +598,8 @@ export function ProProvider({
         } catch { /* Retain the existing attempt and show the original error. */ }
       }
       const message = cause instanceof Error ? cause.message : String(cause);
+      analytics.end("checkout", "failed");
+      analytics.end("family_discovery", "failed");
       setError(message);
       setSubscription({ status: "error", message, offer });
     } finally { checkoutInFlight.current = false; }
@@ -602,14 +624,19 @@ export function ProProvider({
       });
       if (!current()) return false;
       if (result.status === "completed") {
-        await refreshEntitlement();
+        const confirmedAccess = await refreshEntitlement();
         if (!current()) return false;
+        analytics.restoreCheckout();
+        if (confirmedAccess?.status === "active") { analytics.end("checkout", "success"); analytics.end("family_discovery", "success"); }
         clearBillingAttempt(); setBillingAttempt(undefined);
         setPayment({ status: "confirmed", checking: false });
         setPaymentNoticeHidden(false); setPaywallOpen(false);
         return false; // Never start a replacement purchase after discovering payment.
       }
       if (["cancelled", "expired", "failed"].includes(result.status)) {
+        analytics.restoreCheckout();
+        analytics.end("checkout", result.status === "cancelled" ? "cancelled" : "failed");
+        analytics.end("family_discovery", result.status === "cancelled" ? "cancelled" : "failed");
         clearBillingAttempt(); setBillingAttempt(undefined);
         setPayment({ status: result.status as "cancelled" | "expired" | "failed", checking: false });
         return true;
@@ -666,6 +693,8 @@ export function ProProvider({
       if (window.location.pathname === "/billing/return") window.history.replaceState(window.history.state, "", "/");
     },
     openPaywall: () => {
+      analytics.restoreCheckout();
+      analytics.ensure("family_discovery", ["free", "expired"].includes(subscription.status) ? "free_user" : ["active", "readOnly"].includes(subscription.status) ? "existing_access" : "default");
       setPaywallOpen(true);
       if (billingAttempt) {
         setPayment(current => current ?? { status: "pending", checking: false, planId: billingAttempt.planId });
@@ -674,7 +703,7 @@ export function ProProvider({
         void discoverPendingPayment(account.user.id, readCsrfCookie()!, sessionGenerationRef.current).catch(() => undefined);
       }
     },
-    closePaywall: () => setPaywallOpen(false),
+    closePaywall: () => { analytics.end("family_discovery", "cancelled"); setPaywallOpen(false); },
     purchase,
     refreshSubscription,
     manageSubscription: () => {
@@ -686,12 +715,14 @@ export function ProProvider({
       if (!syncAccess.canRead) return;
       saveSyncEnabled(enabled);
       if (!enabled) {
+        analytics.end("sync_enable", "cancelled");
         syncAbortRef.current?.abort();
         syncQueuedRef.current = false;
         setSync({ enabled: false, phase: "disabled", pendingChanges: 0 });
         return;
       }
       setSync({ enabled: true, phase: "comparing", pendingChanges: 0 });
+      analytics.begin("sync_enable");
       window.setTimeout(() => void runSyncRef.current(), 0);
     },
     resolveSync: async (resolution) => runSync(resolution),

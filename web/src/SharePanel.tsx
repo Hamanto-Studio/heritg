@@ -2,6 +2,8 @@ import { Copy, Download, FileImage, FileText, HardDrive, Link2, Send, ShieldChec
 import { useEffect, useRef, useState } from "react";
 
 import { readCsrfCookie } from "./accountAuth";
+import { analytics } from "./analytics";
+import type { Variant } from "./analyticsContract";
 import {
   loadManagedShares,
   releaseManagedShareSlot,
@@ -130,6 +132,7 @@ export function SharePanel({
       setShareSlotBlocked(true);
     }
     let saved = false;
+    analytics.begin("share_create");
     const familyRetention = familyRetentions.has(retention) ? retention as FamilyShareRetention : undefined;
     void createEncryptedShare(data, tree.id, {
       ...(familyRetention
@@ -137,7 +140,10 @@ export function SharePanel({
         : { expiryDays: Number(retention) }),
       password: sharePassword,
       selection: shareSelection,
-      onProgress: setPhase,
+      onProgress: (nextPhase) => {
+        if (nextPhase === "uploading" || nextPhase === "activating") analytics.advance("share_create");
+        setPhase(nextPhase);
+      },
       signal: controller.signal
     }).then(async (result) => {
       const record: ManagedShare = {
@@ -153,9 +159,11 @@ export function SharePanel({
       setManagedShares(next);
       saved = true;
       setCreatedShare(result);
+      analytics.end("share_create", "success");
       setSharePassword("");
       setSharePasswordConfirmation("");
     }).catch((reason: unknown) => {
+      analytics.end("share_create", controller.signal.aborted ? "cancelled" : "failed");
       if (controller.signal.aborted) return;
       onError(reason instanceof Error ? reason.message : t("errorTitle"));
     }).finally(() => {
@@ -205,10 +213,12 @@ export function SharePanel({
     void navigator.clipboard.writeText(url).then(onCopied).catch(() => onError(t("shareCopyFailed")));
   };
 
-  const performExport = (operation: () => void | Promise<void>) => {
-    void Promise.resolve().then(operation).then(onExported).catch((reason: unknown) =>
-      onError(reason instanceof Error ? reason.message : t("errorTitle"))
-    );
+  const performExport = (variant: Variant, operation: () => void | Promise<void>) => {
+    analytics.begin("export", variant);
+    void Promise.resolve().then(operation).then(() => { analytics.end("export", "success"); onExported(); }).catch((reason: unknown) => {
+      analytics.end("export", "failed");
+      onError(reason instanceof Error ? reason.message : t("errorTitle"));
+    });
   };
 
   const progress = phase ? t(phaseKey(phase)) : undefined;
@@ -342,19 +352,19 @@ export function SharePanel({
               <div className="settings-card-header"><HardDrive aria-hidden="true" size={23} /><div><span className="share-format-badge recommended">{t("recommended")}</span><h3>{t("heritgFileTitle")}</h3><p className="settings-detail">{t("heritgFileDetail")}</p></div></div>
               <PasswordField autoComplete="new-password" help={t("archivePasswordHelp")} hideLabel={t("hidePassword")} id="archive-password" label={t("archivePasswordOptional")} maxLength={1024} onChange={(value) => { setArchivePassword(value); if (!value) setArchivePasswordConfirmation(""); }} showLabel={t("showPassword")} value={archivePassword} />
               {archivePassword ? <><PasswordRequirementList highlightUnmet items={[["minimumLength", t("archivePasswordMinimumLength")], ["lowercase", t("archivePasswordLowercase")], ["uppercase", t("archivePasswordUppercase")], ["number", t("archivePasswordNumber")], ["special", t("archivePasswordSpecial")]]} label={t("archivePasswordChecklist")} requirements={archiveRequirements} /><PasswordField autoComplete="new-password" error={archivePasswordMismatchError} hideLabel={t("hidePassword")} id="archive-password-confirmation" label={t("confirmArchivePassword")} maxLength={1024} onChange={setArchivePasswordConfirmation} showLabel={t("showPassword")} value={archivePasswordConfirmation} /></> : null}
-              <button className="button secondary full" disabled={!archivePasswordReady} onClick={() => performExport(async () => { const archive = await exportHeritgArchive(data, tree.id, archivePassword); downloadBlob(new Blob([archive.slice().buffer as ArrayBuffer], { type: "application/vnd.heritg.family-archive" }), safeFilename(tree.title, "heritg")); setArchivePassword(""); setArchivePasswordConfirmation(""); })} type="button"><Download aria-hidden="true" size={16} /> {t("downloadEncryptedBackup")}</button>
+              <button className="button secondary full" disabled={!archivePasswordReady} onClick={() => performExport("heritg", async () => { const archive = await exportHeritgArchive(data, tree.id, archivePassword); downloadBlob(new Blob([archive.slice().buffer as ArrayBuffer], { type: "application/vnd.heritg.family-archive" }), safeFilename(tree.title, "heritg")); setArchivePassword(""); setArchivePasswordConfirmation(""); })} type="button"><Download aria-hidden="true" size={16} /> {t("downloadEncryptedBackup")}</button>
             </>
           ) : shareMethod === "gedcom" ? (
             <>
               <div className="settings-card-header"><FileText aria-hidden="true" size={23} /><div><span className="share-format-badge">{t("forOtherApps")}</span><h3>{t("gedcomFileTitle")}</h3><p className="settings-detail">{t("gedcomFileDetail")}</p></div></div>
               {privacyDetails(["birthDates", "relationshipDates"], t("gedcomIncludedHelp"))}
-              <button className="button secondary full" onClick={() => performExport(() => downloadText(exportGedcom(data, tree.id, shareSelection), safeFilename(tree.title, "ged"), "application/x-gedcom;charset=utf-8"))} type="button"><Download aria-hidden="true" size={16} /> {t("downloadGedcom")}</button>
+              <button className="button secondary full" onClick={() => performExport("gedcom", () => downloadText(exportGedcom(data, tree.id, shareSelection), safeFilename(tree.title, "ged"), "application/x-gedcom;charset=utf-8"))} type="button"><Download aria-hidden="true" size={16} /> {t("downloadGedcom")}</button>
             </>
           ) : (
             <>
               <div className="settings-card-header"><FileImage aria-hidden="true" size={23} /><div><h3>{t("exportChart")}</h3><p className="settings-detail">{t("chartDetail")}</p></div></div>
               {privacyDetails(["birthDates", "relationshipDates", "photos", "ages"], t("imageIncludedHelp"))}
-              <div className="settings-actions"><button className="button secondary" disabled={!peopleCount} onClick={() => performExport(() => exportPng(shareSelection))} type="button"><Download aria-hidden="true" size={16} /> {t("exportPng")}</button><button className="button secondary" disabled={!peopleCount} onClick={() => performExport(() => exportSvg(shareSelection))} type="button"><Download aria-hidden="true" size={16} /> {t("exportSvg")}</button></div>
+              <div className="settings-actions"><button className="button secondary" disabled={!peopleCount} onClick={() => performExport("png", () => exportPng(shareSelection))} type="button"><Download aria-hidden="true" size={16} /> {t("exportPng")}</button><button className="button secondary" disabled={!peopleCount} onClick={() => performExport("svg", () => exportSvg(shareSelection))} type="button"><Download aria-hidden="true" size={16} /> {t("exportSvg")}</button></div>
             </>
           )}
         </section>

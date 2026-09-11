@@ -11,7 +11,11 @@ const repository = resolve(web, "..");
 const production = process.argv.includes("--production");
 if (process.argv.slice(2).some(arg => arg !== "--production")) throw new Error("Unsupported build option");
 const environment = production ? "production" : "staging";
+// Initial activation remains a separately reviewed, explicit build choice.
+const analyticsEnabled = process.env.HERITG_ANALYTICS_ENABLED ?? "false";
+if (!["true", "false"].includes(analyticsEnabled)) throw new Error("HERITG_ANALYTICS_ENABLED must be true or false");
 const hash = createHash("sha256");
+hash.update(analyticsEnabled);
 // Fingerprint the actual worktree, including pending changes, without .git or secrets.
 function fingerprint(directory) {
   for (const item of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -32,7 +36,7 @@ const root = join(web, `.cloudflare-${environment}`);
 const assets = join(root, "assets");
 const env = { ...process.env, HERITG_DEPLOYMENT_ENV: environment, HERITG_BUILD_VERSION: build,
   HERITG_GOOGLE_CLIENT_ID: production ? "428519514749-n3quv8he4ja8h9lpc498v7r76t1vua09.apps.googleusercontent.com" : STAGING_GOOGLE_CLIENT_ID, HERITG_FAMILY_BILLING_ENABLED: "true",
-  HERITG_ANALYTICS_ENABLED: "false", HERITG_DEBUG_CONTEXT: "0", HERITG_SHARING_ENABLED: "true" };
+  HERITG_ANALYTICS_ENABLED: analyticsEnabled, HERITG_DEBUG_CONTEXT: "0", HERITG_SHARING_ENABLED: "true" };
 execFileSync("npx", ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.app.json"], { cwd: web, env, stdio: "inherit" });
 execFileSync("npx", ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.node.json"], { cwd: web, env, stdio: "inherit" });
 execFileSync("npx", ["--no-install", "vite", "build", "--outDir", assets], { cwd: web, env, stdio: "inherit" });
@@ -45,7 +49,7 @@ writeFileSync(join(assets, "_headers"), lines.join("\n"));
 writeFileSync(join(assets, "robots.txt"), "User-agent: *\nDisallow: /\n");
 writeFileSync(join(assets, ".assetsignore"), "*.map\n*.heritg\n*.ged\n.env*\n");
 mkdirSync(root, { recursive: true });
-writeFileSync(join(root, "build.json"), JSON.stringify({ build, commit, environment, analytics: false }, null, 2) + "\n");
+writeFileSync(join(root, "build.json"), JSON.stringify({ build, commit, environment, analytics: analyticsEnabled === "true" }, null, 2) + "\n");
 // Bundle verification metadata is deliberately outside public assets.
 cpSync(join(web, "cloudflare/wrangler.jsonc"), join(root, "reviewed-config.jsonc"));
 console.log(`Cloudflare ${environment} build prepared: ${build}. No deployment was performed.`);

@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createTranslator } from "./i18n";
+import { analytics } from "./analytics";
 import { ProProvider } from "./ProProvider";
 import { unavailableProContext } from "./proTypes";
 import { SharePanel } from "./SharePanel";
@@ -67,6 +68,19 @@ describe("SharePanel methods", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.restoreAllMocks();
+  });
+
+  it("records an export only after the operation resolves and never passes family data", async () => {
+    const begin = vi.spyOn(analytics, "begin");
+    const end = vi.spyOn(analytics, "end");
+    const images = container.querySelectorAll<HTMLButtonElement>(".share-method-choice")[3];
+    act(() => images.click());
+    const download = [...container.querySelectorAll<HTMLButtonElement>("button")].find(button => button.textContent?.includes("Download HD PNG"))!;
+    await act(async () => download.click());
+    expect(begin).toHaveBeenCalledWith("export", "png");
+    expect(end).toHaveBeenCalledWith("export", "success");
+    expect(JSON.stringify([begin.mock.calls, end.mock.calls])).not.toContain(tree.title);
   });
 
   it("presents separate HERITG and GEDCOM workflows with clear use cases", () => {

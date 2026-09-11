@@ -14,6 +14,13 @@ requests for the public documentation.
 
 ## Guardrails
 
+- Optional product statistics remain off by default. Before setting
+  `HERITG_ANALYTICS_ENABLED=true` for the Cloudflare build, follow
+  [analytics rollout gates](ANALYTICS.md), including the matching backend flag,
+  TTL, log safeguards, consent and synthetic staging checks. Routine deployment
+  is not approval for initial analytics activation. The flag is fingerprinted
+  and recorded in build metadata.
+
 - Do not attach the installable web app to `family.heritg.us`; its service
   worker owns root navigation on its origin.
 - Landing-page encryption links must use the same-origin

@@ -14,6 +14,7 @@ import {
   X
 } from "lucide-react";
 import { useDeferredValue, useState } from "react";
+import { analytics } from "./analytics";
 
 import {
   HeritgArchivePasswordError,
@@ -107,7 +108,14 @@ export function TreeSidebar({
     }
   };
 
+  const saveImport = async (replacement: unknown) => {
+    analytics.advance("import");
+    await actions.importData(replacement);
+    analytics.end("import", "success");
+  };
   const readImport = async (file: File) => {
+    const suffix = file.name.toLowerCase();
+    analytics.begin("import", suffix.endsWith(".heritg") ? "heritg" : suffix.endsWith(".json") ? "json" : GEDCOM_FILE_SUFFIX.test(suffix) ? "gedcom" : "default");
     if (file.size === 0 || file.size > MAX_PORTABILITY_BYTES) {
       throw new Error("Choose a non-empty family file smaller than 32 MB.");
     }
@@ -117,7 +125,7 @@ export function TreeSidebar({
       const protection = heritgArchiveProtection(bytes);
       if (protection === "encrypted" || protection === "legacy-encrypted") {
         try {
-          await actions.importData(await importHeritgArchive(bytes, "", { into: data }));
+          await saveImport(await importHeritgArchive(bytes, "", { into: data }));
         } catch (error) {
           if (!(error instanceof HeritgArchivePasswordError)) throw error;
           setArchivePassword("");
@@ -126,16 +134,16 @@ export function TreeSidebar({
           return;
         }
       } else {
-        await actions.importData(await importHeritgArchive(bytes, "", { into: data }));
+        await saveImport(await importHeritgArchive(bytes, "", { into: data }));
       }
     } else if (lowerName.endsWith(".json")) {
-      await actions.importData(importHeritgBackup(await file.text(), { into: data }));
+      await saveImport(importHeritgBackup(await file.text(), { into: data }));
     } else if (GEDCOM_FILE_SUFFIX.test(lowerName)) {
       const imported = importGedcom(await file.text(), {
         title: file.name.replace(GEDCOM_FILE_SUFFIX, ""),
         language: data.language
       });
-      await actions.importData(validateAppData({
+      await saveImport(validateAppData({
         ...data,
         trees: [...data.trees, ...imported.trees],
         people: [...data.people, ...imported.people],
@@ -155,12 +163,14 @@ export function TreeSidebar({
     setArchiveError(undefined);
     setIsUnlocking(true);
     try {
-      await actions.importData(await importHeritgArchive(pendingArchive.bytes, archivePassword, { into: data }));
+      if (!analytics.has("import")) analytics.begin("import", "heritg");
+      await saveImport(await importHeritgArchive(pendingArchive.bytes, archivePassword, { into: data }));
       setArchivePassword("");
       setPendingArchive(undefined);
       onImported();
       onClose();
     } catch (error) {
+      analytics.end("import", "failed");
       setArchivePassword("");
       setArchiveError(error instanceof Error ? error.message : t("errorTitle"));
     } finally {
@@ -295,9 +305,10 @@ export function TreeSidebar({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 event.target.value = "";
-                if (file) void readImport(file).catch((error: unknown) =>
-                  onError(error instanceof Error ? error.message : t("errorTitle"))
-                );
+                if (file) void readImport(file).catch((error: unknown) => {
+                  analytics.end("import", "failed");
+                  onError(error instanceof Error ? error.message : t("errorTitle"));
+                });
               }}
               type="file"
             />
@@ -328,13 +339,13 @@ export function TreeSidebar({
           closeLabel={t("close")}
           footer={
             <>
-              <button className="button secondary" onClick={() => setPendingArchive(undefined)} type="button">{t("cancel")}</button>
+              <button className="button secondary" onClick={() => { analytics.end("import", "cancelled"); setPendingArchive(undefined); }} type="button">{t("cancel")}</button>
               <button className="button primary" disabled={!archivePassword || isUnlocking} onClick={() => void unlockArchive()} type="button">
                 {t("unlockAndImport")}
               </button>
             </>
           }
-          onClose={() => setPendingArchive(undefined)}
+          onClose={() => { analytics.end("import", "cancelled"); setPendingArchive(undefined); }}
           size="small"
           title={t("encryptedArchiveTitle")}
         >
