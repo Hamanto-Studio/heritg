@@ -1,0 +1,143 @@
+{
+  "contract": "doku-checkout-urls-2026-09-11",
+  "note": "Synthetic only. Production hostname/path verified in an authorized unpaid diagnostic; no captured payment URL.",
+  "cases": [
+    {
+      "name": "observed-live-v2",
+      "url": "https://checkout.doku.com/checkout-link-v2/synthetic",
+      "environments": [
+        "production"
+      ]
+    },
+    {
+      "name": "legacy-live-v2",
+      "url": "https://jokul.doku.com/checkout-link-v2/synthetic",
+      "environments": [
+        "production"
+      ]
+    },
+    {
+      "name": "documented-live-link",
+      "url": "https://jokul.doku.com/checkout/link/synthetic",
+      "environments": [
+        "production"
+      ]
+    },
+    {
+      "name": "sandbox",
+      "url": "https://sandbox.doku.com/checkout-link-v2/synthetic",
+      "environments": [
+        "staging"
+      ]
+    },
+    {
+      "name": "observed-staging",
+      "url": "https://staging.doku.com/checkout-link-v2/synthetic",
+      "environments": [
+        "staging"
+      ]
+    },
+    {
+      "name": "live-query",
+      "url": "https://checkout.doku.com/checkout-link-v2/synthetic?language=en",
+      "environments": [
+        "production"
+      ]
+    },
+    {
+      "name": "http",
+      "url": "http://checkout.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "port",
+      "url": "https://checkout.doku.com:8443/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "credentials",
+      "url": "https://synthetic:synthetic@checkout.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "fragment",
+      "url": "https://checkout.doku.com/checkout-link-v2/synthetic#synthetic",
+      "environments": []
+    },
+    {
+      "name": "lookalike-suffix",
+      "url": "https://checkout.doku.com.attacker.invalid/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "lookalike-prefix",
+      "url": "https://fakecheckout.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "unverified-subdomain",
+      "url": "https://pay.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "root-domain",
+      "url": "https://doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "api-domain",
+      "url": "https://api.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "new-host-legacy-path-unverified",
+      "url": "https://checkout.doku.com/checkout/link/synthetic",
+      "environments": []
+    },
+    {
+      "name": "wrong-path",
+      "url": "https://checkout.doku.com/pay/synthetic",
+      "environments": []
+    },
+    {
+      "name": "path-prefix-lookalike",
+      "url": "https://checkout.doku.com/checkout-link-v2-evil/synthetic",
+      "environments": []
+    },
+    {
+      "name": "path-traversal",
+      "url": "https://checkout.doku.com/checkout-link-v2/../other/synthetic",
+      "environments": []
+    },
+    {
+      "name": "scheme-relative",
+      "url": "//checkout.doku.com/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "relative",
+      "url": "/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "javascript",
+      "url": "javascript:alert(1)",
+      "environments": []
+    },
+    {
+      "name": "userinfo-spoof",
+      "url": "https://checkout.doku.com@attacker.invalid/checkout-link-v2/synthetic",
+      "environments": []
+    },
+    {
+      "name": "staging-legacy-path",
+      "url": "https://staging.doku.com/checkout/link/synthetic",
+      "environments": []
+    },
+    {
+      "name": "sandbox-fragment",
+      "url": "https://sandbox.doku.com/checkout-link-v2/synthetic#synthetic",
+      "environments": []
+    }
+  ]
+}

@@ -58,6 +58,34 @@ text-size checks preserve readable pricing without horizontal overflow.
 
 ## Verification status
 
+### Production checkout address fix — September 11, 2026
+
+DOKU's production API returned `checkout.doku.com` with `/checkout-link-v2/`,
+while both Heritg validators only allowed the older `jokul.doku.com` host.
+This caused “Payment service unavailable” even though an unpaid order existed.
+The owner-approved diagnostic and original order were both confirmed closed,
+without a bank transfer or entitlement grant. See the
+[backend incident record](https://github.com/Hamanto-Studio/heritg-be/blob/main/docs/DOKU_CHECKOUT_INCIDENT.md).
+
+The browser now accepts that exact production host/path pair for both checkout
+and resume, retains older `jokul.doku.com` links, and enforces the backend's
+4096-character limit. No wildcard host, sandbox/live crossover, credential,
+custom port, fragment or unexpected path is allowed. No payment URL is saved
+in browser storage; a return to Heritg still does not prove payment success.
+
+`web/src/__fixtures__/doku-checkout-urls.json` is byte-identical to backend
+`test/fixtures/doku-checkout-urls.json`, contract `doku-checkout-urls-2026-09-11`,
+SHA-256 `2dc95288e794079ae46549f22c4c72c8727d300f01663af90d0c6f4ae3d404c7`.
+Both CI suites run its 25 cases in production and staging, plus length-boundary
+tests. All URLs are synthetic; tests never create a live or sandbox invoice.
+Update and compare both fixtures whenever the provider contract changes.
+
+This records a code fix, not a new deployment. Ship the paired backend and web
+changes through the normal checked release path. The owner must then verify one
+real payment and exactly-once access; existing sandbox success is not live proof.
+
+### Historical component verification
+
 The component tests below are distinct from the deployed runtime receipt that follows.
 Component tests exercise direct Google callback/session exchange, preserved plan
 selection, no automatic checkout, dismissal across provider remount, and a failed
