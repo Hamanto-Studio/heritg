@@ -92,6 +92,7 @@ const deploymentBrandPlugin = (): Plugin => ({
 export default defineConfig({
   base: "/",
   define: {
+    __ANALYTICS_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_ANALYTICS_ENABLED === "true"),
     __APP_VERSION__: JSON.stringify(packageJson.version),
     __BUILD_VERSION__: JSON.stringify(buildVersion),
     __SHARING_ENABLED__: JSON.stringify(buildEnvironment?.HERITG_SHARING_ENABLED !== "false"),

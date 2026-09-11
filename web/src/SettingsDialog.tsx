@@ -1,6 +1,7 @@
 import { Globe2, Languages, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AccountSettings } from "./AccountSettings";
+import { AnalyticsSettings } from "./AnalyticsSettings";
 import { AppVersion } from "./AppVersion";
 import type { MessageKey, Translator } from "./i18n";
 import { relationshipLanguageForData } from "./kinship";
@@ -72,6 +73,7 @@ export function SettingsDialog({
       <ProSettings language={data.language} onOpenPaywall={pro.openPaywall} pro={pro} t={t} />
 
       <AccountSettings language={data.language} t={t} />
+      <AnalyticsSettings language={data.language} t={t} />
 
       <div className="settings-group">
         <h3>{t("language")}</h3>

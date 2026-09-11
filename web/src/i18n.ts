@@ -1,6 +1,18 @@
 import type { AppData } from "./types";
 
 const en = {
+  analyticsTitle: "Optional usage statistics",
+  analyticsDetail: "Help improve Heritg by sharing which tasks start, finish, or fail. No family content, names, files, passwords, account details, or screen recordings are included. Your choice does not affect any feature.",
+  analyticsRetention: "Journey records expire after 30 days in Heritg’s private Jakarta storage; deletion and recovery copies may take longer. No permanent user or device ID. Turning this off stops future collection. Details are in the data policy below.",
+  analyticsOff: "Keep off",
+  analyticsOn: "Share usage statistics",
+  analyticsUnavailable: "Collection is not enabled in this build. Nothing is sent.",
+  analyticsBrowserBlocked: "Your browser’s privacy preference keeps usage statistics off.",
+  analyticsEnabled: "On for this browser. You can turn it off at any time.",
+  analyticsDisabled: "Off. Your usage is not collected.",
+  analyticsNeverSent: "No usage statistics sent from this browser.",
+  analyticsLastSent: "Last sent from this browser: {date}",
+  analyticsCatalog: "See exactly what is collected",
   familyPlanWeekly: "Weekly",
   familyPlanBenefits: "What’s included with Family+?",
   manualRenewalShort: "No automatic charges",
@@ -640,6 +652,18 @@ const en = {
 } as const;
 
 const id = {
+  analyticsTitle: "Statistik penggunaan opsional",
+  analyticsDetail: "Bantu meningkatkan Heritg dengan membagikan alur yang dimulai, selesai, atau gagal. Tidak termasuk isi keluarga, nama, berkas, kata sandi, detail akun, atau rekaman layar. Pilihan Anda tidak memengaruhi fitur apa pun.",
+  analyticsRetention: "Catatan alur kedaluwarsa setelah 30 hari di penyimpanan pribadi Heritg di Jakarta; penghapusan dan salinan pemulihan dapat memerlukan waktu lebih lama. Tanpa ID pengguna atau perangkat permanen. Menonaktifkan menghentikan pengumpulan berikutnya. Lihat kebijakan data di bawah.",
+  analyticsOff: "Tetap nonaktif",
+  analyticsOn: "Bagikan statistik penggunaan",
+  analyticsUnavailable: "Pengumpulan belum diaktifkan pada versi ini. Tidak ada yang dikirim.",
+  analyticsBrowserBlocked: "Preferensi privasi browser Anda menonaktifkan statistik penggunaan.",
+  analyticsEnabled: "Aktif untuk browser ini. Anda dapat menonaktifkannya kapan saja.",
+  analyticsDisabled: "Nonaktif. Penggunaan Anda tidak dikumpulkan.",
+  analyticsNeverSent: "Belum ada statistik penggunaan yang dikirim dari browser ini.",
+  analyticsLastSent: "Terakhir dikirim dari browser ini: {date}",
+  analyticsCatalog: "Lihat data yang dikumpulkan",
   paymentStatus: "Status pembayaran",
   familyPlanWeekly: "Mingguan",
   familyPlanBenefits: "Apa saja yang termasuk Family+?",

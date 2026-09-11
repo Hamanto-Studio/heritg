@@ -1,3 +1,4 @@
+import { analytics } from "./analytics";
 const API_BASE = "/api/v1/auth";
 export const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 
@@ -188,12 +189,20 @@ export const loginWithGoogle = async (
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch
 ): Promise<LoginResult> => {
-  return parseLogin(await request("/google", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
-    signal
-  }, fetchImpl));
+  analytics.begin("sign_in", "google");
+  try {
+    const result = parseLogin(await request("/google", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ idToken, nonce: material.nonce, state: material.state }),
+      signal
+    }, fetchImpl));
+    analytics.end("sign_in", "success");
+    return result;
+  } catch (error) {
+    analytics.end("sign_in", signal?.aborted ? "cancelled" : "failed");
+    throw error;
+  }
 };
 
 export const isConservativeEmail = (value: string): boolean => {
@@ -234,12 +243,20 @@ export const verifyEmailLogin = async (
   fetchImpl: typeof fetch = fetch
 ): Promise<LoginResult> => {
   if (!TOKEN_PATTERN.test(token)) throw new AccountAuthError(400, "invalid_request");
-  return parseLogin(await request("/email/verify", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ token }),
-    signal
-  }, fetchImpl, 200));
+  analytics.begin("sign_in", "email");
+  try {
+    const result = parseLogin(await request("/email/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+      signal
+    }, fetchImpl, 200));
+    analytics.end("sign_in", "success");
+    return result;
+  } catch (error) {
+    analytics.end("sign_in", signal?.aborted ? "cancelled" : "failed");
+    throw error;
+  }
 };
 
 export const getAccountSession = async (

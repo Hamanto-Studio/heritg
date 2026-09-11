@@ -1016,6 +1016,15 @@
   text-transform: uppercase;
 }
 
+.analytics-settings .language-options button {
+  min-height: 44px;
+}
+
+.analytics-settings > a {
+  color: var(--brand-deep);
+  text-underline-offset: 3px;
+}
+
 .settings-card {
   background: var(--base);
   border: 1px solid var(--line);

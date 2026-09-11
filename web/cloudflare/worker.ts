@@ -9,7 +9,7 @@ const securityHeaders = vercel.headers[0].headers;
 const forwardedHeaders = [
   "accept", "content-type", "cookie", "authorization", "origin",
   "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest", "x-csrf-token",
-  "x-heritg-account-id", "idempotency-key", "dnt", "sec-gpc",
+  "x-heritg-account-id", "idempotency-key", "dnt", "sec-gpc", "x-heritg-analytics-consent",
 ];
 
 // Only the existing browser API is reachable. Never forward internal jobs,

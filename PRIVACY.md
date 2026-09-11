@@ -1,6 +1,6 @@
 # HERITG Privacy Policy
 
-Effective date: August 24, 2026
+Effective date: September 12, 2026
 
 HERITG is developed by Hamanto Studio. It is designed to let people create and
 preserve family trees without creating an account. Web users may optionally
@@ -22,7 +22,8 @@ responsibility of its distributor.
   in Jakarta. The service stores an encrypted recovery copy of each tree key.
 - Web users may create expiring read-only links; encryption happens in the browser and the sharing service receives ciphertext without its viewing key.
 - Core functionality does not require an internet connection.
-- HERITG does not currently include product analytics or crash-reporting SDKs.
+- Optional Web usage statistics are off by default and require explicit consent.
+- No analytics or crash-reporting SDK is used.
 - HERITG does not use Firebase Analytics or Google Analytics.
 - HERITG does not contain advertising SDKs or perform cross-app tracking.
 - Family-tree content is not sold or used for advertising.
@@ -166,13 +167,40 @@ synchronization control are required before encrypted snapshots are transferred.
 
 ## Analytics
 
-HERITG does not currently send product analytics. Any future product analytics
-must be optional and follow the public event and property allowlist in
-[`docs/ANALYTICS.md`](docs/ANALYTICS.md).
+Heritg Web includes a first-party, optional usage-statistics implementation. It
+is disabled by default and is not yet enabled for production collection. Where
+explicitly enabled, users may opt in from Settings and turn it off at any time
+without losing features. Browser Global Privacy Control and Do Not Track keep
+collection off. Consent is specific to this browser and expires after 180 days.
+iOS and Android do not send these events.
 
-That contract prohibits collection of names, family relationships, dates,
-photos, notes, search terms, files, exact family size, advertising identifiers,
-session replay, and user-entered analytics values.
+The limited records describe task starts, milestones, and outcomes—not family
+content. Each task has a new random identifier; there is no permanent user/device
+identifier, account association, session replay, advertising, or cross-app tracking.
+An unfinished checkout and its Family+ discovery journey may keep random analytics attempts in sessionStorage for
+up to 24 hours to recognize a same-tab payment return. No checkout or account ID
+is included. Withdrawal discards pending local work and stops future collection;
+requests already received cannot be recalled or located by account identity.
+
+Heritg's Cloud Run and private Firestore in Jakarta process the allowlisted
+events and server timestamps. Records expire from reports at 30 days and are
+deleted asynchronously by cleanup/TTL. Existing recovery copies may persist up
+to seven additional days. Network providers still process standard transport
+metadata; it is not added to product-event records. This telemetry is not
+end-to-end encrypted against Heritg. Internal reports hide small counts and are
+accessible only to authorized operators. No new analytics vendor is introduced.
+
+The complete event catalog, retention details, consent controls, processors,
+measurement limits, and rollout status are in
+[`docs/ANALYTICS.md`](docs/ANALYTICS.md). Names, relationships, dates, photos,
+notes, files, passwords, keys, account identifiers, URLs, raw errors, family size,
+fingerprints, and all user-entered analytics values are prohibited.
+
+Authorized operators may also summarize existing billing records by plan and
+status to understand verified paid checkouts and gross completed amounts. These
+are separate operational aggregates, not an identity join with browser events;
+no family data, customer identity, invoice ID, or payment URL is printed.
+They are not unique-user counts or a replacement for financial reconciliation.
 
 ## Crash Reporting
 

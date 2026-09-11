@@ -17,6 +17,21 @@ function setup() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Cloudflare staging boundary", () => {
+  it("preserves the consent and privacy headers for cookie-free analytics without caching", async () => {
+    const { env, fetchMock } = setup();
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+    const response = await worker.fetch(new Request(origin + "/api/v1/analytics/journeys", {
+      method: "POST", body: "{}",
+      headers: { origin, "sec-fetch-site": "same-origin", "content-type": "application/json",
+        "x-heritg-analytics-consent": "1", dnt: "1", "sec-gpc": "1" }
+    }), env);
+    expect(response.status).toBe(204);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url.href).toBe(backend + "/api/v1/analytics/journeys");
+    for (const name of ["x-heritg-analytics-consent", "dnt", "sec-gpc"]) expect(options.headers.get(name)).toBe("1");
+    for (const name of ["cookie", "authorization", "referer"]) expect(options.headers.has(name)).toBe(false);
+    expect(response.headers.get("cache-control")).toContain("no-store");
+  });
   it("locks infrastructure to staging and disables public preview URLs and sensitive logs", () => {
     const config = JSON.parse(readFileSync(new URL("./wrangler.jsonc", import.meta.url), "utf8"));
     expect(Object.keys(config.env)).toEqual(["staging", "production"]);
