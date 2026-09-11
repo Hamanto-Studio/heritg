@@ -594,7 +594,7 @@ export function ProProvider({
     setPaymentAction(operation === "resume" ? "resuming" : "cancelling");
     setError(undefined);
     try {
-      const result = await jsonRequest<{ status: string; paymentLinkUrl?: string }>(`/api/v1/billing/checkouts/${operation}`, {
+      const result = await jsonRequest<{ status: string; paymentLinkUrl?: string; planId?: ProOffer["planId"]; resumable?: boolean; cancellable?: boolean }>(`/api/v1/billing/checkouts/${operation}`, {
         signal: AbortSignal.timeout(operation === "cancel" ? 30_000 : 15_000),
         method: "POST", headers: { "idempotency-key": attempt.idempotencyKey, "x-csrf-token": csrf, "x-heritg-account-id": attempt.accountId }, body: "{}"
       });
@@ -612,6 +612,10 @@ export function ProProvider({
         setPayment({ status: result.status as "cancelled" | "expired" | "failed", checking: false });
         return true;
       }
+      if (result.status === "pending") {
+        setPayment({ status: "pending", checking: false, planId: result.planId ?? attempt.planId,
+          resumable: result.resumable, cancellable: result.cancellable });
+      }
       if (operation === "resume" && result.status === "pending" && typeof result.paymentLinkUrl === "string") {
         const destination = validatedPaymentLink(result.paymentLinkUrl);
         saveBillingAttempt({ ...attempt, noticeHidden: false });
@@ -620,7 +624,7 @@ export function ProProvider({
         return true;
       }
       throw new Error(operation === "cancel"
-        ? "DOKU has not confirmed cancellation. Your checkout is still saved. Resume it or check its status; do not start a second payment yet."
+        ? "DOKU has not confirmed cancellation. Check the payment status again later. Your existing checkout is saved; no replacement payment was created."
         : "The saved checkout could not be reopened. Check its status or try again shortly. No new payment was created.");
     } catch (cause) {
       if (current()) setError(cause instanceof Error ? cause.message : "Payment service unavailable. Your checkout is still saved.");

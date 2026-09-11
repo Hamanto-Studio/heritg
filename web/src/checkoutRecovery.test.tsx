@@ -99,7 +99,7 @@ it('dismissal survives provider remount while the pending checkout stays accessi
   vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
   document.cookie = `heritg_csrf=${token}; Path=/`;
   saveBillingAttempt({ accountId, idempotencyKey: 'synthetic-recovery-key', planId: 'three_year', createdAt: Date.now() });
-  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => String(input).endsWith('/auth/session') ? json(account) : String(input).endsWith('/status') ? json({ status: 'pending', planId: 'three_year', resumable: true }) : json(entitlements())));
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => String(input).endsWith('/auth/session') ? json(account) : String(input).endsWith('/status') ? json({ status: 'pending', planId: 'three_year', resumable: true, cancellable: true }) : json(entitlements())));
   await mount(); await act(async () => observed.refreshPayment?.());
   await act(async () => observed.dismissPayment?.());
   expect(readBillingAttempt()?.noticeHidden).toBe(true);
@@ -127,7 +127,7 @@ it('opening a hidden pending checkout before session restoration keeps its plan 
   vi.stubGlobal('fetch', fetcher); await mount(); await clickText('Family+');
   expect(observed.account.status).toBe('loading');
   expect(observed.payment).toMatchObject({ status: 'pending', planId: 'three_year' });
-  expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Resume payment')?.disabled).toBe(true);
+  expect([...host.querySelectorAll('button')].find(button => button.textContent === 'Resume payment')).toBeUndefined();
   await act(async () => { restoreSession(); await sessionReady; });
   await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
   expect(observed.account.status).toBe('signedIn');
@@ -147,8 +147,8 @@ it('a plan change requires confirmed cancellation, preserves selection and never
   const fetcher = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.endsWith('/auth/session')) return json(account);
-    if (url.endsWith('/status')) return json({ status: 'pending', planId: 'three_year', resumable: true });
-    if (url.endsWith('/cancel')) return json({ status: cancelled ? 'cancelled' : 'pending' });
+    if (url.endsWith('/status')) return json({ status: 'pending', planId: 'three_year', resumable: true, cancellable: true });
+    if (url.endsWith('/cancel')) return json({ status: cancelled ? 'cancelled' : 'pending', resumable: true, cancellable: true });
     return json(entitlements());
   });
   vi.stubGlobal('fetch', fetcher); await mount(); await clickText('Family+');
@@ -157,12 +157,56 @@ it('a plan change requires confirmed cancellation, preserves selection and never
   await clickText('Cancel payment'); await clickText('Yes, cancel checkout');
   expect(readBillingAttempt()).toBeDefined();
   expect(host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.disabled).toBe(true);
-  cancelled = true; await clickText('Yes, cancel checkout');
+  expect(host.querySelector('.payment-cancel-confirmation')).toBeNull();
+  cancelled = true; await clickText('Cancel payment'); await clickText('Yes, cancel checkout');
   expect(readBillingAttempt()).toBeUndefined();
   expect(host.querySelector<HTMLInputElement>('input[value=yearly]')!.checked).toBe(true);
   expect(host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.disabled).toBe(false);
   expect(host.querySelector('.pro-purchase-button')!.textContent).toContain('79.000');
   expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/billing/checkouts'))).toBe(false);
+});
+
+it('keeps an uncertain checkout safe without suggesting unavailable resume or cancellation', async () => {
+  vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+  document.cookie = `heritg_csrf=${token}; Path=/`;
+  saveBillingAttempt({ accountId, idempotencyKey: 'synthetic-recovery-key', planId: 'yearly', createdAt: Date.now(), noticeHidden: true });
+  const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/auth/session')) return json(account);
+    if (url.endsWith('/status')) return json({ status: 'pending', planId: 'yearly', resumable: false, cancellable: false });
+    return json(entitlements());
+  });
+  vi.stubGlobal('fetch', fetcher); await mount(); await clickText('Family+');
+  expect(host.textContent).toContain('We couldn’t save a usable payment link');
+  expect(host.textContent).toContain('Cancellation is not available');
+  expect(host.textContent).not.toContain('Resume payment');
+  expect(host.textContent).not.toContain('Cancel payment');
+  await act(async () => host.querySelector<HTMLInputElement>('input[value=six_month]')!.click());
+  expect(host.textContent).toContain('confirmed closed before');
+  await clickText('Check payment');
+  expect(readBillingAttempt()?.idempotencyKey).toBe('synthetic-recovery-key');
+  expect(host.querySelector<HTMLButtonElement>('.pro-purchase-button')!.disabled).toBe(true);
+  expect(fetcher.mock.calls.some(([url]) => /\/checkouts\/(cancel|resume)$/.test(String(url)) || String(url).endsWith('/billing/checkouts'))).toBe(false);
+});
+
+it('refreshes recovery capabilities after unconfirmed cancellation and dismisses the confirmation', async () => {
+  vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+  document.cookie = `heritg_csrf=${token}; Path=/`;
+  saveBillingAttempt({ accountId, idempotencyKey: 'synthetic-recovery-key', planId: 'yearly', createdAt: Date.now(), noticeHidden: true });
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/auth/session')) return json(account);
+    if (url.endsWith('/status')) return json({ status: 'pending', planId: 'yearly', resumable: true, cancellable: true });
+    if (url.endsWith('/cancel')) return json({ status: 'pending', planId: 'yearly', resumable: false, cancellable: false });
+    return json(entitlements());
+  }));
+  await mount(); await clickText('Family+'); await clickText('Cancel payment'); await clickText('Yes, cancel checkout');
+  expect(host.querySelector('.payment-cancel-confirmation')).toBeNull();
+  expect(host.textContent).not.toContain('Resume payment');
+  expect(host.textContent).not.toContain('Cancel payment');
+  expect(host.textContent).toContain('DOKU has not confirmed cancellation');
+  expect(observed.payment).toMatchObject({ status: 'pending', resumable: false, cancellable: false });
+  expect(readBillingAttempt()).toBeDefined();
 });
 
 it.each([false, true])('stops automatic status checks after three attempts and keeps manual recovery available (outage=%s)', async outage => {
