@@ -38,8 +38,9 @@ execFileSync("npx", ["--no-install", "tsc", "--noEmit", "-p", "tsconfig.node.jso
 execFileSync("npx", ["--no-install", "vite", "build", "--outDir", assets], { cwd: web, env, stdio: "inherit" });
 const config = JSON.parse(readFileSync(join(web, "vercel.template.json"), "utf8"));
 const lines = ["/*", ...config.headers[0].headers.map(({ key, value }) => `  ${key}: ${value}`),
-  "  X-Robots-Tag: noindex, nofollow, noarchive", `  X-Heritg-Hosting: cloudflare-${environment}`, "  Cache-Control: public, max-age=0, must-revalidate", "",
-  "/assets/*", "  Cache-Control: public, max-age=31536000, immutable", ""];
+  "  X-Robots-Tag: noindex, nofollow, noarchive", `  X-Heritg-Hosting: cloudflare-${environment}`, "",
+  "/assets/*", "  Cache-Control: public, max-age=31536000, immutable", "",
+  ...["/index.html", "/sw.js", "/registerSW.js", "/manifest.webmanifest"].flatMap(path => [path, "  Cache-Control: public, max-age=0, must-revalidate", ""])];
 writeFileSync(join(assets, "_headers"), lines.join("\n"));
 writeFileSync(join(assets, "robots.txt"), "User-agent: *\nDisallow: /\n");
 writeFileSync(join(assets, ".assetsignore"), "*.map\n*.heritg\n*.ged\n.env*\n");

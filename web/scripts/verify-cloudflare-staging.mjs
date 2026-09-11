@@ -94,7 +94,7 @@ try {
   const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
   assert(assets.length > 0);
   for (const path of new Set(assets)) assert.match((await check(path)).headers.get("cache-control") ?? "", /immutable/);
-  console.log("PASS staging branding, security headers, deep links, missing-asset handling and PWA files");
+  console.log(`PASS ${environment} branding, security headers, deep links, missing-asset handling and PWA files`);
   if (!skipApi) {
     phase = "API readiness";
     assert.equal((await (await check("/health")).json()).status, "ok");
@@ -113,7 +113,7 @@ try {
     await post("/api/v1/billing/checkouts", { planId: "six_month" }, paid ? 401 : 503);
     await check("/api/v1/auth/session", 403, { headers: { origin: "https://untrusted.example" } });
     await post("/api/v1/share-uploads", {}, 400);
-    console.log("PASS staging API, auth cookie, sandbox prices and anonymous/cross-origin denial");
+    console.log(`PASS ${environment} API, auth cookie, expected prices and anonymous/cross-origin denial`);
     phase = "synthetic encrypted-share lifecycle and cleanup";
     await shareSmoke();
     console.log("PASS encrypted upload, completion, download/decryption, tamper rejection, revocation and cleanup");
