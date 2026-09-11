@@ -39,6 +39,10 @@ prefix.
 
 ### Web
 
+- Explain when a saved checkout has no usable payment link, show only confirmed
+  recovery options, and dismiss failed cancellation prompts without discarding
+  the pending order or creating a duplicate payment.
+
 - Keep each Family+ plan's full upfront price prominent, with a smaller monthly
   cost comparison rounded to the nearest Rp100, labeled “About” / “Sekitar”,
   and one-time-payment explanations in English and Indonesian.

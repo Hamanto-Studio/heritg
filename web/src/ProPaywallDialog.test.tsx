@@ -51,7 +51,7 @@ describe("ProPaywallDialog", () => {
     vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     const pro = context({ configured: true, offers: prepaidOffers,
       account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } },
-      payment: { status: 'pending', checking: false } });
+      payment: { status: 'pending', checking: false, resumable: true, cancellable: true } });
     const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator('en')} />);
     expect(markup).toContain('Resume payment');
     expect(markup).toContain('Cancel payment');
