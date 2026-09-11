@@ -4,6 +4,23 @@ HERITG uses one changelog for Web, iOS, and Android. Each platform has an
 independent semantic version and release history. Versions never use a `v`
 prefix.
 
+## [web-0.8.1] - 2026-09-11
+
+### Changed
+
+- Move the app to Cloudflare hosting while retaining the same `heritg.us` origin,
+  local data, sign-in and offline support. Keep the landing page separate.
+- Show six-month, one-year and three-year Family+ prices before sign-in, with
+  prominent upfront totals and smaller approximate monthly comparisons.
+- Use real access durations and live DOKU checkout for production, with manual
+  renewal and no automatic charges. Preserve existing grants and pending orders.
+
+### Security
+
+- Verify production checkout destinations, authenticate proxy IP attribution,
+  and test an isolated build before production publication and rollback.
+- Update hosting and payment privacy disclosures without adding analytics.
+
 ## [web-0.8.0] - 2026-08-25
 
 ### Added

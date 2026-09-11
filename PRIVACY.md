@@ -80,14 +80,15 @@ features. Opening an external support link or using an Apple-provided service
 may contact that service under its own terms.
 
 Opening the web app downloads its public HTML, JavaScript, styles, fonts, and
-images from Vercel's static hosting infrastructure. Vercel may process standard
-HTTP request metadata, such as IP address, user agent, requested URL, and
-request timing, to deliver and protect those public files under its terms.
-Cloudflare provides authoritative DNS for `hamanto.com`; the HERITG hostname is
-configured as DNS-only, so Cloudflare resolves the hostname but does not proxy
-family-tree content or application traffic. A service worker may cache public
-assets in browser Cache Storage for offline use. HERITG does not send
-family-tree content from IndexedDB to Vercel or Cloudflare. It sends encrypted
+images from Cloudflare Workers static hosting at `heritg.us`. Cloudflare also
+provides DNS and proxies application API requests to Cloud Run, including
+authentication, payment-status and encrypted-sharing requests. Cloudflare may
+process HTTP metadata such as IP address, user agent, URL and request timing to
+deliver and protect the service. The edge signs visitor-IP attribution for the
+backend's HMAC-pseudonymized abuse limits; HERITG does not log that proof or IP.
+Worker invocation logs and traces are disabled. A service worker may cache public
+assets for offline use, but never API responses or shared ciphertext. HERITG does
+not send plaintext family-tree content from IndexedDB to hosting providers. It sends encrypted
 snapshots to private storage only after the user creates a share link or enables
 Family+ synchronization.
 
@@ -96,6 +97,18 @@ Storage in Jakarta. These services process ciphertext size, share state,
 creation and expiration times, short-lived signed transfer capabilities, and
 HMAC-pseudonymized rate-limit windows. Operational logs exclude request bodies,
 share capabilities, viewing keys, and family plaintext.
+
+### Family+ payments
+
+Optional prepaid Family+ access uses DOKU's hosted production checkout. DOKU
+processes the payment details entered on its page under its own privacy terms.
+HERITG stores the selected plan, amount, currency, opaque invoice reference,
+provider status, payment timestamps and resulting account entitlement. These
+records support verification, duplicate-payment protection, recovery and access
+duration. Family names, tree content, sharing passwords and encryption keys are
+not payment inputs. HERITG does not receive bank login credentials. Signed
+notifications and authenticated provider status checks confirm payment; a browser
+redirect does not grant access. Payments are one-time, without automatic charges.
 
 ### Encrypted Family+ Synchronization
 

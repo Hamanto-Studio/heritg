@@ -51,3 +51,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate Cloudflare production boundary
+        run: |
+          npm run cloudflare:types
+          npm run cloudflare:check
+          node scripts/publish-cloudflare-production.mjs candidate --dry-run

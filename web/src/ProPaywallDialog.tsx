@@ -34,16 +34,16 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
   const plans = pro.offers?.filter(item => item.planId && (!staging || ["six_month", "yearly", "three_year"].includes(item.planId)));
   const offer = plans?.length ? plans.find(item => item.planId === selectedPlan) ?? plans[0] : staging ? undefined : offerFor(pro);
   const prices = offerPrices(offer);
-  const freeAccess = offer?.price.amount === 0 || (!offer && pro.configured && __DEPLOYMENT_ENV__ === "production");
+  const freeAccess = offer?.price.amount === 0;
   const purchasing = pro.subscription.status === "purchasing";
   const alreadyActive = freeAccess && (pro.subscription.status === "active" || pro.subscription.status === "readOnly");
   const signedIn = pro.account.status === "signedIn";
   const pending = pro.payment && ["pending", "unavailable", "signedOut"].includes(pro.payment.status);
   const purchaseButton = !signedIn && pro.configured
     ? <AccountSettings language={language} t={t} variant="checkout" />
-    : <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing || alreadyActive || (staging && !plans?.length) || Boolean(pending) || Boolean(pro.paymentAction)} onClick={() => void pro.purchase(offer?.planId)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? freeAccess ? t("activatingFreeAccess") : t("openingCheckout") : pending ? t("paymentResolveFirst") : alreadyActive ? t("familyPlusActive") : !pro.configured ? t("subscriptionsComingSoon") : freeAccess ? t("claimFreeAccess") : plans?.length && prices ? t("testPaymentTotal", { price: prices.total }) : t("subscribeToPro")}</button>;
+    : <button aria-busy={purchasing || undefined} className="button primary pro-purchase-button" disabled={!pro.configured || !signedIn || !offer || purchasing || alreadyActive || (staging && !plans?.length) || Boolean(pending) || Boolean(pro.paymentAction)} onClick={() => void pro.purchase(offer?.planId)} type="button">{purchasing ? <ButtonLoader /> : null}{purchasing ? freeAccess ? t("activatingFreeAccess") : t("openingCheckout") : pending ? t("paymentResolveFirst") : alreadyActive ? t("familyPlusActive") : !pro.configured ? t("subscriptionsComingSoon") : freeAccess ? t("claimFreeAccess") : plans?.length && prices ? t(staging ? "testPaymentTotal" : "paymentTotal", { price: prices.total }) : t("subscribeToPro")}</button>;
   const footer = plans?.length ? <div className="pro-plan-checkout">
-    <span>{t("stagingPlanDuration", { count: offer?.stagingAccessMinutes ?? 0 })} · {t("manualRenewalShort")}</span>
+    <span>{t(staging ? "stagingPlanDuration" : "familyAccessMonths", { count: staging ? offer?.stagingAccessMinutes ?? 0 : offer?.accessMonths ?? 0 })} · {t("manualRenewalShort")}</span>
     {purchaseButton}
   </div> : undefined;
   return <Modal closeLabel={t("close")} onClose={pro.closePaywall} size="medium" title={t("proPaywallTitle")} footer={footer}>
@@ -52,7 +52,7 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
     {pro.payment?.status === "cancelled" ? <p role="status">{t("paymentCancelledDetail")}</p> : null}
     <section className="pro-plan-picker" aria-labelledby="family-offer-title"><h3 id="family-offer-title">{t("choosePlan")}</h3>
       {plans?.length ? <>
-        <p className="payment-provider-note">{t("stagingPlanNotice")}</p>
+        {staging ? <p className="payment-provider-note">{t("stagingPlanNotice")}</p> : null}
         <p className="pro-plan-price-explanation">{t("planMonthlyExplanation")}</p>
         <div className="pro-plan-choices" role="radiogroup" aria-label={t("choosePlan")}>
           {plans.map(plan => {
@@ -60,7 +60,7 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
             return <label key={plan.planId} className={`pro-plan-option ${offer?.planId === plan.planId ? "selected" : ""}`}>
               <input type="radio" name="family-plan" value={plan.planId} checked={offer?.planId === plan.planId} disabled={purchasing} onChange={() => setSelectedPlan(plan.planId)} />
               <span className="pro-plan-copy">
-                <span className="pro-plan-details"><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t("stagingPlanDuration", { count: plan.stagingAccessMinutes ?? 0 })}</span></span>
+                <span className="pro-plan-details"><strong>{t(plan.planId === "six_month" ? "familyPreviewSixMonths" : plan.planId === "three_year" ? "familyPreviewThreeYears" : plan.planId === "yearly" ? "familyPreviewYearly" : plan.planId === "weekly" ? "familyPlanWeekly" : plan.planId === "monthly" ? "familyPlanMonthly" : "familyPlanTwoYear")}</strong><span>{t(staging ? "stagingPlanDuration" : "familyAccessMonths", { count: staging ? plan.stagingAccessMinutes ?? 0 : plan.accessMonths })}</span></span>
                 <span className="pro-plan-pricing">
                   <strong className="pro-plan-total">{planPrices.total}</strong>
                   <span className="pro-plan-payment-kind">{t("oneTimePayment")}</span>
@@ -80,6 +80,6 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
     <ErrorNotice message={pro.error} />
     {!plans?.length ? purchaseButton : null}
     <p className="pro-legal-links">{t("purchaseAgreementPrefix")} <a href="/terms/" rel="noopener noreferrer" target="_blank">{t("termsOfUse")}</a> {t("purchaseAgreementAnd")} <a href="https://family.heritg.us/privacy/" rel="noopener noreferrer" target="_blank">{t("privacyPolicy")}</a>.</p>
-    <p className="pro-legal">{plans?.length ? t("stagingPlanLegal") : freeAccess ? t("freeAccessLegal") : t("subscriptionLegal")}</p>
+    <p className="pro-legal">{plans?.length && staging ? t("stagingPlanLegal") : freeAccess ? t("freeAccessLegal") : t("subscriptionLegal")}</p>
   </Modal>;
 }

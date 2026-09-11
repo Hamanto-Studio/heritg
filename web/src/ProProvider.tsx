@@ -96,10 +96,13 @@ export const requestBillingCheckout = async (
   return validatedPaymentLink(result.paymentLinkUrl);
 };
 
-const validatedPaymentLink = (link: string) => {
+export const validatedPaymentLink = (link: string) => {
   const destination = new URL(link);
   if (destination.protocol !== "https:" || destination.username || destination.password || destination.hash || destination.port) throw new Error("The checkout URL is invalid.");
   const dokuSandbox = ["sandbox.doku.com", "staging.doku.com"].includes(destination.hostname) && destination.pathname.startsWith("/checkout-link-v2/");
+  const dokuProduction = destination.hostname === "jokul.doku.com" &&
+    (destination.pathname.startsWith("/checkout-link-v2/") || destination.pathname.startsWith("/checkout/link/"));
+  if (__DEPLOYMENT_ENV__ === "production" && !dokuProduction) throw new Error("The checkout URL is not a live DOKU payment page.");
   if (__DEPLOYMENT_ENV__ === "staging" && !dokuSandbox &&
       !(destination.origin === window.location.origin && destination.pathname === "/billing/return")) throw new Error("The checkout URL is not a sandbox payment page.");
   return destination.href;
@@ -161,7 +164,7 @@ export function ProProvider({
   const [offers, setOffers] = useState<ProOffer[]>();
   const [publicOffers, setPublicOffers] = useState<ProOffer[]>();
   useEffect(() => {
-    if (value || !configured || __DEPLOYMENT_ENV__ !== "staging") return;
+    if (value || !configured) return;
     const controller = new AbortController();
     void jsonRequest<{ offers: ProOffer[] }>("/api/v1/billing/plans", { signal: controller.signal })
       .then(result => {
@@ -189,7 +192,7 @@ export function ProProvider({
   const expiryRefreshRef = useRef<string | undefined>(undefined);
 
   const discoverPendingPayment = useCallback(async (accountId: string, csrf: string, generation: number) => {
-    if (__DEPLOYMENT_ENV__ !== "staging") return false;
+    if (!["staging", "production"].includes(__DEPLOYMENT_ENV__)) return false;
     const result = await jsonRequest<{ status: string; recoveryKey?: string; planId?: ProOffer["planId"]; resumable?: boolean; cancellable?: boolean }>("/api/v1/billing/checkouts/pending", {
       method: "POST", headers: { "x-csrf-token": csrf, "x-heritg-account-id": accountId }, body: "{}"
     });

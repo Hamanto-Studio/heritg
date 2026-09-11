@@ -14,6 +14,24 @@ const prepaidOffers = ([['six_month', 49000, 15, 6], ['yearly', 79000, 20, 12], 
 describe("ProPaywallDialog", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it.each(['en', 'id'] as const)('shows live totals and calendar periods without sandbox claims in %s', language => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
+    const offers = prepaidOffers.map(offer => ({ productId: offer.productId, name: offer.name, planId: offer.planId, price: offer.price, accessMonths: offer.accessMonths, renewal: offer.renewal }));
+    const pro = context({ configured: true, offers,
+      account: { status: 'signedIn', user: { id: 'synthetic', name: null, email: null, expiresAt: '2099-01-01' } } });
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={pro} t={createTranslator(language)} />);
+    for (const price of ['49.000', '79.000', '199.000', '8.200', '6.600', '5.500']) expect(markup).toContain(price);
+    expect(markup).not.toMatch(/sandbox|minutes in staging|menit di staging|Test payment|Uji pembayaran/i);
+    expect(markup).toContain(language === 'en' ? 'Pay Rp' : 'Bayar Rp');
+    expect(markup).not.toContain('pro-purchase-button" disabled');
+  });
+
+  it('does not invent free access when the production offer is unavailable', () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
+    const markup = renderToStaticMarkup(<ProPaywallDialog pro={context({ configured: true })} t={createTranslator('en')} />);
+    expect(markup).not.toContain('No payment required');
+  });
+
   it('offers a sign-in action and never starts checkout before authentication', async () => {
     vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

@@ -1,6 +1,6 @@
 # HERITG Terms of Use
 
-Effective date: August 24, 2026
+Effective date: September 11, 2026
 
 These Terms of Use form an agreement between you and Hamanto Studio for your
 use of HERITG, including the optional HERITG Family+ service. By using HERITG
@@ -25,9 +25,12 @@ Core family-tree editing and local access do not require Family+. Family+ is an
 optional hosted service whose current features and access duration are shown in
 the app before activation.
 
-The current Family+ offer grants one calendar month without payment. An active
-claim does not stack or extend its expiry. After access expires, the user may
-claim another free month. No payment method or automatic renewal is involved.
+Family+ offers six months, one year or three years of access for one upfront
+payment. The full price and duration are shown before checkout. Access starts
+after verified payment; a renewal adds its duration to remaining paid access.
+There are no automatic charges or recurring invoices. Existing free grants keep
+their original expiry, but new free-month claims are unavailable during the paid
+offer. Core local editing remains free.
 
 ## Expiration, cancellation, and refunds
 
@@ -35,7 +38,9 @@ When access expires, hosted synchronization operations stop. Your authoritative 
 is not disabled merely because Family+ expires. Export a current encrypted
 backup before changing devices or ending use of the service.
 
-No charge or refund applies to the current free-access offer.
+For payment errors, duplicate charges or refund requests, contact Hamanto Studio
+using the support link below. Do not send bank credentials or family information.
+Nothing in these terms limits applicable consumer rights.
 
 ## Acceptable use
 

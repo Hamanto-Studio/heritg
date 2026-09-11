@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountSyncError } from "./accountSync";
-import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFromEntitlement, syncFailureMessage, usePro, type EntitlementResponse } from "./ProProvider";
+import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFromEntitlement, syncFailureMessage, validatedPaymentLink, usePro, type EntitlementResponse } from "./ProProvider";
 import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
 import { saveBillingAttempt } from "./billingAttempt";
@@ -57,6 +57,7 @@ const entitlement = (overrides: Partial<EntitlementResponse> = {}): EntitlementR
 
 describe("ProProvider", () => {
   it('submits only the selected plan identifier, never an amount or duration', async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: 'https://sandbox.doku.com/checkout-link-v2/synthetic' })));
     vi.stubGlobal('fetch', fetchMock);
     await requestBillingCheckout('A'.repeat(22), 'synthetic-csrf', 'synthetic-retry-key', 'weekly');
@@ -71,6 +72,8 @@ describe("ProProvider", () => {
     document.cookie = `heritg_csrf=${'c'.repeat(43)}; Path=/`;
     let reads = 0;
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/billing/plans')) return Response.json({ offers: [] });
+      if (String(input).endsWith('/billing/checkouts/pending')) return Response.json({ status: 'not_found' });
       if (String(input).endsWith('/auth/session')) return new Response(JSON.stringify({ accountId: 'A'.repeat(22), name: null, email: null, expiresAt: '2026-09-24T00:00:00Z' }));
       reads++;
       if (reads > 1) throw new Error('offline');
@@ -203,10 +206,13 @@ describe("ProProvider", () => {
   });
 
   it("shows immediate mock activation instead of redirecting after checkout", async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
     let entitlementRequests = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
+      if (path.endsWith('/billing/plans')) return Response.json({ offers: [] });
+      if (path.endsWith('/billing/checkouts/pending')) return Response.json({ status: 'not_found' });
       if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
         accountId: "A".repeat(22),
         name: null,
@@ -341,12 +347,13 @@ describe("ProProvider", () => {
   });
 
   it("creates checkout with the backend contract and returns its payment URL", async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
     const testIdempotencyKey = "i".repeat(16);
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: "https://checkout.flip.test/pay" }), { status: 201 }));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: "https://jokul.doku.com/checkout-link-v2/synthetic" }), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(requestBillingCheckout("account-1", "csrf-token", testIdempotencyKey))
-      .resolves.toBe("https://checkout.flip.test/pay");
+      .resolves.toBe("https://jokul.doku.com/checkout-link-v2/synthetic");
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/billing/checkouts", expect.objectContaining({
       body: "{}",
       method: "POST",
@@ -356,6 +363,14 @@ describe("ProProvider", () => {
         "x-heritg-account-id": "account-1"
       })
     }));
+  });
+
+  it('restricts production checkout and resume links to live DOKU', () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
+    expect(validatedPaymentLink('https://jokul.doku.com/checkout-link-v2/synthetic')).toContain('jokul.doku.com');
+    for (const url of ['https://sandbox.doku.com/checkout-link-v2/synthetic', 'https://staging.doku.com/checkout-link-v2/synthetic', 'https://evil.test/pay', 'https://jokul.doku.com.evil.test/checkout-link-v2/synthetic', 'https://heritg.us/billing/return']) {
+      expect(() => validatedPaymentLink(url)).toThrow();
+    }
   });
 
   it("surfaces the backend checkout failure message", async () => {
