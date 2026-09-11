@@ -46,6 +46,11 @@ captures/
 .cxx/
 .vercel/
 .vercel-cli-cache/
+.wrangler/
+.dev.vars
+.dev.vars.*
+web/.cloudflare-staging/
+web/.cloudflare-production/
 secrets/
 *.ged
 web/.heritg-debug-context.json

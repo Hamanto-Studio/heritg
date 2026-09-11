@@ -1,11 +1,13 @@
-import { act } from "react";
+// @vitest-environment-options {"url":"https://staging.heritg.us"}
+import { act, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AccountSyncError } from "./accountSync";
-import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFromEntitlement, syncFailureMessage, usePro, type EntitlementResponse } from "./ProProvider";
+import { ProProvider, requestBillingCheckout, requestFreeAccess, subscriptionFromEntitlement, syncFailureMessage, validatedPaymentLink, usePro, type EntitlementResponse } from "./ProProvider";
 import type { ProContextValue } from "./proTypes";
 import { unavailableProContext } from "./proTypes";
+import { saveBillingAttempt } from "./billingAttempt";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -25,8 +27,10 @@ let container: HTMLDivElement | undefined;
   container = undefined;
   document.cookie = "heritg_csrf=; Max-Age=0; Path=/";
   localStorage.removeItem("heritg:family-sync-enabled");
+  sessionStorage.removeItem("heritg:pending-checkout");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const offer = {
@@ -52,6 +56,83 @@ const entitlement = (overrides: Partial<EntitlementResponse> = {}): EntitlementR
 });
 
 describe("ProProvider", () => {
+  it('submits only the selected plan identifier, never an amount or duration', async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: 'https://sandbox.doku.com/checkout-link-v2/synthetic' })));
+    vi.stubGlobal('fetch', fetchMock);
+    await requestBillingCheckout('A'.repeat(22), 'synthetic-csrf', 'synthetic-retry-key', 'weekly');
+    expect(fetchMock.mock.calls[0]).toBeDefined();
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/billing/checkouts', expect.objectContaining({ body: '{"planId":"weekly"}' }));
+  });
+
+  it('expires active cloud access at the deadline even if the refresh is offline', async () => {
+    vi.useFakeTimers();
+    const start = new Date('2026-09-08T12:00:00Z');
+    vi.setSystemTime(start);
+    document.cookie = `heritg_csrf=${'c'.repeat(43)}; Path=/`;
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/billing/plans')) return Response.json({ offers: [] });
+      if (String(input).endsWith('/billing/checkouts/pending')) return Response.json({ status: 'not_found' });
+      if (String(input).endsWith('/auth/session')) return new Response(JSON.stringify({ accountId: 'A'.repeat(22), name: null, email: null, expiresAt: '2026-09-24T00:00:00Z' }));
+      reads++;
+      if (reads > 1) throw new Error('offline');
+      return new Response(JSON.stringify(entitlement({ access: 'active', canRead: true, canWrite: true, expiresAt: new Date(start.getTime() + 10 * 60_000).toISOString() })));
+    }));
+    container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(container.textContent).toContain('signedIn:active');
+    await act(async () => vi.advanceTimersByTimeAsync(10 * 60_000));
+    expect(container.textContent).toContain('signedIn:expired:subscriptionRequired');
+    expect(reads).toBe(2);
+  });
+  it.each(["sandbox.doku.com", "staging.doku.com"])("accepts verified sandbox checkout host %s", async (host) => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    const paymentLinkUrl = `https://${host}/checkout-link-v2/synthetic`;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl }), { status: 201 })));
+    expect(await requestBillingCheckout("synthetic-account", "synthetic-csrf", "synthetic-idempotency")).toBe(paymentLinkUrl);
+  });
+
+  it.each([
+    "https://staging.doku.com.attacker.test/checkout-link-v2/synthetic",
+    "https://staging.doku.com/other", "https://doku.com/checkout-link-v2/synthetic",
+    "http://staging.doku.com/checkout-link-v2/synthetic",
+    "https://staging.doku.com:8443/checkout-link-v2/synthetic",
+    "https://user:pass@staging.doku.com/checkout-link-v2/synthetic",
+    "https://staging.doku.com/checkout-link-v2/synthetic#fragment"
+  ])("rejects an unsafe sandbox checkout URL: %s", async (paymentLinkUrl) => {
+    vi.stubGlobal("__DEPLOYMENT_ENV__", "staging");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl }), { status: 201 })));
+    await expect(requestBillingCheckout("synthetic-account", "synthetic-csrf", "synthetic-idempotency")).rejects.toThrow();
+  });
+
+  it("confirms only the same checkout's durable completion, not an already-active subscription", async () => {
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    saveBillingAttempt({ accountId: "A".repeat(22), idempotencyKey: "synthetic-checkout-key", createdAt: Date.now() });
+    let completed = false;
+    let observed: ProContextValue = unavailableProContext;
+    const PaymentProbe = () => { const pro = usePro(); useEffect(() => { observed = pro; }, [pro]); return <span>{pro.payment?.status}</span>; };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/auth/session")) return new Response(JSON.stringify({ accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-10-01T00:00:00Z" }));
+      if (path.endsWith("/entitlements/current")) return new Response(JSON.stringify(entitlement({ access: "active", canRead: true, canWrite: true, expiresAt: completed ? "2030-09-08T00:00:00Z" : "2028-09-08T00:00:00Z" })));
+      if (path.endsWith("/billing/checkouts/status")) return new Response(JSON.stringify({ status: completed ? "completed" : "pending" }));
+      throw new Error("Unexpected synthetic request");
+    }));
+    container = document.createElement("div"); document.body.append(container); root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><PaymentProbe /></ProProvider>));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+    await act(async () => observed.refreshPayment?.());
+    expect(observed.subscription.status).toBe("active");
+    expect(container.textContent).toBe("pending");
+    completed = true;
+    await act(async () => observed.refreshPayment?.());
+    expect(container.textContent).toBe("confirmed");
+    expect(observed.subscription).toMatchObject({ status: "active", expiresAt: "2030-09-08T00:00:00Z" });
+    expect(sessionStorage.getItem("heritg:pending-checkout")).toBeNull();
+  });
   it("shows safe transport diagnostics only in staging", () => {
     const error = new AccountSyncError(502, "invalid_response");
     expect(syncFailureMessage(error, true)).toBe("Family synchronization failed. Sync diagnostic: stage=response, code=invalid_response, http=502.");
@@ -125,10 +206,13 @@ describe("ProProvider", () => {
   });
 
   it("shows immediate mock activation instead of redirecting after checkout", async () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'staging');
     document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
     let entitlementRequests = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
+      if (path.endsWith('/billing/plans')) return Response.json({ offers: [] });
+      if (path.endsWith('/billing/checkouts/pending')) return Response.json({ status: 'not_found' });
       if (path.endsWith("/auth/session")) return new Response(JSON.stringify({
         accountId: "A".repeat(22),
         name: null,
@@ -136,7 +220,7 @@ describe("ProProvider", () => {
         expiresAt: "2026-09-24T00:00:00Z"
       }));
       if (path.endsWith("/billing/checkouts")) return new Response(JSON.stringify({
-        paymentLinkUrl: "https://checkout.flip.test/pay"
+        paymentLinkUrl: `${window.location.origin}/billing/return`
       }), { status: 201 });
       if (path.endsWith("/entitlements/refresh")) return new Response("{}", { status: 200 });
       if (path.endsWith("/entitlements/current")) {
@@ -263,20 +347,30 @@ describe("ProProvider", () => {
   });
 
   it("creates checkout with the backend contract and returns its payment URL", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: "https://checkout.flip.test/pay" }), { status: 201 }));
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
+    const testIdempotencyKey = "i".repeat(16);
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ paymentLinkUrl: "https://jokul.doku.com/checkout-link-v2/synthetic" }), { status: 201 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(requestBillingCheckout("account-1", "csrf-token", "idempotency-key-1"))
-      .resolves.toBe("https://checkout.flip.test/pay");
+    await expect(requestBillingCheckout("account-1", "csrf-token", testIdempotencyKey))
+      .resolves.toBe("https://jokul.doku.com/checkout-link-v2/synthetic");
     expect(fetchMock).toHaveBeenCalledWith("/api/v1/billing/checkouts", expect.objectContaining({
       body: "{}",
       method: "POST",
       headers: expect.objectContaining({
-        "idempotency-key": "idempotency-key-1",
+        "idempotency-key": testIdempotencyKey,
         "x-csrf-token": "csrf-token",
         "x-heritg-account-id": "account-1"
       })
     }));
+  });
+
+  it('restricts production checkout and resume links to live DOKU', () => {
+    vi.stubGlobal('__DEPLOYMENT_ENV__', 'production');
+    expect(validatedPaymentLink('https://jokul.doku.com/checkout-link-v2/synthetic')).toContain('jokul.doku.com');
+    for (const url of ['https://sandbox.doku.com/checkout-link-v2/synthetic', 'https://staging.doku.com/checkout-link-v2/synthetic', 'https://evil.test/pay', 'https://jokul.doku.com.evil.test/checkout-link-v2/synthetic', 'https://heritg.us/billing/return']) {
+      expect(() => validatedPaymentLink(url)).toThrow();
+    }
   });
 
   it("surfaces the backend checkout failure message", async () => {

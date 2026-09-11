@@ -4,6 +4,23 @@ HERITG uses one changelog for Web, iOS, and Android. Each platform has an
 independent semantic version and release history. Versions never use a `v`
 prefix.
 
+## [web-0.8.1] - 2026-09-11
+
+### Changed
+
+- Move the app to Cloudflare hosting while retaining the same `heritg.us` origin,
+  local data, sign-in and offline support. Keep the landing page separate.
+- Show six-month, one-year and three-year Family+ prices before sign-in, with
+  prominent upfront totals and smaller approximate monthly comparisons.
+- Use real access durations and live DOKU checkout for production, with manual
+  renewal and no automatic charges. Preserve existing grants and pending orders.
+
+### Security
+
+- Verify production checkout destinations, authenticate proxy IP attribution,
+  and test an isolated build before production publication and rollback.
+- Update hosting and payment privacy disclosures without adding analytics.
+
 ## [web-0.8.0] - 2026-08-25
 
 ### Added
@@ -21,6 +38,38 @@ prefix.
 ## Unreleased
 
 ### Web
+
+- Keep each Family+ plan's full upfront price prominent, with a smaller monthly
+  cost comparison rounded to the nearest Rp100, labeled “About” / “Sekitar”,
+  and one-time-payment explanations in English and Indonesian.
+
+- Keep Google sign-in inside Family+ and preserve the selected plan. Add saved
+  payment recovery, cancellation confirmation and persistent reminder dismissal.
+
+- Enable staging Family+ purchases for six months, one year or three years with
+  one-time sandbox payments, public prices, visible benefits and pending-payment
+  protection. No recurring invoices or automatic charges.
+
+- Show Family+ benefits expanded above the prices instead of hiding them behind
+  an extra click, including before sign-in.
+- Show monthly, six-month, yearly and three-year Family+ prices before sign-in
+  in staging, including English/Indonesian copy and clear preview-only status.
+  Keep subscription purchases unavailable until DOKU integration is verified.
+- Added staging weekly, monthly, yearly, and two-year Family+ plan choices with
+  explicit prices, shortened test durations, and manual-renewal terms.
+- Preserve the selected plan across checkout retries and stop cloud writes when
+  paid access expires, without interrupting free local editing.
+- Prevent staging service-worker installation or updates from interrupting an
+  in-flight payment with an automatic page reload.
+
+- Accept DOKU's verified sandbox payment-page hostname while rejecting lookalike
+  hosts, unexpected paths, insecure URLs, and embedded credentials.
+- Added staging DOKU checkout recovery with account-verified payment status and
+  non-blocking English/Indonesian confirmation notices. Real sandbox payment
+  verification remains pending; production billing is unchanged.
+- Reuse checkout retry keys after network failures to avoid duplicate invoices,
+  and keep existing Family access from suppressing a renewal checkout.
+- Updated vulnerable transitive dependencies used by the web build and editor.
 
 - Kept person click targets aligned with the tree after keyboard navigation
   and switching between Full and Focus.

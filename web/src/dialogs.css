@@ -1335,6 +1335,26 @@
 .sync-workspace-button.sync-error,
 .sync-workspace-button.sync-conflict { color: var(--danger); }
 
+.payment-status-notice {
+  position: fixed;
+  inset-block-start: calc(88px + env(safe-area-inset-top));
+  inset-inline-end: 16px;
+  z-index: 90;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(430px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--base);
+  color: var(--text);
+}
+.payment-status-notice > svg { flex: none; margin-top: 2px; color: var(--brand-deep); }
+.payment-status-notice > .icon-button { flex: none; width: 32px; height: 32px; min-width: 32px; }
+.payment-status-copy { min-width: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.payment-status-copy p { margin: 5px 0 12px; color: var(--subtle); }
+.payment-status-copy p:last-child { margin-bottom: 0; }
 .pro-paywall-hero { align-items: flex-start; display: flex; gap: 14px; }
 .pro-mark {
   align-items: center;
@@ -1411,6 +1431,45 @@
 .pro-purchase-button.button.primary:hover,
 .pro-settings-card .button.primary:hover { background: linear-gradient(145deg, var(--family-plus-deep), var(--family-plus-hover)); }
 .pro-plan-picker { display: grid; gap: 9px; margin: 0; }
+.pro-plan-choices { display: grid; gap: 10px; }
+.family-price-preview h3 { margin: 0 0 8px; font-size: 1.1rem; }
+.family-price-preview p { color: var(--subtle); font-size: 0.84rem; line-height: 1.55; margin: 0 0 16px; }
+.family-price-list { margin: 20px 0; }
+.family-price-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.family-price-row dt { font-weight: 650; }
+.family-price-row dd { margin: 0; text-align: right; }
+.family-price-row dd strong { display: block; font-size: 1.08rem; color: var(--text); font-variant-numeric: tabular-nums; }
+.family-price-row dd span { display: block; margin-top: 3px; color: var(--subtle); font-size: 0.78rem; }
+.family-price-preview .pro-plan-benefits { margin-top: 8px; }
+.family-price-preview li { font-size: 0.84rem; line-height: 1.6; }
+.staging-content .modal-backdrop:has(.family-price-preview) { position: absolute; }
+.modal-card:has(.family-price-preview) { max-height: 100%; }
+.modal-card:has(.family-price-preview) .modal-header,
+.modal-card:has(.family-price-preview) .modal-footer { flex-shrink: 0; }
+.staging-content .modal-backdrop:has(.pro-plan-choices) { position: absolute; }
+.modal-card:has(.pro-plan-choices) { max-height: 100%; }
+.modal-card:has(.pro-plan-choices) .modal-header,
+.modal-card:has(.pro-plan-choices) .modal-footer { flex-shrink: 0; }
+.pro-plan-checkout { width: 100%; }
+.checkout-sign-in .account-google-primary { display: flex; justify-content: center; }
+.checkout-sign-in { margin-block-start: 10px; }
+.pending-payment { border-block: 1px solid var(--line); padding-block: 16px; margin-block: 20px; }
+.pending-payment h3 { font-size: 1rem; margin: 0 0 8px; }
+.pending-payment p { font-size: 1rem; line-height: 1.5; margin: 8px 0 12px; }
+.payment-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.payment-actions .button { min-height: 44px; white-space: normal; }
+.payment-cancel-confirmation { margin-block-start: 16px; }
+.pro-plan-checkout > span { display: block; color: var(--subtle); font-size: 0.75rem; text-align: center; }
+.pro-plan-checkout .pro-purchase-button { margin-top: 8px; }
+.pro-plan-benefits { margin-top: 18px; }
+.pro-plan-benefits > summary { cursor: pointer; font-weight: 650; padding: 12px 0; }
+.pro-plan-choices .pro-plan-copy { align-items: center; flex-direction: row; gap: 10px; }
+.pro-plan-choices .pro-plan-copy small { flex-shrink: 0; text-align: right; }
+.pro-plan-choices .pro-plan-copy > span { min-width: 0; }
+.pro-plan-choices .pro-plan-option { cursor: pointer; }
+.pro-plan-choices .pro-plan-option:focus-within { outline: 2px solid var(--family-plus); outline-offset: 3px; }
+.pro-plan-choices input { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--family-plus); }
+.pro-plan-choices .pro-plan-copy > span > span { color: var(--subtle); font-size: 0.78rem; }
 .pro-plan-picker > h3 { font-size: 0.78rem; margin: 0 0 8px; }
 .pro-plan-option {
   align-items: center;
@@ -1430,6 +1489,20 @@
 .pro-plan-copy em { background: var(--family-plus-soft); border-radius: 999px; color: var(--family-plus-deep); font-size: 0.65rem; font-style: normal; font-weight: 750; padding: 3px 7px; }
 .pro-plan-copy small { color: var(--text); font-weight: 700; text-align: right; }
 .pro-plan-copy small > span { color: var(--subtle); display: block; font-size: 0.68rem; font-weight: 500; margin-top: 3px; }
+.pro-plan-price-explanation { color: var(--subtle); font-size: 0.8125rem; line-height: 1.5; margin: 0 0 3px; }
+.pro-plan-choices .pro-plan-option { padding-block: 14px; }
+.pro-plan-choices .pro-plan-copy { gap: 16px; min-width: 0; }
+.pro-plan-choices .pro-plan-details > span { font-size: 0.875rem; line-height: 1.4; }
+.pro-plan-choices .pro-plan-pricing { align-items: flex-end; flex: 0 1 auto; gap: 4px; text-align: end; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-total { color: var(--text); font-size: 1.125rem; font-variant-numeric: tabular-nums; font-weight: 700; line-height: 1.35; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-payment-kind { color: var(--subtle); font-size: 0.75rem; line-height: 1.4; }
+.pro-plan-choices .pro-plan-pricing .pro-plan-monthly { color: var(--subtle); font-size: 0.875rem; font-variant-numeric: tabular-nums; font-weight: 400; line-height: 1.4; }
+@media (max-width: 380px) {
+  .pro-plan-choices .pro-plan-option { align-items: flex-start; }
+  .pro-plan-choices input { margin-top: 4px; }
+  .pro-plan-choices .pro-plan-copy { align-items: stretch; flex-direction: column; gap: 8px; }
+  .pro-plan-choices .pro-plan-pricing { align-items: flex-start; text-align: start; }
+}
 .pro-availability { background: var(--elevated); border: 1px solid var(--line); border-radius: 11px; display: grid; margin-top: 14px; padding: 11px 12px; }
 .pro-availability strong { font-size: 0.8rem; }
 .pro-purchase-button { margin-top: 14px; min-height: 46px; width: 100%; }

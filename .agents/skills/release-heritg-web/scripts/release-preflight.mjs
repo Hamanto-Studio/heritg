@@ -107,41 +107,47 @@ const requiredFiles = [
   ".github/workflows/web-ci.yml",
   ".github/workflows/secret-scan.yml",
   ".github/workflows/commit-policy.yml",
-  ".vercelignore",
-  "web/vercel.json",
-  "web/scripts/deploy-production.mjs",
-  "web/scripts/production-auth-config.mjs",
-  "web/scripts/promote-production.mjs",
-  "web/scripts/rollback-production.mjs"
+  "web/vercel.template.json",
+  "web/cloudflare/wrangler.jsonc",
+  "web/cloudflare/worker.ts",
+  "web/scripts/publish-cloudflare-production.mjs",
+  "web/scripts/build-cloudflare-staging.mjs",
+  "web/scripts/rollback-cloudflare-production.mjs"
 ];
 for (const file of requiredFiles) {
   if (!existsSync(resolve(repositoryRoot, file))) fail(`required release file is missing: ${file}`);
 }
 
-const vercel = readJson(resolve(webDirectory, "vercel.json"));
-if (webPackage.scripts?.["rollback:production"] !== "node scripts/rollback-production.mjs") {
+const vercel = readJson(resolve(webDirectory, "vercel.template.json"));
+const cloudflare = readJson(resolve(webDirectory, "cloudflare/wrangler.jsonc"));
+const production = cloudflare.env?.production;
+if (webPackage.scripts?.["rollback:production"] !== "node scripts/rollback-cloudflare-production.mjs") {
   fail("Web production rollback must use the guarded rollback script");
 }
-if (webPackage.scripts?.["deploy:production"] !== "node scripts/deploy-production.mjs") {
-  fail("Web production deployment must use the guarded one-command deployment script");
+if (webPackage.scripts?.["deploy:production"] !== "node scripts/publish-cloudflare-production.mjs") {
+  fail("Web production deployment must use the guarded Cloudflare publication script");
 }
-if (vercel.framework !== "vite" || vercel.outputDirectory !== "web/dist" ||
-    vercel.installCommand !== "npm --prefix web ci" || vercel.buildCommand !== "npm --prefix web run build") {
-  fail("web/vercel.json must build the Web package from the repository deployment root");
+if (webPackage.devDependencies?.wrangler !== "4.130.0" || production?.name !== "heritg" ||
+    production.vars?.APP_ORIGIN !== "https://heritg.us" ||
+    production.vars?.API_ORIGIN !== "https://heritg-share-api-ulvjjfvqpq-et.a.run.app" ||
+    production.assets?.binding !== "ASSETS" ||
+    !production.secrets?.required?.includes("EDGE_CLIENT_IP_PRIVATE_KEY")) {
+  fail("Cloudflare production targets, CLI and edge identity must remain pinned");
 }
-const appRewrite = (vercel.rewrites ?? []).find((rule) => rule.source === "/(.*)");
-if (appRewrite?.destination !== "/index.html") {
-  fail("web/vercel.json must route app deep links to /index.html");
+if (cloudflare.observability?.enabled !== false || cloudflare.observability?.logs?.invocation_logs !== false ||
+    production.workers_dev !== false || production.preview_urls !== false) {
+  fail("Production logs and generated public preview URLs must remain disabled");
 }
 const viteConfig = readFileSync(resolve(webDirectory, "vite.config.ts"), "utf8");
 if (!viteConfig.includes('base: "/"') || !viteConfig.includes('outDir: "dist"')) {
   fail("web/vite.config.ts must build the application at the app origin root");
 }
-const productionDeploy = readFileSync(resolve(webDirectory, "scripts/deploy-production.mjs"), "utf8");
+const productionDeploy = readFileSync(resolve(webDirectory, "scripts/build-cloudflare-staging.mjs"), "utf8");
 const accountSettings = readFileSync(resolve(webDirectory, "src/AccountSettings.tsx"), "utf8");
 const mainEntry = readFileSync(resolve(webDirectory, "src/main.tsx"), "utf8");
 if (productionDeploy.includes("TURNSTILE") ||
-    !productionDeploy.includes('"HERITG_FAMILY_BILLING_ENABLED=true"')) {
+    !productionDeploy.includes('HERITG_FAMILY_BILLING_ENABLED: "true"') ||
+    !productionDeploy.includes('428519514749-n3quv8he4ja8h9lpc498v7r76t1vua09.apps.googleusercontent.com')) {
   fail("this production release must inject Google account and Family synchronization configuration");
 }
 if (accountSettings.includes("requestEmailLogin") || mainEntry.includes("EmailAuthCallback") || mainEntry.includes("verifyEmailLogin")) {

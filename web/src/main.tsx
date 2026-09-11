@@ -15,9 +15,16 @@ import { App } from "./App";
 import { SharedTreeApp } from "./SharedTreeApp";
 import { ProProvider } from "./ProProvider";
 import { AppProvider, useAppStore } from "./store";
+import { hasPendingBillingAttempt } from "./billingAttempt";
+import { registerStagingWorkerRefresh } from "./stagingWorkerRefresh";
 
 if (/^\/auth\/email\/?$/u.test(window.location.pathname)) {
   window.history.replaceState(window.history.state, "", "/");
+}
+
+if (/^\/billing\/return\/?$/u.test(window.location.pathname)) {
+  // Provider return parameters are not payment evidence and are not retained.
+  window.history.replaceState(window.history.state, "", "/billing/return");
 }
 
 const isSharedRoute = /^\/s\/[^/]+\/?$/u.test(window.location.pathname);
@@ -45,12 +52,7 @@ if (isStaging) {
   document.title = "Heritg Staging | Test Data Only";
   document.documentElement.dataset.deploymentEnvironment = "staging";
   if ("serviceWorker" in navigator) {
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
+    registerStagingWorkerRefresh(navigator.serviceWorker, hasPendingBillingAttempt, () => window.location.reload());
   }
 }
 

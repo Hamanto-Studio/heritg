@@ -1,7 +1,7 @@
 {
   "name": "heritg",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -17,11 +17,20 @@
     "vercel:configure:staging": "node scripts/render-vercel-config.mjs --staging",
     "release:check": "node ../.agents/skills/release-heritg-web/scripts/release-preflight.mjs --ci",
     "release:verify": "node ../.agents/skills/release-heritg-web/scripts/verify-production.mjs",
-    "deploy:production": "node scripts/deploy-production.mjs",
-    "rollback:production": "node scripts/rollback-production.mjs",
-    "deploy:staging": "node scripts/deploy-staging.mjs",
+    "deploy:production": "node scripts/publish-cloudflare-production.mjs",
+    "rollback:production": "node scripts/rollback-cloudflare-production.mjs",
+    "deploy:staging": "node scripts/publish-cloudflare-staging.mjs",
+    "cloudflare:build:staging": "node scripts/build-cloudflare-staging.mjs",
+    "cloudflare:types": "wrangler types cloudflare/worker-configuration.d.ts --config cloudflare/wrangler.jsonc --env production --include-runtime=false",
+    "cloudflare:check": "tsc --noEmit -p cloudflare/tsconfig.json",
+    "cloudflare:dry-run": "npm run cloudflare:build:staging && npm run cloudflare:check && wrangler deploy --config cloudflare/wrangler.jsonc --env staging --dry-run",
+    "cloudflare:deploy:staging": "node scripts/deploy-cloudflare-staging.mjs",
+    "cloudflare:verify:staging": "node scripts/verify-cloudflare-staging.mjs",
     "dns:staging": "node scripts/configure-staging-dns.mjs",
-    "dns:staging:remove-beta": "node scripts/configure-staging-dns.mjs --remove-beta"
+    "dns:staging:remove-beta": "node scripts/configure-staging-dns.mjs --remove-beta",
+    "cloudflare:build:production": "node scripts/build-cloudflare-staging.mjs --production",
+    "cloudflare:verify:production": "node scripts/verify-cloudflare-staging.mjs --production",
+    "cloudflare:deploy:production": "node scripts/publish-cloudflare-production.mjs"
   },
   "dependencies": {
     "@daypicker/react": "10.0.1",
@@ -33,6 +42,7 @@
     "rork-plist": "0.7.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "5.20260910.1",
     "@eslint/js": "9.39.1",
     "@types/node": "22.20.1",
     "@types/react": "19.1.10",
@@ -47,15 +57,20 @@
     "typescript-eslint": "8.48.0",
     "vite": "7.3.6",
     "vite-plugin-pwa": "1.2.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11",
+    "wrangler": "4.130.0"
   },
   "overrides": {
+    "sharp": "0.35.4",
     "lodash-es": "4.18.1",
+    "postcss": {
+      "nanoid": "3.3.18"
+    },
     "@excalidraw/excalidraw": {
-      "nanoid": "3.3.8"
+      "nanoid": "3.3.18"
     },
     "@excalidraw/mermaid-to-excalidraw": {
-      "nanoid": "5.0.9"
+      "nanoid": "5.1.16"
     }
   }
 }

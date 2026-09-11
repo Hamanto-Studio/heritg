@@ -1,0 +1,84 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "heritg-staging-unconfigured",
+  "main": "worker.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false,
+  "observability": {
+    "enabled": false,
+    "logs": {
+      "enabled": false,
+      "invocation_logs": false
+    },
+    "traces": {
+      "enabled": false
+    }
+  },
+  "env": {
+    "staging": {
+      "name": "heritg-staging",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [],
+      "assets": {
+        "directory": "../.cloudflare-staging/assets",
+        "binding": "ASSETS",
+        "html_handling": "none",
+        "not_found_handling": "none",
+        "run_worker_first": [
+          "/api",
+          "/api/*",
+          "/health",
+          "/ready",
+          "/s/*",
+          "/auth/*"
+        ]
+      },
+      "vars": {
+        "DEPLOYMENT_ENV": "staging",
+        "API_ORIGIN": "https://heritg-share-api-1079742937646.asia-southeast2.run.app",
+        "APP_ORIGIN": "https://staging.heritg.us"
+      }
+    },
+    "production": {
+      "name": "heritg",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        {
+          "pattern": "heritg.us",
+          "custom_domain": true
+        }
+      ],
+      "assets": {
+        "directory": "../.cloudflare-production/assets",
+        "binding": "ASSETS",
+        "html_handling": "none",
+        "not_found_handling": "none",
+        "run_worker_first": [
+          "/api",
+          "/api/*",
+          "/health",
+          "/ready",
+          "/s/*",
+          "/auth/*"
+        ]
+      },
+      "vars": {
+        "DEPLOYMENT_ENV": "production",
+        "API_ORIGIN": "https://heritg-share-api-ulvjjfvqpq-et.a.run.app",
+        "APP_ORIGIN": "https://heritg.us"
+      },
+      "secrets": {
+        "required": [
+          "EDGE_CLIENT_IP_PRIVATE_KEY"
+        ]
+      }
+    }
+  }
+}

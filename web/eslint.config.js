@@ -4,7 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  { ignores: ["dist", "node_modules", "**/.wrangler/**", ".cloudflare-staging", ".cloudflare-production", "cloudflare/worker-configuration.d.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -17,7 +17,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ["vite.config.ts", "scripts/**/*.{js,mjs}"],
+    files: ["vite.config.ts", "scripts/**/*.{js,mjs}", "cloudflare/**/*.ts"],
     languageOptions: { globals: globals.node }
   }
 );
