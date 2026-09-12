@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { AncestorNode, familyIndex } from "./familyExplorers";
@@ -35,7 +36,7 @@ function FanSegment({ person, label, context, clipId, path, position, center, ch
 
 export function FanChart({ nodes, current, children, index, language, scale, context, onExplore }: {
   nodes: AncestorNode[]; current: Person; children: Person[]; index: ReturnType<typeof familyIndex>;
-  language: "en" | "id"; scale: number; context: (node: AncestorNode) => string; onExplore: (id: string, focusRequested: boolean) => void;
+  language: AppLanguage; scale: number; context: (node: AncestorNode) => string; onExplore: (id: string, focusRequested: boolean) => void;
 }) {
   const copy = explorerCopy(language), clipPrefix = useId().replace(/:/g, "");
   const chart = useRef<HTMLDivElement>(null);

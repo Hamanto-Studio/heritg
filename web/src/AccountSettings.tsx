@@ -1,3 +1,4 @@
+import { localeForLanguage } from "./locale";
 import { LogOut, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -125,7 +126,7 @@ export function AccountSettings({
       size: "large",
       width: 300,
       text: "continue_with",
-      locale: language === "id" ? "id" : "en"
+      locale: language
     });
   }, [googleStatus, language]);
 
@@ -295,7 +296,7 @@ export function AccountSettings({
               </div>
             ) : null}
             <p><strong>{t("accountSignedIn")}</strong><br />{t("accountSessionExpiry", {
-              date: new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en", { dateStyle: "medium" })
+              date: new Intl.DateTimeFormat(localeForLanguage(language), { dateStyle: "medium" })
                 .format(new Date(session.expiresAt))
             })}</p>
             {actionError ? <p className="danger-text" role="alert">{t(actionError === "logout" ? "accountLogoutError" : "accountDeleteError")}</p> : null}

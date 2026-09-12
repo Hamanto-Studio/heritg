@@ -1,3 +1,4 @@
+import { browserAppLanguage, isAppLanguage } from "./locale";
 import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./types";
 import { selectFocusedFamily } from "./familyCopy";
 import type {
@@ -132,23 +133,21 @@ const relationshipDates = (
   };
 };
 export const localizedDefaultTreeTitle = (language: AppLanguage) =>
-  language === "id" ? "Silsilah Keluarga Saya" : "My Family Tree";
+  language === "ms" ? "Salasilah Keluarga Saya" : language === "id" ? "Silsilah Keluarga Saya" : "My Family Tree";
 
 export function createInitialAppData(
   language?: AppLanguage,
   meta: DomainMeta = {}
 ): AppData {
   const selectedLanguage = language ??
-    (typeof navigator !== "undefined" && navigator.language.toLowerCase().startsWith("id")
-      ? "id"
-      : "en");
+    browserAppLanguage();
   const empty: AppData = {
     version: 1,
     trees: [],
     people: [],
     relationships: [],
     language: selectedLanguage,
-    relationshipLanguage: selectedLanguage === "id" ? "id" : "en",
+    relationshipLanguage: selectedLanguage,
     relationshipTerminology: "id",
     viewports: {}
   };
@@ -487,7 +486,7 @@ export function removeRelationship(
 }
 
 export function setLanguage(data: AppData, language: AppLanguage): AppData {
-  if (language !== "en" && language !== "id") throw new DomainError("invalidData");
+  if (!isAppLanguage(language)) throw new DomainError("invalidData");
   return data.language === language ? data : { ...data, language };
 }
 
@@ -498,7 +497,7 @@ export function setRelationshipLanguage(
   if (!RELATIONSHIP_LANGUAGES.includes(language)) {
     throw new DomainError("invalidData");
   }
-  const terminology = language === "en" ? data.relationshipTerminology : language;
+  const terminology = language === "en" || language === "ms" ? data.relationshipTerminology : language;
   return data.relationshipLanguage === language &&
     data.relationshipTerminology === terminology
     ? data
@@ -537,7 +536,7 @@ const hasStrings = (value: unknown, fields: string[]) =>
   isRecord(value) && fields.every((field) => typeof value[field] === "string");
 
 export function assertAppData(value: unknown): asserts value is AppData {
-  if (!isRecord(value) || value.version !== 1 || !["en", "id"].includes(String(value.language))) {
+  if (!isRecord(value) || value.version !== 1 || !isAppLanguage(value.language)) {
     throw new DomainError("invalidData");
   }
   if (value.relationshipTerminology !== undefined &&
@@ -622,7 +621,7 @@ export function replaceAppData(value: unknown): AppData {
   return {
     ...value,
     relationshipLanguage: value.relationshipLanguage ??
-      (value.language === "en" ? "en" : value.relationshipTerminology ?? "id"),
+      (value.language === "ms" ? "ms" : value.language === "en" ? "en" : value.relationshipTerminology ?? "id"),
     relationshipTerminology: value.relationshipTerminology ?? "id",
     trees: value.trees.map((tree) => ({ ...tree })),
     people: value.people.map((person) => ({ ...person })),

@@ -1,3 +1,6 @@
+import { localizedDefaultTreeTitle } from "./domain";
+import { localizedError } from "./localizedError";
+import { localeForLanguage } from "./locale";
 import {
   Bug,
   CircleHelp,
@@ -52,7 +55,7 @@ interface TreeSidebarProps {
 }
 
 const treeDate = (value: string, language: AppData["language"]) =>
-  new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en", {
+  new Intl.DateTimeFormat(localeForLanguage(language), {
     day: "numeric",
     month: "short"
   }).format(new Date(value));
@@ -87,7 +90,7 @@ export function TreeSidebar({
     .filter((tree) => tree.title.toLocaleLowerCase().includes(deferredQuery));
 
   const suggestedTitle = () => {
-    const base = data.language === "id" ? "Silsilah Keluarga Saya" : "My Family Tree";
+    const base = localizedDefaultTreeTitle(data.language);
     if (!data.trees.some((tree) => tree.title === base)) return base;
     let number = 2;
     while (data.trees.some((tree) => tree.title === `${base} ${number}`)) number += 1;
@@ -352,7 +355,7 @@ export function TreeSidebar({
             showLabel={t("showPassword")}
             value={archivePassword}
           />
-          <ErrorNotice message={archiveError} />
+          <ErrorNotice message={localizedError(archiveError, data.language)} />
         </Modal>
       ) : null}
 

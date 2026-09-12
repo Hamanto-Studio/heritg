@@ -1,3 +1,4 @@
+import { browserAppLanguage, isAppLanguage } from "./locale";
 import type { AppData } from "./types";
 
 const UI_LANGUAGE_KEY = "heritg_ui_language";
@@ -8,11 +9,11 @@ export const readUiLanguage = (
 ): AppData["language"] => {
   try {
     const stored = storage.getItem(UI_LANGUAGE_KEY);
-    if (stored === "en" || stored === "id") return stored;
+    if (isAppLanguage(stored)) return stored;
   } catch {
     // Browser privacy settings can make localStorage unavailable.
   }
-  return browserLanguage.toLowerCase().startsWith("id") ? "id" : "en";
+  return browserAppLanguage(browserLanguage);
 };
 
 export const saveUiLanguage = (

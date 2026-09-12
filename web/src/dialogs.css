@@ -2186,6 +2186,16 @@
   grid-template-columns: 1fr;
 }
 
+.app-language-options button:last-child {
+  grid-column: 1 / -1;
+}
+
+.language-options button {
+  min-width: 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+}
+
 .empty-dialog-state {
   color: var(--subtle);
   padding: 38px 18px;

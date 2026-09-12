@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 import type { FamilyRelationship, Person } from "./types";
 
 export const BIRTH_ORDER_BADGE = {
@@ -11,8 +12,8 @@ export const birthOrderBadgePosition = ({ x, y }: { x: number; y: number }) => (
   y: y + BIRTH_ORDER_BADGE.offset
 });
 
-export function birthOrderLabel(order: number, language: "en" | "id"): string {
-  if (language === "id") {
+export function birthOrderLabel(order: number, language: AppLanguage): string {
+  if (language === "id" || language === "ms") {
     if (order === 1) return "Anak pertama";
     if (order === 2) return "Anak kedua";
     if (order === 3) return "Anak ketiga";

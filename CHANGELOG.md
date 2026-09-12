@@ -39,6 +39,9 @@ prefix.
 
 ### Web
 
+- Added Bahasa Melayu (Malaysia) across the Web interface, family relationships,
+  calendar and sharing flows, with saved language preferences and Malaysian terminology.
+
 - Open Family+ checkout links from DOKU's verified production payment host,
   while preserving older links and rejecting unsafe or sandbox destinations.
 

@@ -1,3 +1,4 @@
+import { localizedError } from "./localizedError";
 import { ImagePlus, Link2, UserPlus } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
@@ -340,7 +341,7 @@ export function RelativeDialog({
           t={t}
         />
       ) : null}
-      <ErrorNotice message={error} />
+      <ErrorNotice message={localizedError(error, language)} />
     </div>
   ) : null;
 

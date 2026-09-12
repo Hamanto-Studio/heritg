@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 import { Pencil, Plus } from "lucide-react";
 import { PersonAvatar } from "./ui";
 import { personLifeSummary } from "./lifeSummary";
@@ -6,7 +7,7 @@ import type { Translator } from "./i18n";
 
 export interface ExplorerPersonProps {
   person: Person; selectedPersonId?: string; onSelect: (id: string) => void;
-  onEdit: (id: string) => void; onAdd: (id: string) => void; actionsVisible: boolean; language: "en" | "id"; t: Translator;
+  onEdit: (id: string) => void; onAdd: (id: string) => void; actionsVisible: boolean; language: AppLanguage; t: Translator;
   context?: string;
 }
 export function ExplorerPerson({ person, selectedPersonId, onSelect, onEdit, onAdd, actionsVisible, language, t, context }: ExplorerPersonProps) {

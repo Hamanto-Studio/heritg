@@ -1,3 +1,5 @@
+import { localizedError } from "./localizedError";
+import { localeForLanguage } from "./locale";
 import { Cloud, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { FamilyPlusMark, FamilyPlusWordmark } from "./FamilyPlusMark";
@@ -6,7 +8,7 @@ import type { ProContextValue, SyncPhase } from "./proTypes";
 import type { AppData } from "./types";
 import { ButtonLoader, ErrorNotice } from "./ui";
 
-const localeForLanguage = (language: AppData["language"]) => language === "id" ? "id-ID" : "en-US";
+
 
 export const formatRemainingDuration = (expiresAt: string, language: AppData["language"], now = Date.now()) => {
   const remainingDays = Math.max(1, Math.ceil((Date.parse(expiresAt) - now) / 86_400_000));
@@ -124,7 +126,7 @@ export function ProSettings({
           <Cloud aria-hidden="true" size={21} /><div>
           <div className="settings-title-line"><strong>{t("automaticSync")}</strong>{pro.sync.phase !== "unavailable" && pro.sync.phase !== "subscriptionRequired" ? <span className={`sync-status sync-${pro.sync.phase}`}>{t(readOnly ? "syncReadOnly" : syncStatusKey(pro.sync.phase))}</span> : null}</div>
           <p className="settings-detail">{t("automaticSyncDetail")}</p>
-          {pro.sync.error ? <p className="sync-error-message" role="alert">{pro.sync.error}</p> : null}
+          {pro.sync.error ? <p className="sync-error-message" role="alert">{localizedError(pro.sync.error, language)}</p> : null}
           </div>
         </div>
         {(active || readOnly) && pro.sync.phase !== "unavailable" ? <button aria-pressed={pro.sync.enabled} className={`sync-toggle ${pro.sync.enabled ? "selected" : ""}`} onClick={() => void pro.setSyncEnabled(!pro.sync.enabled)} type="button"><span aria-hidden="true" />{pro.sync.enabled ? t("disableSync") : t("enableSync")}</button> : null}
@@ -135,6 +137,6 @@ export function ProSettings({
         </div>
       </section>
     </div>
-    <ErrorNotice message={pro.error} />
+    <ErrorNotice message={localizedError(pro.error, language)} />
   </>;
 }

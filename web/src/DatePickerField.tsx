@@ -2,9 +2,22 @@ import { DayPicker } from "@daypicker/react";
 import { CalendarDays, X } from "lucide-react";
 import { useId, useState } from "react";
 
-import { enUS, id as idLocale } from "@daypicker/react/locale";
+import { enUS, id as idLocale, ms as msLocale } from "@daypicker/react/locale";
 import { formatDisplayDate, type Translator } from "./i18n";
 import type { AppData } from "./types";
+
+export const malayCalendarLabels = {
+  labelNext: () => "Bulan seterusnya",
+  labelPrevious: () => "Bulan sebelumnya",
+  labelMonthDropdown: () => "Pilih bulan",
+  labelYearDropdown: () => "Pilih tahun",
+  labelNav: () => "Navigasi kalendar",
+  labelDayButton: (date: Date, modifiers: { today?: boolean; selected?: boolean }) => [
+    modifiers.today ? "Hari ini" : undefined,
+    new Intl.DateTimeFormat("ms-MY", { dateStyle: "full" }).format(date),
+    modifiers.selected ? "dipilih" : undefined
+  ].filter(Boolean).join(", ")
+};
 
 interface DatePickerFieldProps {
   label: string;
@@ -105,7 +118,8 @@ export function DatePickerField({
               disabled={{ before: minDate, after: maxDate }}
               endMonth={monthEnd(maxDate)}
               fixedWeeks
-              locale={language === "id" ? idLocale : enUS}
+              locale={language === "ms" ? msLocale : language === "id" ? idLocale : enUS}
+              labels={language === "ms" ? malayCalendarLabels : undefined}
               mode="single"
               navLayout="after"
               onSelect={(date) => {

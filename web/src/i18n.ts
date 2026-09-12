@@ -1,3 +1,5 @@
+import { localeForLanguage } from "./locale";
+import { ms } from "./i18n.ms";
 import type { AppData } from "./types";
 
 const en = {
@@ -597,6 +599,7 @@ const en = {
   language: "App language",
   english: "English",
   indonesian: "Bahasa Indonesia",
+  malay: "Bahasa Melayu (Malaysia)",
   languageDetail: "Choose the language used throughout Heritg.",
   relationshipTerminology: "Relationship language",
   relationshipTerminologyDetail: "Choose the language used for family relationships on the tree and in people lists.",
@@ -1236,6 +1239,7 @@ const id = {
   language: "Bahasa aplikasi",
   english: "English",
   indonesian: "Bahasa Indonesia",
+  malay: "Bahasa Melayu (Malaysia)",
   languageDetail: "Pilih bahasa buat antarmuka aplikasi Heritg.",
   relationshipTerminology: "Sebutan status keluarga",
   relationshipTerminologyDetail: "Pilih bahasa sebutan silsilah (misal: Ayah/Bapak/Rama) buat ditampilin di layar.",
@@ -1278,6 +1282,7 @@ const id = {
   unknownRelationship: "Anggota keluarga"
 } satisfies Record<keyof typeof en, string>;
 
+export const messageCatalogs = { en, id, ms };
 export type MessageKey = keyof typeof en;
 export type Translator = (
   key: MessageKey,
@@ -1287,7 +1292,7 @@ export type Translator = (
 export function formatDisplayDate(value: string, language: AppData["language"]): string {
   const date = new Date(`${value}T00:00:00`);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", {
+  return new Intl.DateTimeFormat(localeForLanguage(language), {
     day: "numeric",
     month: "short",
     year: "numeric"
@@ -1295,7 +1300,7 @@ export function formatDisplayDate(value: string, language: AppData["language"]):
 }
 
 export function createTranslator(language: AppData["language"]): Translator {
-  const messages: Record<MessageKey, string> = language === "id" ? id : en;
+  const messages: Record<MessageKey, string> = messageCatalogs[language];
   return (key, values = {}) =>
     Object.entries(values).reduce(
       (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),

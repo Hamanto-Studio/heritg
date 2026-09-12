@@ -1,3 +1,6 @@
+import { localizedError } from "./localizedError";
+import { readUiLanguage } from "./uiLanguage";
+import { localeForLanguage } from "./locale";
 import { CopyPlus, Home, Maximize2, ShieldCheck, ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
@@ -66,7 +69,8 @@ export function SharedTreeApp() {
     return () => requestRef.current?.abort();
   }, [attempt, loadShare]);
 
-  const language = loaded?.data.language ?? (navigator.language.startsWith("id") ? "id" : "en");
+  const language = loaded?.data.language ?? readUiLanguage();
+  useEffect(() => { document.documentElement.setAttribute("lang", language); }, [language]);
   const t = createTranslator(language);
   const tree = loaded?.data.trees[0];
   const people = useMemo(() => tree && loaded
@@ -128,7 +132,7 @@ export function SharedTreeApp() {
       <main className="shared-state">
         <img alt="" aria-hidden="true" className="brand-mark large" height={192} src="/pwa-192.png" width={192} />
         <h1>{t("sharedErrorTitle")}</h1>
-        <p role="alert">{error}</p>
+        <p role="alert">{localizedError(error, language)}</p>
         <div className="shared-state-actions">
           <button className="button primary" onClick={retry} type="button">{t("sharedRetry")}</button>
           <a className="button secondary" href="/"><Home aria-hidden="true" size={17} /> {t("openMyTrees")}</a>
@@ -148,7 +152,7 @@ export function SharedTreeApp() {
             autoComplete="current-password"
             autoFocus
             disabled={isUnlocking}
-            error={passwordError}
+            error={localizedError(passwordError, language)}
             hideLabel={t("hidePassword")}
             id="shared-tree-password"
             label={t("sharedPassword")}
@@ -181,7 +185,7 @@ export function SharedTreeApp() {
   }
 
   const expiry = loaded.expiresAt
-    ? new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", { dateStyle: "medium" })
+    ? new Intl.DateTimeFormat(localeForLanguage(language), { dateStyle: "medium" })
       .format(new Date(loaded.expiresAt))
     : undefined;
 
@@ -237,7 +241,7 @@ export function SharedTreeApp() {
           <span>{t("sharedReadOnlyDetail")}</span>
           <span>{t("sharedCopyDetail")}</span>
           <small>{expiry ? t("sharedExpires", { date: expiry }) : t("shareWhileFamilyActive")}</small>
-          {saveError ? <small className="danger-text" role="alert">{saveError}</small> : null}
+          {saveError ? <small className="danger-text" role="alert">{localizedError(saveError, language)}</small> : null}
         </aside>
 
         <div className="shared-canvas-controls" aria-label={t("canvasControls")} role="toolbar">

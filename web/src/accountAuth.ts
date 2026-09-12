@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 const API_BASE = "/api/v1/auth";
 export const GOOGLE_IDENTITY_SCRIPT = "https://accounts.google.com/gsi/client";
 
@@ -64,7 +65,7 @@ export interface GoogleIdentity {
         size: "large";
         width: number;
         text: "continue_with";
-        locale: "en" | "id";
+        locale: AppLanguage;
       }): void;
       cancel?(): void;
       disableAutoSelect(): void;

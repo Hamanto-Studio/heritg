@@ -1,8 +1,9 @@
+import type { AppLanguage } from "./locale";
 import { formatDisplayDate, type Translator } from "./i18n";
 import type { FamilyRelationship } from "./types";
 
 /** Pairwise facts stay attached to the named partner, even in multi-parent groups. */
-export function PartnerFacts({ relationship, language, t }: { relationship: FamilyRelationship; language: "en" | "id"; t: Translator }) {
+export function PartnerFacts({ relationship, language, t }: { relationship: FamilyRelationship; language: AppLanguage; t: Translator }) {
   const former = relationship.subtype === "formerPartner" || relationship.subtype === "formerSpouse";
   return <p className="explorer-note">
     {t(former ? "branchFormerPartner" : "branchWith")}

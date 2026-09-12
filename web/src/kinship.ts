@@ -7,6 +7,7 @@ import type {
   RelationshipSubtype,
   RelationshipTerminology
 } from "./types";
+import { malayKinshipLabel } from "./kinship.ms";
 
 export type KinshipLanguage = RelationshipLanguage;
 type JavaneseTerminology = Extract<
@@ -18,7 +19,7 @@ type CulturalTerminology = Exclude<RelationshipTerminology, "id" | JavaneseTermi
 export const effectiveKinshipLanguage = (
   language: AppData["language"],
   terminology: RelationshipTerminology = "id"
-): KinshipLanguage => language === "en" ? "en" : terminology;
+): KinshipLanguage => language === "ms" ? "ms" : language === "en" ? "en" : terminology;
 
 export const relationshipLanguageForData = (data: AppData): RelationshipLanguage =>
   data.relationshipLanguage ?? effectiveKinshipLanguage(
@@ -281,6 +282,7 @@ const INDONESIAN_LABELS: Record<string, string> = {
 
 const localizedLabel = (label: string, language: AppData["language"]): string => {
   if (language === "en") return label;
+  if (language === "ms") return malayKinshipLabel(label);
   if (label.endsWith(" by marriage")) {
     return `${localizedLabel(label.slice(0, -" by marriage".length), language)} melalui pernikahan`;
   }
@@ -497,7 +499,7 @@ export function directRelationshipLabel(
   if (language === "jv-yogyakarta" || language === "jv-east-java") {
     return javaneseBasicLabel(label, language);
   }
-  if (language !== "en" && language !== "id") return culturalBasicLabel(label, language);
+  if (language !== "en" && language !== "id" && language !== "ms") return culturalBasicLabel(label, language);
   return localizedLabel(label, language);
 }
 
@@ -1330,7 +1332,7 @@ export function kinshipLabel(
       index
     );
   }
-  if (language !== "en" && language !== "id") {
+  if (language !== "en" && language !== "id" && language !== "ms") {
     return culturalKinshipLabel(label, personId, relativeToPersonId, language, index);
   }
   return localizedLabel(label, language);
@@ -1358,7 +1360,7 @@ export function deriveKinshipLabels(
           language,
           index
         );
-      } else if (language !== "en" && language !== "id") {
+      } else if (language !== "en" && language !== "id" && language !== "ms") {
         labels[person.id] = culturalKinshipLabel(
           label, person.id, selectedPersonId, language, index
         );

@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 import type { FamilyRelationship } from "./types";
 
 /** Care relationships are real edges, but are not an additional set of
@@ -8,11 +9,16 @@ export const isCareRelationship = (edge: FamilyRelationship) => edge.kind === "p
 
 export const isFamilyParent = (edge: FamilyRelationship) => edge.kind === "parent" && !isCareRelationship(edge);
 
-export const careRelationshipLabel = (edge: FamilyRelationship, language: "en" | "id") =>
+export const careRelationshipLabel = (edge: FamilyRelationship, language: AppLanguage) =>
+  language === "ms" ? (edge.subtype === "stepParent" ? "Ibu atau bapa tiri" : "Penjaga") :
   edge.subtype === "stepParent" ? (language === "id" ? "Orang tua tiri" : "Step-parent") :
     (language === "id" ? "Wali" : "Guardian");
 
-export const ancestryRelationshipLabel = (subtype: FamilyRelationship["subtype"], language: "en" | "id", count: number) => {
+export const ancestryRelationshipLabel = (subtype: FamilyRelationship["subtype"], language: AppLanguage, count: number) => {
+  if (language === "ms") {
+    const parent = count === 1 ? "Ibu atau bapa" : "Ibu bapa";
+    return `${parent} ${subtype === "adoptiveParent" ? "angkat" : subtype === "fosterParent" ? "pelihara" : "kandung"}`;
+  }
   const parent = count === 1 ? "parent" : "parents";
   if (subtype === "adoptiveParent") return language === "id" ? "Orang tua angkat" : `Adoptive ${parent}`;
   if (subtype === "fosterParent") return language === "id" ? "Orang tua asuh" : `Foster ${parent}`;

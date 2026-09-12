@@ -1,3 +1,5 @@
+import { localizedError } from "./localizedError";
+import { localizedDefaultTreeTitle } from "./domain";
 import {
   ArrowDown,
   ArrowUp,
@@ -54,7 +56,7 @@ import { TreeSidebar } from "./TreeSidebar";
 import { useAppStore } from "./store";
 import type { GenerationLimits, Person } from "./types";
 import { ErrorNotice, LoadingScreen, Modal } from "./ui";
-import { saveUiLanguage } from "./uiLanguage";
+import { readUiLanguage, saveUiLanguage } from "./uiLanguage";
 
 const unlimited: GenerationLimits = { ancestors: null, descendants: null };
 type RightPanel = "people" | "settings" | "share" | "help" | "privacy" | "report";
@@ -77,8 +79,8 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const [toast, setToast] = useState<string>();
   const [operationError, setOperationError] = useState<string>();
   const canvasRef = useRef<TreeCanvasHandle>(null);
-  const t = createTranslator(data?.language ?? "en");
-  const uiLanguage = data?.language;
+  const uiLanguage = data?.language ?? readUiLanguage();
+  const t = createTranslator(uiLanguage);
   const activeTree = data?.trees.find((tree) => tree.id === data.selectedTreeId)
     ?? data?.trees[0];
   const activeTreeId = activeTree?.id;
@@ -130,7 +132,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
   const showSettingsOnboarding = Boolean(controlsVisible && activeTree && !people.length && !rightPanel);
 
   useEffect(() => {
-    document.documentElement.lang = uiLanguage === "id" ? "id" : "en";
+    document.documentElement.setAttribute("lang", uiLanguage);
     if (uiLanguage) saveUiLanguage(uiLanguage);
   }, [uiLanguage]);
 
@@ -145,7 +147,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
     return (
       <main className="loading-screen">
         <strong>{t("errorTitle")}</strong>
-        <p>{store.error?.message}</p>
+        <p>{localizedError(store.error?.message, uiLanguage ?? "en")}</p>
         <button className="button primary" onClick={() => location.reload()} type="button">{t("tryAgain")}</button>
       </main>
     );
@@ -586,7 +588,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
             <p>{t("localOnlyDetail")}</p>
             <button
               className="button primary"
-              onClick={() => actions.createTree(data.language === "id" ? "Silsilah Keluarga Saya" : "My Family Tree")}
+              onClick={() => actions.createTree(localizedDefaultTreeTitle(data.language))}
               type="button"
             >
               {t("createTree")}
@@ -618,7 +620,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
               value={renamingTree.title}
             />
           </label>
-          <ErrorNotice message={renameError} />
+          <ErrorNotice message={localizedError(renameError, data.language)} />
         </Modal>
       ) : null}
 
@@ -716,7 +718,7 @@ export function App({ initialPanel }: { initialPanel?: "settings" } = {}) {
 
       {operationError ? (
         <Modal closeLabel={t("close")} onClose={() => setOperationError(undefined)} size="small" title={t("errorTitle")}>
-          <p className="dialog-copy" role="alert">{operationError}</p>
+          <p className="dialog-copy" role="alert">{localizedError(operationError, data.language)}</p>
         </Modal>
       ) : null}
       {toast ? <div className="toast" role="status">{toast}</div> : null}

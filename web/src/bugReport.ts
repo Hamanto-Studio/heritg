@@ -121,7 +121,7 @@ export function createBugReportMessage(
   context: BugReportContext,
   environment: BugReportEnvironment = browserBugReportEnvironment()
 ) {
-  const appLanguage = context.appLanguage === "id" ? "Bahasa Indonesia" : "English";
+  const appLanguage = context.appLanguage === "ms" ? "Bahasa Melayu (Malaysia)" : context.appLanguage === "id" ? "Bahasa Indonesia" : "English";
   const generatedAt = context.generatedAt ?? new Date().toISOString();
   return [
     "Hello, I found a bug in Heritg Web.",

@@ -1,3 +1,4 @@
+import { localeForLanguage } from "./locale";
 import { Copy, Download, FileImage, FileText, HardDrive, Link2, Send, ShieldCheck, Trash2, UsersRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -103,7 +104,7 @@ export function SharePanel({
   }, [onError, t]);
 
   const formatDate = (value: string) => new Intl.DateTimeFormat(
-    data.language === "id" ? "id-ID" : "en-US",
+    localeForLanguage(data.language),
     { dateStyle: "medium" }
   ).format(new Date(value));
 

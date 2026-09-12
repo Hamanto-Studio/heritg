@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { PersonAvatar } from "./ui";
@@ -6,7 +7,7 @@ import type { Person } from "./types";
 
 /** Direct, read-only generation hops. Choices contain recorded relatives only. */
 export function RelativeNavigation({ person, parents, children, language, onNavigate }: {
-  person: Person; parents: Person[]; children: Person[]; language: "en" | "id";
+  person: Person; parents: Person[]; children: Person[]; language: AppLanguage;
   onNavigate: (id: string) => void;
 }) {
   const copy = explorerCopy(language);

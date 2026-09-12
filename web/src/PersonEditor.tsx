@@ -1,3 +1,4 @@
+import { localizedError } from "./localizedError";
 import { CalendarDays, ImagePlus, Link2, Pencil, RotateCcw, Trash2, Unlink } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
@@ -497,7 +498,7 @@ export function PersonEditor({
             </section>
           ) : null}
 
-          <ErrorNotice message={error} />
+          <ErrorNotice message={localizedError(error, language)} />
 
           {person ? (
             <div className="danger-zone">

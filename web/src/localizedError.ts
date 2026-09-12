@@ -1,0 +1,58 @@
+import type { AppLanguage } from "./locale";
+
+// Translate only known application diagnostics. Never translate user data or
+// discard unknown recovery instructions returned by an existing integration.
+const ms: Record<string, string> = {
+  "Enter a name.": "Masukkan nama.",
+  "The requested family tree item does not exist.": "Rekod salasilah yang diminta tidak dijumpai.",
+  "A person cannot be related to themselves.": "Individu tidak boleh dihubungkan dengan dirinya sendiri.",
+  "People from different family trees cannot be linked.": "Individu daripada salasilah berbeza tidak boleh dihubungkan.",
+  "This relationship already exists.": "Pertalian ini sudah direkodkan.",
+  "The family tree data is invalid.": "Data salasilah tidak sah. Cuba gunakan sandaran lain yang lengkap.",
+  "Death date cannot be earlier than birth date.": "Tarikh meninggal dunia tidak boleh mendahului tarikh lahir.",
+  "Child order must be a positive whole number.": "Masukkan nombor bulat bermula dengan 1 untuk susunan anak.",
+  "Divorce date must use YYYY-MM-DD.": "Tarikh perceraian mesti menggunakan format TTTT-BB-HH.",
+  "Divorce date cannot be earlier than marriage date.": "Tarikh perceraian tidak boleh mendahului tarikh perkahwinan.",
+  "This relationship does not allow a co-parent.": "Ibu atau bapa bersama tidak boleh ditetapkan untuk pertalian ini.",
+  "The selected co-parent must be a same-tree active partner or spouse of the target person.": "Ibu atau bapa bersama mestilah pasangan semasa individu ini dalam salasilah yang sama.",
+  "Canvas is not ready.": "Kanvas belum sedia. Tunggu sebentar, kemudian cuba lagi.",
+  "The password is incorrect or the .heritg archive was modified.": "Kata laluan tidak betul atau arkib .heritg telah diubah.",
+  "Choose a non-empty family file smaller than 32 MB.": "Pilih fail keluarga yang tidak kosong dan bersaiz kurang daripada 32 MB.",
+  "This share requires a password.": "Kata laluan diperlukan untuk membuka perkongsian ini.",
+  "This link has the wrong password or its encrypted archive was modified.": "Kata laluan pautan ini tidak betul atau arkib disulitkan telah diubah.",
+  "This share link is invalid.": "Pautan perkongsian ini tidak sah. Minta pautan baharu daripada pengirim.",
+  "The sharing service returned an unreadable response. Please try again.": "Respons perkhidmatan perkongsian tidak dapat dibaca. Sila cuba lagi.",
+  "The sharing service could not be reached. Check your connection and try again.": "Perkhidmatan perkongsian tidak dapat dihubungi. Semak sambungan internet dan cuba lagi.",
+  "This encrypted share has expired.": "Perkongsian disulitkan ini telah tamat tempoh. Minta pautan baharu daripada pengirim.",
+  "This encrypted share was revoked.": "Perkongsian disulitkan ini telah dibatalkan oleh pemiliknya.",
+  "This encrypted share could not be found.": "Perkongsian disulitkan ini tidak dijumpai. Semak pautan dengan pengirim.",
+  "Too many sharing requests. Please wait and try again.": "Terlalu banyak permintaan perkongsian. Tunggu sebentar, kemudian cuba lagi.",
+  "The sharing service could not complete this request. Please try again.": "Permintaan ini tidak dapat diselesaikan oleh perkhidmatan perkongsian. Sila cuba lagi.",
+  "Choose an expiry between 1 and 90 days.": "Pilih tempoh sah antara 1 hingga 90 hari.",
+  "Sign in again before creating a Family link.": "Log masuk semula sebelum mencipta pautan Family+.",
+  "This family archive is too large to share. Keep the encrypted share under 32 MiB.": "Arkib keluarga ini terlalu besar untuk dikongsi. Pastikan perkongsian disulitkan bersaiz kurang daripada 32 MiB.",
+  "The encrypted share size changed unexpectedly.": "Saiz perkongsian disulitkan berubah tanpa dijangka. Cipta pautan baharu.",
+  "The encrypted upload was interrupted. Please create a new link.": "Muat naik disulitkan terputus. Sila cipta pautan baharu.",
+  "The encrypted upload was rejected. Please create a new link.": "Muat naik disulitkan ditolak. Sila cipta pautan baharu.",
+  "The upload could not be verified. Please create a new link.": "Muat naik tidak dapat disahkan. Sila cipta pautan baharu.",
+  "This share link has an unsupported legacy key.": "Pautan ini menggunakan kunci lama yang tidak disokong. Minta pautan baharu daripada pengirim.",
+  "The sharing service returned invalid envelope information.": "Maklumat arkib daripada perkhidmatan perkongsian tidak sah. Cuba buka pautan semula.",
+  "The encrypted family archive could not be downloaded. Check your connection and try again.": "Arkib keluarga disulitkan tidak dapat dimuat turun. Semak sambungan internet dan cuba lagi.",
+  "The encrypted family archive could not be downloaded. Try opening the link again.": "Arkib keluarga disulitkan tidak dapat dimuat turun. Cuba buka pautan semula.",
+  "The encrypted family archive is incomplete or unsupported.": "Arkib keluarga disulitkan tidak lengkap atau tidak disokong. Minta pengirim mencipta pautan baharu.",
+  "This share cannot be revoked from this browser session.": "Perkongsian ini tidak boleh dibatalkan daripada sesi pelayar ini. Gunakan pelayar yang mencipta pautan tersebut.",
+  "This encrypted family tree could not be opened.": "Salasilah disulitkan ini tidak dapat dibuka. Semak pautan dan cuba lagi.",
+  "Family data changed before the shared copy could be saved.": "Data keluarga berubah sebelum salinan perkongsian sempat disimpan. Cuba simpan semula.",
+  "Sign in again before activating Family+.": "Log masuk semula sebelum mengaktifkan Family+.",
+  "The Family+ offer is unavailable. Refresh and try again.": "Tawaran Family+ tidak tersedia. Muat semula dan cuba lagi.",
+  "Free Family+ access could not be activated.": "Akses Family+ percuma tidak dapat diaktifkan. Semak status akses sebelum mencuba lagi.",
+  "Payment status is unavailable.": "Status bayaran tidak tersedia. Semak semula sebentar lagi; jangan bayar sekali lagi jika sudah membayar.",
+  "We couldn’t check for an existing payment. Try again before starting a new checkout.": "Bayaran sedia ada tidak dapat disemak. Cuba semak lagi sebelum memulakan bayaran baharu.",
+  "A payment for another plan is pending. Check that payment before choosing a different plan.": "Bayaran untuk pelan lain masih belum selesai. Semak bayaran itu sebelum memilih pelan berbeza.",
+  "Payment service unavailable. Your checkout is still saved.": "Perkhidmatan bayaran tidak tersedia. Urusan bayaran anda masih disimpan.",
+  "This browser cannot safely coordinate family synchronization between tabs.": "Pelayar ini tidak dapat menyegerakkan data antara tab dengan selamat. Cuba pelayar yang menyokong ciri ini.",
+  "This device's family data is linked to another account.": "Data keluarga pada peranti ini dipautkan kepada akaun lain. Log masuk menggunakan akaun tersebut."
+};
+
+export const localizedError = (message: string | undefined, language: AppLanguage): string | undefined =>
+  language === "ms" && message ? ms[message] ?? message : message;

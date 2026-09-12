@@ -1,3 +1,4 @@
+import { localizedError } from "./localizedError";
 import { useState } from "react";
 import { AccountSettings } from "./AccountSettings";
 import { PendingPayment } from "./PendingPayment";
@@ -77,7 +78,7 @@ export function ProPaywallDialog({ pro, t, language = "en" }: { pro: ProContextV
     {pro.configured && !signedIn ? <div className="pro-availability" role="status"><strong>{t("signInRequired")}</strong><span>{t("signInBeforePurchase")}</span></div> : null}
     {staging && !plans?.length ? <p role="status">{t("prepaidPlansUnavailable")}</p> : null}
     <p className="payment-provider-note">{freeAccess ? t("freeAccessDetail") : t("secureCheckoutDetail")}</p>
-    <ErrorNotice message={pro.error} />
+    <ErrorNotice message={localizedError(pro.error, language)} />
     {!plans?.length ? purchaseButton : null}
     <p className="pro-legal-links">{t("purchaseAgreementPrefix")} <a href="/terms/" rel="noopener noreferrer" target="_blank">{t("termsOfUse")}</a> {t("purchaseAgreementAnd")} <a href="https://family.heritg.us/privacy/" rel="noopener noreferrer" target="_blank">{t("privacyPolicy")}</a>.</p>
     <p className="pro-legal">{plans?.length && staging ? t("stagingPlanLegal") : freeAccess ? t("freeAccessLegal") : t("subscriptionLegal")}</p>

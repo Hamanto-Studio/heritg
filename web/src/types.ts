@@ -1,3 +1,4 @@
+import { browserAppLanguage, type AppLanguage } from "./locale";
 export type Gender = "female" | "male" | "unspecified";
 export const RELATIONSHIP_TERMINOLOGIES = [
   "id",
@@ -13,8 +14,8 @@ export const RELATIONSHIP_TERMINOLOGIES = [
   "btd-pakpak"
 ] as const;
 export type RelationshipTerminology = typeof RELATIONSHIP_TERMINOLOGIES[number];
-export const RELATIONSHIP_LANGUAGES = ["en", ...RELATIONSHIP_TERMINOLOGIES] as const;
-export type RelationshipLanguage = "en" | RelationshipTerminology;
+export const RELATIONSHIP_LANGUAGES = ["en", "ms", ...RELATIONSHIP_TERMINOLOGIES] as const;
+export type RelationshipLanguage = "en" | "ms" | RelationshipTerminology;
 export type RelationshipKind = "parent" | "partner" | "sibling";
 export type RelationshipSubtype =
   | "biologicalParent"
@@ -119,7 +120,7 @@ export interface AppData {
   people: Person[];
   relationships: FamilyRelationship[];
   selectedTreeId?: string;
-  language: "en" | "id";
+  language: AppLanguage;
   relationshipLanguage?: RelationshipLanguage;
   relationshipTerminology?: RelationshipTerminology;
   viewports: Record<string, ViewportState>;
@@ -178,8 +179,8 @@ export const emptyAppData = (): AppData => ({
   trees: [],
   people: [],
   relationships: [],
-  language: navigator.language.toLowerCase().startsWith("id") ? "id" : "en",
-  relationshipLanguage: navigator.language.toLowerCase().startsWith("id") ? "id" : "en",
+  language: browserAppLanguage(),
+  relationshipLanguage: browserAppLanguage(),
   relationshipTerminology: "id",
   viewports: {}
 });

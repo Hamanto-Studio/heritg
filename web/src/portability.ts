@@ -1,3 +1,4 @@
+import { APP_LANGUAGES } from "./locale";
 import { encodeBase64, parsePlistDictionary } from "rork-plist";
 
 import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./types";
@@ -274,14 +275,14 @@ export function validateAppData(value: unknown): AppData {
       zoom
     };
   }
-  const language = enumValue(root.language, ["en", "id"], "data.language");
+  const language = enumValue(root.language, APP_LANGUAGES, "data.language");
   const relationshipTerminology = enumValue(
     root.relationshipTerminology ?? "id",
     RELATIONSHIP_TERMINOLOGIES,
     "data.relationshipTerminology"
   );
   const relationshipLanguage = root.relationshipLanguage === undefined
-    ? language === "en" ? "en" : relationshipTerminology
+    ? language === "ms" ? "ms" : language === "en" ? "en" : relationshipTerminology
     : enumValue(
         root.relationshipLanguage,
         RELATIONSHIP_LANGUAGES,

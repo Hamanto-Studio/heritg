@@ -1,3 +1,4 @@
+import { localeForLanguage } from "./locale";
 import { formatDisplayDate } from "./i18n";
 import type { AppData, Person } from "./types";
 
@@ -69,7 +70,7 @@ export const personLifeSummary = (
     : undefined;
   if (!birth) {
     if (!showAge || overriddenAge === undefined) return undefined;
-    return language === "id" ? `Usia ${overriddenAge}` : `Age ${overriddenAge}`;
+    return language === "ms" ? `Umur ${overriddenAge} tahun` : language === "id" ? `Usia ${overriddenAge}` : `Age ${overriddenAge}`;
   }
   const death = dateParts(person.deathDate);
   const age = showAge ? overriddenAge ?? personAge(person, now) : undefined;
@@ -77,29 +78,29 @@ export const personLifeSummary = (
     if (!showBirthDate) {
       return age === undefined
         ? undefined
-        : language === "id" ? `Usia ${age}` : `Age ${age}`;
+        : language === "ms" ? `Umur ${age} tahun` : language === "id" ? `Usia ${age}` : `Age ${age}`;
     }
     const years = `${birth.year}-${death.year}`;
     return age === undefined
       ? years
-      : language === "id" ? `${years} · usia ${age}` : `${years} · age ${age}`;
+      : language === "ms" ? `${years} · umur ${age} tahun` : language === "id" ? `${years} · usia ${age}` : `${years} · age ${age}`;
   }
   if (!showBirthDate) {
     return age === undefined
       ? undefined
-      : language === "id" ? `Usia ${age}` : `Age ${age}`;
+      : language === "ms" ? `Umur ${age} tahun` : language === "id" ? `Usia ${age}` : `Age ${age}`;
   }
   const birthValue = person.birthDate ?? String(birth.year);
   const displayedBirth = person.birthDatePrecision === "exact"
     ? formatDisplayDate(birthValue, language)
     : person.birthDatePrecision === "month"
-      ? new Intl.DateTimeFormat(language === "id" ? "id-ID" : "en-US", {
+      ? new Intl.DateTimeFormat(localeForLanguage(language), {
           month: "short",
           year: "numeric"
         }).format(new Date(`${birth.year}-${String(birth.month).padStart(2, "0")}-01T00:00:00`))
       : String(birth.year);
-  const born = language === "id" ? `Lahir ${displayedBirth}` : `Born ${displayedBirth}`;
+  const born = language !== "en" ? `Lahir ${displayedBirth}` : `Born ${displayedBirth}`;
   return age === undefined
     ? born
-    : language === "id" ? `${born} · usia ${age}` : `${born} · age ${age}`;
+    : language === "ms" ? `${born} · umur ${age} tahun` : language === "id" ? `${born} · usia ${age}` : `${born} · age ${age}`;
 };

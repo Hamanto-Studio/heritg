@@ -23,6 +23,7 @@ interface SettingsDialogProps {
 const relationshipLanguageOptions: ReadonlyArray<readonly [RelationshipLanguage, MessageKey]> = [
   ["en", "english"],
   ["id", "indonesianRelationships"],
+  ["ms", "malay"],
   ["jv-yogyakarta", "javaneseYogyakarta"],
   ["jv-east-java", "javaneseEastJava"],
   ["jv-cirebon", "cirebonRelationships"],
@@ -83,7 +84,7 @@ export function SettingsDialog({
               <p className="settings-detail">{t("languageDetail")}</p>
             </div>
           </div>
-          <div className="language-options">
+          <div className="language-options app-language-options">
             <button
               aria-pressed={data.language === "en"}
               aria-busy={isPending && pendingLanguage === "en" || undefined}
@@ -105,6 +106,17 @@ export function SettingsDialog({
             >
               {isPending && pendingLanguage === "id" ? <ButtonLoader /> : null}
               {t("indonesian")}
+            </button>
+            <button
+              aria-pressed={data.language === "ms"}
+              aria-busy={isPending && pendingLanguage === "ms" || undefined}
+              className={data.language === "ms" ? "selected" : ""}
+              disabled={isPending}
+              onClick={() => changeLanguage("ms")}
+              type="button"
+            >
+              {isPending && pendingLanguage === "ms" ? <ButtonLoader /> : null}
+              {t("malay")}
             </button>
           </div>
         </section>

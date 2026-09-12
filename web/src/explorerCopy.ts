@@ -1,3 +1,4 @@
+import type { AppLanguage } from "./locale";
 // View-specific copy stays together; the existing selector uses the app translator.
 const en = {
   about: "About this view", back: "Back", tree: "Back to tree", explore: "Explore this person", generations: "Generations",
@@ -41,4 +42,24 @@ const id: typeof en = {
 
   showCount: "{shown} dari {total} orang", noLocation: "Lokasi belum tercatat"
 };
-export const explorerCopy = (language: "en" | "id") => language === "id" ? id : en;
+const ms: typeof en = {
+  about: "Tentang paparan ini", back: "Kembali", tree: "Kembali ke salasilah", explore: "Terokai keluarga individu ini", generations: "Generasi",
+  chartScale: "Saiz carta", fitChart: "Muat pada skrin", scrollChart: "Leret atau tatal ke sisi untuk meneroka carta.",
+  startingPerson: "Individu permulaan", generationContext: "Generasi {depth} · Ibu atau bapa kepada {name}",
+  ancestorNote: "Pertalian ibu bapa dan anak yang direkodkan, termasuk ibu bapa angkat dan jenis pertalian lain. Pasangan dan adik-beradik tidak disertakan.",
+  chartNavigationHint: "Ketik ibu bapa atau anak untuk meneroka keluarganya. Gunakan Kembali untuk menjejaki langkah terdahulu.",
+  ancestorDirections: "Anak-anak di kiri · Individu semasa di tengah · Ibu bapa di kanan",
+  currentPerson: "Individu semasa", childOf: "Anak kepada {name}", fanFamilyChart: "Ibu bapa dan anak-anak", fanAncestors: "Carta kipas nenek moyang",
+  childRange: "Anak-anak · {start}–{end} daripada {total}", previousChildren: "Anak-anak sebelumnya", nextChildren: "Anak-anak seterusnya",
+  missingAncestor: "Belum direkodkan", repeatedAncestor: "Individu yang sama dalam cabang lain", chartLimit: "Carta ini mencapai had paparan. Pilih individu untuk meneroka cabang keluarganya dengan lebih lanjut.",
+  selectHint: "Pilih individu untuk melihat maklumatnya. Terokai keluarganya untuk menjadikannya titik permulaan.",
+  parents: "Ibu bapa", siblings: "Adik-beradik", partners: "Pasangan dan anak-anak", children: "Anak-anak", none: "Belum direkodkan",
+  relativesOf: "Keluarga", parentsOf: "Ibu bapa kepada {name}", childrenOf: "Anak-anak {name}", goToPerson: "Pergi ke {name}",
+  noParents: "Ibu bapa belum direkodkan", noChildren: "Anak-anak belum direkodkan",
+  siblingNote: "Termasuk individu yang mempunyai ibu atau bapa yang sama serta adik-beradik yang direkodkan secara langsung.",
+  noDetails: "Tarikh belum direkodkan", sort: "Susun mengikut", name: "Nama A–Z", oldest: "Tarikh lahir: paling tua dahulu", youngest: "Tarikh lahir: paling muda dahulu",
+  search: "Cari nama atau tempat", noResults: "Tiada padanan. Cuba nama atau tempat yang lain.",
+  showCount: "{shown} daripada {total} orang", noLocation: "Tempat belum direkodkan"
+};
+export const explorerCatalogs = { en, id, ms };
+export const explorerCopy = (language: AppLanguage) => explorerCatalogs[language];
