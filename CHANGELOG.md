@@ -4,6 +4,18 @@ HERITG uses one changelog for Web, iOS, and Android. Each platform has an
 independent semantic version and release history. Versions never use a `v`
 prefix.
 
+## [web-0.9.0] - 2026-09-12
+
+### Added
+
+- Added Bahasa Melayu (Malaysia) throughout the Web app, including settings,
+  person forms, family views, sharing and payment guidance, using Malaysian wording.
+- Added Malay family-relationship labels with distinct terms for half-siblings,
+  step-relatives, adoptive relatives and in-laws.
+- Added Malaysian calendar and date formatting, accessible calendar labels, and
+  saved app and relationship language choices. Existing names and family data
+  remain unchanged.
+
 ## [web-0.8.1] - 2026-09-11
 
 ### Changed
@@ -38,9 +50,6 @@ prefix.
 ## Unreleased
 
 ### Web
-
-- Added Bahasa Melayu (Malaysia) across the Web interface, family relationships,
-  calendar and sharing flows, with saved language preferences and Malaysian terminology.
 
 - Open Family+ checkout links from DOKU's verified production payment host,
   while preserving older links and rejecting unsafe or sandbox destinations.

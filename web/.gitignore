@@ -2,7 +2,7 @@
 .claude-flow/
 
 # Dependencies and generated outputs
-node_modules/
+node_modules
 dist/
 coverage/
 *.log
