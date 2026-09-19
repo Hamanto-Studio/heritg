@@ -39,6 +39,9 @@ prefix.
 
 ### Web
 
+- Enable Family synchronization automatically after a confirmed Family+
+  purchase, while preserving an explicit user opt-out.
+
 - Open Family+ checkout links from DOKU's verified production payment host,
   while preserving older links and rejecting unsafe or sandbox destinations.
 

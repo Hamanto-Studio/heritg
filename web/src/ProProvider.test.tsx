@@ -133,6 +133,39 @@ describe("ProProvider", () => {
     expect(observed.subscription).toMatchObject({ status: "active", expiresAt: "2030-09-08T00:00:00Z" });
     expect(sessionStorage.getItem("heritg:pending-checkout")).toBeNull();
   });
+  it("enables Family sync when active paid access is restored without a saved preference", async () => {
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/billing/plans")) return Response.json({ offers: [] });
+      if (path.endsWith("/auth/session")) return Response.json({ accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-10-01T00:00:00Z" });
+      if (path.endsWith("/entitlements/current")) return Response.json(entitlement({ access: "active", canRead: true, canWrite: true, expiresAt: "2027-09-19T00:00:00Z" }));
+      if (path.endsWith("/billing/checkouts/pending")) return Response.json({ status: "not_found" });
+      throw new Error("Unexpected synthetic request");
+    }));
+    container = document.createElement("div"); document.body.append(container); root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+    expect(container.textContent).toContain("signedIn:active:comparing");
+    expect(localStorage.getItem("heritg:family-sync-enabled")).toBe("true");
+  });
+  it("preserves an explicit Family sync opt-out after paid access becomes active", async () => {
+    document.cookie = `heritg_csrf=${"c".repeat(43)}; Path=/`;
+    localStorage.setItem("heritg:family-sync-enabled", "false");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      if (path.endsWith("/billing/plans")) return Response.json({ offers: [] });
+      if (path.endsWith("/auth/session")) return Response.json({ accountId: "A".repeat(22), name: null, email: null, expiresAt: "2026-10-01T00:00:00Z" });
+      if (path.endsWith("/entitlements/current")) return Response.json(entitlement({ access: "active", canRead: true, canWrite: true, expiresAt: "2027-09-19T00:00:00Z" }));
+      if (path.endsWith("/billing/checkouts/pending")) return Response.json({ status: "not_found" });
+      throw new Error("Unexpected synthetic request");
+    }));
+    container = document.createElement("div"); document.body.append(container); root = createRoot(container);
+    await act(async () => root?.render(<ProProvider billingEnabled><Probe /></ProProvider>));
+    await act(async () => new Promise(resolve => setTimeout(resolve, 20)));
+    expect(container.textContent).toContain("signedIn:active:disabled");
+    expect(localStorage.getItem("heritg:family-sync-enabled")).toBe("false");
+  });
   it("shows safe transport diagnostics only in staging", () => {
     const error = new AccountSyncError(502, "invalid_response");
     expect(syncFailureMessage(error, true)).toBe("Family synchronization failed. Sync diagnostic: stage=response, code=invalid_response, http=502.");

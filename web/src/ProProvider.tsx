@@ -216,7 +216,12 @@ export function ProProvider({
   const applyEntitlement = useCallback((entitlement: EntitlementResponse, preserveDisabledSync = false) => {
     const nextSubscription = subscriptionFromEntitlement(entitlement);
     setOffers(entitlement.offers);
-    const enabled = entitlement.canRead && readSyncEnabled() === true;
+    const savedSyncPreference = readSyncEnabled();
+    // A successful Family+ activation should make its core benefit available
+    // immediately. Respect an explicit opt-out, but default a newly paid or
+    // claimed active account to sync even when the checkout returns in a new tab.
+    const enabled = entitlement.canRead && (savedSyncPreference ?? entitlement.access === "active");
+    if (savedSyncPreference === undefined && enabled) saveSyncEnabled(true);
     setSubscription(nextSubscription);
     setSyncAccess({ canRead: entitlement.canRead, canWrite: entitlement.canWrite });
     setSync((current) => preserveDisabledSync && entitlement.canRead && current.phase === "disabled"
