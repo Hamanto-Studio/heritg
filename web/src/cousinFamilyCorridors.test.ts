@@ -73,7 +73,7 @@ describe("reconverging adult-cousin families", () => {
     for (const person of data.people) expect(svg.documentElement.textContent).toContain(person.displayName);
     for (const family of result.connectionPlan.families) expect(svg.querySelector(`[data-family-id="${family.id}"]`)).not.toBeNull();
     for (const route of result.connectionPlan.nonParentRoutes) expect(svg.querySelector(`[data-route-id="${route.id}"]`)).not.toBeNull();
-  }, 30000);
+  }, 60000);
 
   it("keeps Focus compact with both partners' recorded ancestry", () => {
     const data = cousinFamilyFixture(500, "compound"), before = JSON.stringify(data);

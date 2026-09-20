@@ -1,3 +1,5 @@
+import { deriveBirthOrders } from "./birthOrder";
+import { compareChildOrder } from "./childOrder";
 import type { FamilyRelationship, Person } from "./types";
 
 export type ExplorerView = "fan";
@@ -12,7 +14,11 @@ export const explorerDescriptions = {
 export function familyIndex(people: Person[], relationships: FamilyRelationship[]) {
   const byId = new Map(people.map((p) => [p.id, p]));
   const parents = new Map<string, string[]>(), children = new Map<string, string[]>(), siblings = new Map<string, string[]>();
-  const compare = (a: string, b: string) => byId.get(a)!.displayName.localeCompare(byId.get(b)!.displayName) || a.localeCompare(b);
+  const birthOrders = deriveBirthOrders(people, relationships);
+  const compareNames = (a: string, b: string) =>
+    byId.get(a)!.displayName.localeCompare(byId.get(b)!.displayName) || a.localeCompare(b);
+  const compareChildren = (a: string, b: string) =>
+    compareChildOrder(byId.get(a)!, byId.get(b)!, birthOrders);
   const add = (map: Map<string, string[]>, from: string, to: string) => {
     const ids = map.get(from) ?? []; if (!ids.includes(to)) ids.push(to); map.set(from, ids);
   };
@@ -24,7 +30,8 @@ export function familyIndex(people: Person[], relationships: FamilyRelationship[
   for (const [id, parentIds] of parents) for (const parent of parentIds) for (const child of children.get(parent) ?? []) {
     if (child !== id) add(siblings, id, child);
   }
-  for (const map of [parents, children, siblings]) for (const ids of map.values()) ids.sort(compare);
+  for (const ids of parents.values()) ids.sort(compareNames);
+  for (const map of [children, siblings]) for (const ids of map.values()) ids.sort(compareChildren);
   return { byId, parents, children, siblings };
 }
 

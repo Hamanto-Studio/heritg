@@ -46,9 +46,9 @@ describe("Malaysian Malay coverage", () => {
     expect(createTranslator("en")("settings")).toBe("Settings");
     expect(createTranslator("id")("indonesian")).toBe("Bahasa Indonesia");
   });
-  it.each(["ms", "ms-MY", "ms-my", "MS_MY", "ms-SG"])("recognizes browser language %s", value => {
+  it.each(["ms", "ms-MY", "ms-my", "MS_MY", "ms-SG"])("recognizes browser language %s without overriding the Indonesian default", value => {
     expect(browserAppLanguage(value)).toBe("ms");
-    expect(readUiLanguage({ getItem: () => null }, value)).toBe("ms");
+    expect(readUiLanguage({ getItem: () => null }, value)).toBe("id");
   });
   it("persists the language and sets the document language across reloads", () => {
     const values = new Map<string, string>();
@@ -58,7 +58,7 @@ describe("Malaysian Malay coverage", () => {
     expect(applyUiLanguage(doc, storage, "id-ID")).toBe("ms");
     expect(doc.lang).toBe("ms");
     expect(browserAppLanguage("my-MM")).toBe("en"); // Burmese is not Malay.
-    expect(readUiLanguage({ getItem: () => { throw Error("blocked"); } }, "ms-MY")).toBe("ms");
+    expect(readUiLanguage({ getItem: () => { throw Error("blocked"); } }, "ms-MY")).toBe("id");
   });
   it("localizes the initial tree and supports independent relationship choices", () => {
     const data = initial();

@@ -38,4 +38,12 @@ describe("alternate family views", () => {
     expect(filterPeople(people, ' bandung ', 'name').map((p) => p.id)).toEqual(['A']);
     expect(people.map((p) => p.id)).toEqual(['Z', 'A', 'B']);
   });
+  it("orders navigable children by manual birth order", () => {
+    const people = [person("parent"),
+      person("alpha", { birthOrderOverride: 2 }),
+      person("zulu", { birthOrderOverride: 1 })];
+    const relationships = [parent("parent", "alpha"), parent("parent", "zulu")];
+
+    expect(familyIndex(people, relationships).children.get("parent")).toEqual(["zulu", "alpha"]);
+  });
 });

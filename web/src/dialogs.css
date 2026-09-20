@@ -1409,6 +1409,8 @@
   padding: 7px;
 }
 .family-plus-benefits .pro-benefits strong { font-size: 0.88rem; }
+.family-free-tools { margin: 0; padding-top: 12px; border-top: 1px solid var(--family-plus-line); color: var(--family-plus-deep); font-size: .78rem; line-height: 1.6; overflow-wrap: break-word; }
+.family-free-tools strong { display: block; margin-bottom: 4px; font-size: .85rem; }
 .family-plan-recovery-note {
   align-items: flex-start;
   background: color-mix(in srgb, var(--recessed) 42%, var(--base));
@@ -2186,7 +2188,7 @@
   grid-template-columns: 1fr;
 }
 
-.app-language-options button:last-child {
+.app-language-options .language-primary {
   grid-column: 1 / -1;
 }
 

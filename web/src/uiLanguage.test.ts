@@ -13,7 +13,8 @@ describe("UI language preference", () => {
 
   it("falls back safely and stores only the language preference", () => {
     expect(readUiLanguage({ getItem: () => null }, "id-ID")).toBe("id");
-    expect(readUiLanguage({ getItem: () => "unexpected" }, "en-US")).toBe("en");
+    expect(readUiLanguage({ getItem: () => null }, "en-US")).toBe("id");
+    expect(readUiLanguage({ getItem: () => "unexpected" }, "ms-MY")).toBe("id");
     const setItem = vi.fn();
     saveUiLanguage("id", { setItem });
     expect(setItem).toHaveBeenCalledWith("heritg_ui_language", "id");

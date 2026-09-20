@@ -203,7 +203,7 @@ describe("ProPaywallDialog", () => {
     expect(markup).toContain("Equivalent to");
     expect(markup).toContain("One-time payment");
     expect(markup).toContain("Every change, ready on every device");
-    expect(markup).toContain("Continue on another device");
+    expect(markup).toContain("More time to share your family");
     expect(markup).toContain("Encrypted and still yours");
     expect(markup).toContain("Heritg Family+");
     expect(markup).toContain("Continue to secure payment");

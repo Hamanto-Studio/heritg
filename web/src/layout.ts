@@ -1,5 +1,6 @@
 import { deriveKinshipLabels, type KinshipLanguage } from "./kinship";
 import { deriveBirthOrders } from "./birthOrder";
+import { compareChildOrder } from "./childOrder";
 import { formatPersonName } from "./personName";
 import { joinedFamilyPositions } from "./joinedFamilyLayout";
 import { independentInlawGroups, insetInlawAncestors } from "./inlawCorridors";
@@ -48,10 +49,8 @@ const compareText = (left: string, right: string) =>
 const comparePeople = (left: Person, right: Person) => {
   const leftBirth = left.birthDate ?? "\uffff";
   const rightBirth = right.birthDate ?? "\uffff";
-  const genderOrder = { male: 0, female: 1, unspecified: 2 } as const;
   return (
     compareText(leftBirth, rightBirth) ||
-    genderOrder[left.gender] - genderOrder[right.gender] ||
     compareText(left.displayName.toLowerCase(), right.displayName.toLowerCase()) ||
     compareText(left.displayName, right.displayName) ||
     compareText(left.id, right.id)
@@ -419,7 +418,8 @@ export function filterByGeneration(
 const orderRow = (
   people: readonly Person[],
   relationships: readonly FamilyRelationship[],
-  positioned: ReadonlyMap<string, PositionedPerson>
+  positioned: ReadonlyMap<string, PositionedPerson>,
+  birthOrders: ReadonlyMap<string, number>
 ) => {
   const rowIds = new Set(people.map((person) => person.id));
   const groups = new StableGroups(rowIds);
@@ -446,6 +446,9 @@ const orderRow = (
     }
   }
   const peopleById = new Map(people.map((person) => [person.id, person]));
+  const parentedRowIds = new Set(relationships
+    .filter((relationship) => relationship.kind === "parent" && rowIds.has(relationship.toPersonId))
+    .map((relationship) => relationship.toPersonId));
   const blocks = [...groups.values().values()].map((ids) => {
     const members = ids.map((id) => peopleById.get(id)).filter((person): person is Person => Boolean(person));
     const memberIds = new Set(members.map((person) => person.id));
@@ -454,6 +457,7 @@ const orderRow = (
         (relationship) =>
           relationship.kind === "parent" && memberIds.has(relationship.toPersonId)
       );
+    const childMembers = new Set(parentRelationships.map((relationship) => relationship.toPersonId));
     const memberParentX = (personId: string) => {
       const values = parentRelationships
         .filter((relationship) => relationship.toPersonId === personId)
@@ -463,9 +467,21 @@ const orderRow = (
         ? values.reduce((sum, value) => sum + value, 0) / values.length
         : Number.POSITIVE_INFINITY;
     };
-    members.sort((left, right) =>
-      memberParentX(left.id) - memberParentX(right.id) || comparePeople(left, right)
-    );
+    const parentIdsByChild = new Map(members.map((person) => [person.id, new Set(
+      parentRelationships
+        .filter((relationship) => relationship.toPersonId === person.id)
+        .map((relationship) => relationship.fromPersonId)
+    )]));
+    const sharesParent = (left: Person, right: Person) =>
+      [...(parentIdsByChild.get(left.id) ?? [])]
+        .some((parentId) => parentIdsByChild.get(right.id)?.has(parentId));
+    members.sort((left, right) => {
+      const parentPosition = memberParentX(left.id) - memberParentX(right.id);
+      if (parentPosition) return parentPosition;
+      return sharesParent(left, right)
+        ? compareChildOrder(left, right, birthOrders)
+        : comparePeople(left, right);
+    });
     const stableRank = new Map(members.map((person, index) => [person.id, index]));
     const partnerGroups = new StableGroups(memberIds);
     const partnerDegree = new Map<string, number>();
@@ -490,13 +506,17 @@ const orderRow = (
         (partnerDegree.get(relationship.toPersonId) ?? 0) + 1
       );
     }
+    const componentRank = (component: Person[]) => Math.min(...component
+      .filter((person) => childMembers.has(person.id))
+      .map((person) => stableRank.get(person.id) ?? Number.POSITIVE_INFINITY),
+    ...component.map((person) => stableRank.get(person.id) ?? Number.POSITIVE_INFINITY));
     const partnerComponents = [...partnerGroups.values().values()]
       .map((ids) => ids.map((id) => peopleById.get(id)!)
         .sort((left, right) =>
           (stableRank.get(left.id) ?? 0) - (stableRank.get(right.id) ?? 0)
         ))
       .sort((left, right) =>
-        (stableRank.get(left[0].id) ?? 0) - (stableRank.get(right[0].id) ?? 0)
+        componentRank(left) - componentRank(right)
       );
     members.splice(0, members.length, ...partnerComponents.flatMap((component) => {
       // Remarriage often forms a simple chain, not a star: former spouse ↔
@@ -553,6 +573,16 @@ const orderRow = (
   });
   blocks.sort((left, right) => {
     if (left.parentX !== right.parentX) return left.parentX - right.parentX;
+    const sharesParentFamily = [...left.familyKeys].some((key) => right.familyKeys.has(key));
+    if (sharesParentFamily) {
+      const childIn = (block: typeof left) => block.members.find((person) => parentedRowIds.has(person.id));
+      const leftChild = childIn(left);
+      const rightChild = childIn(right);
+      if (leftChild && rightChild) {
+        const childOrder = compareChildOrder(leftChild, rightChild, birthOrders);
+        if (childOrder) return childOrder;
+      }
+    }
     const memberCount = Math.min(left.members.length, right.members.length);
     for (let index = 0; index < memberCount; index += 1) {
       const comparison = comparePeople(left.members[index], right.members[index]);
@@ -625,7 +655,7 @@ export function createTreeLayout(
   const resultPeople: PositionedPerson[] = [];
   const blocksByGeneration = new Map<number, ReturnType<typeof orderRow>>();
   for (const generation of rowGenerations) {
-    const blocks = orderRow(rows.get(generation) ?? [], orderedRelationships, positioned);
+    const blocks = orderRow(rows.get(generation) ?? [], orderedRelationships, positioned, birthOrders);
     blocksByGeneration.set(generation, blocks);
     const personCount = blocks.reduce((sum, block) => sum + block.members.length, 0);
     const familyGapCount = blocks.slice(1).filter((block, index) =>
@@ -657,6 +687,23 @@ export function createTreeLayout(
       nextX = x;
     });
   }
+
+  type LayoutBlock = ReturnType<typeof orderRow>[number];
+  const parentedPersonIds = new Set(orderedRelationships
+    .filter((relationship) => relationship.kind === "parent")
+    .map((relationship) => relationship.toPersonId));
+  const sharesParentFamily = (left: LayoutBlock, right: LayoutBlock) =>
+    [...left.familyKeys].some((key) => right.familyKeys.has(key));
+  const blockChild = (block: LayoutBlock) =>
+    block.members.find((person) => parentedPersonIds.has(person.id));
+  const compareSiblingBlocks = (left: LayoutBlock, right: LayoutBlock) => {
+    if (!sharesParentFamily(left, right)) return 0;
+    const leftChild = blockChild(left);
+    const rightChild = blockChild(right);
+    return leftChild && rightChild
+      ? compareChildOrder(leftChild, rightChild, birthOrders)
+      : 0;
+  };
 
   // Let wide descendant branches pull their parents apart instead of crossing nearby family rails.
   const blockChildCenter = (
@@ -777,7 +824,7 @@ export function createTreeLayout(
     // of their parent families since the first placement.
     const updatedBlocks = generation === minimumGeneration
       ? [...(blocksByGeneration.get(generation) ?? [])]
-      : orderRow(rows.get(generation) ?? [], orderedRelationships, positioned);
+      : orderRow(rows.get(generation) ?? [], orderedRelationships, positioned, birthOrders);
     const parentStart = (block: ReturnType<typeof orderRow>[number]) => {
       const memberIndex = new Map(block.members.map((person, index) => [person.id, index]));
       const starts = orderedRelationships
@@ -799,11 +846,13 @@ export function createTreeLayout(
         relationship.kind === "parent" && ids.has(relationship.fromPersonId)
       );
     };
-    const blocks = updatedBlocks.sort((left, right) =>
-      parentStart(left) - parentStart(right) ||
-      Number(hasDescendants(left)) - Number(hasDescendants(right)) ||
-      compareText(left.key, right.key)
-    );
+    const blocks = updatedBlocks.sort((left, right) => {
+      const parentOrder = parentStart(left) - parentStart(right);
+      if (parentOrder) return parentOrder;
+      const descendantOrder = Number(hasDescendants(left)) - Number(hasDescendants(right));
+      if (descendantOrder) return descendantOrder;
+      return compareSiblingBlocks(left, right) || compareText(left.key, right.key);
+    });
     blocksByGeneration.set(generation, blocks);
     let nextX: number | undefined;
     blocks.forEach((block, blockIndex) => {
@@ -912,7 +961,8 @@ export function createTreeLayout(
     const childSources = new Map(simpleBlocks.flatMap((block) => [...childrenOfBlock.get(block)!].map((child) => [child, childSource(block, child)] as const)));
     const orderedChildren = (block: typeof simpleBlocks[number]) => [...childrenOfBlock.get(block)!]
       .sort((left, right) => Number(outerBranches.has(right)) - Number(outerBranches.has(left)) ||
-        childSources.get(left)! - childSources.get(right)! || comparePeople(left.members[0], right.members[0]) || compareText(left.key, right.key));
+        childSources.get(left)! - childSources.get(right)! || compareSiblingBlocks(left, right) ||
+        comparePeople(left.members[0], right.members[0]) || compareText(left.key, right.key));
     const widths = new Map<typeof simpleBlocks[number], number>();
     const childrenSpan = (children: typeof simpleBlocks) => children.reduce((sum, child, index) =>
       sum + widths.get(child)! + (index > 0 && needsFamilyGap(children[index - 1], child) ? LAYOUT_METRICS.familyGap : 0), 0);

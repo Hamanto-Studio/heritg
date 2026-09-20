@@ -1,3 +1,5 @@
+import { deriveBirthOrders } from "./birthOrder";
+import { compareChildOrder } from "./childOrder";
 import type { FamilyRelationship, Person } from "./types";
 
 export interface FamilyGroup {
@@ -11,12 +13,14 @@ export interface FamilyGroup {
 /** Read-only index. A person retains one identity across every family group. */
 export function buildFamilyGroupIndex(people: Person[], relationships: FamilyRelationship[]) {
   const byId = new Map(people.map((person) => [person.id, person]));
-  const compare = (a: string, b: string) => {
+  const birthOrders = deriveBirthOrders(people, relationships);
+  const compareChildren = (a: string, b: string) => {
     const left = byId.get(a)!;
     const right = byId.get(b)!;
-    return (left.birthDate ?? "9999").localeCompare(right.birthDate ?? "9999") ||
-      left.displayName.localeCompare(right.displayName) || a.localeCompare(b);
+    return compareChildOrder(left, right, birthOrders);
   };
+  const compareNames = (a: string, b: string) =>
+    byId.get(a)!.displayName.localeCompare(byId.get(b)!.displayName) || a.localeCompare(b);
   const edges = relationships.filter((edge) => byId.has(edge.fromPersonId) && byId.has(edge.toPersonId) && edge.fromPersonId !== edge.toPersonId);
   const parents = new Map<string, Set<string>>();
   for (const edge of edges) if (edge.kind === "parent") {
@@ -26,7 +30,7 @@ export function buildFamilyGroupIndex(people: Person[], relationships: FamilyRel
   const groups = new Map<string, FamilyGroup[]>();
   const families = new Map<string, { parents: string[]; children: string[] }>();
   for (const [child, ids] of parents) {
-    const parentIds = [...ids].sort(compare);
+    const parentIds = [...ids].sort(compareNames);
     const key = JSON.stringify([...ids].sort());
     if (!families.has(key)) families.set(key, { parents: parentIds, children: [] });
     families.get(key)!.children.push(child);
@@ -41,7 +45,7 @@ export function buildFamilyGroupIndex(people: Person[], relationships: FamilyRel
     (edge.toPersonId === owner && edge.fromPersonId === partner));
   for (const [key, family] of families) for (const owner of family.parents) {
     const partners = family.parents.filter((id) => id !== owner);
-    add(owner, { id: key, partners, children: family.children.sort(compare),
+    add(owner, { id: key, partners, children: family.children.sort(compareChildren),
       relationship: partners.length === 1 ? between(owner, partners[0]) : undefined,
       partnerRelationships: Object.fromEntries(partners.flatMap((id) => {
         const relationship = between(owner, id); return relationship ? [[id, relationship]] : [];

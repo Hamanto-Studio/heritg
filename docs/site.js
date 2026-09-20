@@ -26,7 +26,11 @@ menuToggle?.addEventListener('click', () => {
 
 siteNav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
   closeMenu();
-  const section = document.querySelector(link.hash);
+  // External navigation has no local section to focus (and an empty hash is
+  // not a valid selector). Do not interrupt its normal link behavior.
+  const section = link.hash && link.origin === location.origin && link.pathname === location.pathname
+    ? document.getElementById(decodeURIComponent(link.hash.slice(1)))
+    : null;
   const focusTarget = section?.querySelector('h2, h3') || section;
   requestAnimationFrame(() => {
     if (!focusTarget) return;

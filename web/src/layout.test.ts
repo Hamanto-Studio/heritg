@@ -679,6 +679,33 @@ describe("deterministic family layout", () => {
     expect(Math.abs(older.x - spouse.x)).toBe(LAYOUT_METRICS.horizontalSpacing);
   });
 
+  it("positions siblings by manual birth order instead of gender or name", () => {
+    const children = [
+      { ...person("alpha", "male"), birthOrderOverride: 1 },
+      { ...person("bravo", "male"), birthOrderOverride: 2 },
+      { ...person("sierra-female", "female"), birthOrderOverride: 3 },
+      { ...person("bravo-female", "female"), birthOrderOverride: 4 },
+      { ...person("tango", "female"), birthOrderOverride: 5 },
+      { ...person("november", "female"), birthOrderOverride: 6 },
+      { ...person("sierra-male", "male"), birthOrderOverride: 7 }
+    ];
+    const familyPeople = [person("father", "male"), person("mother", "female"), ...children];
+    const familyRelationships = children.flatMap((child) => [
+      parent("father", child.id), parent("mother", child.id)
+    ]);
+
+    const ordered = createTreeLayout(familyPeople, familyRelationships).people
+      .filter(({ id }) => children.some((child) => child.id === id))
+      .sort((left, right) => left.x - right.x);
+
+    expect(ordered.map(({ birthOrder }) => birthOrder)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(ordered.map(({ id }) => id)).toEqual([
+      "alpha", "bravo", "sierra-female", "bravo-female", "tango", "november", "sierra-male"
+    ]);
+    expect(createTreeLayout([...familyPeople].reverse(), [...familyRelationships].reverse()).people)
+      .toEqual(createTreeLayout(familyPeople, familyRelationships).people);
+  });
+
   it("keeps separate co-parent couples adjacent without interleaving their branches", () => {
     const couplePeople = [
       person("left-father", "male"), person("left-mother", "female"),

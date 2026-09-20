@@ -1,4 +1,4 @@
-import { browserAppLanguage, type AppLanguage } from "./locale";
+import type { AppLanguage } from "./locale";
 export type Gender = "female" | "male" | "unspecified";
 export const RELATIONSHIP_TERMINOLOGIES = [
   "id",
@@ -179,8 +179,8 @@ export const emptyAppData = (): AppData => ({
   trees: [],
   people: [],
   relationships: [],
-  language: browserAppLanguage(),
-  relationshipLanguage: browserAppLanguage(),
+  language: "id",
+  relationshipLanguage: "id",
   relationshipTerminology: "id",
   viewports: {}
 });

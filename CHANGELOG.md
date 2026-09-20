@@ -47,9 +47,23 @@ prefix.
 - Improved sibling generation placement and kept child connector rails a
   consistent distance from person cards.
 
-## Unreleased
+## [web-0.9.1] - 2026-09-20
 
-### Web
+### Changed
+
+- Ordered children consistently by manually recorded child number, then by
+  reliable birth date, across Full, Focus, Fan, and family navigation views.
+  Gender and names are now used only as deterministic fallbacks.
+- Made Bahasa Indonesia the default for a new Web workspace while preserving
+  the saved English or Bahasa Melayu choice of returning users.
+- Include PDF in landing-page and Family+ export descriptions, and restore
+  recognizable Web, Apple, and Google Play icons on the platform controls.
+
+- Refresh the English and Indonesian landing pages with current Web views,
+  privacy controls, Malay support, and one-time Family+ pricing. Clarify free
+  tools and longer sharing in Family+ across all three Web languages.
+- Link directly to Heritg on the App Store and replace the unavailable Google
+  Play link with a clear coming-soon message and a working web alternative.
 
 - Open Family+ checkout links from DOKU's verified production payment host,
   while preserving older links and rejecting unsafe or sandbox destinations.
@@ -200,6 +214,10 @@ prefix.
 - Added a focused family view with a person picker and expandable ancestor and
   descendant generations. Full-tree browsing and complete chart exports remain
   available without changing the saved archive or sharing scope.
+
+## Unreleased
+
+### Web
 
 ### iOS
 

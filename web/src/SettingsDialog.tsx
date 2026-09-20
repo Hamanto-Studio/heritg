@@ -86,6 +86,17 @@ export function SettingsDialog({
           </div>
           <div className="language-options app-language-options">
             <button
+              aria-pressed={data.language === "id"}
+              aria-busy={isPending && pendingLanguage === "id" || undefined}
+              className={`language-primary${data.language === "id" ? " selected" : ""}`}
+              disabled={isPending}
+              onClick={() => changeLanguage("id")}
+              type="button"
+            >
+              {isPending && pendingLanguage === "id" ? <ButtonLoader /> : null}
+              {t("indonesian")}
+            </button>
+            <button
               aria-pressed={data.language === "en"}
               aria-busy={isPending && pendingLanguage === "en" || undefined}
               className={data.language === "en" ? "selected" : ""}
@@ -95,17 +106,6 @@ export function SettingsDialog({
             >
               {isPending && pendingLanguage === "en" ? <ButtonLoader /> : null}
               {t("english")}
-            </button>
-            <button
-              aria-pressed={data.language === "id"}
-              aria-busy={isPending && pendingLanguage === "id" || undefined}
-              className={data.language === "id" ? "selected" : ""}
-              disabled={isPending}
-              onClick={() => changeLanguage("id")}
-              type="button"
-            >
-              {isPending && pendingLanguage === "id" ? <ButtonLoader /> : null}
-              {t("indonesian")}
             </button>
             <button
               aria-pressed={data.language === "ms"}

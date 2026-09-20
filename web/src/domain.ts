@@ -1,4 +1,4 @@
-import { browserAppLanguage, isAppLanguage } from "./locale";
+import { isAppLanguage } from "./locale";
 import { newId, RELATIONSHIP_LANGUAGES, RELATIONSHIP_TERMINOLOGIES } from "./types";
 import { selectFocusedFamily } from "./familyCopy";
 import type {
@@ -140,7 +140,7 @@ export function createInitialAppData(
   meta: DomainMeta = {}
 ): AppData {
   const selectedLanguage = language ??
-    browserAppLanguage();
+    "id";
   const empty: AppData = {
     version: 1,
     trees: [],

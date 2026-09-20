@@ -1,4 +1,4 @@
-import { browserAppLanguage, isAppLanguage } from "./locale";
+import { isAppLanguage } from "./locale";
 import type { AppData } from "./types";
 
 const UI_LANGUAGE_KEY = "heritg_ui_language";
@@ -7,13 +7,16 @@ export const readUiLanguage = (
   storage: Pick<Storage, "getItem"> = localStorage,
   browserLanguage = navigator.language
 ): AppData["language"] => {
+  void browserLanguage;
   try {
     const stored = storage.getItem(UI_LANGUAGE_KEY);
     if (isAppLanguage(stored)) return stored;
   } catch {
     // Browser privacy settings can make localStorage unavailable.
   }
-  return browserAppLanguage(browserLanguage);
+  // Indonesian is the product's default language. A saved preference always
+  // wins, including for returning users who chose English or Malay.
+  return "id";
 };
 
 export const saveUiLanguage = (

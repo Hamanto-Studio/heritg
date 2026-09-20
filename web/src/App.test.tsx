@@ -37,7 +37,7 @@ afterEach(() => {
 
 describe("App account settings transition", () => {
   it("shows the view switch beside visibility on an empty canvas with numbered guidance", async () => {
-    const data = createInitialAppData();
+    const data = createInitialAppData("en");
     data.trees = [{ id: "empty", title: "Empty family", createdAt: "2026-01-01", updatedAt: "2026-01-01" }];
     data.selectedTreeId = "empty";
     data.people = [];
@@ -70,7 +70,7 @@ describe("App account settings transition", () => {
   });
 
   it("keeps expanded family depths across selection and view changes until explicitly reset", async () => {
-    const data = createInitialAppData();
+    const data = createInitialAppData("en");
     data.trees = [{ id: "tree", title: "Test family", createdAt: "2026-01-01", updatedAt: "2026-01-01", lastSelectedPersonId: "p2" }];
     data.selectedTreeId = "tree";
     data.people = Array.from({ length: 6 }, (_, index) => ({
@@ -146,7 +146,7 @@ describe("App account settings transition", () => {
   });
 
   it("preserves the browsing anchor on deselect and clears old limits when returning to the full tree", async () => {
-    const data = createInitialAppData();
+    const data = createInitialAppData("en");
     data.trees = [{ id: "tree", title: "Test family", createdAt: "2026-01-01", updatedAt: "2026-01-01", lastSelectedPersonId: "person" }];
     data.selectedTreeId = "tree";
     data.people = [{ id: "person", treeId: "tree", displayName: "Person", gender: "unspecified", createdAt: "2026-01-01", birthDatePrecision: "year", notes: "", addressLine: "", city: "", province: "", country: "", postalCode: "" }];
@@ -179,7 +179,7 @@ describe("App account settings transition", () => {
     await act(async () => root.unmount());
   });
   it("opens Settings after email verification even when no local tree exists", async () => {
-    const data = createInitialAppData();
+    const data = createInitialAppData("en");
     mocks.store = {
       data: { ...data, trees: [], selectedTreeId: undefined },
       actions: {},
@@ -196,7 +196,7 @@ describe("App account settings transition", () => {
   });
 
   it("opens the Family+ paywall directly from the workspace button", async () => {
-    const data = createInitialAppData();
+    const data = createInitialAppData("en");
     mocks.store = {
       data: { ...data, trees: [], selectedTreeId: undefined },
       actions: {},

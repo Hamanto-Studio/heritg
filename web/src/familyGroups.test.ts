@@ -33,4 +33,17 @@ describe("family group index", () => {
     expect(buildFamilyGroupIndex([], []).groups.size).toBe(0);
     expect(index.byId.has("missing")).toBe(false);
   });
+
+  it("uses manual child order before alphabetical fallback", () => {
+    const children = [
+      { ...members[2], id: "alpha", displayName: "Alpha", birthOrderOverride: 2 },
+      { ...members[3], id: "zulu", displayName: "Zulu", birthOrderOverride: 1 }
+    ];
+    const people = [members[0], members[1], ...children];
+    const relationships = [edge("root", "spouse", "partner"),
+      ...children.flatMap((child) => [edge("root", child.id), edge("spouse", child.id)])];
+
+    const group = buildFamilyGroupIndex(people, relationships).groups.get("root")![0];
+    expect(group.children).toEqual(["zulu", "alpha"]);
+  });
 });

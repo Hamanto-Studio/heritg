@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="#263b2d" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Globe geometry from Heritg's existing heritg-web-badge.svg. -->
+  <circle cx="24" cy="24" r="19" stroke-width="2.8"/>
+  <path d="M5 24h38M24 5c5.7 5.1 8.6 11.4 8.6 19S29.7 37.9 24 43M24 5c-5.7 5.1-8.6 11.4-8.6 19S18.3 37.9 24 43M9 13c4.5 2.3 9.4 3.5 15 3.5S34.5 15.3 39 13M9 35c4.5-2.3 9.4-3.5 15-3.5s10.5 1.2 15 3.5" stroke-width="2.2"/>
+</svg>
