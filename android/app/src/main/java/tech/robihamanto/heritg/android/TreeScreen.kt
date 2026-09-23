@@ -124,7 +124,7 @@ internal fun TreeHost(
     var selectedId by uiState.state<String?>(prefix + "selected") { null }
     var limits by uiState.state(prefix + "limits") { TreeGenerationLimits() }
     var addTargetId by uiState.state<String?>(prefix + "addTarget") { null }
-    val locale = LocalConfiguration.current.locales[0]
+    val locale = LocalConfiguration.current.primaryLocale
     val formatter = remember(locale) { semanticFormatter(locale) }
     val density = LocalDensity.current.density
     val textMeasurer = remember(density) { AndroidTreeTextMeasurer(density) }

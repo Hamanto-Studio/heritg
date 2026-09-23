@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "tech.robihamanto.heritg.android"
-        minSdk = 26
+        minSdk = 23
         targetSdk = 37
         versionCode = 2
         versionName = "1.0.0"
@@ -20,6 +20,7 @@ android {
 
     buildFeatures { compose = true }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -37,6 +38,7 @@ kotlin {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(project(":core"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
