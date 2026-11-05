@@ -27,6 +27,13 @@ requests for the public documentation.
   resources.
 - Keep staging out of search indexes with
   `X-Robots-Tag: noindex, nofollow, noarchive`.
+- `family.heritg.us` is the only indexed site. Every landing page keeps a
+  unique title and description, an absolute canonical, Open Graph and Twitter
+  tags with `/og-image.png`, and the root icons; `/en/` and `/id/` carry JSON-LD
+  whose FAQPage mirrors the visible FAQ. List each canonical page in
+  `docs/sitemap.xml` and run `npm --prefix web test` after editing the landing
+  pages (`web/scripts/landing-seo.test.mjs`). The app at `heritg.us` keeps its
+  `noindex` header.
 
 ## Production and Staging
 
