@@ -4,12 +4,18 @@ on:
   pull_request:
     paths:
       - "web/**"
+      - "docs/**/*.html"
+      - "docs/sitemap.xml"
+      - "docs/robots.txt"
       - ".agents/skills/release-heritg-web/**"
       - ".github/workflows/web-ci.yml"
   push:
     branches: [main]
     paths:
       - "web/**"
+      - "docs/**/*.html"
+      - "docs/sitemap.xml"
+      - "docs/robots.txt"
       - ".agents/skills/release-heritg-web/**"
       - ".github/workflows/web-ci.yml"
   workflow_dispatch:

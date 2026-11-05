@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://family.heritg.us/sitemap.xml
